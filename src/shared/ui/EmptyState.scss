@@ -1,0 +1,12 @@
+@use '../styles/mixins';
+
+.empty-state {
+  @include mixins.flex-center;
+  padding: 48px 24px;
+
+  &__message {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 15px;
+  }
+}

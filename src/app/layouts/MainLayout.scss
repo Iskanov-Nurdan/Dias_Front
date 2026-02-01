@@ -1,0 +1,286 @@
+@use '../../shared/styles/mixins';
+
+.main-layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-rows: var(--header-height) 1fr;
+  grid-template-areas:
+    'sidebar header'
+    'sidebar content';
+  transition: grid-template-columns 0.2s ease;
+
+  @include mixins.mobile {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      'header'
+      'sidebar'
+      'content';
+  }
+
+  &--sidebar-collapsed {
+    grid-template-columns: var(--sidebar-width-collapsed, 72px) 1fr;
+
+    @include mixins.mobile {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__header {
+    grid-area: header;
+    background: var(--color-bg-card);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px 0 16px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+    gap: 16px;
+  }
+
+  &__header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  &__sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm, 8px);
+    color: var(--color-text-muted);
+    transition: color 0.15s ease, background 0.15s ease;
+    flex-shrink: 0;
+
+    &:hover {
+      color: var(--color-primary);
+      background: rgba(37, 99, 235, 0.08);
+    }
+  }
+
+  &__brand {
+    font-weight: 400;
+    font-size: 18px;
+    color: var(--color-text);
+    white-space: nowrap;
+    @include mixins.text-ellipsis;
+
+    @include mixins.mobile {
+      font-size: 16px;
+    }
+  }
+
+  &__user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  &__user-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--color-primary);
+    flex-shrink: 0;
+  }
+
+  &__user-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0;
+    min-width: 0;
+
+    @include mixins.mobile {
+      display: none;
+    }
+  }
+
+  &__user-name {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--color-text);
+    @include mixins.text-ellipsis;
+  }
+
+  &__user-role {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--color-text-muted);
+  }
+
+  &__logout {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 400;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm, 8px);
+    color: var(--color-text);
+    transition: background 0.15s ease, border-color 0.15s ease;
+
+    &:hover {
+      background: var(--color-bg);
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+  }
+
+  &__logout-text {
+    @include mixins.mobile {
+      display: none;
+    }
+  }
+
+  &__sidebar {
+    grid-area: sidebar;
+    background: var(--color-bg-card);
+    border-right: 1px solid var(--color-border);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    @include mixins.scrollbar;
+    transition: width 0.2s ease;
+
+    @include mixins.mobile {
+      height: auto;
+      max-height: 50vh;
+      position: relative;
+      border-right: none;
+      border-bottom: 1px solid var(--color-border);
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+  }
+
+  &__nav {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 0;
+    min-width: 0;
+
+    @include mixins.mobile {
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 8px 12px;
+      justify-content: center;
+    }
+  }
+
+  &__nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 400;
+    background: none;
+    border: none;
+    color: var(--color-text);
+    border-left: 3px solid transparent;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    min-width: 0;
+    white-space: nowrap;
+
+    @include mixins.mobile {
+      border-left: none;
+      border-radius: var(--radius-sm, 8px);
+      padding: 10px 14px;
+      flex: 0 0 auto;
+    }
+
+    &:hover {
+      background: var(--color-bg);
+    }
+
+    &--active {
+      background: rgba(37, 99, 235, 0.1);
+      border-left-color: var(--color-primary);
+      color: var(--color-primary);
+
+      @include mixins.mobile {
+        border-left: none;
+        border-bottom: 2px solid var(--color-primary);
+      }
+    }
+  }
+
+  &__nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+  }
+
+  &__nav-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  // Свёрнутый сайдбар: только иконки
+  &--sidebar-collapsed &__nav-item {
+    padding: 12px;
+    justify-content: center;
+
+    @include mixins.mobile {
+      padding: 10px 14px;
+      justify-content: center;
+    }
+  }
+
+  &--sidebar-collapsed &__nav-label {
+    @include mixins.desktop-only {
+      width: 0;
+      overflow: hidden;
+      opacity: 0;
+      padding: 0;
+      margin: 0;
+      position: absolute;
+      pointer-events: none;
+    }
+  }
+
+  &__content {
+    grid-area: content;
+    padding: 24px;
+    overflow: auto;
+    @include mixins.scrollbar;
+    min-width: 0;
+  }
+}
+
+// Для скрытия текста в сайдбаре только на desktop (не на mobile)
+@include mixins.mobile {
+  .main-layout--sidebar-collapsed .main-layout__nav-label {
+    width: auto;
+    overflow: visible;
+    opacity: 1;
+    position: static;
+  }
+}

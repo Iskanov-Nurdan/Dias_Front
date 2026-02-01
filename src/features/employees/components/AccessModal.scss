@@ -1,0 +1,62 @@
+@use '../../../shared/styles/mixins';
+
+.access-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  @include mixins.flex-center;
+  z-index: 1000;
+}
+
+.access-modal {
+  background: var(--color-bg-card);
+  border-radius: 12px;
+  padding: 24px;
+  width: 100%;
+  max-width: 400px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+
+  &__title {
+    margin: 0 0 20px;
+    font-size: 18px;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+  }
+
+  &__btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    &--cancel {
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      color: var(--color-text);
+    }
+    &--submit {
+      background: var(--color-primary);
+      color: #fff;
+      border: none;
+    }
+  }
+}

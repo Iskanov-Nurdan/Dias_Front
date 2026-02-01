@@ -1,0 +1,44 @@
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import './RoleFormModal.scss';
+
+const RoleFormModal = ({ role, onSave, onClose }) => {
+  const [name, setName] = useState('');
+  const isEdit = !!role?.id;
+
+  useEffect(() => {
+    if (role) setName(role.name || '');
+  }, [role]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave({ name });
+    onClose();
+  };
+
+  const content = (
+    <div className="role-form-modal__backdrop" onClick={onClose}>
+      <div className="role-form-modal" onClick={(e) => e.stopPropagation()}>
+        <h2 className="role-form-modal__title">{isEdit ? 'Редактировать роль' : 'Добавить роль'}</h2>
+        <form onSubmit={handleSubmit} className="role-form-modal__form">
+          <label className="role-form-modal__label">
+            Название
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="role-form-modal__input" />
+          </label>
+          <div className="role-form-modal__actions">
+            <button type="button" className="role-form-modal__btn role-form-modal__btn--cancel" onClick={onClose}>
+              Отмена
+            </button>
+            <button type="submit" className="role-form-modal__btn role-form-modal__btn--submit">
+              Сохранить
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
+  return createPortal(content, document.body);
+};
+
+export default RoleFormModal;

@@ -1,0 +1,10 @@
+.client-card-modal__backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.client-card-modal { background: var(--color-bg-card); border-radius: 12px; padding: 24px; max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15); }
+.client-card-modal__title { margin: 0 0 20px; font-size: 18px; }
+.client-card-modal__dl { display: grid; grid-template-columns: 1fr 2fr; gap: 8px 16px; margin: 0 0 20px; font-size: 14px; }
+.client-card-modal__dl dt { color: var(--color-text-muted); }
+.client-card-modal__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.client-card-modal__btn { padding: 8px 16px; border-radius: 6px; font-size: 14px; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text); }
+.client-card-modal__btn--primary { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+.client-card-modal__btn--danger { color: var(--color-error); border-color: var(--color-error); }
+.client-card-modal__btn--cancel { margin-left: auto; }

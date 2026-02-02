@@ -1,5 +1,5 @@
 import React from 'react';
-import { Loading, ErrorState, EmptyState, ConfirmModal } from '../../../shared/ui';
+import { ErrorState, EmptyState, ConfirmModal } from '../../../shared/ui';
 import './RolesList.scss';
 
 const RolesList = ({
@@ -13,10 +13,8 @@ const RolesList = ({
   onConfirmDelete,
   onCancelDelete,
 }) => {
-  if (loading) return <Loading />;
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
   const list = Array.isArray(items) ? items : items?.items ?? [];
-  if (!list.length) return <EmptyState message="Нет ролей" />;
 
   return (
     <>
@@ -30,7 +28,22 @@ const RolesList = ({
               </tr>
             </thead>
             <tbody>
-              {list.map((role) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={2} className="roles-list__loading-cell">
+                    <span className="loading-inline">
+                      <span className="loading-inline__spinner" aria-hidden />
+                      Загрузка…
+                    </span>
+                  </td>
+                </tr>
+              ) : !list.length ? (
+                <tr>
+                  <td colSpan={2} className="roles-list__empty-cell">
+                    <EmptyState message="Нет ролей" />
+                  </td>
+                </tr>
+              ) : list.map((role) => (
                 <tr key={role.id}>
                   <td>{role.name || '—'}</td>
                   <td className="roles-list__actions">
@@ -42,7 +55,7 @@ const RolesList = ({
                     </button>
                   </td>
                 </tr>
-              ))}
+              )) }
             </tbody>
           </table>
         </div>

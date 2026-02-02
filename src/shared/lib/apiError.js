@@ -1,3 +1,7 @@
+/** Ошибка отмены запроса (AbortController / axios) — не показывать пользователю */
+export const isCanceledError = (err) =>
+  !err ? false : err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED';
+
 /**
  * Формат ошибок API по ТЗ: { error: { code, message }, errors?: [{ field, message }] }
  */

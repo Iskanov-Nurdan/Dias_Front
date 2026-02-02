@@ -67,17 +67,63 @@ const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose }) => 
       <div className="client-form-modal" onClick={(e) => e.stopPropagation()}>
         <h2 className="client-form-modal__title">{client?.id ? 'Редактировать клиента' : 'Добавить клиента'}</h2>
         <form onSubmit={handleSubmit} className="client-form-modal__form">
-          <label className="client-form-modal__label">ФИО <input type="text" value={fio} onChange={(e) => setFio(e.target.value)} required className="client-form-modal__input" /></label>
-          <label className="client-form-modal__label">Телефон <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="client-form-modal__input" /></label>
-          <label className="client-form-modal__label">Вид спорта <Select value={String(sportId)} onChange={(v) => { setSportId(v); setTrainerId(''); }} options={[{ value: '', label: '—' }, ...(sports || []).map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="—" className="client-form-modal__input client-form-modal__select" /></label>
-          <label className="client-form-modal__label">Тренер <Select value={String(trainerId)} onChange={(v) => setTrainerId(v)} options={[{ value: '', label: '—' }, ...(trainersList || []).map((t) => ({ value: String(t.id), label: t.fio || '' }))]} placeholder="—" className="client-form-modal__input client-form-modal__select" /></label>
-          <label className="client-form-modal__label">Дата начала <input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} className="client-form-modal__input" /></label>
-          <label className="client-form-modal__label">Цена <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="client-form-modal__input" /></label>
-          <label className="client-form-modal__label">Скидка <input type="number" value={discount} onChange={(e) => setDiscount(e.target.value)} className="client-form-modal__input" /></label>
-          <label className="client-form-modal__label"><input type="checkbox" checked={paid} onChange={(e) => setPaid(e.target.checked)} /> Оплачено</label>
-          <label className="client-form-modal__label">Тип <Select value={clientType} onChange={setClientType} options={[{ value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }]} className="client-form-modal__input client-form-modal__select" /></label>
-          <label className="client-form-modal__label">Пол <Select value={gender} onChange={setGender} options={[{ value: '', label: '—' }, { value: 'male', label: 'М' }, { value: 'female', label: 'Ж' }]} placeholder="—" className="client-form-modal__input client-form-modal__select" /></label>
-          <label className="client-form-modal__label">Комментарий <textarea value={comment} onChange={(e) => setComment(e.target.value)} className="client-form-modal__input" rows={2} /></label>
+          <div className="client-form-modal__row">
+            <label className="client-form-modal__label">
+              <span className="client-form-modal__label-text">ФИО</span>
+              <input type="text" value={fio} onChange={(e) => setFio(e.target.value)} required className="client-form-modal__input" />
+            </label>
+            <label className="client-form-modal__label">
+              <span className="client-form-modal__label-text">Телефон</span>
+              <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="client-form-modal__input" />
+            </label>
+          </div>
+          <div className="client-form-modal__row">
+            <label className="client-form-modal__label">
+              <span className="client-form-modal__label-text">Вид спорта</span>
+              <Select value={String(sportId)} onChange={(v) => { setSportId(v); setTrainerId(''); }} options={[{ value: '', label: '—' }, ...(sports || []).map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="—" className="client-form-modal__select" />
+            </label>
+            <label className="client-form-modal__label">
+              <span className="client-form-modal__label-text">Тренер</span>
+              <Select value={String(trainerId)} onChange={(v) => setTrainerId(v)} options={[{ value: '', label: '—' }, ...(trainersList || []).map((t) => ({ value: String(t.id), label: t.fio || '' }))]} placeholder="—" className="client-form-modal__select" />
+            </label>
+          </div>
+          <div className="client-form-modal__row">
+            <label className="client-form-modal__label">
+              <span className="client-form-modal__label-text">Дата начала</span>
+              <input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} className="client-form-modal__input" />
+            </label>
+            <label className="client-form-modal__label">
+              <span className="client-form-modal__label-text">Цена</span>
+              <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="client-form-modal__input" placeholder="0" />
+            </label>
+          </div>
+          <div className="client-form-modal__row">
+            <label className="client-form-modal__label">
+              <span className="client-form-modal__label-text">Скидка</span>
+              <input type="number" value={discount} onChange={(e) => setDiscount(e.target.value)} className="client-form-modal__input" placeholder="0" />
+            </label>
+            <div className="client-form-modal__label client-form-modal__label--checkbox">
+              <span className="client-form-modal__label-text">Оплачено</span>
+              <label className="client-form-modal__checkbox-wrap">
+                <input type="checkbox" checked={paid} onChange={(e) => setPaid(e.target.checked)} className="client-form-modal__checkbox" />
+                <span className="client-form-modal__checkbox-label">Да</span>
+              </label>
+            </div>
+          </div>
+          <div className="client-form-modal__row">
+            <label className="client-form-modal__label">
+              <span className="client-form-modal__label-text">Тип</span>
+              <Select value={clientType} onChange={setClientType} options={[{ value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }]} className="client-form-modal__select" />
+            </label>
+            <label className="client-form-modal__label">
+              <span className="client-form-modal__label-text">Пол</span>
+              <Select value={gender} onChange={setGender} options={[{ value: '', label: '—' }, { value: 'male', label: 'М' }, { value: 'female', label: 'Ж' }]} placeholder="—" className="client-form-modal__select" />
+            </label>
+          </div>
+          <label className="client-form-modal__label client-form-modal__label--full">
+            <span className="client-form-modal__label-text">Комментарий</span>
+            <textarea value={comment} onChange={(e) => setComment(e.target.value)} className="client-form-modal__input" rows={2} placeholder="Необязательно" />
+          </label>
           <div className="client-form-modal__actions">
             <button type="button" className="client-form-modal__btn client-form-modal__btn--cancel" onClick={onClose}>Отмена</button>
             <button type="submit" className="client-form-modal__btn client-form-modal__btn--submit">Сохранить</button>

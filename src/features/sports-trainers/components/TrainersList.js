@@ -1,12 +1,10 @@
 import React from 'react';
-import { Loading, ErrorState, EmptyState, ConfirmModal } from '../../../shared/ui';
+import { ErrorState, EmptyState, ConfirmModal } from '../../../shared/ui';
 import './TrainersList.scss';
 
-const TrainersList = ({ items, loading, error, onRetry, onAdd, onEdit, onDelete, confirmDelete, onConfirmDelete, onCancelDelete }) => {
-  if (loading) return <Loading />;
+const TrainersList = ({ items, loading, error, onRetry, onEdit, onDelete, confirmDelete, onConfirmDelete, onCancelDelete }) => {
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
   const list = items?.items ?? items?.results ?? (Array.isArray(items) ? items : []);
-  if (!list.length) return <EmptyState message="Нет тренеров" />;
 
   const getSportsLabel = (t) => {
     const arr = t.sportIds ?? t.sport_ids ?? t.sports ?? [];
@@ -16,9 +14,6 @@ const TrainersList = ({ items, loading, error, onRetry, onAdd, onEdit, onDelete,
   return (
     <>
       <div className="trainers-list">
-        <div className="trainers-list__toolbar">
-          <button type="button" className="trainers-list__add" onClick={onAdd}>Добавить</button>
-        </div>
         <div className="trainers-list__table-wrap">
           <table className="trainers-list__table">
             <thead>
@@ -29,7 +24,22 @@ const TrainersList = ({ items, loading, error, onRetry, onAdd, onEdit, onDelete,
               </tr>
             </thead>
             <tbody>
-              {list.map((t) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={3} className="trainers-list__loading-cell">
+                    <span className="loading-inline">
+                      <span className="loading-inline__spinner" aria-hidden />
+                      Загрузка…
+                    </span>
+                  </td>
+                </tr>
+              ) : !list.length ? (
+                <tr>
+                  <td colSpan={3} className="trainers-list__empty-cell">
+                    <EmptyState message="Нет тренеров" />
+                  </td>
+                </tr>
+              ) : list.map((t) => (
                 <tr key={t.id}>
                   <td>{t.fio || '—'}</td>
                   <td>{getSportsLabel(t)}</td>
@@ -38,7 +48,7 @@ const TrainersList = ({ items, loading, error, onRetry, onAdd, onEdit, onDelete,
                     <button type="button" className="trainers-list__btn trainers-list__btn--danger" onClick={() => onDelete(t)}>Удалить</button>
                   </td>
                 </tr>
-              ))}
+              )) }
             </tbody>
           </table>
         </div>

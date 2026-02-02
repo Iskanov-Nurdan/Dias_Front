@@ -31,3 +31,26 @@ button {
 input, select, textarea {
   font-family: inherit;
 }
+
+/* Компактная загрузка внутри таблиц — без полноэкранного спиннера */
+.loading-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+
+  .loading-inline__spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--color-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: loading-spin 0.7s linear infinite;
+  }
+}
+
+@keyframes loading-spin {
+  to { transform: rotate(360deg); }
+}

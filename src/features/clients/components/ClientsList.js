@@ -1,20 +1,13 @@
 import React from 'react';
-import { Loading, ErrorState, EmptyState } from '../../../shared/ui';
+import { ErrorState, EmptyState } from '../../../shared/ui';
 import './ClientsList.scss';
 
-const ClientsList = ({ items, loading, error, onRetry, onAdd, onEdit, onDelete, onDetails, onExtend }) => {
-  if (loading) return <Loading />;
+const ClientsList = ({ items, loading, error, onRetry, onEdit, onDelete, onDetails, onExtend }) => {
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
   const list = items?.items ?? items?.results ?? items ?? [];
 
   return (
     <div className="clients-list">
-      <div className="clients-list__toolbar">
-        <button type="button" className="clients-list__add" onClick={onAdd}>Добавить клиента</button>
-      </div>
-      {!list.length ? (
-        <EmptyState message="Нет клиентов" />
-      ) : (
       <div className="clients-list__table-wrap">
         <table className="clients-list__table">
           <thead>
@@ -28,7 +21,22 @@ const ClientsList = ({ items, loading, error, onRetry, onAdd, onEdit, onDelete, 
             </tr>
           </thead>
           <tbody>
-            {list.map((c) => (
+            {loading ? (
+              <tr>
+                <td colSpan={6} className="clients-list__loading-cell">
+                  <span className="loading-inline">
+                    <span className="loading-inline__spinner" aria-hidden />
+                    Загрузка…
+                  </span>
+                </td>
+              </tr>
+            ) : !list.length ? (
+              <tr>
+                <td colSpan={6} className="clients-list__empty-cell">
+                  <EmptyState message="Нет клиентов" />
+                </td>
+              </tr>
+            ) : list.map((c) => (
               <tr key={c.id}>
                 <td>{c.fio || '—'}</td>
                 <td>{c.phone || '—'}</td>
@@ -38,15 +46,12 @@ const ClientsList = ({ items, loading, error, onRetry, onAdd, onEdit, onDelete, 
                 <td className="clients-list__actions">
                   <button type="button" className="clients-list__btn" onClick={() => onDetails(c)}>Подробнее</button>
                   <button type="button" className="clients-list__btn" onClick={() => onExtend(c)}>Продлить</button>
-                  <button type="button" className="clients-list__btn" onClick={() => onEdit(c)}>Изменить</button>
-                  <button type="button" className="clients-list__btn clients-list__btn--danger" onClick={() => onDelete(c)}>Удалить</button>
                 </td>
               </tr>
-            ))}
-            </tbody>
+            )) }
+          </tbody>
         </table>
       </div>
-      )}
     </div>
   );
 };

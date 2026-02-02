@@ -1,5 +1,5 @@
 import React from 'react';
-import { Loading, ErrorState, EmptyState, ConfirmModal } from '../../../shared/ui';
+import { ErrorState, EmptyState, ConfirmModal } from '../../../shared/ui';
 import './EmployeesList.scss';
 
 const EmployeesList = ({
@@ -14,10 +14,8 @@ const EmployeesList = ({
   onConfirmDelete,
   onCancelDelete,
 }) => {
-  if (loading) return <Loading />;
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
   const list = items?.items ?? items ?? [];
-  if (!list.length) return <EmptyState message="Нет сотрудников" />;
 
   return (
     <>
@@ -34,7 +32,22 @@ const EmployeesList = ({
               </tr>
             </thead>
             <tbody>
-              {list.map((emp) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="employees-list__loading-cell">
+                    <span className="loading-inline">
+                      <span className="loading-inline__spinner" aria-hidden />
+                      Загрузка…
+                    </span>
+                  </td>
+                </tr>
+              ) : !list.length ? (
+                <tr>
+                  <td colSpan={5} className="employees-list__empty-cell">
+                    <EmptyState message="Нет сотрудников" />
+                  </td>
+                </tr>
+              ) : list.map((emp) => (
                 <tr key={emp.id}>
                   <td>{emp.fio || emp.fio || '—'}</td>
                   <td>{emp.login || '—'}</td>
@@ -52,7 +65,7 @@ const EmployeesList = ({
                     </button>
                   </td>
                 </tr>
-              ))}
+              )) }
             </tbody>
           </table>
         </div>

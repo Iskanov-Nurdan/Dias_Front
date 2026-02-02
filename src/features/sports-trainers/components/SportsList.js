@@ -1,19 +1,14 @@
 import React from 'react';
-import { Loading, ErrorState, EmptyState, ConfirmModal } from '../../../shared/ui';
+import { ErrorState, EmptyState, ConfirmModal } from '../../../shared/ui';
 import './SportsList.scss';
 
-const SportsList = ({ items, loading, error, onRetry, onAdd, onEdit, onDelete, confirmDelete, onConfirmDelete, onCancelDelete }) => {
-  if (loading) return <Loading />;
+const SportsList = ({ items, loading, error, onRetry, onEdit, onDelete, confirmDelete, onConfirmDelete, onCancelDelete }) => {
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
   const list = Array.isArray(items) ? items : items?.items ?? items?.results ?? [];
-  if (!list.length) return <EmptyState message="Нет видов спорта" />;
 
   return (
     <>
       <div className="sports-list">
-        <div className="sports-list__toolbar">
-          <button type="button" className="sports-list__add" onClick={onAdd}>Добавить</button>
-        </div>
         <div className="sports-list__table-wrap">
           <table className="sports-list__table">
             <thead>
@@ -23,7 +18,22 @@ const SportsList = ({ items, loading, error, onRetry, onAdd, onEdit, onDelete, c
               </tr>
             </thead>
             <tbody>
-              {list.map((s) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={2} className="sports-list__loading-cell">
+                    <span className="loading-inline">
+                      <span className="loading-inline__spinner" aria-hidden />
+                      Загрузка…
+                    </span>
+                  </td>
+                </tr>
+              ) : !list.length ? (
+                <tr>
+                  <td colSpan={2} className="sports-list__empty-cell">
+                    <EmptyState message="Нет видов спорта" />
+                  </td>
+                </tr>
+              ) : list.map((s) => (
                 <tr key={s.id}>
                   <td>{s.name || '—'}</td>
                   <td className="sports-list__actions">
@@ -31,7 +41,7 @@ const SportsList = ({ items, loading, error, onRetry, onAdd, onEdit, onDelete, c
                     <button type="button" className="sports-list__btn sports-list__btn--danger" onClick={() => onDelete(s)}>Удалить</button>
                   </td>
                 </tr>
-              ))}
+              )) }
             </tbody>
           </table>
         </div>

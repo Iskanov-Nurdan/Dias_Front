@@ -13,7 +13,7 @@ import {
 } from './api';
 import { CategoryFormModal, ProductFormModal } from './components';
 import RestockModal from './components/RestockModal';
-import { Loading, ErrorState, EmptyState, ConfirmModal, Select } from '../../shared/ui';
+import { ErrorState, EmptyState, ConfirmModal, Select } from '../../shared/ui';
 import './WarehousePage.scss';
 
 const TAB_PRODUCTS = 'products';
@@ -23,6 +23,8 @@ const TAB_HISTORY = 'history';
 const WarehousePage = () => {
   const [activeTab, setActiveTab] = useState(TAB_PRODUCTS);
   const [queryState, setQueryState] = useState({ search: '', categoryId: '', page: 1, perPage: 20 });
+  const [categorySearch, setCategorySearch] = useState('');
+  const [historySearch, setHistorySearch] = useState('');
   const [productsData, setProductsData] = useState(null);
   const [categoriesData, setCategoriesData] = useState([]);
   const [restocksData, setRestocksData] = useState(null);
@@ -37,71 +39,75 @@ const WarehousePage = () => {
   const [restockProductItem, setRestockProductItem] = useState(null);
   const [confirmDeleteProduct, setConfirmDeleteProduct] = useState(null);
   const [confirmDeleteCategory, setConfirmDeleteCategory] = useState(null);
-  const controllerRef = useRef(null);
-  const lastRequestId = useRef(0);
+  const productsControllerRef = useRef(null);
+  const categoriesControllerRef = useRef(null);
+  const restocksControllerRef = useRef(null);
+  const lastProductsRequestId = useRef(0);
+  const lastCategoriesRequestId = useRef(0);
+  const lastRestocksRequestId = useRef(0);
 
   const fetchProductsSafe = useCallback(async () => {
-    controllerRef.current?.abort();
-    controllerRef.current = new AbortController();
-    const rid = ++lastRequestId.current;
+    productsControllerRef.current?.abort();
+    productsControllerRef.current = new AbortController();
+    const rid = ++lastProductsRequestId.current;
     setProductsLoading(true);
     setProductsError(null);
     try {
-      const data = await fetchProducts(queryState, controllerRef.current.signal);
-      if (rid !== lastRequestId.current) return;
+      const data = await fetchProducts(queryState, productsControllerRef.current.signal);
+      if (rid !== lastProductsRequestId.current) return;
       setProductsData(data);
     } catch (err) {
-      if (rid !== lastRequestId.current || err.name === 'AbortError') return;
+      if (rid !== lastProductsRequestId.current || err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
       setProductsError(err.response?.data?.message || err.response?.data?.detail || 'Ошибка');
     } finally {
-      if (rid === lastRequestId.current) setProductsLoading(false);
+      if (rid === lastProductsRequestId.current) setProductsLoading(false);
     }
   }, [queryState]);
 
   const fetchCategoriesSafe = useCallback(async () => {
-    controllerRef.current?.abort();
-    controllerRef.current = new AbortController();
-    const rid = ++lastRequestId.current;
+    categoriesControllerRef.current?.abort();
+    categoriesControllerRef.current = new AbortController();
+    const rid = ++lastCategoriesRequestId.current;
     setCategoriesLoading(true);
     setCategoriesError(null);
     try {
-      const data = await fetchCategories(controllerRef.current.signal);
-      if (rid !== lastRequestId.current) return;
+      const data = await fetchCategories(categoriesControllerRef.current.signal);
+      if (rid !== lastCategoriesRequestId.current) return;
       setCategoriesData(Array.isArray(data) ? data : data?.results ?? data?.items ?? []);
     } catch (err) {
-      if (rid !== lastRequestId.current || err.name === 'AbortError') return;
+      if (rid !== lastCategoriesRequestId.current || err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
       setCategoriesError(err.response?.data?.message || err.response?.data?.detail || 'Ошибка');
     } finally {
-      if (rid === lastRequestId.current) setCategoriesLoading(false);
+      if (rid === lastCategoriesRequestId.current) setCategoriesLoading(false);
     }
   }, []);
 
   const fetchRestocksSafe = useCallback(async () => {
-    controllerRef.current?.abort();
-    controllerRef.current = new AbortController();
-    const rid = ++lastRequestId.current;
+    restocksControllerRef.current?.abort();
+    restocksControllerRef.current = new AbortController();
+    const rid = ++lastRestocksRequestId.current;
     setRestocksLoading(true);
     setRestocksError(null);
     try {
-      const data = await fetchRestocks({ page: 1, perPage: 50 }, controllerRef.current.signal);
-      if (rid !== lastRequestId.current) return;
+      const data = await fetchRestocks({ page: 1, perPage: 50 }, restocksControllerRef.current.signal);
+      if (rid !== lastRestocksRequestId.current) return;
       setRestocksData(data);
     } catch (err) {
-      if (rid !== lastRequestId.current || err.name === 'AbortError') return;
+      if (rid !== lastRestocksRequestId.current || err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
       setRestocksError(err.response?.data?.message || err.response?.data?.detail || 'Ошибка');
     } finally {
-      if (rid === lastRequestId.current) setRestocksLoading(false);
+      if (rid === lastRestocksRequestId.current) setRestocksLoading(false);
     }
   }, []);
 
   useEffect(() => {
     if (activeTab === TAB_PRODUCTS) fetchProductsSafe();
-    return () => controllerRef.current?.abort();
+    return () => productsControllerRef.current?.abort();
   }, [activeTab, fetchProductsSafe]);
 
   useEffect(() => {
     if (activeTab === TAB_CATEGORIES) fetchCategoriesSafe();
-    return () => controllerRef.current?.abort();
+    return () => categoriesControllerRef.current?.abort();
   }, [activeTab, fetchCategoriesSafe]);
 
   useEffect(() => {
@@ -110,12 +116,20 @@ const WarehousePage = () => {
 
   useEffect(() => {
     if (activeTab === TAB_HISTORY) fetchRestocksSafe();
-    return () => controllerRef.current?.abort();
+    return () => restocksControllerRef.current?.abort();
   }, [activeTab, fetchRestocksSafe]);
 
   const productsItems = productsData?.items ?? productsData?.results ?? [];
   const categoriesList = Array.isArray(categoriesData) ? categoriesData : [];
+  const categorySearchLower = (categorySearch || '').trim().toLowerCase();
+  const categoriesListFiltered = categorySearchLower
+    ? categoriesList.filter((c) => (c.name || '').toLowerCase().includes(categorySearchLower))
+    : categoriesList;
   const restocksItems = restocksData?.items ?? restocksData?.results ?? [];
+  const historySearchLower = (historySearch || '').trim().toLowerCase();
+  const restocksItemsFiltered = historySearchLower
+    ? restocksItems.filter((r) => (r.productName ?? r.product?.name ?? '').toLowerCase().includes(historySearchLower))
+    : restocksItems;
 
   const handleSaveCategory = async (payload) => {
     try {
@@ -192,15 +206,16 @@ const WarehousePage = () => {
             </div>
             <button type="button" className="warehouse-page__add" onClick={() => setFormProduct({})}>Добавить товар</button>
           </div>
-          {productsLoading && <Loading />}
           {productsError && <ErrorState message={productsError} onRetry={fetchProductsSafe} />}
-          {!productsLoading && !productsError && productsItems.length === 0 && <EmptyState message="Нет товаров" />}
-          {!productsLoading && !productsError && productsItems.length > 0 && (
-            <div className="warehouse-page__table-wrap">
-              <table className="warehouse-page__table">
-                <thead><tr><th>Название</th><th>Категория</th><th>Кол-во</th><th>Цена</th><th>Мин. остаток</th><th>Добавлено</th><th>Действия</th></tr></thead>
-                <tbody>
-                  {productsItems.map((p) => (
+          <div className="warehouse-page__table-wrap">
+            <table className="warehouse-page__table">
+              <thead><tr><th>Название</th><th>Категория</th><th>Кол-во</th><th>Цена</th><th>Мин. остаток</th><th>Добавлено</th><th>Действия</th></tr></thead>
+              <tbody>
+                {productsLoading ? (
+                  <tr><td colSpan={7} className="warehouse-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
+                ) : productsItems.length === 0 ? (
+                  <tr><td colSpan={7} className="warehouse-page__empty-cell"><EmptyState message="Нет товаров" /></td></tr>
+                ) : productsItems.map((p) => (
                     <tr key={p.id}>
                       <td>{p.name}</td>
                       <td>{p.categoryName ?? p.category?.name ?? '—'}</td>
@@ -214,26 +229,30 @@ const WarehousePage = () => {
                         <button type="button" className="warehouse-page__action warehouse-page__action--delete" onClick={() => setConfirmDeleteProduct(p)} title="Удалить">Удалить</button>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
       {activeTab === TAB_CATEGORIES && (
         <>
           <div className="warehouse-page__toolbar">
+            <div className="warehouse-page__filters">
+              <input type="text" placeholder="Поиск" value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="warehouse-page__search" />
+            </div>
             <button type="button" className="warehouse-page__add" onClick={() => setFormCategory({})}>Добавить категорию</button>
           </div>
-          {categoriesLoading && <Loading />}
           {categoriesError && <ErrorState message={categoriesError} onRetry={fetchCategoriesSafe} />}
-          {!categoriesLoading && !categoriesError && categoriesList.length === 0 && <EmptyState message="Нет категорий" />}
-          {!categoriesLoading && !categoriesError && categoriesList.length > 0 && (
-            <div className="warehouse-page__table-wrap">
-              <table className="warehouse-page__table">
-                <thead><tr><th>Название</th><th>Действия</th></tr></thead>
-                <tbody>{categoriesList.map((c) => (
+          <div className="warehouse-page__table-wrap">
+            <table className="warehouse-page__table">
+              <thead><tr><th>Название</th><th>Действия</th></tr></thead>
+              <tbody>
+                {categoriesLoading ? (
+                  <tr><td colSpan={2} className="warehouse-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
+                ) : categoriesListFiltered.length === 0 ? (
+                  <tr><td colSpan={2} className="warehouse-page__empty-cell"><EmptyState message="Нет категорий" /></td></tr>
+                ) : categoriesListFiltered.map((c) => (
                   <tr key={c.id}>
                     <td>{c.name}</td>
                     <td className="warehouse-page__actions">
@@ -241,10 +260,10 @@ const WarehousePage = () => {
                       <button type="button" className="warehouse-page__action warehouse-page__action--delete" onClick={() => setConfirmDeleteCategory(c)} title="Удалить">Удалить</button>
                     </td>
                   </tr>
-                ))}</tbody>
-              </table>
-            </div>
-          )}
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
       {formCategory !== null && (
@@ -291,18 +310,25 @@ const WarehousePage = () => {
       )}
       {activeTab === TAB_HISTORY && (
         <>
-          <h3 className="warehouse-page__section">История пополнений</h3>
-          {restocksLoading && <Loading />}
-          {restocksError && <ErrorState message={restocksError} onRetry={fetchRestocksSafe} />}
-          {!restocksLoading && !restocksError && restocksItems.length === 0 && <EmptyState message="Нет пополнений" />}
-          {!restocksLoading && !restocksError && restocksItems.length > 0 && (
-            <div className="warehouse-page__table-wrap">
-              <table className="warehouse-page__table">
-                <thead><tr><th>Товар</th><th>Кол-во</th><th>Дата</th></tr></thead>
-                <tbody>{restocksItems.map((r) => <tr key={r.id}><td>{r.productName ?? r.product?.name ?? '—'}</td><td>{r.qty ?? r.quantity}</td><td>{r.date ? new Date(r.date).toLocaleDateString() : '—'}</td></tr>)}</tbody>
-              </table>
+          <div className="warehouse-page__toolbar">
+            <div className="warehouse-page__filters">
+              <input type="text" placeholder="Поиск" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} className="warehouse-page__search" />
             </div>
-          )}
+          </div>
+          <h3 className="warehouse-page__section">История пополнений</h3>
+          {restocksError && <ErrorState message={restocksError} onRetry={fetchRestocksSafe} />}
+          <div className="warehouse-page__table-wrap">
+            <table className="warehouse-page__table">
+              <thead><tr><th>Товар</th><th>Кол-во</th><th>Дата</th></tr></thead>
+              <tbody>
+                {restocksLoading ? (
+                  <tr><td colSpan={3} className="warehouse-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
+                ) : restocksItemsFiltered.length === 0 ? (
+                  <tr><td colSpan={3} className="warehouse-page__empty-cell"><EmptyState message="Нет пополнений" /></td></tr>
+                ) : restocksItemsFiltered.map((r) => <tr key={r.id}><td>{r.productName ?? r.product?.name ?? '—'}</td><td>{r.qty ?? r.quantity}</td><td>{r.date ? new Date(r.date).toLocaleDateString() : '—'}</td></tr>)}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
     </div>

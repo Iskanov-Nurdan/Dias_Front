@@ -1,11 +1,31 @@
 @use '../../../shared/styles/mixins';
 
-.clients-list__toolbar { margin-bottom: 16px; }
-.clients-list__add { padding: 8px 16px; background: var(--color-primary); color: #fff; border: none; border-radius: 6px; font-size: 14px; }
-.clients-list__table-wrap { overflow-x: auto; }
+.clients-list__loading-cell,
+.clients-list__empty-cell {
+  text-align: center;
+  padding: 24px 16px;
+  vertical-align: middle;
+}
+.clients-list__loading-cell,
+.clients-list__empty-cell {
+  text-align: center;
+  padding: 24px 16px;
+  vertical-align: middle;
+}
+.clients-list__table-wrap { overflow-x: auto; @include mixins.scrollbar; }
 .clients-list__table { width: 100%; border-collapse: collapse; background: var(--color-bg-card); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); }
 .clients-list__table th, .clients-list__table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--color-border); }
 .clients-list__table th { background: var(--color-bg); font-weight: 400; font-size: 13px; color: var(--color-text-muted); }
-.clients-list__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.clients-list__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  text-align: right;
+}
+.clients-list__table th:last-child,
+.clients-list__table td.clients-list__actions { text-align: right; }
 .clients-list__btn { padding: 4px 10px; font-size: 12px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 4px; color: var(--color-text); }
+.clients-list__btn:hover { background: var(--color-border); }
 .clients-list__btn--danger { color: var(--color-error); border-color: var(--color-error); }
+.clients-list__btn--danger:hover { background: rgba(220, 38, 38, 0.1); }

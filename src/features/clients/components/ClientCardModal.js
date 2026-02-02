@@ -2,7 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import './ClientCardModal.scss';
 
-const ClientCardModal = ({ client, onEdit, onDelete, onExtend, onClose }) => {
+const ClientCardModal = ({ client, onEdit, onDelete, onClose }) => {
   if (!client) return null;
   const content = (
     <div className="client-card-modal__backdrop" onClick={onClose}>
@@ -20,7 +20,6 @@ const ClientCardModal = ({ client, onEdit, onDelete, onExtend, onClose }) => {
           <dt>Комментарий</dt><dd>{client.comment || '—'}</dd>
         </dl>
         <div className="client-card-modal__actions">
-          <button type="button" className="client-card-modal__btn client-card-modal__btn--primary" onClick={() => { onExtend(client); onClose(); }}>Продлить</button>
           <button type="button" className="client-card-modal__btn" onClick={() => { onEdit(client); onClose(); }}>Редактировать</button>
           <button type="button" className="client-card-modal__btn client-card-modal__btn--danger" onClick={() => { onDelete(client); onClose(); }}>Удалить</button>
           <button type="button" className="client-card-modal__btn client-card-modal__btn--cancel" onClick={onClose}>Закрыть</button>

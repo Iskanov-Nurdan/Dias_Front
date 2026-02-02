@@ -55,7 +55,7 @@ const ProductFormModal = ({ product, categories = [], onSave, onClose }) => {
               onChange={(v) => setCategoryId(v)}
               options={[{ value: '', label: '—' }, ...categories.map((c) => ({ value: String(c.id), label: c.name || '' }))]}
               placeholder="—"
-              className="warehouse-form-modal__input warehouse-form-modal__select"
+              className="warehouse-form-modal__select"
             />
           </label>
           <label className="warehouse-form-modal__label">

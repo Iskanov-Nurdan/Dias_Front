@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchSalary, saveSalary } from './api';
-import { Loading, ErrorState, EmptyState } from '../../shared/ui';
+import { ErrorState, EmptyState } from '../../shared/ui';
 import './SalaryPage.scss';
 
 const SalaryPage = () => {
@@ -22,7 +22,7 @@ const SalaryPage = () => {
       if (rid !== lastRequestId.current) return;
       setData(res);
     } catch (err) {
-      if (rid !== lastRequestId.current || err.name === 'AbortError') return;
+      if (rid !== lastRequestId.current || err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
       setError(err.response?.data?.message || err.response?.data?.detail || 'Ошибка загрузки');
     } finally {
       if (rid === lastRequestId.current) setLoading(false);
@@ -50,26 +50,27 @@ const SalaryPage = () => {
         <input type="number" placeholder="Месяц" value={queryState.month} onChange={(e) => setQueryState((q) => ({ ...q, month: e.target.value }))} className="salary-page__input" min="1" max="12" />
         <input type="number" placeholder="День" value={queryState.day} onChange={(e) => setQueryState((q) => ({ ...q, day: e.target.value }))} className="salary-page__input" min="1" max="31" />
       </div>
-      {loading && <Loading />}
       {error && <ErrorState message={error} onRetry={fetchSafe} />}
-      {!loading && !error && items.length === 0 && <EmptyState message="Нет данных за период" />}
-      {!loading && !error && items.length > 0 && (
-        <div className="salary-page__table-wrap">
-          <table className="salary-page__table">
-            <thead>
-              <tr>
-                <th>Тренер</th>
-                <th>Кол-во клиентов</th>
-                <th>Доход от клиентов</th>
-                <th>60% тренеру</th>
-                <th>40% клубу</th>
-                <th>Итого к выплате</th>
-                <th>Сохранён</th>
-                <th>Действия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((row) => {
+      <div className="salary-page__table-wrap">
+        <table className="salary-page__table">
+          <thead>
+            <tr>
+              <th>Тренер</th>
+              <th>Кол-во клиентов</th>
+              <th>Доход от клиентов</th>
+              <th>60% тренеру</th>
+              <th>40% клубу</th>
+              <th>Итого к выплате</th>
+              <th>Сохранён</th>
+              <th>Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={8} className="salary-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
+            ) : items.length === 0 ? (
+              <tr><td colSpan={8} className="salary-page__empty-cell"><EmptyState message="Нет данных за период" /></td></tr>
+            ) : items.map((row) => {
                 const income = row.income ?? row.revenue ?? row.clientIncome ?? 0;
                 const trainerShare = row.trainerShare ?? row.trainer_share ?? row.percent60 ?? 0;
                 const clubShare = row.clubShare ?? row.club_share ?? row.percent40 ?? 0;
@@ -92,11 +93,10 @@ const SalaryPage = () => {
                     </td>
                   </tr>
                 );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

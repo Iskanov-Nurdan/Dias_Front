@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchSalesSummary, fetchSales, createSale } from './api';
 import { fetchProducts } from '../warehouse/api';
 import SaleFormModal from './components/SaleFormModal';
-import { Loading, ErrorState, EmptyState } from '../../shared/ui';
+import { ErrorState, EmptyState } from '../../shared/ui';
 import './SalesPage.scss';
 
 const SalesPage = () => {
@@ -16,43 +16,46 @@ const SalesPage = () => {
   const [formSaleOpen, setFormSaleOpen] = useState(false);
   const [products, setProducts] = useState([]);
   const controllerRef = useRef(null);
-  const lastRequestId = useRef(0);
+  const lastSummaryRequestId = useRef(0);
+  const lastSalesRequestId = useRef(0);
 
   const fetchSummarySafe = useCallback(async () => {
     controllerRef.current?.abort();
     controllerRef.current = new AbortController();
-    const rid = ++lastRequestId.current;
+    const rid = ++lastSummaryRequestId.current;
     setSummaryLoading(true);
     setSummaryError(null);
     try {
       const data = await fetchSalesSummary(queryState, controllerRef.current.signal);
-      if (rid !== lastRequestId.current) return;
+      if (rid !== lastSummaryRequestId.current) return;
       setSummary(data);
     } catch (err) {
-      if (rid !== lastRequestId.current || err.name === 'AbortError') return;
-      const { getApiErrorMessage } = await import('../../shared/lib/apiError');
+      if (rid !== lastSummaryRequestId.current) return;
+      const { getApiErrorMessage, isCanceledError } = await import('../../shared/lib/apiError');
+      if (isCanceledError(err)) return;
       setSummaryError(getApiErrorMessage(err));
     } finally {
-      if (rid === lastRequestId.current) setSummaryLoading(false);
+      if (rid === lastSummaryRequestId.current) setSummaryLoading(false);
     }
   }, [queryState.dateFrom, queryState.dateTo]);
 
   const fetchSalesSafe = useCallback(async () => {
     controllerRef.current?.abort();
     controllerRef.current = new AbortController();
-    const rid = ++lastRequestId.current;
+    const rid = ++lastSalesRequestId.current;
     setSalesLoading(true);
     setSalesError(null);
     try {
       const data = await fetchSales(queryState, controllerRef.current.signal);
-      if (rid !== lastRequestId.current) return;
+      if (rid !== lastSalesRequestId.current) return;
       setSalesData(data);
     } catch (err) {
-      if (rid !== lastRequestId.current || err.name === 'AbortError') return;
-      const { getApiErrorMessage } = await import('../../shared/lib/apiError');
+      if (rid !== lastSalesRequestId.current) return;
+      const { getApiErrorMessage, isCanceledError } = await import('../../shared/lib/apiError');
+      if (isCanceledError(err)) return;
       setSalesError(getApiErrorMessage(err));
     } finally {
-      if (rid === lastRequestId.current) setSalesLoading(false);
+      if (rid === lastSalesRequestId.current) setSalesLoading(false);
     }
   }, [queryState]);
 
@@ -94,37 +97,40 @@ const SalesPage = () => {
         </div>
         <button type="button" className="sales-page__add" onClick={() => setFormSaleOpen(true)}>Новая продажа</button>
       </div>
-      {summaryLoading && <Loading />}
       {summaryError && <ErrorState message={summaryError} onRetry={fetchSummarySafe} />}
-      {!summaryLoading && !summaryError && summaryData && (
-        <div className="sales-page__summary">
+      <div className="sales-page__summary">
+        {summaryLoading ? (
+          <span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span>
+        ) : summaryData ? (
+        <>
           <div className="sales-page__card"><span className="sales-page__card-label">Всего продаж</span><span className="sales-page__card-value">{summaryData.count ?? 0}</span></div>
           <div className="sales-page__card"><span className="sales-page__card-label">Выручка</span><span className="sales-page__card-value">{summaryData.revenue ?? 0}</span></div>
           <div className="sales-page__card"><span className="sales-page__card-label">Средний чек</span><span className="sales-page__card-value">{summaryData.avgCheck ?? '—'}</span></div>
-        </div>
-      )}
+        </>
+        ) : null}
+      </div>
       <h3 className="sales-page__section">Список продаж</h3>
-      {salesLoading && <Loading />}
       {salesError && <ErrorState message={salesError} onRetry={fetchSalesSafe} />}
-      {!salesLoading && !salesError && salesItems.length === 0 && <EmptyState message="Нет продаж" />}
-      {!salesLoading && !salesError && salesItems.length > 0 && (
-        <div className="sales-page__table-wrap">
-          <table className="sales-page__table">
-            <thead><tr><th>Товар</th><th>Кол-во</th><th>Сумма</th><th>Дата</th><th>Сотрудник</th></tr></thead>
-            <tbody>
-              {salesItems.map((s) => (
+      <div className="sales-page__table-wrap">
+        <table className="sales-page__table">
+          <thead><tr><th>Товар</th><th>Кол-во</th><th>Сумма</th><th>Скидка</th><th>Дата</th></tr></thead>
+          <tbody>
+            {salesLoading ? (
+              <tr><td colSpan={5} className="sales-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
+            ) : salesItems.length === 0 ? (
+              <tr><td colSpan={5} className="sales-page__empty-cell"><EmptyState message="Нет продаж" /></td></tr>
+            ) : salesItems.map((s) => (
                 <tr key={s.id}>
                   <td>{s.productName ?? s.product?.name ?? '—'}</td>
                   <td>{s.qty ?? s.quantity ?? 0}</td>
                   <td>{s.total ?? '—'}</td>
+                  <td>{s.discount != null ? s.discount : (s.discountPercent != null ? `${s.discountPercent}%` : '—')}</td>
                   <td>{s.date ? new Date(s.date).toLocaleDateString() : '—'}</td>
-                  <td>{s.employeeName ?? s.employee?.fio ?? '—'}</td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            ))}
+          </tbody>
+        </table>
+      </div>
       {formSaleOpen && (
         <SaleFormModal
           products={products}

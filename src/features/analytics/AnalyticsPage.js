@@ -16,7 +16,7 @@ import {
   fetchExpenseDetail,
   fetchProfitDetail,
 } from './api';
-import { Loading, ErrorState, Select } from '../../shared/ui';
+import { ErrorState, Select } from '../../shared/ui';
 import './AnalyticsPage.scss';
 
 const MONTHS = ['', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
@@ -97,7 +97,7 @@ const AnalyticsPage = () => {
       setClientsBreakdown(breakdownRes ?? {});
       setWarehouseRestocks(warehouseRes ?? {});
     } catch (err) {
-      if (err.name === 'AbortError') return;
+      if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
       setError(err.response?.data?.message || err.response?.data?.detail || 'Ошибка загрузки');
     } finally {
       setLoading(false);
@@ -192,10 +192,16 @@ const AnalyticsPage = () => {
         <button type="button" className="analytics-page__reset" onClick={resetFilters}>Сброс</button>
       </div>
 
-      {loading && <Loading />}
       {error && <ErrorState message={error} onRetry={loadAll} />}
 
-      {!loading && !error && (
+      {loading ? (
+        <div className="analytics-page__loading-block">
+          <span className="loading-inline">
+            <span className="loading-inline__spinner" aria-hidden />
+            Загрузка…
+          </span>
+        </div>
+      ) : (
         <>
           <div className="analytics-page__kpis">
             <button type="button" className="analytics-page__card" onClick={() => setDetailModal('income')}>

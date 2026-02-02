@@ -53,7 +53,7 @@ const EmployeeFormModal = ({ employee, roles, onSave, onClose }) => {
               onChange={(v) => setRoleId(v)}
               options={(roles || []).map((r) => ({ value: String(r.id), label: r.name || '' }))}
               placeholder="Выберите роль"
-              className="employee-form-modal__input employee-form-modal__select"
+              className="employee-form-modal__select"
             />
           </label>
           <label className="employee-form-modal__label">

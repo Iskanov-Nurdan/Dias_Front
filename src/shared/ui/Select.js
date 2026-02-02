@@ -22,8 +22,18 @@ const Select = ({ value, onChange, options = [], placeholder = 'Выберите
     const handleClickOutside = (e) => {
       if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', handleEscape);
+    const id = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside, true);
+    }, 0);
+    return () => {
+      clearTimeout(id);
+      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('mousedown', handleClickOutside, true);
+    };
   }, [open]);
 
   const handleSelect = (opt) => {
@@ -52,7 +62,13 @@ const Select = ({ value, onChange, options = [], placeholder = 'Выберите
         </span>
       </button>
       {open && (
-        <div className="select__dropdown" role="listbox">
+        <div
+          className="select__dropdown"
+          role="listbox"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setOpen(false);
+          }}
+        >
           {options.map((opt) => (
             <button
               key={String(opt.value)}
@@ -60,7 +76,11 @@ const Select = ({ value, onChange, options = [], placeholder = 'Выберите
               role="option"
               aria-selected={String(opt.value) === String(value)}
               className={`select__option ${String(opt.value) === String(value) ? 'select__option--selected' : ''}`}
-              onClick={() => handleSelect(opt)}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSelect(opt);
+              }}
             >
               {opt.label}
             </button>

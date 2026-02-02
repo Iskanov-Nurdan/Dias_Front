@@ -34,54 +34,61 @@ const EmployeesPage = () => {
   const [accessData, setAccessData] = useState(null);
   const [confirmDeleteEmployee, setConfirmDeleteEmployee] = useState(null);
   const [confirmDeleteRole, setConfirmDeleteRole] = useState(null);
-  const controllerRef = useRef(null);
-  const lastRequestId = useRef(0);
+  const employeesControllerRef = useRef(null);
+  const rolesControllerRef = useRef(null);
+  const lastEmployeesRequestId = useRef(0);
+  const lastRolesRequestId = useRef(0);
 
   const fetchEmployeesSafe = useCallback(async () => {
-    if (controllerRef.current) controllerRef.current.abort();
-    controllerRef.current = new AbortController();
-    const requestId = ++lastRequestId.current;
+    if (employeesControllerRef.current) employeesControllerRef.current.abort();
+    employeesControllerRef.current = new AbortController();
+    const requestId = ++lastEmployeesRequestId.current;
     setEmployeesLoading(true);
     setEmployeesError(null);
     try {
-      const data = await fetchEmployees(queryState, controllerRef.current.signal);
-      if (requestId !== lastRequestId.current) return;
+      const data = await fetchEmployees(queryState, employeesControllerRef.current.signal);
+      if (requestId !== lastEmployeesRequestId.current) return;
       setEmployeesData(data);
     } catch (err) {
-      if (requestId !== lastRequestId.current || err.name === 'AbortError') return;
+      if (requestId !== lastEmployeesRequestId.current || err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
       setEmployeesError(err.response?.data?.message || err.response?.data?.detail || err.message || 'Ошибка загрузки');
     } finally {
-      if (requestId === lastRequestId.current) setEmployeesLoading(false);
+      if (requestId === lastEmployeesRequestId.current) setEmployeesLoading(false);
     }
   }, [queryState]);
 
   const fetchRolesSafe = useCallback(async () => {
-    if (controllerRef.current) controllerRef.current.abort();
-    controllerRef.current = new AbortController();
-    const requestId = ++lastRequestId.current;
+    if (rolesControllerRef.current) rolesControllerRef.current.abort();
+    rolesControllerRef.current = new AbortController();
+    const requestId = ++lastRolesRequestId.current;
     setRolesLoading(true);
     setRolesError(null);
     try {
-      const data = await fetchRoles(controllerRef.current.signal);
-      if (requestId !== lastRequestId.current) return;
+      const data = await fetchRoles(rolesControllerRef.current.signal);
+      if (requestId !== lastRolesRequestId.current) return;
       setRolesData(Array.isArray(data) ? data : data?.results ?? data?.items ?? data?.data ?? []);
     } catch (err) {
-      if (requestId !== lastRequestId.current || err.name === 'AbortError') return;
+      if (requestId !== lastRolesRequestId.current || err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
       setRolesError(err.response?.data?.message || err.response?.data?.detail || err.message || 'Ошибка загрузки');
     } finally {
-      if (requestId === lastRequestId.current) setRolesLoading(false);
+      if (requestId === lastRolesRequestId.current) setRolesLoading(false);
     }
   }, []);
 
   useEffect(() => {
     if (activeTab === TAB_EMPLOYEES) fetchEmployeesSafe();
-    return () => { if (controllerRef.current) controllerRef.current.abort(); };
+    return () => { if (employeesControllerRef.current) employeesControllerRef.current.abort(); };
   }, [activeTab, fetchEmployeesSafe]);
 
   useEffect(() => {
     if (activeTab === TAB_ROLES) fetchRolesSafe();
-    return () => { if (controllerRef.current) controllerRef.current.abort(); };
+    return () => { if (rolesControllerRef.current) rolesControllerRef.current.abort(); };
   }, [activeTab, fetchRolesSafe]);
+
+  // Загружаем роли при открытии страницы, чтобы селект «Роль» в форме сотрудника был заполнен
+  useEffect(() => {
+    fetchRolesSafe();
+  }, [fetchRolesSafe]);
 
   const rolesList = Array.isArray(rolesData) ? rolesData : rolesData?.results ?? rolesData?.items ?? [];
   const rolesFiltered = roleSearch.trim()

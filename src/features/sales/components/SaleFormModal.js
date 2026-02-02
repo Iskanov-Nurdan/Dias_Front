@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { Select } from '../../../shared/ui';
 import './SaleFormModal.scss';
 
 const SaleFormModal = ({ products = [], onSave, onClose }) => {
@@ -47,7 +48,7 @@ const SaleFormModal = ({ products = [], onSave, onClose }) => {
               onChange={(v) => setProductId(v)}
               options={[{ value: '', label: '—' }, ...products.map((p) => ({ value: String(p.id), label: p.name || '' }))]}
               placeholder="—"
-              className="sale-form-modal__input sale-form-modal__select"
+              className="sale-form-modal__select"
             />
           </label>
           <label className="sale-form-modal__label">

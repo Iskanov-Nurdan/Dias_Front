@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchExpenseCategories, fetchExpenses, saveExpense, createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, updateExpense, deleteExpense } from './api';
 import { ExpenseCategoryFormModal, ExpenseFormModal } from './components';
-import { Loading, ErrorState, EmptyState, ConfirmModal } from '../../shared/ui';
+import { ErrorState, EmptyState, ConfirmModal } from '../../shared/ui';
 import './ExpensesPage.scss';
 
-const TAB_CATEGORIES = 'categories';
-const TAB_EXPENSES = 'expenses';
-
 const ExpensesPage = () => {
-  const [activeTab, setActiveTab] = useState(TAB_EXPENSES);
-  const [queryState] = useState({ page: 1, perPage: 20 });
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+  const [categorySearch, setCategorySearch] = useState('');
+  const [expensesSearch, setExpensesSearch] = useState('');
+  const [queryState, setQueryState] = useState({ page: 1, perPage: 20 });
   const [categoriesData, setCategoriesData] = useState([]);
   const [expensesData, setExpensesData] = useState(null);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
@@ -20,61 +19,74 @@ const ExpensesPage = () => {
   const [formExpense, setFormExpense] = useState(null);
   const [confirmDeleteCategory, setConfirmDeleteCategory] = useState(null);
   const [confirmDeleteExpense, setConfirmDeleteExpense] = useState(null);
-  const controllerRef = useRef(null);
-  const lastRequestId = useRef(0);
+  const categoriesControllerRef = useRef(null);
+  const expensesControllerRef = useRef(null);
+  const lastCategoriesRequestId = useRef(0);
+  const lastExpensesRequestId = useRef(0);
 
   const fetchCategoriesSafe = useCallback(async () => {
-    controllerRef.current?.abort();
-    controllerRef.current = new AbortController();
-    const rid = ++lastRequestId.current;
+    categoriesControllerRef.current?.abort();
+    categoriesControllerRef.current = new AbortController();
+    const rid = ++lastCategoriesRequestId.current;
     setCategoriesLoading(true);
     setCategoriesError(null);
     try {
-      const data = await fetchExpenseCategories(controllerRef.current.signal);
-      if (rid !== lastRequestId.current) return;
+      const data = await fetchExpenseCategories(categoriesControllerRef.current.signal);
+      if (rid !== lastCategoriesRequestId.current) return;
       setCategoriesData(Array.isArray(data) ? data : data?.results ?? data?.items ?? []);
     } catch (err) {
-      if (rid !== lastRequestId.current || err.name === 'AbortError') return;
+      if (rid !== lastCategoriesRequestId.current || err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
       setCategoriesError(err.response?.data?.message || err.response?.data?.detail || 'Ошибка');
     } finally {
-      if (rid === lastRequestId.current) setCategoriesLoading(false);
+      if (rid === lastCategoriesRequestId.current) setCategoriesLoading(false);
     }
   }, []);
 
   const fetchExpensesSafe = useCallback(async () => {
-    controllerRef.current?.abort();
-    controllerRef.current = new AbortController();
-    const rid = ++lastRequestId.current;
+    const q = { ...queryState, categoryId: selectedCategoryId || undefined };
+    expensesControllerRef.current?.abort();
+    expensesControllerRef.current = new AbortController();
+    const rid = ++lastExpensesRequestId.current;
     setExpensesLoading(true);
     setExpensesError(null);
     try {
-      const data = await fetchExpenses(queryState, controllerRef.current.signal);
-      if (rid !== lastRequestId.current) return;
+      const data = await fetchExpenses(q, expensesControllerRef.current.signal);
+      if (rid !== lastExpensesRequestId.current) return;
       setExpensesData(data);
     } catch (err) {
-      if (rid !== lastRequestId.current || err.name === 'AbortError') return;
+      if (rid !== lastExpensesRequestId.current || err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
       setExpensesError(err.response?.data?.message || err.response?.data?.detail || 'Ошибка');
     } finally {
-      if (rid === lastRequestId.current) setExpensesLoading(false);
+      if (rid === lastExpensesRequestId.current) setExpensesLoading(false);
     }
-  }, [queryState]);
-
-  useEffect(() => {
-    if (activeTab === TAB_CATEGORIES) fetchCategoriesSafe();
-    return () => controllerRef.current?.abort();
-  }, [activeTab, fetchCategoriesSafe]);
+  }, [selectedCategoryId, queryState.page, queryState.perPage]);
 
   useEffect(() => {
     fetchCategoriesSafe();
+    return () => categoriesControllerRef.current?.abort();
   }, [fetchCategoriesSafe]);
 
   useEffect(() => {
-    if (activeTab === TAB_EXPENSES) fetchExpensesSafe();
-    return () => controllerRef.current?.abort();
-  }, [activeTab, fetchExpensesSafe]);
+    if (selectedCategoryId != null) fetchExpensesSafe();
+    return () => expensesControllerRef.current?.abort();
+  }, [selectedCategoryId, fetchExpensesSafe]);
 
   const categoriesList = Array.isArray(categoriesData) ? categoriesData : [];
+  const categorySearchLower = (categorySearch || '').trim().toLowerCase();
+  const categoriesFiltered = categorySearchLower
+    ? categoriesList.filter((c) => (c.name || '').toLowerCase().includes(categorySearchLower))
+    : categoriesList;
   const expensesItems = expensesData?.items ?? expensesData?.results ?? expensesData ?? [];
+  const expensesSearchLower = (expensesSearch || '').trim().toLowerCase();
+  const expensesFiltered = expensesSearchLower
+    ? expensesItems.filter((e) => {
+        const name = (e.name ?? '').toLowerCase();
+        const cat = (e.categoryName ?? e.category?.name ?? '').toLowerCase();
+        const amount = String(e.amount ?? '').toLowerCase();
+        const date = e.date ? new Date(e.date).toLocaleDateString().toLowerCase() : '';
+        return name.includes(expensesSearchLower) || cat.includes(expensesSearchLower) || amount.includes(expensesSearchLower) || date.includes(expensesSearchLower);
+      })
+    : expensesItems;
 
   const handleSaveExpense = (id) => {
     saveExpense(id, null).then(() => fetchExpensesSafe()).catch(console.error);
@@ -118,53 +130,61 @@ const ExpensesPage = () => {
     }).catch(console.error);
   };
 
+  const selectedCategory = selectedCategoryId != null ? categoriesList.find((c) => c.id === selectedCategoryId) : null;
+
   return (
     <div className="expenses-page">
       <h1 className="expenses-page__title">Расходы</h1>
-      <div className="expenses-page__tabs">
-        <button type="button" className={`expenses-page__tab ${activeTab === TAB_CATEGORIES ? 'expenses-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_CATEGORIES)}>Категории расходов</button>
-        <button type="button" className={`expenses-page__tab ${activeTab === TAB_EXPENSES ? 'expenses-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_EXPENSES)}>Расходы</button>
-      </div>
-      {activeTab === TAB_CATEGORIES && (
+      {selectedCategoryId == null ? (
         <>
           <div className="expenses-page__toolbar">
+            <div className="expenses-page__toolbar-left">
+              <input type="text" placeholder="Поиск" value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="expenses-page__search" />
+            </div>
             <button type="button" className="expenses-page__add" onClick={() => setFormCategory({})}>Добавить</button>
           </div>
-          {categoriesLoading && <Loading />}
           {categoriesError && <ErrorState message={categoriesError} onRetry={fetchCategoriesSafe} />}
-          {!categoriesLoading && !categoriesError && categoriesList.length === 0 && <EmptyState message="Нет категорий" />}
-          {!categoriesLoading && !categoriesError && categoriesList.length > 0 && (
-            <div className="expenses-page__table-wrap">
-              <table className="expenses-page__table">
-                <thead><tr><th>Название</th><th>Действия</th></tr></thead>
-                <tbody>{categoriesList.map((c) => (
-                  <tr key={c.id}>
+          <div className="expenses-page__table-wrap">
+            <table className="expenses-page__table">
+              <thead><tr><th>Название</th><th>Действия</th></tr></thead>
+              <tbody>
+                {categoriesLoading ? (
+                  <tr><td colSpan={2} className="expenses-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
+                ) : categoriesFiltered.length === 0 ? (
+                  <tr><td colSpan={2} className="expenses-page__empty-cell"><EmptyState message="Нет категорий" /></td></tr>
+                ) : categoriesFiltered.map((c) => (
+                  <tr key={c.id} className="expenses-page__category-row" onClick={() => setSelectedCategoryId(c.id)}>
                     <td>{c.name}</td>
-                    <td className="expenses-page__actions">
+                    <td className="expenses-page__actions" onClick={(e) => e.stopPropagation()}>
                       <button type="button" className="expenses-page__action expenses-page__action--edit" onClick={() => setFormCategory(c)}>Изменить</button>
                       <button type="button" className="expenses-page__action expenses-page__action--delete" onClick={() => setConfirmDeleteCategory(c)}>Удалить</button>
                     </td>
                   </tr>
-                ))}</tbody>
-              </table>
-            </div>
-          )}
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>
-      )}
-      {activeTab === TAB_EXPENSES && (
+      ) : (
         <>
           <div className="expenses-page__toolbar">
-            <button type="button" className="expenses-page__add" onClick={() => setFormExpense({})}>Добавить расход</button>
+            <div className="expenses-page__toolbar-left">
+              <button type="button" className="expenses-page__back" onClick={() => setSelectedCategoryId(null)}>← К категориям</button>
+              <input type="text" placeholder="Поиск" value={expensesSearch} onChange={(e) => setExpensesSearch(e.target.value)} className="expenses-page__search" />
+            </div>
+            <button type="button" className="expenses-page__add" onClick={() => setFormExpense({ categoryId: selectedCategoryId })}>Добавить расход</button>
           </div>
-          {expensesLoading && <Loading />}
+          <h3 className="expenses-page__section">{selectedCategory?.name ?? 'Расходы по категории'}</h3>
           {expensesError && <ErrorState message={expensesError} onRetry={fetchExpensesSafe} />}
-          {!expensesLoading && !expensesError && expensesItems.length === 0 && <EmptyState message="Нет расходов" />}
-          {!expensesLoading && !expensesError && expensesItems.length > 0 && (
-            <div className="expenses-page__table-wrap">
-              <table className="expenses-page__table">
-                <thead><tr><th>Название</th><th>Категория</th><th>Сумма</th><th>Дата</th><th>Сохранён</th><th>Действия</th></tr></thead>
-                <tbody>
-                  {expensesItems.map((e) => (
+          <div className="expenses-page__table-wrap">
+            <table className="expenses-page__table">
+              <thead><tr><th>Название</th><th>Категория</th><th>Сумма</th><th>Дата</th><th>Сохранён</th><th>Действия</th></tr></thead>
+              <tbody>
+                {expensesLoading ? (
+                  <tr><td colSpan={6} className="expenses-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
+                ) : expensesFiltered.length === 0 ? (
+                  <tr><td colSpan={6} className="expenses-page__empty-cell"><EmptyState message="Нет расходов" /></td></tr>
+                ) : expensesFiltered.map((e) => (
                     <tr key={e.id}>
                       <td>{e.name ?? '—'}</td>
                       <td>{e.categoryName ?? e.category?.name ?? '—'}</td>
@@ -177,11 +197,10 @@ const ExpensesPage = () => {
                         <button type="button" className="expenses-page__action expenses-page__action--delete" onClick={() => setConfirmDeleteExpense(e)}>Удалить</button>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
       {formCategory !== null && (

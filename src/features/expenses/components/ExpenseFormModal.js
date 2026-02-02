@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { Select } from '../../../shared/ui';
 import './ExpenseFormModal.scss';
 
 const ExpenseFormModal = ({ expense, categories = [], onSave, onClose }) => {
@@ -19,7 +20,7 @@ const ExpenseFormModal = ({ expense, categories = [], onSave, onClose }) => {
       setComment(expense.comment ?? '');
     } else {
       setName('');
-      setCategoryId('');
+      setCategoryId(expense?.categoryId ?? expense?.category_id ?? expense?.category?.id ?? '');
       setAmount('');
       setDate(today);
       setComment('');
@@ -54,7 +55,7 @@ const ExpenseFormModal = ({ expense, categories = [], onSave, onClose }) => {
               onChange={(v) => setCategoryId(v)}
               options={[{ value: '', label: '—' }, ...categories.map((c) => ({ value: String(c.id), label: c.name || '' }))]}
               placeholder="—"
-              className="expense-form-modal__input expense-form-modal__select"
+              className="expense-form-modal__select"
             />
           </label>
           <label className="expense-form-modal__label">

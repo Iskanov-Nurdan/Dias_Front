@@ -18,7 +18,9 @@ const TAB_TRAINERS = 'trainers';
 
 const SportsTrainersPage = () => {
   const [activeTab, setActiveTab] = useState(TAB_SPORTS);
-  const [queryState, setQueryState] = useState({ sportId: '', page: 1, perPage: 20 });
+  const [queryState, setQueryState] = useState({ sportId: '', search: '', page: 1, perPage: 20 });
+  const [sportSearch, setSportSearch] = useState('');
+  const [trainerSearch, setTrainerSearch] = useState('');
   const [sportsData, setSportsData] = useState([]);
   const [trainersData, setTrainersData] = useState(null);
   const [sportsLoading, setSportsLoading] = useState(false);
@@ -30,41 +32,42 @@ const SportsTrainersPage = () => {
   const [confirmDeleteSport, setConfirmDeleteSport] = useState(null);
   const [confirmDeleteTrainer, setConfirmDeleteTrainer] = useState(null);
   const controllerRef = useRef(null);
-  const lastRequestId = useRef(0);
+  const lastSportsRequestId = useRef(0);
+  const lastTrainersRequestId = useRef(0);
 
   const fetchSportsSafe = useCallback(async () => {
     controllerRef.current?.abort();
     controllerRef.current = new AbortController();
-    const rid = ++lastRequestId.current;
+    const rid = ++lastSportsRequestId.current;
     setSportsLoading(true);
     setSportsError(null);
     try {
       const data = await fetchSports(controllerRef.current.signal);
-      if (rid !== lastRequestId.current) return;
+      if (rid !== lastSportsRequestId.current) return;
       setSportsData(Array.isArray(data) ? data : data?.results ?? data?.items ?? []);
     } catch (err) {
-      if (rid !== lastRequestId.current || err.name === 'AbortError') return;
+      if (rid !== lastSportsRequestId.current || err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
       setSportsError(err.response?.data?.message || err.response?.data?.detail || 'Ошибка загрузки');
     } finally {
-      if (rid === lastRequestId.current) setSportsLoading(false);
+      if (rid === lastSportsRequestId.current) setSportsLoading(false);
     }
   }, []);
 
   const fetchTrainersSafe = useCallback(async () => {
     controllerRef.current?.abort();
     controllerRef.current = new AbortController();
-    const rid = ++lastRequestId.current;
+    const rid = ++lastTrainersRequestId.current;
     setTrainersLoading(true);
     setTrainersError(null);
     try {
       const data = await fetchTrainers(queryState, controllerRef.current.signal);
-      if (rid !== lastRequestId.current) return;
+      if (rid !== lastTrainersRequestId.current) return;
       setTrainersData(data);
     } catch (err) {
-      if (rid !== lastRequestId.current || err.name === 'AbortError') return;
+      if (rid !== lastTrainersRequestId.current || err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
       setTrainersError(err.response?.data?.message || err.response?.data?.detail || 'Ошибка загрузки');
     } finally {
-      if (rid === lastRequestId.current) setTrainersLoading(false);
+      if (rid === lastTrainersRequestId.current) setTrainersLoading(false);
     }
   }, [queryState]);
 
@@ -79,6 +82,12 @@ const SportsTrainersPage = () => {
   }, [activeTab, fetchTrainersSafe]);
 
   const trainersItems = trainersData?.items ?? trainersData?.results ?? trainersData ?? [];
+  const sportsFiltered = sportSearch.trim()
+    ? sportsData.filter((s) => (s.name || '').toLowerCase().includes(sportSearch.trim().toLowerCase()))
+    : sportsData;
+  const trainersFiltered = trainerSearch.trim()
+    ? trainersItems.filter((t) => (t.fio || '').toLowerCase().includes(trainerSearch.trim().toLowerCase()))
+    : trainersItems;
 
   const handleSaveSport = async (payload) => {
     try {
@@ -119,22 +128,50 @@ const SportsTrainersPage = () => {
         <button type="button" className={`sports-trainers-page__tab ${activeTab === TAB_SPORTS ? 'sports-trainers-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_SPORTS)}>Виды спорта</button>
         <button type="button" className={`sports-trainers-page__tab ${activeTab === TAB_TRAINERS ? 'sports-trainers-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_TRAINERS)}>Тренеры</button>
       </div>
+      {activeTab === TAB_SPORTS && (
+        <div className="sports-trainers-page__toolbar">
+          <div className="sports-trainers-page__filters">
+            <input
+              type="text"
+              placeholder="Поиск по названию"
+              value={sportSearch}
+              onChange={(e) => setSportSearch(e.target.value)}
+              className="sports-trainers-page__search"
+            />
+          </div>
+          <button type="button" className="sports-trainers-page__add" onClick={() => setFormSport({})}>
+            Добавить
+          </button>
+        </div>
+      )}
       {activeTab === TAB_TRAINERS && (
-        <div className="sports-trainers-page__filters">
-          <Select
-            value={queryState.sportId}
-            onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))}
-            options={[{ value: '', label: 'Все виды спорта' }, ...sportsData.map((s) => ({ value: String(s.id), label: s.name || '' }))]}
-            placeholder="Все виды спорта"
-            className="sports-trainers-page__select-wrap"
-          />
+        <div className="sports-trainers-page__toolbar">
+          <div className="sports-trainers-page__filters">
+            <input
+              type="text"
+              placeholder="Поиск (ФИО тренера)"
+              value={trainerSearch}
+              onChange={(e) => setTrainerSearch(e.target.value)}
+              className="sports-trainers-page__search"
+            />
+            <Select
+              value={queryState.sportId}
+              onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))}
+              options={[{ value: '', label: 'Все виды спорта' }, ...sportsData.map((s) => ({ value: String(s.id), label: s.name || '' }))]}
+              placeholder="Все виды спорта"
+              className="sports-trainers-page__select-wrap"
+            />
+          </div>
+          <button type="button" className="sports-trainers-page__add" onClick={() => setFormTrainer({})}>
+            Добавить
+          </button>
         </div>
       )}
       {activeTab === TAB_SPORTS && (
-        <SportsList items={sportsData} loading={sportsLoading} error={sportsError} onRetry={fetchSportsSafe} onAdd={() => setFormSport({})} onEdit={setFormSport} onDelete={setConfirmDeleteSport} confirmDelete={confirmDeleteSport} onConfirmDelete={handleDeleteSport} onCancelDelete={() => setConfirmDeleteSport(null)} />
+        <SportsList items={sportsFiltered} loading={sportsLoading} error={sportsError} onRetry={fetchSportsSafe} onEdit={setFormSport} onDelete={setConfirmDeleteSport} confirmDelete={confirmDeleteSport} onConfirmDelete={handleDeleteSport} onCancelDelete={() => setConfirmDeleteSport(null)} />
       )}
       {activeTab === TAB_TRAINERS && (
-        <TrainersList items={trainersItems} loading={trainersLoading} error={trainersError} onRetry={fetchTrainersSafe} onAdd={() => setFormTrainer({})} onEdit={setFormTrainer} onDelete={setConfirmDeleteTrainer} confirmDelete={confirmDeleteTrainer} onConfirmDelete={handleDeleteTrainer} onCancelDelete={() => setConfirmDeleteTrainer(null)} />
+        <TrainersList items={trainersFiltered} loading={trainersLoading} error={trainersError} onRetry={fetchTrainersSafe} onEdit={setFormTrainer} onDelete={setConfirmDeleteTrainer} confirmDelete={confirmDeleteTrainer} onConfirmDelete={handleDeleteTrainer} onCancelDelete={() => setConfirmDeleteTrainer(null)} />
       )}
       {formSport && <SportFormModal sport={formSport} onSave={handleSaveSport} onClose={() => setFormSport(null)} />}
       {formTrainer && <TrainerFormModal trainer={formTrainer} sports={sportsData} onSave={handleSaveTrainer} onClose={() => setFormTrainer(null)} />}

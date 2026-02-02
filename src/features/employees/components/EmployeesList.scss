@@ -6,6 +6,13 @@
     @include mixins.scrollbar;
   }
 
+  &__loading-cell,
+  &__empty-cell {
+    text-align: center;
+    padding: 24px 16px;
+    vertical-align: middle;
+  }
+
   &__table {
     width: 100%;
     border-collapse: collapse;
@@ -37,6 +44,13 @@
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+    justify-content: flex-end;
+    text-align: right;
+  }
+
+  &__table th:last-child,
+  &__table td.employees-list__actions {
+    text-align: right;
   }
 
   &__btn {

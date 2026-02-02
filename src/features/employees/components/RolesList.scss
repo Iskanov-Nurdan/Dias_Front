@@ -1,6 +1,12 @@
 @use '../../../shared/styles/mixins';
 
 .roles-list {
+  &__loading-cell,
+  &__empty-cell {
+    text-align: center;
+    padding: 24px 16px;
+    vertical-align: middle;
+  }
   &__table-wrap {
     overflow-x: auto;
     @include mixins.scrollbar;
@@ -36,6 +42,13 @@
   &__actions {
     display: flex;
     gap: 8px;
+    justify-content: flex-end;
+    text-align: right;
+  }
+
+  &__table th:last-child,
+  &__table td.roles-list__actions {
+    text-align: right;
   }
 
   &__btn {

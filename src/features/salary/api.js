@@ -11,14 +11,15 @@ export const fetchSalary = async (queryState, signal) => {
   return data;
 };
 
-/** Сохранить выплату тренера за период (POST /api/salary/save/ body: trainerId, year, month, day) */
-export const saveSalary = async (trainerId, queryState, signal) => {
+/** Сохранить выплату тренера за период (POST /api/salary/save/ body: trainerId, year, month, day, trainerPercent?) */
+export const saveSalary = async (trainerId, queryState, trainerPercent, signal) => {
   const body = {
     trainerId: trainerId,
     year: queryState?.year,
     month: queryState?.month,
     day: queryState?.day || undefined,
   };
+  if (trainerPercent != null && trainerPercent !== '') body.trainerPercent = Number(trainerPercent);
   const { data } = await apiClient.post('/salary/save/', body, withSignal({}, signal));
   return data;
 };

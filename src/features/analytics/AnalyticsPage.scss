@@ -1,69 +1,634 @@
-.analytics-page__title { margin: 0 0 4px; font-size: 24px; font-weight: 400; }
-.analytics-page__subtitle { margin: 0 0 16px; font-size: 14px; color: var(--color-text-muted); }
-.analytics-page__filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 24px; }
-.analytics-page__filter { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--color-text-muted); }
-.analytics-page__input { padding: 8px 12px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 14px; width: 100px; }
-.analytics-page__reset { padding: 8px 16px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; font-size: 14px; cursor: pointer; }
-.analytics-page__reset:hover { background: var(--color-border); }
+// ——— Общее ———
+.analytics-page {
+  width: 100%;
+  max-width: none;
+  padding-bottom: 40px;
+}
 
-.analytics-page__loading-block { padding: 24px; text-align: center; }
+.analytics-page__title {
+  margin: 0 0 4px;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.03em;
+}
 
-.analytics-page__kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; margin-bottom: 32px; }
-.analytics-page__card { background: var(--color-bg-card); padding: 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); display: flex; flex-direction: column; gap: 6px; border: none; cursor: pointer; text-align: left; font-family: inherit; }
-.analytics-page__card:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
-.analytics-page__card--static { cursor: default; }
-.analytics-page__card--static:hover { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); }
-.analytics-page__card-label { font-size: 11px; color: var(--color-text-muted); text-transform: uppercase; }
-.analytics-page__card-value { font-size: 18px; font-weight: 400; }
+.analytics-page__subtitle {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
 
-.analytics-page__section { margin-bottom: 28px; }
-.analytics-page__section-title { margin: 0 0 12px; font-size: 16px; font-weight: 400; }
+// ——— Фильтры ———
+.analytics-page__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 14px 20px;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
 
-.analytics-page__bars { display: flex; flex-direction: column; gap: 10px; }
-.analytics-page__bar-row { display: flex; align-items: center; gap: 12px; }
-.analytics-page__bar-label { min-width: 120px; font-size: 14px; }
-.analytics-page__bar-wrap { flex: 1; height: 24px; background: var(--color-bg); border-radius: 4px; overflow: hidden; }
-.analytics-page__bar { height: 100%; background: var(--color-primary); border-radius: 4px; min-width: 2px; transition: width 0.2s; }
-.analytics-page__bar--green { background: #22c55e; }
-.analytics-page__bar--red { background: #ef4444; }
-.analytics-page__bar-value { font-size: 13px; color: var(--color-text-muted); white-space: nowrap; }
+.analytics-page__filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  width: 100px;
+  min-width: 100px;
+}
 
-.analytics-page__list { display: flex; flex-wrap: wrap; gap: 8px; }
-.analytics-page__list-item { padding: 6px 12px; background: var(--color-bg); border-radius: 6px; font-size: 14px; }
+.analytics-page__input {
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 14px;
+  width: 100px;
+  background: var(--color-bg);
+  transition: border-color 0.15s;
+}
 
-.analytics-page__weekday { display: flex; align-items: flex-end; gap: 8px; height: 120px; }
-.analytics-page__weekday-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.analytics-page__weekday-bar { width: 100%; max-width: 24px; background: var(--color-primary); border-radius: 4px 4px 0 0; min-height: 4px; }
-.analytics-page__weekday-value { font-size: 12px; font-weight: 400; }
-.analytics-page__weekday-label { font-size: 11px; color: var(--color-text-muted); }
+.analytics-page__input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
 
-.analytics-page__daily-wrap { max-height: 200px; overflow-y: auto; }
-.analytics-page__daily-row { display: grid; grid-template-columns: 40px 1fr 1fr; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--color-border); font-size: 14px; }
-.analytics-page__daily-day { font-weight: 400; }
-.analytics-page__daily-income { color: #16a34a; }
-.analytics-page__daily-expense { color: #dc2626; }
+.analytics-page__filter--month {
+  width: 132px;
+  min-width: 132px;
+}
 
-.analytics-page__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
-.analytics-page__top-list { margin: 0; padding-left: 20px; font-size: 14px; }
-.analytics-page__top-list li { margin-bottom: 6px; }
+.analytics-page__select-wrap {
+  width: 100%;
+  min-width: 0;
+  border: none;
+  background: none;
+  padding: 0;
+}
 
-.analytics-page__tabs { display: flex; gap: 4px; margin-bottom: 8px; }
-.analytics-page__tab { padding: 8px 16px; font-size: 14px; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; color: var(--color-text-muted); cursor: pointer; }
-.analytics-page__tab--active { color: var(--color-primary); font-weight: 400; border-bottom-color: var(--color-primary); }
+.analytics-page__select-wrap .select__trigger {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  width: 100%;
+  box-sizing: border-box;
+}
 
-.analytics-page__table-wrap { overflow-x: auto; }
-.analytics-page__table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.analytics-page__table th, .analytics-page__table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--color-border); }
-.analytics-page__table th { background: var(--color-bg); font-weight: 400; font-size: 12px; color: var(--color-text-muted); }
+.analytics-page__select-wrap .select__trigger:hover {
+  border-color: var(--color-primary);
+}
 
-.analytics-page__breakdown { display: flex; flex-direction: column; gap: 12px; font-size: 14px; }
-.analytics-page__breakdown-block { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.analytics-page__breakdown-block span { padding: 4px 10px; background: var(--color-bg); border-radius: 6px; }
+.analytics-page__select-wrap .select__trigger:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
 
-.analytics-page__empty { margin: 8px 0; font-size: 14px; color: var(--color-text-muted); }
+.analytics-page__reset {
+  width: 100px;
+  min-width: 100px;
+  padding: 10px 14px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+  box-sizing: border-box;
+}
 
-.analytics-page__modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.analytics-page__modal-content { background: var(--color-bg-card); padding: 24px; border-radius: 12px; max-width: 560px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15); }
-.analytics-page__modal-title { margin: 0 0 16px; font-size: 18px; }
-.analytics-page__modal-total { margin: 12px 0 0; font-weight: 400; font-size: 14px; }
-.analytics-page__modal-close { margin-top: 16px; padding: 8px 16px; background: var(--color-primary); color: #fff; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; }
+.analytics-page__reset:hover {
+  background: var(--color-primary-hover);
+}
+
+// ——— Загрузка ———
+.analytics-page__loading-block {
+  padding: 48px 24px;
+  text-align: center;
+  background: var(--color-bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+}
+
+// ——— KPI: первые 3 блока (Приход, Расход, Прибыль) ———
+.analytics-page__kpis-primary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+  .analytics-page__kpis-primary {
+    grid-template-columns: 1fr;
+  }
+}
+
+.analytics-page__kpis-primary .analytics-page__card {
+  padding: 22px 24px;
+  border-radius: var(--radius-lg, 12px);
+}
+
+.analytics-page__kpis-primary .analytics-page__card-value {
+  font-size: 22px;
+}
+
+// ——— KPI: остальные карточки ———
+.analytics-page__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.analytics-page__card {
+  background: var(--color-bg-card);
+  padding: 18px 20px;
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--color-border);
+  border-left-width: 4px;
+  border-left-color: var(--color-primary);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: box-shadow var(--transition-fast, 0.15s ease), transform 0.15s ease, border-color 0.15s ease;
+}
+
+.analytics-page__card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.analytics-page__card--income {
+  border-left-color: #059669;
+}
+
+.analytics-page__card--income .analytics-page__card-value {
+  color: #059669;
+}
+
+.analytics-page__card--expense {
+  border-left-color: #dc2626;
+}
+
+.analytics-page__card--expense .analytics-page__card-value {
+  color: #dc2626;
+}
+
+.analytics-page__card--profit {
+  border-left-color: #2563eb;
+}
+
+.analytics-page__card--profit .analytics-page__card-value {
+  color: #2563eb;
+}
+
+.analytics-page__card--static {
+  cursor: default;
+  border-left-color: var(--color-border);
+}
+
+.analytics-page__card--static:hover {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transform: none;
+}
+
+.analytics-page__card-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.analytics-page__card-value {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+}
+
+// ——— Секции ———
+.analytics-page__section {
+  margin-bottom: 28px;
+  padding: 22px 24px;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.analytics-page__section-title {
+  margin: 0 0 14px;
+  padding-bottom: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.analytics-page__section-summary {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.analytics-page__section-summary strong {
+  font-weight: 600;
+}
+
+// ——— Прогресс-бары (статусы клиентов) ———
+.analytics-page__bars {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.analytics-page__bar-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.analytics-page__bar-row:hover {
+  background: var(--color-bg);
+}
+
+.analytics-page__bar-label {
+  min-width: 130px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.analytics-page__bar-wrap {
+  flex: 1;
+  height: 28px;
+  background: var(--color-bg);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.analytics-page__bar {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 6px;
+  min-width: 4px;
+  transition: width 0.3s ease;
+}
+
+.analytics-page__bar--green {
+  background: linear-gradient(90deg, #16a34a, #22c55e);
+}
+
+.analytics-page__bar--red {
+  background: linear-gradient(90deg, #b91c1c, #dc2626);
+}
+
+.analytics-page__bar-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  min-width: 60px;
+}
+
+// ——— Список (виды спорта) ———
+.analytics-page__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.analytics-page__list-item {
+  padding: 10px 16px;
+  background: linear-gradient(135deg, var(--color-bg) 0%, rgba(var(--color-primary-rgb, 59, 130, 246), 0.08) 100%);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+// ——— График по дням недели ———
+.analytics-page__weekday {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  height: 140px;
+  padding: 16px 0;
+}
+
+.analytics-page__weekday-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.analytics-page__weekday-bar {
+  width: 100%;
+  max-width: 32px;
+  background: linear-gradient(180deg, var(--color-primary) 0%, rgba(var(--color-primary-rgb, 59, 130, 246), 0.85) 100%);
+  border-radius: 8px 8px 0 0;
+  min-height: 8px;
+  transition: height 0.3s ease;
+}
+
+.analytics-page__weekday-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.analytics-page__weekday-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+// ——— Динамика доходов/расходов по дням (график) ———
+.analytics-page__chart-wrap {
+  position: relative;
+  width: 100%;
+  min-height: 200px;
+  background: var(--color-bg-card);
+  border-radius: 8px;
+}
+
+.analytics-page__chart-wrap .analytics-page__empty {
+  padding: 24px 16px;
+  margin: 0;
+}
+
+.analytics-page__chart-legend {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.analytics-page__chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.analytics-page__chart-legend-item::before {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.analytics-page__chart-legend-item--income::before {
+  background: #ea580c;
+}
+
+.analytics-page__chart-legend-item--expense::before {
+  background: #dc2626;
+}
+
+.analytics-page__chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 280px;
+}
+
+.analytics-page__chart-grid {
+  stroke: var(--color-border);
+  stroke-width: 0.5;
+}
+
+.analytics-page__chart-axis {
+  font-size: 11px;
+  fill: var(--color-text-muted);
+}
+
+.analytics-page__chart-axis--x {
+  font-size: 10px;
+}
+
+// ——— Сетка (топ тренеров / клиентов) ———
+.analytics-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+.analytics-page__grid .analytics-page__section {
+  margin-bottom: 0;
+}
+
+.analytics-page__top-list {
+  margin: 0;
+  padding-left: 24px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--color-text);
+}
+
+.analytics-page__top-list li {
+  margin-bottom: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.analytics-page__top-list li:last-child {
+  border-bottom: none;
+}
+
+// ——— Табы ———
+.analytics-page__tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.analytics-page__tab {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  margin-bottom: 0;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.analytics-page__tab:hover {
+  color: var(--color-text);
+  border-color: var(--color-primary);
+}
+
+.analytics-page__tab--active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+// ——— Таблицы ———
+.analytics-page__table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.analytics-page__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.analytics-page__table th,
+.analytics-page__table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.analytics-page__table th {
+  background: var(--color-bg);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.analytics-page__table tbody tr:hover {
+  background: var(--color-bg);
+}
+
+.analytics-page__table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+// ——— Разбивка (клиенты по сотрудникам и т.д.) ———
+.analytics-page__breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.analytics-page__breakdown p {
+  margin: 0;
+}
+
+.analytics-page__breakdown-block {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.analytics-page__breakdown-block strong {
+  margin-right: 4px;
+  color: var(--color-text-muted);
+}
+
+.analytics-page__breakdown-block span {
+  padding: 8px 14px;
+  background: var(--color-bg);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+}
+
+// ——— Пусто ———
+.analytics-page__empty {
+  margin: 12px 0;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+// ——— Модальное окно ———
+.analytics-page__modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+}
+
+.analytics-page__modal-content {
+  background: var(--color-bg-card);
+  padding: 28px;
+  border-radius: 16px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--color-border);
+}
+
+.analytics-page__modal-title {
+  margin: 0 0 20px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.analytics-page__modal-total {
+  margin: 16px 0 0;
+  padding-top: 12px;
+  font-weight: 600;
+  font-size: 15px;
+  border-top: 2px solid var(--color-border);
+}
+
+.analytics-page__modal-close {
+  margin-top: 20px;
+  padding: 10px 20px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.analytics-page__modal-close:hover {
+  background: var(--color-primary-hover);
+}

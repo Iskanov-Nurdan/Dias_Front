@@ -1,6 +1,12 @@
 .salary-page__title { margin: 0 0 20px; font-size: 24px; font-weight: 400; }
-.salary-page__filters { display: flex; gap: 12px; margin-bottom: 20px; }
+.salary-page__filters { display: flex; align-items: flex-end; gap: 12px; margin-bottom: 20px; }
+.salary-page__filter-month { display: flex; flex-direction: column; gap: 4px; }
+.salary-page__filter-label { font-size: 12px; color: var(--color-text-muted); }
+.salary-page__month-select { min-width: 140px; }
 .salary-page__input { padding: 8px 12px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 14px; width: 100px; }
+.salary-page__percent-cell { text-align: center; vertical-align: middle; }
+.salary-page__percent-input { display: block; margin: 0 auto; padding: 6px 8px; border: 1px solid var(--color-border); border-radius: 6px; font-size: 14px; width: 64px; text-align: center; box-sizing: border-box; }
+.salary-page__percent-input:focus { outline: none; border-color: var(--color-primary); }
 .salary-page__loading-cell,
 .salary-page__empty-cell { text-align: center; padding: 24px 16px; vertical-align: middle; }
 .salary-page__table-wrap { overflow-x: auto; }

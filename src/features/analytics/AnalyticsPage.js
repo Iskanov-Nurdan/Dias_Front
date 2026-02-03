@@ -3,7 +3,6 @@ import {
   fetchSummary,
   fetchClientStatuses,
   fetchClientsBySport,
-  fetchActivityByWeekday,
   fetchIncomeExpenseDaily,
   fetchTopTrainers,
   fetchWarehouseRestocks,
@@ -17,7 +16,6 @@ import { ErrorState, Select } from '../../shared/ui';
 import './AnalyticsPage.scss';
 
 const MONTHS = ['', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-const WEEKDAY_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 const formatMoney = (v) => (v != null && !Number.isNaN(Number(v)) ? `${Number(v).toLocaleString('ru-RU')} Р` : '—');
 
@@ -29,7 +27,6 @@ const AnalyticsPage = () => {
   const [summary, setSummary] = useState(null);
   const [clientStatuses, setClientStatuses] = useState(null);
   const [clientsBySport, setClientsBySport] = useState(null);
-  const [activityByWeekday, setActivityByWeekday] = useState(null);
   const [incomeExpenseDaily, setIncomeExpenseDaily] = useState(null);
   const [topTrainers, setTopTrainers] = useState(null);
   const [warehouseRestocks, setWarehouseRestocks] = useState(null);
@@ -56,7 +53,6 @@ const AnalyticsPage = () => {
         summaryRes,
         statusesRes,
         bySportRes,
-        weekdayRes,
         dailyRes,
         trainersRes,
         warehouseRes,
@@ -66,7 +62,6 @@ const AnalyticsPage = () => {
         fetchSummary(q, s).then((r) => r?.data ?? r),
         fetchClientStatuses(q, s).then((r) => r?.data ?? r),
         fetchClientsBySport(q, s).then((r) => r?.data ?? r),
-        fetchActivityByWeekday(q, s).then((r) => r?.data ?? r),
         fetchIncomeExpenseDaily(q, s).then((r) => r?.data ?? r),
         fetchTopTrainers(q, s).then((r) => r?.data ?? r),
         fetchWarehouseRestocks(q, s).then((r) => r?.data ?? r),
@@ -76,7 +71,6 @@ const AnalyticsPage = () => {
       setSummary(summaryRes ?? {});
       setClientStatuses(statusesRes ?? {});
       setClientsBySport(bySportRes ?? {});
-      setActivityByWeekday(weekdayRes ?? {});
       setIncomeExpenseDaily(dailyRes ?? {});
       setTopTrainers(trainersRes ?? {});
       setWarehouseRestocks(warehouseRes ?? {});
@@ -127,7 +121,6 @@ const AnalyticsPage = () => {
   const byPaid = clientStatuses?.byPaid ?? [];
   const paidCount = s.paidCount ?? byPaid.find((b) => b.paid)?.count ?? null;
   const sportItems = clientsBySport?.items ?? [];
-  const weekdayItems = activityByWeekday?.items ?? [];
   const dailyItems = incomeExpenseDaily?.items ?? [];
   const daysInMonth = queryState.month ? new Date(Number(queryState.year) || new Date().getFullYear(), Number(queryState.month), 0).getDate() : 31;
   const dailyMap = new Map((dailyItems || []).map((x) => [x.day, { income: Number(x.income) || 0, expense: Number(x.expense) || 0 }]));
@@ -266,19 +259,6 @@ const AnalyticsPage = () => {
                 </div>
               ))}
               {sportItems.length === 0 && <p className="analytics-page__empty">Нет данных</p>}
-            </div>
-          </section>
-
-          <section className="analytics-page__section">
-            <h3 className="analytics-page__section-title">Активность по дням недели (клиенты пришли)</h3>
-            <div className="analytics-page__weekday">
-              {(weekdayItems.length ? weekdayItems : WEEKDAY_LABELS.map((label, i) => ({ weekday: i + 1, label, count: 0 }))).map((x) => (
-                <div key={x.weekday ?? x.label} className="analytics-page__weekday-col">
-                  <div className="analytics-page__weekday-bar" style={{ height: `${Math.min(100, (x.count ?? 0) * 20)}%` }} />
-                  <span className="analytics-page__weekday-value">{x.count ?? 0}</span>
-                  <span className="analytics-page__weekday-label">{x.label ?? WEEKDAY_LABELS[x.weekday - 1]}</span>
-                </div>
-              ))}
             </div>
           </section>
 
@@ -437,24 +417,33 @@ const AnalyticsPage = () => {
                 <p className="analytics-page__modal-total">Итого приход: {formatMoney(detailData.total)}</p>
               </>
             )}
-            {!detailLoading && detailModal === 'expense' && detailData?.items?.length > 0 && (
-              <>
-                <table className="analytics-page__table">
-                  <thead><tr><th>Категория</th><th>Название</th><th>Дата</th><th>Сумма</th></tr></thead>
-                  <tbody>
-                    {detailData.items.map((row, i) => (
-                      <tr key={i}>
-                        <td>{row.categoryName ?? '—'}</td>
-                        <td>{row.name ?? '—'}</td>
-                        <td>{row.date ?? '—'}</td>
-                        <td>{formatMoney(row.amount)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className="analytics-page__modal-total">Итого расход: {formatMoney(detailData.total)}</p>
-              </>
-            )}
+            {!detailLoading && detailModal === 'expense' && (() => {
+              const baseItems = detailData?.items ?? [];
+              const hasRestockInItems = baseItems.some((r) => { const cat = (r.categoryName || '').toLowerCase(); const name = (r.name || '').toLowerCase(); return cat.includes('склад') || name.includes('пополнен') || name.includes('добавлен'); });
+              const restockSum = restocksPayload.totalRestockSum != null && restocksPayload.totalRestockSum > 0 ? restocksPayload.totalRestockSum : 0;
+              const addRestockRow = !hasRestockInItems && restockSum > 0;
+              const expenseItems = addRestockRow ? [...baseItems, { categoryName: 'Склад', name: 'Пополнение товара', date: '—', amount: restockSum }] : baseItems;
+              const expenseTotal = addRestockRow ? (Number(detailData?.total) || 0) + restockSum : (detailData?.total ?? 0);
+              if (expenseItems.length === 0) return null;
+              return (
+                <>
+                  <table className="analytics-page__table">
+                    <thead><tr><th>Категория</th><th>Название</th><th>Дата</th><th>Сумма</th></tr></thead>
+                    <tbody>
+                      {expenseItems.map((row, i) => (
+                        <tr key={i}>
+                          <td>{row.categoryName ?? '—'}</td>
+                          <td>{row.name ?? '—'}</td>
+                          <td>{row.date ?? '—'}</td>
+                          <td>{formatMoney(row.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="analytics-page__modal-total">Итого расход: {formatMoney(expenseTotal)}</p>
+                </>
+              );
+            })()}
             {!detailLoading && detailModal === 'profit' && detailData?.items?.length > 0 && (
               <>
                 <table className="analytics-page__table">

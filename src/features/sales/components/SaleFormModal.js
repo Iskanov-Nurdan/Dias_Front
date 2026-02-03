@@ -29,7 +29,7 @@ const SaleFormModal = ({ products = [], onSave, onClose }) => {
       productId: productId ? Number(productId) : undefined,
       qty: qty !== '' ? Number(qty) : undefined,
       pricePerUnit: pricePerUnit !== '' ? Number(pricePerUnit) : undefined,
-      discount: discount !== '' ? Number(discount) : undefined,
+      discountPercent: discount !== '' ? Number(discount) : undefined,
       date: date || undefined,
     };
     onSave(payload);
@@ -60,8 +60,8 @@ const SaleFormModal = ({ products = [], onSave, onClose }) => {
             <input type="number" step="any" min="0" value={pricePerUnit} onChange={(e) => setPricePerUnit(e.target.value)} required className="sale-form-modal__input" placeholder="0" />
           </label>
           <label className="sale-form-modal__label">
-            Скидка
-            <input type="number" step="any" min="0" value={discount} onChange={(e) => setDiscount(e.target.value)} className="sale-form-modal__input" placeholder="0" />
+            Скидка, %
+            <input type="number" step="any" min="0" max="100" value={discount} onChange={(e) => setDiscount(e.target.value)} className="sale-form-modal__input" placeholder="0" />
           </label>
           <label className="sale-form-modal__label">
             Дата

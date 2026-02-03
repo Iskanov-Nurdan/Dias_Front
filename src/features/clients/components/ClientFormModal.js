@@ -99,8 +99,8 @@ const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose }) => 
           </div>
           <div className="client-form-modal__row">
             <label className="client-form-modal__label">
-              <span className="client-form-modal__label-text">Скидка</span>
-              <input type="number" value={discount} onChange={(e) => setDiscount(e.target.value)} className="client-form-modal__input" placeholder="0" />
+              <span className="client-form-modal__label-text">Скидка, %</span>
+              <input type="number" min="0" max="100" value={discount} onChange={(e) => setDiscount(e.target.value)} className="client-form-modal__input" placeholder="0" />
             </label>
             <div className="client-form-modal__label client-form-modal__label--checkbox">
               <span className="client-form-modal__label-text">Оплачено</span>

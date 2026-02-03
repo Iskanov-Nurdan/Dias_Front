@@ -2,13 +2,15 @@ import React from 'react';
 import { ErrorState, EmptyState, ConfirmModal } from '../../../shared/ui';
 import './TrainersList.scss';
 
-const TrainersList = ({ items, loading, error, onRetry, onEdit, onDelete, confirmDelete, onConfirmDelete, onCancelDelete }) => {
+const TrainersList = ({ items, sports = [], loading, error, onRetry, onEdit, onDelete, confirmDelete, onConfirmDelete, onCancelDelete }) => {
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
   const list = items?.items ?? items?.results ?? (Array.isArray(items) ? items : []);
+  const sportsMap = (Array.isArray(sports) ? sports : []).reduce((acc, s) => { acc[s.id] = s.name || ''; return acc; }, {});
 
   const getSportsLabel = (t) => {
     const arr = t.sportIds ?? t.sport_ids ?? t.sports ?? [];
-    return arr.map((s) => (typeof s === 'object' ? s?.name : s)).filter(Boolean).join(', ') || '—';
+    const names = arr.map((s) => (typeof s === 'object' ? s?.name : (sportsMap[s] ?? sportsMap[Number(s)]))).filter(Boolean);
+    return names.length ? names.join(', ') : '—';
   };
 
   return (

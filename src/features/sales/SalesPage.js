@@ -124,7 +124,7 @@ const SalesPage = () => {
                   <td>{s.productName ?? s.product?.name ?? '—'}</td>
                   <td>{s.qty ?? s.quantity ?? 0}</td>
                   <td>{s.total ?? '—'}</td>
-                  <td>{s.discount != null ? s.discount : (s.discountPercent != null ? `${s.discountPercent}%` : '—')}</td>
+                  <td>{s.discountPercent != null ? `${s.discountPercent}%` : (s.discount != null ? `${s.discount}%` : '—')}</td>
                   <td>{s.date ? new Date(s.date).toLocaleDateString() : '—'}</td>
                 </tr>
             ))}

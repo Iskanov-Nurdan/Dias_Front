@@ -72,7 +72,7 @@ const SportsTrainersPage = () => {
   }, [queryState]);
 
   useEffect(() => {
-    if (activeTab === TAB_SPORTS) fetchSportsSafe();
+    if (activeTab === TAB_SPORTS || activeTab === TAB_TRAINERS) fetchSportsSafe();
     return () => controllerRef.current?.abort();
   }, [activeTab, fetchSportsSafe]);
 
@@ -171,7 +171,7 @@ const SportsTrainersPage = () => {
         <SportsList items={sportsFiltered} loading={sportsLoading} error={sportsError} onRetry={fetchSportsSafe} onEdit={setFormSport} onDelete={setConfirmDeleteSport} confirmDelete={confirmDeleteSport} onConfirmDelete={handleDeleteSport} onCancelDelete={() => setConfirmDeleteSport(null)} />
       )}
       {activeTab === TAB_TRAINERS && (
-        <TrainersList items={trainersFiltered} loading={trainersLoading} error={trainersError} onRetry={fetchTrainersSafe} onEdit={setFormTrainer} onDelete={setConfirmDeleteTrainer} confirmDelete={confirmDeleteTrainer} onConfirmDelete={handleDeleteTrainer} onCancelDelete={() => setConfirmDeleteTrainer(null)} />
+        <TrainersList items={trainersFiltered} sports={sportsData} loading={trainersLoading} error={trainersError} onRetry={fetchTrainersSafe} onEdit={setFormTrainer} onDelete={setConfirmDeleteTrainer} confirmDelete={confirmDeleteTrainer} onConfirmDelete={handleDeleteTrainer} onCancelDelete={() => setConfirmDeleteTrainer(null)} />
       )}
       {formSport && <SportFormModal sport={formSport} onSave={handleSaveSport} onClose={() => setFormSport(null)} />}
       {formTrainer && <TrainerFormModal trainer={formTrainer} sports={sportsData} onSave={handleSaveTrainer} onClose={() => setFormTrainer(null)} />}

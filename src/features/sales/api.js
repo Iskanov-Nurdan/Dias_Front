@@ -22,7 +22,7 @@ export const fetchSales = async (queryState, signal) => {
   return data;
 };
 
-/** ТЗ: POST /api/sales/ — тело: productId, qty, pricePerUnit, discount?, employeeId?, date?; 409 если мало товара */
+/** ТЗ: POST /api/sales/ — тело: productId, qty, pricePerUnit, discountPercent?, employeeId?, date?; 409 если мало товара */
 export const createSale = async (body, signal) => {
   const { data } = await apiClient.post('/sales/', body, withSignal({}, signal));
   return data;

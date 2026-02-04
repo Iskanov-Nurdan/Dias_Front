@@ -13,6 +13,7 @@ import {
 } from './api';
 import { CategoryFormModal, ProductFormModal } from './components';
 import RestockModal from './components/RestockModal';
+import { useAuth } from '../../app/providers/AuthProvider';
 import { ErrorState, EmptyState, ConfirmModal, Select } from '../../shared/ui';
 import './WarehousePage.scss';
 
@@ -21,6 +22,7 @@ const TAB_CATEGORIES = 'categories';
 const TAB_HISTORY = 'history';
 
 const WarehousePage = () => {
+  const { isAdmin, showAccessDenied } = useAuth();
   const [activeTab, setActiveTab] = useState(TAB_PRODUCTS);
   const [queryState, setQueryState] = useState({ search: '', categoryId: '', page: 1, perPage: 20 });
   const [categorySearch, setCategorySearch] = useState('');
@@ -71,7 +73,7 @@ const WarehousePage = () => {
     setCategoriesLoading(true);
     setCategoriesError(null);
     try {
-      const data = await fetchCategories(categoriesControllerRef.current.signal);
+      const data = await fetchCategories({ search: categorySearch || undefined }, categoriesControllerRef.current.signal);
       if (rid !== lastCategoriesRequestId.current) return;
       setCategoriesData(Array.isArray(data) ? data : data?.results ?? data?.items ?? []);
     } catch (err) {
@@ -80,7 +82,7 @@ const WarehousePage = () => {
     } finally {
       if (rid === lastCategoriesRequestId.current) setCategoriesLoading(false);
     }
-  }, []);
+  }, [categorySearch]);
 
   const fetchRestocksSafe = useCallback(async () => {
     restocksControllerRef.current?.abort();
@@ -89,7 +91,7 @@ const WarehousePage = () => {
     setRestocksLoading(true);
     setRestocksError(null);
     try {
-      const data = await fetchRestocks({ page: 1, perPage: 50 }, restocksControllerRef.current.signal);
+      const data = await fetchRestocks({ page: 1, perPage: 50, search: historySearch || undefined }, restocksControllerRef.current.signal);
       if (rid !== lastRestocksRequestId.current) return;
       setRestocksData(data);
     } catch (err) {
@@ -98,7 +100,7 @@ const WarehousePage = () => {
     } finally {
       if (rid === lastRestocksRequestId.current) setRestocksLoading(false);
     }
-  }, []);
+  }, [historySearch]);
 
   useEffect(() => {
     if (activeTab === TAB_PRODUCTS) fetchProductsSafe();
@@ -121,15 +123,7 @@ const WarehousePage = () => {
 
   const productsItems = productsData?.items ?? productsData?.results ?? [];
   const categoriesList = Array.isArray(categoriesData) ? categoriesData : [];
-  const categorySearchLower = (categorySearch || '').trim().toLowerCase();
-  const categoriesListFiltered = categorySearchLower
-    ? categoriesList.filter((c) => (c.name || '').toLowerCase().includes(categorySearchLower))
-    : categoriesList;
   const restocksItems = restocksData?.items ?? restocksData?.results ?? [];
-  const historySearchLower = (historySearch || '').trim().toLowerCase();
-  const restocksItemsFiltered = historySearchLower
-    ? restocksItems.filter((r) => (r.productName ?? r.product?.name ?? '').toLowerCase().includes(historySearchLower))
-    : restocksItems;
 
   const handleSaveCategory = async (payload) => {
     try {
@@ -168,19 +162,33 @@ const WarehousePage = () => {
 
   const handleDeleteProduct = () => {
     if (!confirmDeleteProduct?.id) return;
-    deleteProduct(confirmDeleteProduct.id, null).then(() => {
-      setConfirmDeleteProduct(null);
-      fetchProductsSafe();
-    }).catch(console.error);
+    setProductsError(null);
+    deleteProduct(confirmDeleteProduct.id, null)
+      .then(() => {
+        setConfirmDeleteProduct(null);
+        fetchProductsSafe();
+      })
+      .catch((e) => {
+        const msg = e.response?.data?.error?.message || e.response?.data?.message || e.response?.data?.detail || e.message || 'Ошибка удаления';
+        setProductsError(msg);
+        setConfirmDeleteProduct(null);
+      });
   };
 
   const handleDeleteCategory = () => {
     if (!confirmDeleteCategory?.id) return;
-    deleteCategory(confirmDeleteCategory.id, null).then(() => {
-      setConfirmDeleteCategory(null);
-      fetchCategoriesSafe();
-      if (activeTab === TAB_PRODUCTS) fetchProductsSafe();
-    }).catch(console.error);
+    setCategoriesError(null);
+    deleteCategory(confirmDeleteCategory.id, null)
+      .then(() => {
+        setConfirmDeleteCategory(null);
+        fetchCategoriesSafe();
+        if (activeTab === TAB_PRODUCTS) fetchProductsSafe();
+      })
+      .catch((e) => {
+        const msg = e.response?.data?.error?.message || e.response?.data?.message || e.response?.data?.detail || e.message || 'Ошибка удаления';
+        setCategoriesError(msg);
+        setConfirmDeleteCategory(null);
+      });
   };
 
   return (
@@ -224,9 +232,9 @@ const WarehousePage = () => {
                       <td>{p.minQty ?? p.min_quantity ?? '—'}</td>
                       <td>{(p.createdAt ?? p.created_at) ? new Date(p.createdAt ?? p.created_at).toLocaleDateString('ru-RU') : '—'}</td>
                       <td className="warehouse-page__actions">
-                        <button type="button" className="warehouse-page__action warehouse-page__action--edit" onClick={() => setFormProduct(p)} title="Редактировать">Редактировать</button>
+                        <button type="button" className="warehouse-page__action warehouse-page__action--edit" onClick={() => (isAdmin ? setFormProduct(p) : showAccessDenied())} title="Редактировать">Редактировать</button>
                         <button type="button" className="warehouse-page__action warehouse-page__action--restock" onClick={() => setRestockProductItem(p)} title="Пополнить">Пополнить</button>
-                        <button type="button" className="warehouse-page__action warehouse-page__action--delete" onClick={() => setConfirmDeleteProduct(p)} title="Удалить">Удалить</button>
+                        <button type="button" className="warehouse-page__action warehouse-page__action--delete" onClick={() => (isAdmin ? setConfirmDeleteProduct(p) : showAccessDenied())} title="Удалить">Удалить</button>
                       </td>
                     </tr>
                 ))}
@@ -250,14 +258,14 @@ const WarehousePage = () => {
               <tbody>
                 {categoriesLoading ? (
                   <tr><td colSpan={2} className="warehouse-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
-                ) : categoriesListFiltered.length === 0 ? (
+                ) : categoriesList.length === 0 ? (
                   <tr><td colSpan={2} className="warehouse-page__empty-cell"><EmptyState message="Нет категорий" /></td></tr>
-                ) : categoriesListFiltered.map((c) => (
+                ) : categoriesList.map((c) => (
                   <tr key={c.id}>
                     <td>{c.name}</td>
                     <td className="warehouse-page__actions">
-                      <button type="button" className="warehouse-page__action warehouse-page__action--edit" onClick={() => setFormCategory(c)} title="Редактировать">Редактировать</button>
-                      <button type="button" className="warehouse-page__action warehouse-page__action--delete" onClick={() => setConfirmDeleteCategory(c)} title="Удалить">Удалить</button>
+                      <button type="button" className="warehouse-page__action warehouse-page__action--edit" onClick={() => (isAdmin ? setFormCategory(c) : showAccessDenied())} title="Редактировать">Редактировать</button>
+                      <button type="button" className="warehouse-page__action warehouse-page__action--delete" onClick={() => (isAdmin ? setConfirmDeleteCategory(c) : showAccessDenied())} title="Удалить">Удалить</button>
                     </td>
                   </tr>
                 ))}
@@ -323,9 +331,9 @@ const WarehousePage = () => {
               <tbody>
                 {restocksLoading ? (
                   <tr><td colSpan={3} className="warehouse-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
-                ) : restocksItemsFiltered.length === 0 ? (
+                ) : restocksItems.length === 0 ? (
                   <tr><td colSpan={3} className="warehouse-page__empty-cell"><EmptyState message="Нет пополнений" /></td></tr>
-                ) : restocksItemsFiltered.map((r) => <tr key={r.id}><td>{r.productName ?? r.product?.name ?? '—'}</td><td>{r.qty ?? r.quantity}</td><td>{r.date ? new Date(r.date).toLocaleDateString() : '—'}</td></tr>)}
+                ) : restocksItems.map((r) => <tr key={r.id}><td>{r.productName ?? r.product?.name ?? '—'}</td><td>{r.qty ?? r.quantity}</td><td>{r.date ? new Date(r.date).toLocaleDateString() : '—'}</td></tr>)}
               </tbody>
             </table>
           </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './providers/AuthProvider';
 import MainLayout from './layouts/MainLayout';
 import { PAGE_ROUTES, PAGE_IDS } from '../shared/constants/pages';
@@ -25,7 +25,7 @@ const ProtectedRoute = ({ children, pageId }) => {
 };
 
 const AppRouter = () => (
-  <HashRouter>
+  <BrowserRouter>
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route
@@ -104,7 +104,7 @@ const AppRouter = () => (
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
-  </HashRouter>
+  </BrowserRouter>
 );
 
 export default AppRouter;

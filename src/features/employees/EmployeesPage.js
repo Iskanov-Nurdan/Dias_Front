@@ -11,6 +11,7 @@ import {
   updateRole,
   deleteRole,
 } from './api';
+import { useAuth } from '../../app/providers/AuthProvider';
 import { Select } from '../../shared/ui';
 import { EmployeesList, RolesList, EmployeeFormModal, RoleFormModal, AccessModal } from './components';
 import './EmployeesPage.scss';
@@ -19,6 +20,7 @@ const TAB_EMPLOYEES = 'employees';
 const TAB_ROLES = 'roles';
 
 const EmployeesPage = () => {
+  const { isAdmin, showAccessDenied } = useAuth();
   const [activeTab, setActiveTab] = useState(TAB_EMPLOYEES);
   const [queryState, setQueryState] = useState({ search: '', roleId: '', page: 1, perPage: 20 });
   const [roleSearch, setRoleSearch] = useState('');
@@ -64,7 +66,7 @@ const EmployeesPage = () => {
     setRolesLoading(true);
     setRolesError(null);
     try {
-      const data = await fetchRoles(rolesControllerRef.current.signal);
+      const data = await fetchRoles({ search: roleSearch || undefined }, rolesControllerRef.current.signal);
       if (requestId !== lastRolesRequestId.current) return;
       setRolesData(Array.isArray(data) ? data : data?.results ?? data?.items ?? data?.data ?? []);
     } catch (err) {
@@ -73,7 +75,7 @@ const EmployeesPage = () => {
     } finally {
       if (requestId === lastRolesRequestId.current) setRolesLoading(false);
     }
-  }, []);
+  }, [roleSearch]);
 
   useEffect(() => {
     if (activeTab === TAB_EMPLOYEES) fetchEmployeesSafe();
@@ -85,15 +87,11 @@ const EmployeesPage = () => {
     return () => { if (rolesControllerRef.current) rolesControllerRef.current.abort(); };
   }, [activeTab, fetchRolesSafe]);
 
-  // Загружаем роли при открытии страницы, чтобы селект «Роль» в форме сотрудника был заполнен
   useEffect(() => {
     fetchRolesSafe();
   }, [fetchRolesSafe]);
 
   const rolesList = Array.isArray(rolesData) ? rolesData : rolesData?.results ?? rolesData?.items ?? [];
-  const rolesFiltered = roleSearch.trim()
-    ? rolesList.filter((r) => (r.name || '').toLowerCase().includes(roleSearch.trim().toLowerCase()))
-    : rolesList;
   const employeesItems = employeesData?.items ?? employeesData?.results ?? employeesData?.data ?? employeesData;
 
   const roleOptions = [{ value: '', label: 'Все роли' }, ...rolesList.map((r) => ({ value: String(r.id), label: r.name || '' }))];
@@ -117,6 +115,7 @@ const EmployeesPage = () => {
 
   const handleSaveRole = async (payload) => {
     try {
+      setRolesError(null);
       if (formRole?.id) {
         await updateRole(formRole.id, payload, null);
       } else {
@@ -125,7 +124,7 @@ const EmployeesPage = () => {
       setFormRole(null);
       fetchRolesSafe();
     } catch (e) {
-      console.error(e);
+      setRolesError(e.response?.data?.message || e.response?.data?.detail || e.message || 'Ошибка сохранения');
     }
   };
 
@@ -141,12 +140,16 @@ const EmployeesPage = () => {
 
   const handleDeleteRole = () => {
     if (!confirmDeleteRole) return;
+    setRolesError(null);
     deleteRole(confirmDeleteRole.id, null)
       .then(() => {
         setConfirmDeleteRole(null);
         fetchRolesSafe();
       })
-      .catch((e) => console.error(e));
+      .catch((e) => {
+        const msg = e.response?.data?.error?.message || e.response?.data?.message || e.response?.data?.detail || e.message || 'Ошибка удаления';
+        setRolesError(msg);
+      });
   };
 
   const handleOpenAccess = (emp) => {
@@ -216,8 +219,8 @@ const EmployeesPage = () => {
           loading={employeesLoading}
           error={employeesError}
           onRetry={fetchEmployeesSafe}
-          onEdit={setFormEmployee}
-          onDelete={setConfirmDeleteEmployee}
+          onEdit={(emp) => (isAdmin ? setFormEmployee(emp) : showAccessDenied())}
+          onDelete={(emp) => (isAdmin ? setConfirmDeleteEmployee(emp) : showAccessDenied())}
           onAccess={handleOpenAccess}
           confirmDelete={confirmDeleteEmployee}
           onConfirmDelete={handleDeleteEmployee}
@@ -237,12 +240,12 @@ const EmployeesPage = () => {
                 className="employees-page__search"
               />
             </div>
-            <button type="button" className="employees-page__add" onClick={() => setFormRole({})}>
-              Добавить роль
-            </button>
+          <button type="button" className="employees-page__add" onClick={() => setFormRole({})}>
+            Добавить роль
+          </button>
           </div>
           <RolesList
-            items={rolesFiltered}
+            items={rolesList}
             loading={rolesLoading}
             error={rolesError}
             onRetry={fetchRolesSafe}
@@ -251,6 +254,8 @@ const EmployeesPage = () => {
             confirmDelete={confirmDeleteRole}
             onConfirmDelete={handleDeleteRole}
             onCancelDelete={() => setConfirmDeleteRole(null)}
+            canManageRoles={isAdmin}
+            onAccessDenied={showAccessDenied}
           />
         </>
       )}

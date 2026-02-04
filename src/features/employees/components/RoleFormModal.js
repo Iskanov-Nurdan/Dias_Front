@@ -22,7 +22,7 @@ const RoleFormModal = ({ role, onSave, onClose }) => {
         <h2 className="role-form-modal__title">{isEdit ? 'Редактировать роль' : 'Добавить роль'}</h2>
         <form onSubmit={handleSubmit} className="role-form-modal__form">
           <label className="role-form-modal__label">
-            Название
+            <span className="role-form-modal__label-caption">Название <span className="form-label-required" aria-hidden="true">*</span></span>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="role-form-modal__input" />
           </label>
           <div className="role-form-modal__actions">

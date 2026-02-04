@@ -16,9 +16,14 @@ const EmployeeFormModal = ({ employee, roles, onSave, onClose }) => {
       setFio(employee.fio || '');
       setLogin(employee.login || '');
       setPhone(employee.phone || '');
-      setRoleId(employee.roleId ?? employee.role_id ?? employee.role?.id ?? '');
+      if (employee.id) {
+        setRoleId(String(employee.roleId ?? employee.role_id ?? employee.role?.id ?? ''));
+      } else {
+        const defaultRole = (roles || []).find((r) => r.isDefault === true || r.is_default === true);
+        setRoleId(defaultRole ? String(defaultRole.id) : '');
+      }
     }
-  }, [employee]);
+  }, [employee, roles]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -35,19 +40,19 @@ const EmployeeFormModal = ({ employee, roles, onSave, onClose }) => {
         <h2 className="employee-form-modal__title">{isEdit ? 'Редактировать сотрудника' : 'Добавить сотрудника'}</h2>
         <form onSubmit={handleSubmit} className="employee-form-modal__form">
           <label className="employee-form-modal__label">
-            ФИО
+            <span className="employee-form-modal__label-caption">ФИО <span className="form-label-required" aria-hidden="true">*</span></span>
             <input type="text" value={fio} onChange={(e) => setFio(e.target.value)} required className="employee-form-modal__input" />
           </label>
           <label className="employee-form-modal__label">
-            Логин
+            <span className="employee-form-modal__label-caption">Логин <span className="form-label-required" aria-hidden="true">*</span></span>
             <input type="text" value={login} onChange={(e) => setLogin(e.target.value)} required className="employee-form-modal__input" disabled={isEdit} />
           </label>
           <label className="employee-form-modal__label">
-            Телефон
+            <span className="employee-form-modal__label-caption">Телефон</span>
             <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="employee-form-modal__input" />
           </label>
           <label className="employee-form-modal__label">
-            Роль
+            <span className="employee-form-modal__label-caption">Роль</span>
             <Select
               value={String(roleId)}
               onChange={(v) => setRoleId(v)}
@@ -57,8 +62,8 @@ const EmployeeFormModal = ({ employee, roles, onSave, onClose }) => {
             />
           </label>
           <label className="employee-form-modal__label">
-            Пароль {isEdit && '(оставьте пустым, чтобы не менять)'}
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="employee-form-modal__input" required={!isEdit} />
+            <span className="employee-form-modal__label-caption">Пароль {!isEdit && <span className="form-label-required" aria-hidden="true">*</span>}</span>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="employee-form-modal__input" required={!isEdit} placeholder={isEdit ? 'Оставьте пустым, чтобы не менять' : ''} />
           </label>
           <div className="employee-form-modal__actions">
             <button type="button" className="employee-form-modal__btn employee-form-modal__btn--cancel" onClick={onClose}>

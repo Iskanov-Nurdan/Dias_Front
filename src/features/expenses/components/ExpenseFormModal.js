@@ -45,11 +45,11 @@ const ExpenseFormModal = ({ expense, categories = [], onSave, onClose }) => {
         <h2 className="expense-form-modal__title">{expense?.id ? 'Редактировать расход' : 'Добавить расход'}</h2>
         <form onSubmit={handleSubmit} className="expense-form-modal__form">
           <label className="expense-form-modal__label">
-            Название
+            <span className="expense-form-modal__label-caption">Название <span className="form-label-required" aria-hidden="true">*</span></span>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="expense-form-modal__input" placeholder="Например: Аренда зала" />
           </label>
           <label className="expense-form-modal__label">
-            Категория
+            <span className="expense-form-modal__label-caption">Категория</span>
             <Select
               value={String(categoryId)}
               onChange={(v) => setCategoryId(v)}
@@ -59,15 +59,15 @@ const ExpenseFormModal = ({ expense, categories = [], onSave, onClose }) => {
             />
           </label>
           <label className="expense-form-modal__label">
-            Сумма
+            <span className="expense-form-modal__label-caption">Сумма <span className="form-label-required" aria-hidden="true">*</span></span>
             <input type="number" step="any" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} required className="expense-form-modal__input" placeholder="0" />
           </label>
           <label className="expense-form-modal__label">
-            Дата
+            <span className="expense-form-modal__label-caption">Дата <span className="form-label-required" aria-hidden="true">*</span></span>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required className="expense-form-modal__input" />
           </label>
           <label className="expense-form-modal__label">
-            Комментарий
+            <span className="expense-form-modal__label-caption">Комментарий</span>
             <textarea value={comment} onChange={(e) => setComment(e.target.value)} className="expense-form-modal__input" rows={2} placeholder="Необязательно" />
           </label>
           <div className="expense-form-modal__actions">

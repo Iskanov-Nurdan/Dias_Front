@@ -20,7 +20,7 @@ const SportFormModal = ({ sport, onSave, onClose }) => {
         <h2 className="sport-form-modal__title">{sport?.id ? 'Редактировать вид спорта' : 'Добавить вид спорта'}</h2>
         <form onSubmit={handleSubmit} className="sport-form-modal__form">
           <label className="sport-form-modal__label">
-            Название
+            <span className="sport-form-modal__label-caption">Название <span className="form-label-required" aria-hidden="true">*</span></span>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="sport-form-modal__input" />
           </label>
           <div className="sport-form-modal__actions">

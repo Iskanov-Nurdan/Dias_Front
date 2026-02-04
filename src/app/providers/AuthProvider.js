@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { PAGE_IDS, PAGE_ROUTES } from '../../shared/constants/pages';
+
+const ADMIN_ROLE_NAME = 'Администратор';
 
 const AuthContext = createContext(null);
 
@@ -31,6 +34,12 @@ const getStoredUser = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(getStoredUser);
+  const [showAccessDenied, setShowAccessDenied] = useState(false);
+
+  const roleName = user?.roleName ?? user?.role?.name ?? '';
+  const isAdmin =
+    (user?.canManageRoles === true || user?.can_manage_roles === true || roleName === ADMIN_ROLE_NAME) &&
+    (roleName === '' || roleName === ADMIN_ROLE_NAME);
 
   const login = useCallback((userData, token) => {
     const normalized = normalizeUserAccess(userData);
@@ -67,9 +76,24 @@ export const AuthProvider = ({ children }) => {
     setUser(getStoredUser());
   }, []);
 
+  const accessDeniedModal =
+    showAccessDenied &&
+    createPortal(
+      <div className="access-denied-overlay" onClick={() => setShowAccessDenied(false)}>
+        <div className="access-denied-box" onClick={(e) => e.stopPropagation()}>
+          <p className="access-denied-text">У вас нет доступа</p>
+          <button type="button" className="access-denied-btn" onClick={() => setShowAccessDenied(false)}>
+            Закрыть
+          </button>
+        </div>
+      </div>,
+      document.body
+    );
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, hasAccess, getFirstAvailableRoute }}>
+    <AuthContext.Provider value={{ user, login, logout, hasAccess, getFirstAvailableRoute, isAdmin, showAccessDenied: () => setShowAccessDenied(true) }}>
       {children}
+      {accessDeniedModal}
     </AuthContext.Provider>
   );
 };

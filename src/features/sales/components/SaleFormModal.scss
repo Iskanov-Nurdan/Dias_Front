@@ -3,6 +3,7 @@
 .sale-form-modal__title { margin: 0 0 20px; font-size: 18px; }
 .sale-form-modal__form { display: flex; flex-direction: column; gap: 12px; }
 .sale-form-modal__label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.sale-form-modal__label-caption { display: block; }
 .sale-form-modal__input { padding: 8px 12px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 14px; }
 .sale-form-modal__select { width: 100%; }
 .sale-form-modal__actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px; }

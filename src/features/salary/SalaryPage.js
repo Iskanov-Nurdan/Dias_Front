@@ -11,6 +11,8 @@ const SalaryPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [percentByTrainer, setPercentByTrainer] = useState({});
+  const [savingTrainerId, setSavingTrainerId] = useState(null);
+  const [saveError, setSaveError] = useState(null);
   const controllerRef = useRef(null);
   const lastRequestId = useRef(0);
 
@@ -20,6 +22,7 @@ const SalaryPage = () => {
     const rid = ++lastRequestId.current;
     setLoading(true);
     setError(null);
+    setSaveError(null);
     try {
       const res = await fetchSalary(queryState, controllerRef.current.signal);
       if (rid !== lastRequestId.current) return;
@@ -36,6 +39,11 @@ const SalaryPage = () => {
     fetchSafe();
     return () => controllerRef.current?.abort();
   }, [fetchSafe]);
+
+  const now = new Date();
+  const nowYear = now.getFullYear();
+  const nowMonth = now.getMonth() + 1;
+  const isMonthEnded = queryState.year < nowYear || (queryState.year === nowYear && queryState.month < nowMonth);
 
   const items = data?.data?.items ?? data?.items ?? data?.results ?? data?.payments ?? (Array.isArray(data) ? data : []);
 
@@ -56,17 +64,32 @@ const SalaryPage = () => {
   const handleSaveSalary = (row) => {
     const trainerId = row.trainerId ?? row.trainer_id ?? row.id;
     if (trainerId == null) return;
+    setSaveError(null);
+    setSavingTrainerId(trainerId);
     const percent = getTrainerPercent(row);
-    saveSalary(trainerId, queryState, percent, null).then(() => fetchSafe()).catch(console.error);
+    saveSalary(trainerId, queryState, percent, null)
+      .then(() => {
+        setPercentByTrainer((prev) => {
+          const next = { ...prev };
+          delete next[trainerId];
+          return next;
+        });
+        return fetchSafe();
+      })
+      .catch((err) => {
+        setSaveError(err.response?.data?.error?.message || err.response?.data?.message || err.response?.data?.detail || 'Ошибка сохранения');
+      })
+      .finally(() => setSavingTrainerId(null));
   };
 
   return (
     <div className="salary-page">
       <h1 className="salary-page__title">Зарплата</h1>
       <div className="salary-page__filters">
-        <input type="number" placeholder="Год" value={queryState.year} onChange={(e) => setQueryState((q) => ({ ...q, year: e.target.value }))} className="salary-page__input" min="2020" max="2030" />
-        <div className="salary-page__filter-month">
-          <label className="salary-page__filter-label">Месяц</label>
+        <div className="salary-page__filter-item">
+          <input type="number" placeholder="Год" value={queryState.year} onChange={(e) => setQueryState((q) => ({ ...q, year: Number(e.target.value) || q.year }))} className="salary-page__input" min="2020" max="2030" />
+        </div>
+        <div className="salary-page__filter-item salary-page__filter-month">
           <Select
             value={queryState.month ? String(queryState.month) : String(new Date().getMonth() + 1)}
             onChange={(v) => setQueryState((q) => ({ ...q, month: v ? Number(v) : new Date().getMonth() + 1 }))}
@@ -75,9 +98,15 @@ const SalaryPage = () => {
             className="salary-page__month-select"
           />
         </div>
-        <input type="number" placeholder="День" value={queryState.day} onChange={(e) => setQueryState((q) => ({ ...q, day: e.target.value }))} className="salary-page__input" min="1" max="31" />
+        <div className="salary-page__filter-item">
+          <input type="number" placeholder="День" value={queryState.day} onChange={(e) => setQueryState((q) => ({ ...q, day: e.target.value }))} className="salary-page__input" min="1" max="31" />
+        </div>
       </div>
       {error && <ErrorState message={error} onRetry={fetchSafe} />}
+      {saveError && <div className="salary-page__save-error" role="alert">{saveError}</div>}
+      {!isMonthEnded && !error && (
+        <p className="salary-page__hint">Сохранять зарплату можно только за прошедший месяц (после его окончания).</p>
+      )}
       <div className="salary-page__table-wrap">
         <table className="salary-page__table">
           <thead>
@@ -98,7 +127,8 @@ const SalaryPage = () => {
               <tr><td colSpan={9} className="salary-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
             ) : items.length === 0 ? (
               <tr><td colSpan={9} className="salary-page__empty-cell"><EmptyState message="Нет данных за период" /></td></tr>
-            ) : items.map((row) => {
+            ) : items.map((row, index) => {
+                const trainerId = row.trainerId ?? row.trainer_id ?? row.id ?? index;
                 const income = row.income ?? row.revenue ?? row.clientIncome ?? 0;
                 const percent = getTrainerPercent(row);
                 const numPercent = typeof percent === 'number' && !Number.isNaN(percent) ? percent : 60;
@@ -106,9 +136,10 @@ const SalaryPage = () => {
                 const clubShare = income - trainerShare;
                 const total = trainerShare;
                 const saved = row.saved === true || row.saved === 'true';
+                const isSaving = savingTrainerId === trainerId;
                 const format = (v) => (typeof v === 'number' && !Number.isNaN(v) ? `${Number(v).toLocaleString('ru-RU')} Р` : (v ?? '—'));
                 return (
-                  <tr key={row.trainerId ?? row.trainer_id ?? row.id ?? Math.random()}>
+                  <tr key={trainerId}>
                     <td>{row.trainerName ?? row.trainer?.fio ?? row.fio ?? '—'}</td>
                     <td>{row.clientCount ?? row.clientsCount ?? row.clients_count ?? row.count ?? '—'}</td>
                     <td>{format(income)}</td>
@@ -127,7 +158,15 @@ const SalaryPage = () => {
                     <td>{saved ? 'Да' : 'Нет'}</td>
                     <td className="salary-page__actions">
                       {!saved && (
-                        <button type="button" className="salary-page__save-btn" onClick={() => handleSaveSalary(row)}>Сохранить</button>
+                        <button
+                          type="button"
+                          className="salary-page__save-btn"
+                          onClick={() => handleSaveSalary(row)}
+                          disabled={isSaving || !isMonthEnded}
+                          title={!isMonthEnded ? 'Сохранять можно только за прошедший месяц' : undefined}
+                        >
+                          {isSaving ? 'Сохранение…' : 'Сохранить'}
+                        </button>
                       )}
                     </td>
                   </tr>

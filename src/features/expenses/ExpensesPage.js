@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchExpenseCategories, fetchExpenses, saveExpense, createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, updateExpense, deleteExpense } from './api';
+import { useAuth } from '../../app/providers/AuthProvider';
 import { ExpenseCategoryFormModal, ExpenseFormModal } from './components';
 import { ErrorState, EmptyState, ConfirmModal } from '../../shared/ui';
 import './ExpensesPage.scss';
 
 const ExpensesPage = () => {
+  const { isAdmin, showAccessDenied } = useAuth();
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [categorySearch, setCategorySearch] = useState('');
   const [expensesSearch, setExpensesSearch] = useState('');
@@ -31,7 +33,7 @@ const ExpensesPage = () => {
     setCategoriesLoading(true);
     setCategoriesError(null);
     try {
-      const data = await fetchExpenseCategories(categoriesControllerRef.current.signal);
+      const data = await fetchExpenseCategories({ search: categorySearch || undefined }, categoriesControllerRef.current.signal);
       if (rid !== lastCategoriesRequestId.current) return;
       setCategoriesData(Array.isArray(data) ? data : data?.results ?? data?.items ?? []);
     } catch (err) {
@@ -40,10 +42,10 @@ const ExpensesPage = () => {
     } finally {
       if (rid === lastCategoriesRequestId.current) setCategoriesLoading(false);
     }
-  }, []);
+  }, [categorySearch]);
 
   const fetchExpensesSafe = useCallback(async () => {
-    const q = { ...queryState, categoryId: selectedCategoryId || undefined };
+    const q = { ...queryState, categoryId: selectedCategoryId || undefined, search: expensesSearch || undefined };
     expensesControllerRef.current?.abort();
     expensesControllerRef.current = new AbortController();
     const rid = ++lastExpensesRequestId.current;
@@ -59,7 +61,7 @@ const ExpensesPage = () => {
     } finally {
       if (rid === lastExpensesRequestId.current) setExpensesLoading(false);
     }
-  }, [selectedCategoryId, queryState.page, queryState.perPage]);
+  }, [selectedCategoryId, queryState, expensesSearch]);
 
   useEffect(() => {
     fetchCategoriesSafe();
@@ -72,21 +74,7 @@ const ExpensesPage = () => {
   }, [selectedCategoryId, fetchExpensesSafe]);
 
   const categoriesList = Array.isArray(categoriesData) ? categoriesData : [];
-  const categorySearchLower = (categorySearch || '').trim().toLowerCase();
-  const categoriesFiltered = categorySearchLower
-    ? categoriesList.filter((c) => (c.name || '').toLowerCase().includes(categorySearchLower))
-    : categoriesList;
   const expensesItems = expensesData?.items ?? expensesData?.results ?? expensesData ?? [];
-  const expensesSearchLower = (expensesSearch || '').trim().toLowerCase();
-  const expensesFiltered = expensesSearchLower
-    ? expensesItems.filter((e) => {
-        const name = (e.name ?? '').toLowerCase();
-        const cat = (e.categoryName ?? e.category?.name ?? '').toLowerCase();
-        const amount = String(e.amount ?? '').toLowerCase();
-        const date = e.date ? new Date(e.date).toLocaleDateString().toLowerCase() : '';
-        return name.includes(expensesSearchLower) || cat.includes(expensesSearchLower) || amount.includes(expensesSearchLower) || date.includes(expensesSearchLower);
-      })
-    : expensesItems;
 
   const handleSaveExpense = (id) => {
     saveExpense(id, null).then(() => fetchExpensesSafe()).catch(console.error);
@@ -150,14 +138,14 @@ const ExpensesPage = () => {
               <tbody>
                 {categoriesLoading ? (
                   <tr><td colSpan={2} className="expenses-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
-                ) : categoriesFiltered.length === 0 ? (
+                ) : categoriesList.length === 0 ? (
                   <tr><td colSpan={2} className="expenses-page__empty-cell"><EmptyState message="Нет категорий" /></td></tr>
-                ) : categoriesFiltered.map((c) => (
+                ) : categoriesList.map((c) => (
                   <tr key={c.id} className="expenses-page__category-row" onClick={() => setSelectedCategoryId(c.id)}>
                     <td>{c.name}</td>
                     <td className="expenses-page__actions" onClick={(e) => e.stopPropagation()}>
-                      <button type="button" className="expenses-page__action expenses-page__action--edit" onClick={() => setFormCategory(c)}>Изменить</button>
-                      <button type="button" className="expenses-page__action expenses-page__action--delete" onClick={() => setConfirmDeleteCategory(c)}>Удалить</button>
+                      <button type="button" className="expenses-page__action expenses-page__action--edit" onClick={() => (isAdmin ? setFormCategory(c) : showAccessDenied())}>Изменить</button>
+                      <button type="button" className="expenses-page__action expenses-page__action--delete" onClick={() => (isAdmin ? setConfirmDeleteCategory(c) : showAccessDenied())}>Удалить</button>
                     </td>
                   </tr>
                 ))}
@@ -182,9 +170,9 @@ const ExpensesPage = () => {
               <tbody>
                 {expensesLoading ? (
                   <tr><td colSpan={6} className="expenses-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
-                ) : expensesFiltered.length === 0 ? (
+                ) : expensesItems.length === 0 ? (
                   <tr><td colSpan={6} className="expenses-page__empty-cell"><EmptyState message="Нет расходов" /></td></tr>
-                ) : expensesFiltered.map((e) => (
+                ) : expensesItems.map((e) => (
                     <tr key={e.id}>
                       <td>{e.name ?? '—'}</td>
                       <td>{e.categoryName ?? e.category?.name ?? '—'}</td>
@@ -193,8 +181,8 @@ const ExpensesPage = () => {
                       <td>{e.saved ? 'Да' : 'Нет'}</td>
                       <td className="expenses-page__actions">
                         {!e.saved && <button type="button" className="expenses-page__save-btn" onClick={() => handleSaveExpense(e.id)}>Сохранить</button>}
-                        <button type="button" className="expenses-page__action expenses-page__action--edit" onClick={() => setFormExpense(e)}>Изменить</button>
-                        <button type="button" className="expenses-page__action expenses-page__action--delete" onClick={() => setConfirmDeleteExpense(e)}>Удалить</button>
+                        <button type="button" className="expenses-page__action expenses-page__action--edit" onClick={() => (isAdmin ? setFormExpense(e) : showAccessDenied())}>Изменить</button>
+                        <button type="button" className="expenses-page__action expenses-page__action--delete" onClick={() => (isAdmin ? setConfirmDeleteExpense(e) : showAccessDenied())}>Удалить</button>
                       </td>
                     </tr>
                 ))}

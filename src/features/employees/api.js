@@ -2,8 +2,11 @@ import { apiClient } from '../../shared/api/client';
 
 const withSignal = (config, signal) => (signal ? { ...config, signal } : config);
 
-export const fetchRoles = async (signal) => {
-  const { data } = await apiClient.get('/roles/', withSignal({}, signal));
+/** GET /api/roles/ — query: search (поиск по названию, серверная фильтрация) */
+export const fetchRoles = async (queryState, signal) => {
+  const params = {};
+  if (queryState?.search) params.search = queryState.search;
+  const { data } = await apiClient.get('/roles/', { params, ...withSignal({}, signal) });
   return data;
 };
 

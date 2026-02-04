@@ -29,11 +29,11 @@ const TrainerFormModal = ({ trainer, sports, onSave, onClose }) => {
         <h2 className="trainer-form-modal__title">{trainer?.id ? 'Редактировать тренера' : 'Добавить тренера'}</h2>
         <form onSubmit={handleSubmit} className="trainer-form-modal__form">
           <label className="trainer-form-modal__label">
-            ФИО
+            <span className="trainer-form-modal__label-caption">ФИО <span className="form-label-required" aria-hidden="true">*</span></span>
             <input type="text" value={fio} onChange={(e) => setFio(e.target.value)} required className="trainer-form-modal__input" />
           </label>
           <div className="trainer-form-modal__label">
-            Виды спорта
+            <span className="trainer-form-modal__label-caption">Виды спорта</span>
             <div className="trainer-form-modal__checkboxes">
               {(sports || []).map((s) => (
                 <label key={s.id} className="trainer-form-modal__checkbox">

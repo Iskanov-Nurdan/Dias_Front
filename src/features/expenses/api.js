@@ -2,8 +2,11 @@ import { apiClient } from '../../shared/api/client';
 
 const withSignal = (config, signal) => (signal ? { ...config, signal } : config);
 
-export const fetchExpenseCategories = async (signal) => {
-  const { data } = await apiClient.get('/expense-categories/', withSignal({}, signal));
+/** GET /api/expense-categories/ — query: search (поиск по названию, серверная фильтрация) */
+export const fetchExpenseCategories = async (queryState, signal) => {
+  const params = {};
+  if (queryState?.search) params.search = queryState.search;
+  const { data } = await apiClient.get('/expense-categories/', { params, ...withSignal({}, signal) });
   return data;
 };
 
@@ -21,9 +24,10 @@ export const deleteExpenseCategory = async (id, signal) => {
   await apiClient.delete(`/expense-categories/${id}/`, withSignal({}, signal));
 };
 
-/** ТЗ: GET /api/expenses/ — query: dateFrom, dateTo, categoryId, page, perPage (camelCase) */
+/** ТЗ: GET /api/expenses/ — query: search, dateFrom, dateTo, categoryId, page, perPage (camelCase) */
 export const fetchExpenses = async (queryState, signal) => {
   const params = {};
+  if (queryState?.search) params.search = queryState.search;
   if (queryState?.dateFrom) params.dateFrom = queryState.dateFrom;
   if (queryState?.dateTo) params.dateTo = queryState.dateTo;
   if (queryState?.categoryId) params.categoryId = queryState.categoryId;

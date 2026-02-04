@@ -45,11 +45,11 @@ const ProductFormModal = ({ product, categories = [], onSave, onClose }) => {
         <h2 className="warehouse-form-modal__title">{product?.id ? 'Редактировать товар' : 'Добавить товар'}</h2>
         <form onSubmit={handleSubmit} className="warehouse-form-modal__form">
           <label className="warehouse-form-modal__label">
-            Название
+            <span className="warehouse-form-modal__label-caption">Название <span className="form-label-required" aria-hidden="true">*</span></span>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="warehouse-form-modal__input" placeholder="Название товара" />
           </label>
           <label className="warehouse-form-modal__label">
-            Категория
+            <span className="warehouse-form-modal__label-caption">Категория</span>
             <Select
               value={String(categoryId)}
               onChange={(v) => setCategoryId(v)}
@@ -59,15 +59,15 @@ const ProductFormModal = ({ product, categories = [], onSave, onClose }) => {
             />
           </label>
           <label className="warehouse-form-modal__label">
-            Цена
+            <span className="warehouse-form-modal__label-caption">Цена</span>
             <input type="number" step="any" min="0" value={price} onChange={(e) => setPrice(e.target.value)} className="warehouse-form-modal__input" placeholder="0" />
           </label>
           <label className="warehouse-form-modal__label">
-            Количество
+            <span className="warehouse-form-modal__label-caption">Количество</span>
             <input type="number" min="0" value={qty} onChange={(e) => setQty(e.target.value)} className="warehouse-form-modal__input" placeholder="0" />
           </label>
           <label className="warehouse-form-modal__label">
-            Мин. остаток
+            <span className="warehouse-form-modal__label-caption">Мин. остаток</span>
             <input type="number" min="0" value={minQty} onChange={(e) => setMinQty(e.target.value)} className="warehouse-form-modal__input" placeholder="0" />
           </label>
           <div className="warehouse-form-modal__actions">

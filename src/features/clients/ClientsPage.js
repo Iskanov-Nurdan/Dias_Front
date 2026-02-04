@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchClients, fetchClient, createClient, updateClient, deleteClient, extendClient } from './api';
 import { fetchSports } from '../sports-trainers/api';
 import { fetchTrainers } from '../sports-trainers/api';
+import { useAuth } from '../../app/providers/AuthProvider';
 import { Select, ConfirmModal } from '../../shared/ui';
 import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal } from './components';
 import './ClientsPage.scss';
 
 const ClientsPage = () => {
+  const { isAdmin, showAccessDenied } = useAuth();
   const [queryState, setQueryState] = useState({ search: '', sportId: '', paid: '', clientType: '', page: 1, perPage: 20 });
   const [data, setData] = useState(null);
   const [sports, setSports] = useState([]);
@@ -106,9 +108,9 @@ const ClientsPage = () => {
           Добавить клиента
         </button>
       </div>
-      <ClientsList items={items} loading={loading} error={error} onRetry={fetchSafe} onEdit={setFormClient} onDelete={setConfirmDelete} onDetails={handleOpenCard} onExtend={setExtendClientObj} />
+      <ClientsList items={items} loading={loading} error={error} onRetry={fetchSafe} onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())} onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())} onDetails={handleOpenCard} onExtend={setExtendClientObj} />
       {formClient && <ClientFormModal client={formClient} sports={sports} fetchTrainers={fetchTrainers} onSave={handleSaveClient} onClose={() => setFormClient(null)} />}
-      {cardClient && <ClientCardModal client={cardClient} onEdit={setFormClient} onDelete={setConfirmDelete} onClose={() => setCardClient(null)} />}
+      {cardClient && <ClientCardModal client={cardClient} onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())} onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())} onClose={() => setCardClient(null)} />}
       {extendClientObj && <ExtendModal client={extendClientObj} onSave={handleSaveExtend} onClose={() => setExtendClientObj(null)} />}
       {confirmDelete && <ConfirmModal title="Удалить клиента?" message={confirmDelete.fio} confirmText="Удалить" onConfirm={handleDeleteClient} onCancel={() => setConfirmDelete(null)} danger />}
     </div>

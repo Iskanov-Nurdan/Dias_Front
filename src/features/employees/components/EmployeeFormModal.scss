@@ -36,6 +36,9 @@
     font-size: 14px;
     color: var(--color-text);
   }
+  &__label-caption {
+    display: block;
+  }
 
   &__input {
     padding: 10px 12px;

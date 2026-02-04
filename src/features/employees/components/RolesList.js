@@ -2,6 +2,8 @@ import React from 'react';
 import { ErrorState, EmptyState, ConfirmModal } from '../../../shared/ui';
 import './RolesList.scss';
 
+const isSystemRole = (role) => role?.is_system === true || role?.isSystem === true;
+
 const RolesList = ({
   items,
   loading,
@@ -12,9 +14,20 @@ const RolesList = ({
   confirmDelete,
   onConfirmDelete,
   onCancelDelete,
+  canManageRoles,
+  onAccessDenied,
 }) => {
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
   const list = Array.isArray(items) ? items : items?.items ?? [];
+
+  const handleEdit = (role) => {
+    if (canManageRoles) onEdit(role);
+    else if (onAccessDenied) onAccessDenied();
+  };
+  const handleDelete = (role) => {
+    if (canManageRoles) onDelete(role);
+    else if (onAccessDenied) onAccessDenied();
+  };
 
   return (
     <>
@@ -43,19 +56,26 @@ const RolesList = ({
                     <EmptyState message="Нет ролей" />
                   </td>
                 </tr>
-              ) : list.map((role) => (
-                <tr key={role.id}>
-                  <td>{role.name || '—'}</td>
-                  <td className="roles-list__actions">
-                    <button type="button" className="roles-list__btn" onClick={() => onEdit(role)}>
-                      Изменить
-                    </button>
-                    <button type="button" className="roles-list__btn roles-list__btn--danger" onClick={() => onDelete(role)}>
-                      Удалить
-                    </button>
-                  </td>
-                </tr>
-              )) }
+              ) : list.map((role) => {
+                const systemRole = isSystemRole(role);
+                return (
+                  <tr key={role.id}>
+                    <td>{role.name || '—'}</td>
+                    <td className="roles-list__actions">
+                      {!systemRole && (
+                        <>
+                          <button type="button" className="roles-list__btn" onClick={() => handleEdit(role)}>
+                            Изменить
+                          </button>
+                          <button type="button" className="roles-list__btn roles-list__btn--danger" onClick={() => handleDelete(role)}>
+                            Удалить
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                );
+              }) }
             </tbody>
           </table>
         </div>

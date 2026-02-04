@@ -9,6 +9,7 @@ import {
   updateTrainer,
   deleteTrainer,
 } from './api';
+import { useAuth } from '../../app/providers/AuthProvider';
 import { Select } from '../../shared/ui';
 import { SportsList, TrainersList, SportFormModal, TrainerFormModal } from './components';
 import './SportsTrainersPage.scss';
@@ -17,6 +18,7 @@ const TAB_SPORTS = 'sports';
 const TAB_TRAINERS = 'trainers';
 
 const SportsTrainersPage = () => {
+  const { isAdmin, showAccessDenied } = useAuth();
   const [activeTab, setActiveTab] = useState(TAB_SPORTS);
   const [queryState, setQueryState] = useState({ sportId: '', search: '', page: 1, perPage: 20 });
   const [sportSearch, setSportSearch] = useState('');
@@ -42,7 +44,7 @@ const SportsTrainersPage = () => {
     setSportsLoading(true);
     setSportsError(null);
     try {
-      const data = await fetchSports(controllerRef.current.signal);
+      const data = await fetchSports({ search: sportSearch || undefined }, controllerRef.current.signal);
       if (rid !== lastSportsRequestId.current) return;
       setSportsData(Array.isArray(data) ? data : data?.results ?? data?.items ?? []);
     } catch (err) {
@@ -51,7 +53,7 @@ const SportsTrainersPage = () => {
     } finally {
       if (rid === lastSportsRequestId.current) setSportsLoading(false);
     }
-  }, []);
+  }, [sportSearch]);
 
   const fetchTrainersSafe = useCallback(async () => {
     controllerRef.current?.abort();
@@ -60,7 +62,7 @@ const SportsTrainersPage = () => {
     setTrainersLoading(true);
     setTrainersError(null);
     try {
-      const data = await fetchTrainers(queryState, controllerRef.current.signal);
+      const data = await fetchTrainers({ ...queryState, search: trainerSearch || undefined }, controllerRef.current.signal);
       if (rid !== lastTrainersRequestId.current) return;
       setTrainersData(data);
     } catch (err) {
@@ -69,7 +71,7 @@ const SportsTrainersPage = () => {
     } finally {
       if (rid === lastTrainersRequestId.current) setTrainersLoading(false);
     }
-  }, [queryState]);
+  }, [queryState, trainerSearch]);
 
   useEffect(() => {
     if (activeTab === TAB_SPORTS || activeTab === TAB_TRAINERS) fetchSportsSafe();
@@ -82,12 +84,6 @@ const SportsTrainersPage = () => {
   }, [activeTab, fetchTrainersSafe]);
 
   const trainersItems = trainersData?.items ?? trainersData?.results ?? trainersData ?? [];
-  const sportsFiltered = sportSearch.trim()
-    ? sportsData.filter((s) => (s.name || '').toLowerCase().includes(sportSearch.trim().toLowerCase()))
-    : sportsData;
-  const trainersFiltered = trainerSearch.trim()
-    ? trainersItems.filter((t) => (t.fio || '').toLowerCase().includes(trainerSearch.trim().toLowerCase()))
-    : trainersItems;
 
   const handleSaveSport = async (payload) => {
     try {
@@ -113,12 +109,32 @@ const SportsTrainersPage = () => {
 
   const handleDeleteSport = () => {
     if (!confirmDeleteSport) return;
-    deleteSport(confirmDeleteSport.id, null).then(() => { setConfirmDeleteSport(null); fetchSportsSafe(); }).catch(console.error);
+    setSportsError(null);
+    deleteSport(confirmDeleteSport.id, null)
+      .then(() => {
+        setConfirmDeleteSport(null);
+        fetchSportsSafe();
+      })
+      .catch((e) => {
+        const msg = e.response?.data?.error?.message || e.response?.data?.message || e.response?.data?.detail || e.message || 'Ошибка удаления';
+        setSportsError(msg);
+        setConfirmDeleteSport(null);
+      });
   };
 
   const handleDeleteTrainer = () => {
     if (!confirmDeleteTrainer) return;
-    deleteTrainer(confirmDeleteTrainer.id, null).then(() => { setConfirmDeleteTrainer(null); fetchTrainersSafe(); }).catch(console.error);
+    setTrainersError(null);
+    deleteTrainer(confirmDeleteTrainer.id, null)
+      .then(() => {
+        setConfirmDeleteTrainer(null);
+        fetchTrainersSafe();
+      })
+      .catch((e) => {
+        const msg = e.response?.data?.error?.message || e.response?.data?.message || e.response?.data?.detail || e.message || 'Ошибка удаления';
+        setTrainersError(msg);
+        setConfirmDeleteTrainer(null);
+      });
   };
 
   return (
@@ -168,10 +184,10 @@ const SportsTrainersPage = () => {
         </div>
       )}
       {activeTab === TAB_SPORTS && (
-        <SportsList items={sportsFiltered} loading={sportsLoading} error={sportsError} onRetry={fetchSportsSafe} onEdit={setFormSport} onDelete={setConfirmDeleteSport} confirmDelete={confirmDeleteSport} onConfirmDelete={handleDeleteSport} onCancelDelete={() => setConfirmDeleteSport(null)} />
+        <SportsList items={sportsData} loading={sportsLoading} error={sportsError} onRetry={fetchSportsSafe} onEdit={(s) => (isAdmin ? setFormSport(s) : showAccessDenied())} onDelete={(s) => (isAdmin ? setConfirmDeleteSport(s) : showAccessDenied())} confirmDelete={confirmDeleteSport} onConfirmDelete={handleDeleteSport} onCancelDelete={() => setConfirmDeleteSport(null)} />
       )}
       {activeTab === TAB_TRAINERS && (
-        <TrainersList items={trainersFiltered} sports={sportsData} loading={trainersLoading} error={trainersError} onRetry={fetchTrainersSafe} onEdit={setFormTrainer} onDelete={setConfirmDeleteTrainer} confirmDelete={confirmDeleteTrainer} onConfirmDelete={handleDeleteTrainer} onCancelDelete={() => setConfirmDeleteTrainer(null)} />
+        <TrainersList items={trainersItems} sports={sportsData} loading={trainersLoading} error={trainersError} onRetry={fetchTrainersSafe} onEdit={(t) => (isAdmin ? setFormTrainer(t) : showAccessDenied())} onDelete={(t) => (isAdmin ? setConfirmDeleteTrainer(t) : showAccessDenied())} confirmDelete={confirmDeleteTrainer} onConfirmDelete={handleDeleteTrainer} onCancelDelete={() => setConfirmDeleteTrainer(null)} />
       )}
       {formSport && <SportFormModal sport={formSport} onSave={handleSaveSport} onClose={() => setFormSport(null)} />}
       {formTrainer && <TrainerFormModal trainer={formTrainer} sports={sportsData} onSave={handleSaveTrainer} onClose={() => setFormTrainer(null)} />}

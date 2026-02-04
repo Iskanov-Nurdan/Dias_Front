@@ -25,7 +25,7 @@ const CategoryFormModal = ({ category, onSave, onClose }) => {
         <h2 className="warehouse-form-modal__title">{category?.id ? 'Редактировать категорию' : 'Добавить категорию'}</h2>
         <form onSubmit={handleSubmit} className="warehouse-form-modal__form">
           <label className="warehouse-form-modal__label">
-            Название
+            <span className="warehouse-form-modal__label-caption">Название <span className="form-label-required" aria-hidden="true">*</span></span>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="warehouse-form-modal__input" placeholder="Название категории" />
           </label>
           <div className="warehouse-form-modal__actions">

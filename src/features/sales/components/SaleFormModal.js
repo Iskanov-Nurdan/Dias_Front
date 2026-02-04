@@ -42,7 +42,7 @@ const SaleFormModal = ({ products = [], onSave, onClose }) => {
         <h2 className="sale-form-modal__title">Новая продажа</h2>
         <form onSubmit={handleSubmit} className="sale-form-modal__form">
           <label className="sale-form-modal__label">
-            Товар
+            <span className="sale-form-modal__label-caption">Товар</span>
             <Select
               value={String(productId)}
               onChange={(v) => setProductId(v)}
@@ -52,19 +52,19 @@ const SaleFormModal = ({ products = [], onSave, onClose }) => {
             />
           </label>
           <label className="sale-form-modal__label">
-            Количество
+            <span className="sale-form-modal__label-caption">Количество <span className="form-label-required" aria-hidden="true">*</span></span>
             <input type="number" min="1" step="1" value={qty} onChange={(e) => setQty(e.target.value)} required className="sale-form-modal__input" placeholder="1" />
           </label>
           <label className="sale-form-modal__label">
-            Цена за ед.
+            <span className="sale-form-modal__label-caption">Цена за ед. <span className="form-label-required" aria-hidden="true">*</span></span>
             <input type="number" step="any" min="0" value={pricePerUnit} onChange={(e) => setPricePerUnit(e.target.value)} required className="sale-form-modal__input" placeholder="0" />
           </label>
           <label className="sale-form-modal__label">
-            Скидка, %
+            <span className="sale-form-modal__label-caption">Скидка, %</span>
             <input type="number" step="any" min="0" max="100" value={discount} onChange={(e) => setDiscount(e.target.value)} className="sale-form-modal__input" placeholder="0" />
           </label>
           <label className="sale-form-modal__label">
-            Дата
+            <span className="sale-form-modal__label-caption">Дата</span>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="sale-form-modal__input" />
           </label>
           <div className="sale-form-modal__actions">

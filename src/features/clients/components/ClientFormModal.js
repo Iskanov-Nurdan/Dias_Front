@@ -69,7 +69,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose }) => 
         <form onSubmit={handleSubmit} className="client-form-modal__form">
           <div className="client-form-modal__row">
             <label className="client-form-modal__label">
-              <span className="client-form-modal__label-text">ФИО</span>
+              <span className="client-form-modal__label-text">ФИО <span className="form-label-required" aria-hidden="true">*</span></span>
               <input type="text" value={fio} onChange={(e) => setFio(e.target.value)} required className="client-form-modal__input" />
             </label>
             <label className="client-form-modal__label">

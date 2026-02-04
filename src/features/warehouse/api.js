@@ -2,8 +2,11 @@ import { apiClient } from '../../shared/api/client';
 
 const withSignal = (config, signal) => (signal ? { ...config, signal } : config);
 
-export const fetchCategories = async (signal) => {
-  const { data } = await apiClient.get('/warehouse/categories/', withSignal({}, signal));
+/** GET /api/warehouse/categories/ — query: search (поиск по названию, серверная фильтрация) */
+export const fetchCategories = async (queryState, signal) => {
+  const params = {};
+  if (queryState?.search) params.search = queryState.search;
+  const { data } = await apiClient.get('/warehouse/categories/', { params, ...withSignal({}, signal) });
   return data;
 };
 
@@ -56,9 +59,10 @@ export const restockProduct = async (id, body, signal) => {
   return data;
 };
 
-/** ТЗ: GET /api/warehouse/restocks/ — query: dateFrom, dateTo, page, perPage */
+/** ТЗ: GET /api/warehouse/restocks/ — query: search, dateFrom, dateTo, page, perPage */
 export const fetchRestocks = async (queryState, signal) => {
   const params = {};
+  if (queryState?.search) params.search = queryState.search;
   if (queryState?.dateFrom) params.dateFrom = queryState.dateFrom;
   if (queryState?.dateTo) params.dateTo = queryState.dateTo;
   if (queryState?.page) params.page = queryState.page;

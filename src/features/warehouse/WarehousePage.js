@@ -39,6 +39,12 @@ const WarehousePage = () => {
   const [formCategory, setFormCategory] = useState(null);
   const [formProduct, setFormProduct] = useState(null);
   const [restockProductItem, setRestockProductItem] = useState(null);
+  const [categoryFormError, setCategoryFormError] = useState(null);
+  const [categoryFormSaving, setCategoryFormSaving] = useState(false);
+  const [productFormError, setProductFormError] = useState(null);
+  const [productFormSaving, setProductFormSaving] = useState(false);
+  const [restockFormError, setRestockFormError] = useState(null);
+  const [restockFormSaving, setRestockFormSaving] = useState(false);
   const [confirmDeleteProduct, setConfirmDeleteProduct] = useState(null);
   const [confirmDeleteCategory, setConfirmDeleteCategory] = useState(null);
   const productsControllerRef = useRef(null);
@@ -126,6 +132,8 @@ const WarehousePage = () => {
   const restocksItems = restocksData?.items ?? restocksData?.results ?? [];
 
   const handleSaveCategory = async (payload) => {
+    setCategoryFormError(null);
+    setCategoryFormSaving(true);
     try {
       if (formCategory?.id) await updateCategory(formCategory.id, payload, null);
       else await createCategory(payload, null);
@@ -133,30 +141,43 @@ const WarehousePage = () => {
       fetchCategoriesSafe();
       if (activeTab === TAB_PRODUCTS) fetchProductsSafe();
     } catch (e) {
-      console.error(e);
+      const d = e.response?.data;
+      setCategoryFormError(d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка сохранения');
+    } finally {
+      setCategoryFormSaving(false);
     }
   };
 
   const handleSaveProduct = async (payload) => {
+    setProductFormError(null);
+    setProductFormSaving(true);
     try {
       if (formProduct?.id) await updateProduct(formProduct.id, payload, null);
       else await createProduct(payload, null);
       setFormProduct(null);
       fetchProductsSafe();
     } catch (e) {
-      console.error(e);
+      const d = e.response?.data;
+      setProductFormError(d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка сохранения');
+    } finally {
+      setProductFormSaving(false);
     }
   };
 
   const handleRestock = async (payload) => {
     if (!restockProductItem?.id) return;
+    setRestockFormError(null);
+    setRestockFormSaving(true);
     try {
       await restockProduct(restockProductItem.id, payload, null);
       setRestockProductItem(null);
       fetchProductsSafe();
       fetchRestocksSafe();
     } catch (e) {
-      console.error(e);
+      const d = e.response?.data;
+      setRestockFormError(d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка');
+    } finally {
+      setRestockFormSaving(false);
     }
   };
 
@@ -278,7 +299,9 @@ const WarehousePage = () => {
         <CategoryFormModal
           category={formCategory?.id ? categoriesList.find((c) => c.id === formCategory.id) ?? formCategory : null}
           onSave={handleSaveCategory}
-          onClose={() => setFormCategory(null)}
+          onClose={() => { setFormCategory(null); setCategoryFormError(null); }}
+          error={categoryFormError}
+          saving={categoryFormSaving}
         />
       )}
       {formProduct !== null && (
@@ -286,14 +309,18 @@ const WarehousePage = () => {
           product={formProduct?.id ? productsItems.find((p) => p.id === formProduct.id) ?? formProduct : formProduct}
           categories={categoriesList}
           onSave={handleSaveProduct}
-          onClose={() => setFormProduct(null)}
+          onClose={() => { setFormProduct(null); setProductFormError(null); }}
+          error={productFormError}
+          saving={productFormSaving}
         />
       )}
       {restockProductItem !== null && (
         <RestockModal
           product={restockProductItem}
           onSave={handleRestock}
-          onClose={() => setRestockProductItem(null)}
+          onClose={() => { setRestockProductItem(null); setRestockFormError(null); }}
+          error={restockFormError}
+          saving={restockFormSaving}
         />
       )}
       {confirmDeleteProduct !== null && (

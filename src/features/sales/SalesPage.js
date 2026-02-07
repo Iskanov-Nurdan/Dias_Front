@@ -14,6 +14,8 @@ const SalesPage = () => {
   const [summaryError, setSummaryError] = useState(null);
   const [salesError, setSalesError] = useState(null);
   const [formSaleOpen, setFormSaleOpen] = useState(false);
+  const [saleFormError, setSaleFormError] = useState(null);
+  const [saleFormSaving, setSaleFormSaving] = useState(false);
   const [products, setProducts] = useState([]);
   const controllerRef = useRef(null);
   const lastSummaryRequestId = useRef(0);
@@ -74,13 +76,18 @@ const SalesPage = () => {
   }, []);
 
   const handleSaveSale = async (payload) => {
+    setSaleFormError(null);
+    setSaleFormSaving(true);
     try {
       await createSale(payload, null);
       setFormSaleOpen(false);
       fetchSummarySafe();
       fetchSalesSafe();
     } catch (e) {
-      console.error(e);
+      const d = e.response?.data;
+      setSaleFormError(d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка');
+    } finally {
+      setSaleFormSaving(false);
     }
   };
 
@@ -135,7 +142,9 @@ const SalesPage = () => {
         <SaleFormModal
           products={products}
           onSave={handleSaveSale}
-          onClose={() => setFormSaleOpen(false)}
+          onClose={() => { setFormSaleOpen(false); setSaleFormError(null); }}
+          error={saleFormError}
+          saving={saleFormSaving}
         />
       )}
     </div>

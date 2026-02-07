@@ -32,10 +32,16 @@ const EmployeesPage = () => {
   const [rolesError, setRolesError] = useState(null);
   const [formEmployee, setFormEmployee] = useState(null);
   const [formRole, setFormRole] = useState(null);
+  const [rolesFormError, setRolesFormError] = useState(null);
+  const [rolesFormSaving, setRolesFormSaving] = useState(false);
   const [accessEmployee, setAccessEmployee] = useState(null);
   const [accessData, setAccessData] = useState(null);
+  const [accessFormError, setAccessFormError] = useState(null);
+  const [accessFormSaving, setAccessFormSaving] = useState(false);
   const [confirmDeleteEmployee, setConfirmDeleteEmployee] = useState(null);
   const [confirmDeleteRole, setConfirmDeleteRole] = useState(null);
+  const [employeesFormError, setEmployeesFormError] = useState(null);
+  const [employeesFormSaving, setEmployeesFormSaving] = useState(false);
   const employeesControllerRef = useRef(null);
   const rolesControllerRef = useRef(null);
   const lastEmployeesRequestId = useRef(0);
@@ -100,6 +106,8 @@ const EmployeesPage = () => {
   const handleRoleFilter = (v) => setQueryState((q) => ({ ...q, roleId: v, page: 1 }));
 
   const handleSaveEmployee = async (payload) => {
+    setEmployeesFormError(null);
+    setEmployeesFormSaving(true);
     try {
       if (formEmployee?.id) {
         await updateEmployee(formEmployee.id, { ...payload, roleId: payload.roleId || undefined }, null);
@@ -109,13 +117,23 @@ const EmployeesPage = () => {
       setFormEmployee(null);
       fetchEmployeesSafe();
     } catch (e) {
-      console.error(e);
+      const data = e.response?.data;
+      const err = data?.error;
+      const msg = err?.message ?? (typeof data === 'string' ? data : data?.message ?? data?.detail);
+      const fields = data && typeof data === 'object' && !Array.isArray(data) && !data.error && !data.message && !data.detail
+        ? data
+        : null;
+      const text = msg || (fields ? Object.entries(fields).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join('; ') : 'Ошибка сохранения');
+      setEmployeesFormError(text);
+    } finally {
+      setEmployeesFormSaving(false);
     }
   };
 
   const handleSaveRole = async (payload) => {
+    setRolesFormError(null);
+    setRolesFormSaving(true);
     try {
-      setRolesError(null);
       if (formRole?.id) {
         await updateRole(formRole.id, payload, null);
       } else {
@@ -124,7 +142,11 @@ const EmployeesPage = () => {
       setFormRole(null);
       fetchRolesSafe();
     } catch (e) {
-      setRolesError(e.response?.data?.message || e.response?.data?.detail || e.message || 'Ошибка сохранения');
+      const data = e.response?.data;
+      const msg = data?.error?.message ?? data?.message ?? data?.detail ?? e.message ?? 'Ошибка сохранения';
+      setRolesFormError(msg);
+    } finally {
+      setRolesFormSaving(false);
     }
   };
 
@@ -159,14 +181,20 @@ const EmployeesPage = () => {
       .catch((e) => console.error(e));
   };
 
-  const handleSaveAccess = (access) => {
+  const handleSaveAccess = async (access) => {
     if (!accessEmployee) return;
-    updateEmployeeAccess(accessEmployee.id, access, null)
-      .then(() => {
-        setAccessEmployee(null);
-        setAccessData(null);
-      })
-      .catch((e) => console.error(e));
+    setAccessFormError(null);
+    setAccessFormSaving(true);
+    try {
+      await updateEmployeeAccess(accessEmployee.id, access, null);
+      setAccessEmployee(null);
+      setAccessData(null);
+    } catch (e) {
+      const d = e.response?.data;
+      setAccessFormError(d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка сохранения');
+    } finally {
+      setAccessFormSaving(false);
+    }
   };
 
   return (
@@ -265,16 +293,28 @@ const EmployeesPage = () => {
           employee={formEmployee}
           roles={rolesList}
           onSave={handleSaveEmployee}
-          onClose={() => setFormEmployee(null)}
+          onClose={() => { setFormEmployee(null); setEmployeesFormError(null); }}
+          error={employeesFormError}
+          saving={employeesFormSaving}
         />
       )}
-      {formRole && <RoleFormModal role={formRole} onSave={handleSaveRole} onClose={() => setFormRole(null)} />}
+      {formRole && (
+        <RoleFormModal
+          role={formRole}
+          onSave={handleSaveRole}
+          onClose={() => { setFormRole(null); setRolesFormError(null); }}
+          error={rolesFormError}
+          saving={rolesFormSaving}
+        />
+      )}
       {accessEmployee && (
         <AccessModal
           employee={accessEmployee}
           currentAccess={accessData}
           onSave={handleSaveAccess}
-          onClose={() => { setAccessEmployee(null); setAccessData(null); }}
+          onClose={() => { setAccessEmployee(null); setAccessData(null); setAccessFormError(null); }}
+          error={accessFormError}
+          saving={accessFormSaving}
         />
       )}
     </div>

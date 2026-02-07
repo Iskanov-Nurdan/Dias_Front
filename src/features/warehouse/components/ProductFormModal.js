@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Select } from '../../../shared/ui';
 import './ProductFormModal.scss';
 
-const ProductFormModal = ({ product, categories = [], onSave, onClose }) => {
+const ProductFormModal = ({ product, categories = [], onSave, onClose, error, saving }) => {
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [price, setPrice] = useState('');
@@ -36,13 +36,13 @@ const ProductFormModal = ({ product, categories = [], onSave, onClose }) => {
       qty: qty !== '' ? Number(qty) : undefined,
     };
     onSave(payload);
-    onClose();
   };
 
   const content = (
     <div className="warehouse-form-modal__backdrop" onClick={onClose}>
       <div className="warehouse-form-modal" onClick={(e) => e.stopPropagation()}>
         <h2 className="warehouse-form-modal__title">{product?.id ? 'Редактировать товар' : 'Добавить товар'}</h2>
+        {error && <p className="warehouse-form-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="warehouse-form-modal__form">
           <label className="warehouse-form-modal__label">
             <span className="warehouse-form-modal__label-caption">Название <span className="form-label-required" aria-hidden="true">*</span></span>
@@ -71,8 +71,8 @@ const ProductFormModal = ({ product, categories = [], onSave, onClose }) => {
             <input type="number" min="0" value={minQty} onChange={(e) => setMinQty(e.target.value)} className="warehouse-form-modal__input" placeholder="0" />
           </label>
           <div className="warehouse-form-modal__actions">
-            <button type="button" className="warehouse-form-modal__btn warehouse-form-modal__btn--cancel" onClick={onClose}>Отмена</button>
-            <button type="submit" className="warehouse-form-modal__btn warehouse-form-modal__btn--submit">Сохранить</button>
+            <button type="button" className="warehouse-form-modal__btn warehouse-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
+            <button type="submit" className="warehouse-form-modal__btn warehouse-form-modal__btn--submit" disabled={saving}>{saving ? 'Сохранение…' : 'Сохранить'}</button>
           </div>
         </form>
       </div>

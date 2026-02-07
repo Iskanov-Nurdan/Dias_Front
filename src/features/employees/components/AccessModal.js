@@ -14,7 +14,7 @@ const normalizeAccess = (raw) => {
   return PAGE_IDS.reduce((o, id) => ({ ...o, [id]: inner[id] === true }), {});
 };
 
-const AccessModal = ({ employee, currentAccess, onSave, onClose }) => {
+const AccessModal = ({ employee, currentAccess, onSave, onClose, error, saving }) => {
   const [access, setAccess] = useState({});
 
   useEffect(() => {
@@ -33,13 +33,13 @@ const AccessModal = ({ employee, currentAccess, onSave, onClose }) => {
     e.preventDefault();
     const payload = PAGE_IDS.reduce((o, id) => ({ ...o, [id]: access[id] === true }), {});
     onSave(payload);
-    onClose();
   };
 
   const content = (
     <div className="access-modal__backdrop" onClick={onClose}>
       <div className="access-modal" onClick={(e) => e.stopPropagation()}>
         <h2 className="access-modal__title">Доступы: {employee?.fio || employee?.login || ''}</h2>
+        {error && <p className="access-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="access-modal__form">
           <div className="access-modal__list">
             {PAGE_IDS.map((pageId) => (
@@ -54,11 +54,11 @@ const AccessModal = ({ employee, currentAccess, onSave, onClose }) => {
             ))}
           </div>
           <div className="access-modal__actions">
-            <button type="button" className="access-modal__btn access-modal__btn--cancel" onClick={onClose}>
+            <button type="button" className="access-modal__btn access-modal__btn--cancel" onClick={onClose} disabled={saving}>
               Отмена
             </button>
-            <button type="submit" className="access-modal__btn access-modal__btn--submit">
-              Сохранить
+            <button type="submit" className="access-modal__btn access-modal__btn--submit" disabled={saving}>
+              {saving ? 'Сохранение…' : 'Сохранить'}
             </button>
           </div>
         </form>

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Select } from '../../../shared/ui';
 import './EmployeeFormModal.scss';
 
-const EmployeeFormModal = ({ employee, roles, onSave, onClose }) => {
+const EmployeeFormModal = ({ employee, roles, onSave, onClose, error, saving }) => {
   const [fio, setFio] = useState('');
   const [login, setLogin] = useState('');
   const [phone, setPhone] = useState('');
@@ -31,13 +31,14 @@ const EmployeeFormModal = ({ employee, roles, onSave, onClose }) => {
     if (!isEdit && password) payload.password = password;
     if (isEdit && password) payload.password = password;
     onSave(payload);
-    onClose();
+    // Модалку закрывает родитель только при успехе; при ошибке остаёмся открытыми и показываем error
   };
 
   const content = (
     <div className="employee-form-modal__backdrop" onClick={onClose}>
       <div className="employee-form-modal" onClick={(e) => e.stopPropagation()}>
         <h2 className="employee-form-modal__title">{isEdit ? 'Редактировать сотрудника' : 'Добавить сотрудника'}</h2>
+        {error && <p className="employee-form-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="employee-form-modal__form">
           <label className="employee-form-modal__label">
             <span className="employee-form-modal__label-caption">ФИО <span className="form-label-required" aria-hidden="true">*</span></span>
@@ -66,11 +67,11 @@ const EmployeeFormModal = ({ employee, roles, onSave, onClose }) => {
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="employee-form-modal__input" required={!isEdit} placeholder={isEdit ? 'Оставьте пустым, чтобы не менять' : ''} />
           </label>
           <div className="employee-form-modal__actions">
-            <button type="button" className="employee-form-modal__btn employee-form-modal__btn--cancel" onClick={onClose}>
+            <button type="button" className="employee-form-modal__btn employee-form-modal__btn--cancel" onClick={onClose} disabled={saving}>
               Отмена
             </button>
-            <button type="submit" className="employee-form-modal__btn employee-form-modal__btn--submit">
-              Сохранить
+            <button type="submit" className="employee-form-modal__btn employee-form-modal__btn--submit" disabled={saving}>
+              {saving ? 'Сохранение…' : 'Сохранить'}
             </button>
           </div>
         </form>

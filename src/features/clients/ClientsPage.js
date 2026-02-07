@@ -17,6 +17,10 @@ const ClientsPage = () => {
   const [formClient, setFormClient] = useState(null);
   const [cardClient, setCardClient] = useState(null);
   const [extendClientObj, setExtendClientObj] = useState(null);
+  const [clientFormError, setClientFormError] = useState(null);
+  const [clientFormSaving, setClientFormSaving] = useState(false);
+  const [extendFormError, setExtendFormError] = useState(null);
+  const [extendFormSaving, setExtendFormSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const controllerRef = useRef(null);
   const lastRequestId = useRef(0);
@@ -51,13 +55,18 @@ const ClientsPage = () => {
   const items = data?.items ?? data?.results ?? data ?? [];
 
   const handleSaveClient = async (payload) => {
+    setClientFormError(null);
+    setClientFormSaving(true);
     try {
       if (formClient?.id) await updateClient(formClient.id, payload, null);
       else await createClient(payload, null);
       setFormClient(null);
       fetchSafe();
     } catch (e) {
-      console.error(e);
+      const d = e.response?.data;
+      setClientFormError(d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка сохранения');
+    } finally {
+      setClientFormSaving(false);
     }
   };
 
@@ -71,9 +80,20 @@ const ClientsPage = () => {
       .then((res) => setCardClient(res?.data ?? res))
       .catch(console.error);
 
-  const handleSaveExtend = (payload) => {
+  const handleSaveExtend = async (payload) => {
     if (!extendClientObj) return;
-    extendClient(extendClientObj.id, payload, null).then(() => { setExtendClientObj(null); fetchSafe(); }).catch(console.error);
+    setExtendFormError(null);
+    setExtendFormSaving(true);
+    try {
+      await extendClient(extendClientObj.id, payload, null);
+      setExtendClientObj(null);
+      fetchSafe();
+    } catch (e) {
+      const d = e.response?.data;
+      setExtendFormError(d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка');
+    } finally {
+      setExtendFormSaving(false);
+    }
   };
 
   return (
@@ -109,9 +129,27 @@ const ClientsPage = () => {
         </button>
       </div>
       <ClientsList items={items} loading={loading} error={error} onRetry={fetchSafe} onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())} onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())} onDetails={handleOpenCard} onExtend={setExtendClientObj} />
-      {formClient && <ClientFormModal client={formClient} sports={sports} fetchTrainers={fetchTrainers} onSave={handleSaveClient} onClose={() => setFormClient(null)} />}
+      {formClient && (
+        <ClientFormModal
+          client={formClient}
+          sports={sports}
+          fetchTrainers={fetchTrainers}
+          onSave={handleSaveClient}
+          onClose={() => { setFormClient(null); setClientFormError(null); }}
+          error={clientFormError}
+          saving={clientFormSaving}
+        />
+      )}
       {cardClient && <ClientCardModal client={cardClient} onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())} onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())} onClose={() => setCardClient(null)} />}
-      {extendClientObj && <ExtendModal client={extendClientObj} onSave={handleSaveExtend} onClose={() => setExtendClientObj(null)} />}
+      {extendClientObj && (
+        <ExtendModal
+          client={extendClientObj}
+          onSave={handleSaveExtend}
+          onClose={() => { setExtendClientObj(null); setExtendFormError(null); }}
+          error={extendFormError}
+          saving={extendFormSaving}
+        />
+      )}
       {confirmDelete && <ConfirmModal title="Удалить клиента?" message={confirmDelete.fio} confirmText="Удалить" onConfirm={handleDeleteClient} onCancel={() => setConfirmDelete(null)} danger />}
     </div>
   );

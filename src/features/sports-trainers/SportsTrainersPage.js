@@ -31,6 +31,10 @@ const SportsTrainersPage = () => {
   const [trainersError, setTrainersError] = useState(null);
   const [formSport, setFormSport] = useState(null);
   const [formTrainer, setFormTrainer] = useState(null);
+  const [sportFormError, setSportFormError] = useState(null);
+  const [sportFormSaving, setSportFormSaving] = useState(false);
+  const [trainerFormError, setTrainerFormError] = useState(null);
+  const [trainerFormSaving, setTrainerFormSaving] = useState(false);
   const [confirmDeleteSport, setConfirmDeleteSport] = useState(null);
   const [confirmDeleteTrainer, setConfirmDeleteTrainer] = useState(null);
   const controllerRef = useRef(null);
@@ -86,24 +90,34 @@ const SportsTrainersPage = () => {
   const trainersItems = trainersData?.items ?? trainersData?.results ?? trainersData ?? [];
 
   const handleSaveSport = async (payload) => {
+    setSportFormError(null);
+    setSportFormSaving(true);
     try {
       if (formSport?.id) await updateSport(formSport.id, payload, null);
       else await createSport(payload, null);
       setFormSport(null);
       fetchSportsSafe();
     } catch (e) {
-      console.error(e);
+      const d = e.response?.data;
+      setSportFormError(d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка сохранения');
+    } finally {
+      setSportFormSaving(false);
     }
   };
 
   const handleSaveTrainer = async (payload) => {
+    setTrainerFormError(null);
+    setTrainerFormSaving(true);
     try {
       if (formTrainer?.id) await updateTrainer(formTrainer.id, payload, null);
       else await createTrainer(payload, null);
       setFormTrainer(null);
       fetchTrainersSafe();
     } catch (e) {
-      console.error(e);
+      const d = e.response?.data;
+      setTrainerFormError(d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка сохранения');
+    } finally {
+      setTrainerFormSaving(false);
     }
   };
 
@@ -189,8 +203,25 @@ const SportsTrainersPage = () => {
       {activeTab === TAB_TRAINERS && (
         <TrainersList items={trainersItems} sports={sportsData} loading={trainersLoading} error={trainersError} onRetry={fetchTrainersSafe} onEdit={(t) => (isAdmin ? setFormTrainer(t) : showAccessDenied())} onDelete={(t) => (isAdmin ? setConfirmDeleteTrainer(t) : showAccessDenied())} confirmDelete={confirmDeleteTrainer} onConfirmDelete={handleDeleteTrainer} onCancelDelete={() => setConfirmDeleteTrainer(null)} />
       )}
-      {formSport && <SportFormModal sport={formSport} onSave={handleSaveSport} onClose={() => setFormSport(null)} />}
-      {formTrainer && <TrainerFormModal trainer={formTrainer} sports={sportsData} onSave={handleSaveTrainer} onClose={() => setFormTrainer(null)} />}
+      {formSport && (
+        <SportFormModal
+          sport={formSport}
+          onSave={handleSaveSport}
+          onClose={() => { setFormSport(null); setSportFormError(null); }}
+          error={sportFormError}
+          saving={sportFormSaving}
+        />
+      )}
+      {formTrainer && (
+        <TrainerFormModal
+          trainer={formTrainer}
+          sports={sportsData}
+          onSave={handleSaveTrainer}
+          onClose={() => { setFormTrainer(null); setTrainerFormError(null); }}
+          error={trainerFormError}
+          saving={trainerFormSaving}
+        />
+      )}
     </div>
   );
 };

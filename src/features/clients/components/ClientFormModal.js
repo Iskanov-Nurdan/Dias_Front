@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Select } from '../../../shared/ui';
 import './ClientFormModal.scss';
 
-const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose }) => {
+const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose, error, saving }) => {
   const [fio, setFio] = useState('');
   const [phone, setPhone] = useState('');
   const [sportId, setSportId] = useState('');
@@ -59,13 +59,13 @@ const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose }) => 
       gender: gender || undefined,
       comment: comment || undefined,
     });
-    onClose();
   };
 
   const content = (
     <div className="client-form-modal__backdrop" onClick={onClose}>
       <div className="client-form-modal" onClick={(e) => e.stopPropagation()}>
         <h2 className="client-form-modal__title">{client?.id ? 'Редактировать клиента' : 'Добавить клиента'}</h2>
+        {error && <p className="client-form-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="client-form-modal__form">
           <div className="client-form-modal__row">
             <label className="client-form-modal__label">
@@ -125,8 +125,8 @@ const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose }) => 
             <textarea value={comment} onChange={(e) => setComment(e.target.value)} className="client-form-modal__input" rows={2} placeholder="Необязательно" />
           </label>
           <div className="client-form-modal__actions">
-            <button type="button" className="client-form-modal__btn client-form-modal__btn--cancel" onClick={onClose}>Отмена</button>
-            <button type="submit" className="client-form-modal__btn client-form-modal__btn--submit">Сохранить</button>
+            <button type="button" className="client-form-modal__btn client-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
+            <button type="submit" className="client-form-modal__btn client-form-modal__btn--submit" disabled={saving}>{saving ? 'Сохранение…' : 'Сохранить'}</button>
           </div>
         </form>
       </div>

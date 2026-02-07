@@ -64,25 +64,18 @@ const AnalyticsPage = () => {
     setError(null);
     try {
       const q = queryState;
-      const [
-        summaryRes,
-        statusesRes,
-        bySportRes,
-        dailyRes,
-        trainersRes,
-        warehouseRes,
-        salesProductRes,
-        salesCategoryRes,
-      ] = await Promise.all([
+      const hasMonth = q.month != null && q.month !== '';
+      const promises = [
         fetchSummary(q, s).then((r) => r?.data ?? r),
         fetchClientStatuses(q, s).then((r) => r?.data ?? r),
         fetchClientsBySport(q, s).then((r) => r?.data ?? r),
-        fetchIncomeExpenseDaily(q, s).then((r) => r?.data ?? r),
+        hasMonth ? fetchIncomeExpenseDaily(q, s).then((r) => r?.data ?? r) : Promise.resolve({ items: [] }),
         fetchTopTrainers(q, s).then((r) => r?.data ?? r),
         fetchWarehouseRestocks(q, s).then((r) => r?.data ?? r),
         fetchSalesByProduct(q, s).then((r) => r?.data ?? r),
         fetchSalesByCategory(q, s).then((r) => r?.data ?? r),
-      ]);
+      ];
+      const [summaryRes, statusesRes, bySportRes, dailyRes, trainersRes, warehouseRes, salesProductRes, salesCategoryRes] = await Promise.all(promises);
       setSummary(summaryRes ?? {});
       setClientStatuses(statusesRes ?? {});
       setClientsBySport(bySportRes ?? {});
@@ -136,7 +129,7 @@ const AnalyticsPage = () => {
   const s = summary ?? {};
   const income = s.income ?? 0;
   const expense = s.expense ?? 0;
-  const profit = s.profit ?? (income - expense);
+  const profit = s.profit;
   const byType = clientStatuses?.byType ?? [];
   const byPaid = clientStatuses?.byPaid ?? [];
   const paidCount = s.paidCount ?? byPaid.find((b) => b.paid)?.count ?? null;
@@ -285,7 +278,9 @@ const AnalyticsPage = () => {
           <section className="analytics-page__section">
             <h3 className="analytics-page__section-title">Динамика доходов и расходов (дни месяца)</h3>
             <div className="analytics-page__chart-wrap">
-              {chartData.length > 0 ? (
+              {!queryState.month ? (
+                <p className="analytics-page__empty">Выберите месяц для графика по дням</p>
+              ) : chartData.length > 0 ? (
                 <>
                   <div className="analytics-page__chart-legend">
                     <span className="analytics-page__chart-legend-item analytics-page__chart-legend-item--income">Приход</span>
@@ -423,26 +418,14 @@ const AnalyticsPage = () => {
             {!detailLoading && detailModal === 'income' && (() => {
               const incomeItems = detailData?.items ?? detailData?.records ?? detailData?.incomeItems ?? [];
               const hasItems = Array.isArray(incomeItems) && incomeItems.length > 0;
-              const totalFromApi = detailData?.total ?? detailData?.incomeTotal ?? income;
-              const salesRevenue = Number(salesByProduct?.totalRevenue ?? salesByCategory?.totalRevenue ?? 0) || 0;
-              const hasSalesFallback = !hasItems && (Number(income) > 0 || salesRevenue > 0);
-              let fallbackItems = productItems.length > 0
-                ? productItems.map((x) => ({ sourceLabel: 'Продажи', description: x.productName ?? '—', amount: x.revenue ?? 0 }))
-                : salesRevenue > 0 ? [{ sourceLabel: 'Продажи', description: 'Выручка за период', amount: salesRevenue }] : [];
-              const otherIncome = Number(income) > 0 && Number(income) > salesRevenue ? Number(income) - salesRevenue : 0;
-              if (hasSalesFallback && otherIncome > 0) {
-                fallbackItems = [...fallbackItems, { sourceLabel: 'Клиенты', description: 'Оплаты при добавлении клиентов', amount: otherIncome }];
-              }
-              const displayItems = hasItems ? incomeItems : fallbackItems;
-              const displayTotal = hasItems ? totalFromApi : (Number(income) > 0 ? income : salesRevenue);
-              if (displayItems.length > 0) {
+              const totalFromApi = detailData?.total ?? detailData?.incomeTotal;
+              if (hasItems) {
                 return (
                   <>
-                    {hasSalesFallback && <p className="analytics-page__modal-note">Детализация по продажам за период</p>}
                     <table className="analytics-page__table">
                       <thead><tr><th>Источник</th><th>Описание</th><th>Сумма</th></tr></thead>
                       <tbody>
-                        {displayItems.map((row, i) => (
+                        {incomeItems.map((row, i) => (
                           <tr key={i}>
                             <td>{row.sourceLabel ?? (row.source === 'clients' ? 'Клиенты' : row.source === 'sales' ? 'Продажи' : row.source) ?? '—'}</td>
                             <td>{row.description ?? '—'}</td>
@@ -451,7 +434,7 @@ const AnalyticsPage = () => {
                         ))}
                       </tbody>
                     </table>
-                    <p className="analytics-page__modal-total">Итого приход: {formatMoney(displayTotal)}</p>
+                    <p className="analytics-page__modal-total">Итого приход: {formatMoney(totalFromApi)}</p>
                   </>
                 );
               }
@@ -459,29 +442,21 @@ const AnalyticsPage = () => {
                 <p className="analytics-page__modal-empty">
                   Нет записей за период.
                   {income != null && Number(income) > 0 && (
-                    <span className="analytics-page__modal-summary"> Приход за месяц по сводке: <strong>{formatMoney(income)}</strong></span>
+                    <span className="analytics-page__modal-summary"> Приход по сводке: <strong>{formatMoney(income)}</strong></span>
                   )}
                 </p>
               );
             })()}
             {!detailLoading && detailModal === 'expense' && (() => {
               const baseItems = detailData?.items ?? [];
-              // Только сохранённые: в детализацию не попадают расходы/зарплата с saved: false (кнопка «Сохранить» не нажата).
               const isRowSaved = (r) => {
                 const saved = r.saved ?? r.is_saved;
                 if (saved === false || saved === 'false') return false;
                 return saved === true || saved === 'true';
               };
               const savedOnly = baseItems.filter(isRowSaved);
-              // Зарплата уже в items с бэкенда (expense-detail), дублировать из fetchSalary не нужно — убираем дубликаты.
-              const hasRestockInItems = savedOnly.some((r) => { const cat = (r.categoryName || '').toLowerCase(); const name = (r.name || '').toLowerCase(); return cat.includes('склад') || name.includes('пополнен') || name.includes('добавлен'); });
-              const restockSum = restocksPayload.totalRestockSum != null && restocksPayload.totalRestockSum > 0 ? restocksPayload.totalRestockSum : 0;
-              const addRestockRow = !hasRestockInItems && restockSum > 0;
-              const expenseItems = [
-                ...savedOnly,
-                ...(addRestockRow ? [{ categoryName: 'Склад', name: 'Пополнение товара', date: '—', amount: restockSum }] : []),
-              ];
-              const expenseTotal = (Number(detailData?.total) ?? 0) + (addRestockRow ? restockSum : 0);
+              const expenseItems = savedOnly;
+              const expenseTotal = Number(detailData?.total) ?? 0;
               if (expenseItems.length === 0) return <p>Нет записей за период</p>;
               return (
                 <>

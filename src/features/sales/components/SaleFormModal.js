@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Select } from '../../../shared/ui';
 import './SaleFormModal.scss';
 
-const SaleFormModal = ({ products = [], onSave, onClose }) => {
+const SaleFormModal = ({ products = [], onSave, onClose, error, saving }) => {
   const [productId, setProductId] = useState('');
   const [qty, setQty] = useState('');
   const [pricePerUnit, setPricePerUnit] = useState('');
@@ -33,13 +33,13 @@ const SaleFormModal = ({ products = [], onSave, onClose }) => {
       date: date || undefined,
     };
     onSave(payload);
-    onClose();
   };
 
   const content = (
     <div className="sale-form-modal__backdrop" onClick={onClose}>
       <div className="sale-form-modal" onClick={(e) => e.stopPropagation()}>
         <h2 className="sale-form-modal__title">Новая продажа</h2>
+        {error && <p className="sale-form-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="sale-form-modal__form">
           <label className="sale-form-modal__label">
             <span className="sale-form-modal__label-caption">Товар</span>
@@ -68,8 +68,8 @@ const SaleFormModal = ({ products = [], onSave, onClose }) => {
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="sale-form-modal__input" />
           </label>
           <div className="sale-form-modal__actions">
-            <button type="button" className="sale-form-modal__btn sale-form-modal__btn--cancel" onClick={onClose}>Отмена</button>
-            <button type="submit" className="sale-form-modal__btn sale-form-modal__btn--submit">Оформить</button>
+            <button type="button" className="sale-form-modal__btn sale-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
+            <button type="submit" className="sale-form-modal__btn sale-form-modal__btn--submit" disabled={saving}>{saving ? 'Оформление…' : 'Оформить'}</button>
           </div>
         </form>
       </div>

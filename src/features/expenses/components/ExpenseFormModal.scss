@@ -1,6 +1,7 @@
 .expense-form-modal__backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
 .expense-form-modal { background: var(--color-bg-card); border-radius: 12px; padding: 24px; max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15); }
 .expense-form-modal__title { margin: 0 0 20px; font-size: 18px; }
+.expense-form-modal__error { margin: 0 0 16px; padding: 10px 12px; background: rgba(220, 38, 38, 0.1); border: 1px solid #dc2626; border-radius: 8px; color: #b91c1c; font-size: 14px; }
 .expense-form-modal__form { display: flex; flex-direction: column; gap: 12px; }
 .expense-form-modal__label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
 .expense-form-modal__label-caption { display: block; }

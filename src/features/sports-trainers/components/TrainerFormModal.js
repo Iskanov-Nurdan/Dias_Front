@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import './TrainerFormModal.scss';
 
-const TrainerFormModal = ({ trainer, sports, onSave, onClose }) => {
+const TrainerFormModal = ({ trainer, sports, onSave, onClose, error, saving }) => {
   const [fio, setFio] = useState('');
   const [sportIds, setSportIds] = useState([]);
   useEffect(() => {
@@ -20,13 +20,13 @@ const TrainerFormModal = ({ trainer, sports, onSave, onClose }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     onSave({ fio, sportIds });
-    onClose();
   };
 
   const content = (
     <div className="trainer-form-modal__backdrop" onClick={onClose}>
       <div className="trainer-form-modal" onClick={(e) => e.stopPropagation()}>
         <h2 className="trainer-form-modal__title">{trainer?.id ? 'Редактировать тренера' : 'Добавить тренера'}</h2>
+        {error && <p className="trainer-form-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="trainer-form-modal__form">
           <label className="trainer-form-modal__label">
             <span className="trainer-form-modal__label-caption">ФИО <span className="form-label-required" aria-hidden="true">*</span></span>
@@ -44,8 +44,8 @@ const TrainerFormModal = ({ trainer, sports, onSave, onClose }) => {
             </div>
           </div>
           <div className="trainer-form-modal__actions">
-            <button type="button" className="trainer-form-modal__btn trainer-form-modal__btn--cancel" onClick={onClose}>Отмена</button>
-            <button type="submit" className="trainer-form-modal__btn trainer-form-modal__btn--submit">Сохранить</button>
+            <button type="button" className="trainer-form-modal__btn trainer-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
+            <button type="submit" className="trainer-form-modal__btn trainer-form-modal__btn--submit" disabled={saving}>{saving ? 'Сохранение…' : 'Сохранить'}</button>
           </div>
         </form>
       </div>

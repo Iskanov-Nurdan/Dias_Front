@@ -19,6 +19,10 @@ const ExpensesPage = () => {
   const [expensesError, setExpensesError] = useState(null);
   const [formCategory, setFormCategory] = useState(null);
   const [formExpense, setFormExpense] = useState(null);
+  const [categoryFormError, setCategoryFormError] = useState(null);
+  const [categoryFormSaving, setCategoryFormSaving] = useState(false);
+  const [expenseFormError, setExpenseFormError] = useState(null);
+  const [expenseFormSaving, setExpenseFormSaving] = useState(false);
   const [confirmDeleteCategory, setConfirmDeleteCategory] = useState(null);
   const [confirmDeleteExpense, setConfirmDeleteExpense] = useState(null);
   const categoriesControllerRef = useRef(null);
@@ -81,24 +85,34 @@ const ExpensesPage = () => {
   };
 
   const handleSaveCategory = async (payload) => {
+    setCategoryFormError(null);
+    setCategoryFormSaving(true);
     try {
       if (formCategory?.id) await updateExpenseCategory(formCategory.id, payload, null);
       else await createExpenseCategory(payload, null);
       setFormCategory(null);
       fetchCategoriesSafe();
     } catch (e) {
-      console.error(e);
+      const data = e.response?.data;
+      setCategoryFormError(data?.error?.message ?? data?.message ?? data?.detail ?? 'Ошибка сохранения');
+    } finally {
+      setCategoryFormSaving(false);
     }
   };
 
   const handleSaveExpenseForm = async (payload) => {
+    setExpenseFormError(null);
+    setExpenseFormSaving(true);
     try {
       if (formExpense?.id) await updateExpense(formExpense.id, payload, null);
       else await createExpense(payload, null);
       setFormExpense(null);
       fetchExpensesSafe();
     } catch (e) {
-      console.error(e);
+      const data = e.response?.data;
+      setExpenseFormError(data?.error?.message ?? data?.message ?? data?.detail ?? 'Ошибка сохранения');
+    } finally {
+      setExpenseFormSaving(false);
     }
   };
 
@@ -195,7 +209,9 @@ const ExpensesPage = () => {
         <ExpenseCategoryFormModal
           category={formCategory?.id ? categoriesList.find((c) => c.id === formCategory.id) ?? formCategory : null}
           onSave={handleSaveCategory}
-          onClose={() => setFormCategory(null)}
+          onClose={() => { setFormCategory(null); setCategoryFormError(null); }}
+          error={categoryFormError}
+          saving={categoryFormSaving}
         />
       )}
       {formExpense !== null && (
@@ -203,7 +219,9 @@ const ExpensesPage = () => {
           expense={formExpense?.id ? expensesItems.find((e) => e.id === formExpense.id) ?? formExpense : formExpense}
           categories={categoriesList}
           onSave={handleSaveExpenseForm}
-          onClose={() => setFormExpense(null)}
+          onClose={() => { setFormExpense(null); setExpenseFormError(null); }}
+          error={expenseFormError}
+          saving={expenseFormSaving}
         />
       )}
       {confirmDeleteCategory !== null && (

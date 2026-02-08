@@ -1,9 +1,13 @@
 import axios from 'axios';
 
-const API_BASE =
-  process.env.NODE_ENV === 'production'
-    ? '/api'
-    : 'http://127.0.0.1:8000/api';
+// --- Выбор API: меняй когда нужно ---
+// true  = запросы на локальный бэкенд (127.0.0.1:8000)
+// false = запросы на бэкенд по домену (rahmanata.tw1.su)
+const USE_LOCAL_API = false;
+
+const API_BASE = USE_LOCAL_API
+  ? 'http://127.0.0.1:8000/api'
+  : 'http://rahmanata.tw1.su/api';
 
 export const apiClient = axios.create({
   baseURL: API_BASE,

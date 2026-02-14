@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../providers/AuthProvider';
-import { PAGE_IDS, PAGE_LABELS, PAGE_ROUTES } from '../../shared/constants/pages';
+import { PAGE_IDS, PAGE_LABELS, PAGE_ROUTES, PAGE_GROUPS } from '../../shared/constants/pages';
 import './MainLayout.scss';
 
 const SIDEBAR_STORAGE_KEY = 'mainLayout_sidebarCollapsed';
@@ -137,6 +137,11 @@ const MainLayout = () => {
   const toggleSidebar = () => setSidebarCollapsed((prev) => !prev);
 
   const visiblePages = PAGE_IDS.filter((id) => hasAccess(id));
+  const visibleSet = new Set(visiblePages);
+  const navGroups = Object.entries(PAGE_GROUPS).map(([groupLabel, pageIds]) => ({
+    label: groupLabel,
+    pages: pageIds.filter((id) => visibleSet.has(id)),
+  })).filter((g) => g.pages.length > 0);
 
   return (
     <div className={`main-layout ${sidebarCollapsed ? 'main-layout--sidebar-collapsed' : ''}`}>
@@ -169,24 +174,29 @@ const MainLayout = () => {
       </header>
       <aside className="main-layout__sidebar">
         <nav className="main-layout__nav">
-          {visiblePages.map((pageId) => {
-            const path = PAGE_ROUTES[pageId];
-            const isActive = location.pathname === path;
-            const Label = PAGE_LABELS[pageId] || pageId;
-            const Icon = PAGE_ICONS[pageId];
-            return (
-              <button
-                key={pageId}
-                type="button"
-                className={`main-layout__nav-item ${isActive ? 'main-layout__nav-item--active' : ''}`}
-                onClick={() => navigate(path)}
-                title={Label}
-              >
-                {Icon && <span className="main-layout__nav-icon" aria-hidden><Icon /></span>}
-                <span className="main-layout__nav-label">{Label}</span>
-              </button>
-            );
-          })}
+          {navGroups.map((group) => (
+            <div key={group.label} className="main-layout__nav-group">
+              {!sidebarCollapsed && <span className="main-layout__nav-group-label">{group.label}</span>}
+              {group.pages.map((pageId) => {
+                const path = PAGE_ROUTES[pageId];
+                const isActive = location.pathname === path;
+                const Label = PAGE_LABELS[pageId] || pageId;
+                const Icon = PAGE_ICONS[pageId];
+                return (
+                  <button
+                    key={pageId}
+                    type="button"
+                    className={`main-layout__nav-item ${isActive ? 'main-layout__nav-item--active' : ''}`}
+                    onClick={() => navigate(path)}
+                    title={Label}
+                  >
+                    {Icon && <span className="main-layout__nav-icon" aria-hidden><Icon /></span>}
+                    <span className="main-layout__nav-label">{Label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </nav>
       </aside>
       <main className="main-layout__content">

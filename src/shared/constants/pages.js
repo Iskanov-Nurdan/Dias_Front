@@ -30,3 +30,11 @@ export const PAGE_ROUTES = {
   expenses: '/expenses',
   salary: '/salary',
 };
+
+/** Группы пунктов меню: ключ группы → массив pageId */
+export const PAGE_GROUPS = {
+  'Аналитика': ['analytics'],
+  'Люди': ['employees', 'sports-trainers', 'clients'],
+  'Склад': ['warehouse'],
+  'Финансы': ['sales', 'expenses', 'salary'],
+};

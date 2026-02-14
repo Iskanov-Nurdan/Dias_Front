@@ -19,4 +19,21 @@
     text-align: center;
     max-width: 320px;
   }
+
+  &__action {
+    margin-top: 8px;
+    padding: 10px 20px;
+    background: var(--color-primary);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+  }
+
+  &__action:hover {
+    background: var(--color-primary-hover);
+  }
 }

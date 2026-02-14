@@ -1,3 +1,9 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow:
+Allow: /
+
+# Закрыть от индексации служебные/API пути, если они отдаются с того же домена
+Disallow: /api/
+
+# Укажите свой домен после деплоя, например:
+# Sitemap: https://your-domain.com/sitemap.xml

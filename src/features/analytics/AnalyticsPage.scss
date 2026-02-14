@@ -126,14 +126,30 @@
   background: var(--color-primary-light);
 }
 
-// ——— Загрузка ———
+// ——— Загрузка (скелетоны) ———
 .analytics-page__loading-block {
-  padding: 56px 24px;
-  text-align: center;
+  padding: 24px 0;
+  background: transparent;
+}
+
+.analytics-page__skeleton-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.analytics-page__skeleton-card {
+  height: 120px;
+  border-radius: var(--radius-lg);
+}
+
+.analytics-page__skeleton-table-wrap {
   background: var(--color-bg-card);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
-  color: var(--color-text-muted);
+  padding: 16px;
+  overflow: hidden;
 }
 
 // ——— Hero: основные KPI (3 большие карточки) ———

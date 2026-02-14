@@ -12,6 +12,8 @@ import {
   deleteRole,
 } from './api';
 import { useAuth } from '../../app/providers/AuthProvider';
+import { useToast } from '../../app/providers/ToastProvider';
+import { useDebounce } from '../../shared/hooks/useDebounce';
 import { Select } from '../../shared/ui';
 import { EmployeesList, RolesList, EmployeeFormModal, RoleFormModal, AccessModal } from './components';
 import './EmployeesPage.scss';
@@ -21,7 +23,10 @@ const TAB_ROLES = 'roles';
 
 const EmployeesPage = () => {
   const { isAdmin, showAccessDenied } = useAuth();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState(TAB_EMPLOYEES);
+  const [searchInput, setSearchInput] = useState('');
+  const debouncedSearch = useDebounce(searchInput);
   const [queryState, setQueryState] = useState({ search: '', roleId: '', page: 1, perPage: 20 });
   const [roleSearch, setRoleSearch] = useState('');
   const [employeesData, setEmployeesData] = useState(null);
@@ -84,6 +89,10 @@ const EmployeesPage = () => {
   }, [roleSearch]);
 
   useEffect(() => {
+    setQueryState((q) => ({ ...q, search: debouncedSearch, page: 1 }));
+  }, [debouncedSearch]);
+
+  useEffect(() => {
     if (activeTab === TAB_EMPLOYEES) fetchEmployeesSafe();
     return () => { if (employeesControllerRef.current) employeesControllerRef.current.abort(); };
   }, [activeTab, fetchEmployeesSafe]);
@@ -102,7 +111,6 @@ const EmployeesPage = () => {
 
   const roleOptions = [{ value: '', label: 'Все роли' }, ...rolesList.map((r) => ({ value: String(r.id), label: r.name || '' }))];
 
-  const handleSearch = (v) => setQueryState((q) => ({ ...q, search: v, page: 1 }));
   const handleRoleFilter = (v) => setQueryState((q) => ({ ...q, roleId: v, page: 1 }));
 
   const handleSaveEmployee = async (payload) => {
@@ -116,6 +124,7 @@ const EmployeesPage = () => {
       }
       setFormEmployee(null);
       fetchEmployeesSafe();
+      toast.success(formEmployee?.id ? 'Сотрудник обновлён' : 'Сотрудник добавлен');
     } catch (e) {
       const data = e.response?.data;
       const err = data?.error;
@@ -125,6 +134,7 @@ const EmployeesPage = () => {
         : null;
       const text = msg || (fields ? Object.entries(fields).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join('; ') : 'Ошибка сохранения');
       setEmployeesFormError(text);
+      toast.error(text);
     } finally {
       setEmployeesFormSaving(false);
     }
@@ -156,8 +166,12 @@ const EmployeesPage = () => {
       .then(() => {
         setConfirmDeleteEmployee(null);
         fetchEmployeesSafe();
+        toast.success('Сотрудник удалён');
       })
-      .catch((e) => console.error(e));
+      .catch((e) => {
+        toast.error(e.response?.data?.message || e.message || 'Ошибка удаления');
+        console.error(e);
+      });
   };
 
   const handleDeleteRole = () => {
@@ -167,10 +181,12 @@ const EmployeesPage = () => {
       .then(() => {
         setConfirmDeleteRole(null);
         fetchRolesSafe();
+        toast.success('Роль удалена');
       })
       .catch((e) => {
         const msg = e.response?.data?.error?.message || e.response?.data?.message || e.response?.data?.detail || e.message || 'Ошибка удаления';
         setRolesError(msg);
+        toast.error(msg);
       });
   };
 
@@ -223,8 +239,8 @@ const EmployeesPage = () => {
             <input
               type="text"
               placeholder="Поиск (ФИО, логин, телефон)"
-              value={queryState.search}
-              onChange={(e) => handleSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="employees-page__search"
             />
             <Select
@@ -253,6 +269,8 @@ const EmployeesPage = () => {
           confirmDelete={confirmDeleteEmployee}
           onConfirmDelete={handleDeleteEmployee}
           onCancelDelete={() => setConfirmDeleteEmployee(null)}
+          emptyStateActionLabel="Добавить сотрудника"
+          emptyStateOnAction={() => setFormEmployee({})}
         />
       )}
 

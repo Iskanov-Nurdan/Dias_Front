@@ -3,12 +3,18 @@ import { fetchClients, fetchClient, createClient, updateClient, deleteClient, ex
 import { fetchSports } from '../sports-trainers/api';
 import { fetchTrainers } from '../sports-trainers/api';
 import { useAuth } from '../../app/providers/AuthProvider';
+import { useToast } from '../../app/providers/ToastProvider';
+import { useDebounce } from '../../shared/hooks/useDebounce';
+import { SEARCH_DEBOUNCE_MS } from '../../shared/constants/common';
 import { Select, ConfirmModal } from '../../shared/ui';
 import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal } from './components';
 import './ClientsPage.scss';
 
 const ClientsPage = () => {
   const { isAdmin, showAccessDenied } = useAuth();
+  const toast = useToast();
+  const [searchInput, setSearchInput] = useState('');
+  const debouncedSearch = useDebounce(searchInput, SEARCH_DEBOUNCE_MS);
   const [queryState, setQueryState] = useState({ search: '', sportId: '', paid: '', clientType: '', page: 1, perPage: 20 });
   const [data, setData] = useState(null);
   const [sports, setSports] = useState([]);
@@ -44,6 +50,10 @@ const ClientsPage = () => {
   }, [queryState]);
 
   useEffect(() => {
+    setQueryState((q) => (q.search === debouncedSearch ? q : { ...q, search: debouncedSearch, page: 1 }));
+  }, [debouncedSearch]);
+
+  useEffect(() => {
     fetchSafe();
     return () => controllerRef.current?.abort();
   }, [fetchSafe]);
@@ -62,9 +72,12 @@ const ClientsPage = () => {
       else await createClient(payload, null);
       setFormClient(null);
       fetchSafe();
+      toast.success(formClient?.id ? 'Клиент сохранён' : 'Клиент добавлен');
     } catch (e) {
       const d = e.response?.data;
-      setClientFormError(d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка сохранения');
+      const msg = d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка сохранения';
+      setClientFormError(msg);
+      toast.error(msg);
     } finally {
       setClientFormSaving(false);
     }
@@ -72,7 +85,16 @@ const ClientsPage = () => {
 
   const handleDeleteClient = () => {
     if (!confirmDelete) return;
-    deleteClient(confirmDelete.id, null).then(() => { setConfirmDelete(null); fetchSafe(); }).catch(console.error);
+    deleteClient(confirmDelete.id, null)
+      .then(() => {
+        setConfirmDelete(null);
+        fetchSafe();
+        toast.success('Клиент удалён');
+      })
+      .catch((e) => {
+        const msg = e.response?.data?.message ?? e.response?.data?.detail ?? e.message ?? 'Ошибка удаления';
+        toast.error(msg);
+      });
   };
 
   const handleOpenCard = (c) =>
@@ -88,9 +110,12 @@ const ClientsPage = () => {
       await extendClient(extendClientObj.id, payload, null);
       setExtendClientObj(null);
       fetchSafe();
+      toast.success('Абонемент продлён');
     } catch (e) {
       const d = e.response?.data;
-      setExtendFormError(d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка');
+      const msg = d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка';
+      setExtendFormError(msg);
+      toast.error(msg);
     } finally {
       setExtendFormSaving(false);
     }
@@ -101,7 +126,7 @@ const ClientsPage = () => {
       <h1 className="clients-page__title">Клиенты</h1>
       <div className="clients-page__toolbar">
         <div className="clients-page__filters">
-          <input type="text" placeholder="Поиск (ФИО, телефон)" value={queryState.search} onChange={(e) => setQueryState((q) => ({ ...q, search: e.target.value, page: 1 }))} className="clients-page__search" />
+          <input type="text" placeholder="Поиск (ФИО, телефон)" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="clients-page__search" />
           <Select
             value={queryState.sportId}
             onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))}

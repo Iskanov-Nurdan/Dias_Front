@@ -10,10 +10,15 @@ const IconEmpty = () => (
   </svg>
 );
 
-const EmptyState = ({ message = 'Нет данных' }) => (
+const EmptyState = ({ message = 'Нет данных', actionLabel, onAction }) => (
   <div className="empty-state">
     <span className="empty-state__icon" aria-hidden><IconEmpty /></span>
     <p className="empty-state__message">{message}</p>
+    {actionLabel && onAction && (
+      <button type="button" className="empty-state__action" onClick={onAction}>
+        {actionLabel}
+      </button>
+    )}
   </div>
 );
 

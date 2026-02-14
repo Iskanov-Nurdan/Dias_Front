@@ -1,96 +1,13 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  fetchSummary,
-  fetchClientStatuses,
-  fetchClientsBySport,
-  fetchIncomeExpenseDaily,
-  fetchTopTrainers,
-  fetchWarehouseRestocks,
-  fetchSalesByProduct,
-  fetchSalesByCategory,
-  fetchIncomeDetail,
-  fetchExpenseDetail,
-  fetchProfitDetail,
-} from './api';
+import React, { useState, useEffect, useMemo } from 'react';
+import { fetchIncomeDetail, fetchExpenseDetail, fetchProfitDetail } from './api';
 import { fetchSalary } from '../salary/api';
-import { ErrorState, Select } from '../../shared/ui';
+import { ErrorState, Select, DonutChart, Sparkline, Skeleton, SkeletonTable } from '../../shared/ui';
+import { MONTHS, DONUT_COLORS } from '../../shared/constants/common';
+import { useAnalyticsFilters } from './hooks/useAnalyticsFilters';
+import { useAnalyticsData } from './hooks/useAnalyticsData';
 import './AnalyticsPage.scss';
 
-const MONTHS = ['', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-
 const formatMoney = (v) => (v != null && !Number.isNaN(Number(v)) ? `${Number(v).toLocaleString('ru-RU')} Р` : '—');
-
-const DONUT_COLORS = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#0891b2', '#dc2626', '#4f46e5', '#0d9488'];
-
-// Донат-диаграмма: data = [{ label, value, color? }]
-const DonutChart = ({ data, size = 180, strokeWidth = 22, centerLabel = '' }) => {
-  const total = data.reduce((s, d) => s + (Number(d.value) || 0), 0);
-  if (total === 0) return <div className="analytics-donut analytics-donut--empty">Нет данных</div>;
-  const r = (size - strokeWidth) / 2;
-  const cx = size / 2;
-  const cy = size / 2;
-  const circumference = 2 * Math.PI * r;
-  let offset = 0;
-  const segments = data.filter((d) => Number(d.value) > 0).map((d, i) => {
-    const pct = Number(d.value) / total;
-    const dash = circumference * pct;
-    const seg = { color: d.color || DONUT_COLORS[i % DONUT_COLORS.length], dash, offset };
-    offset += dash;
-    return seg;
-  });
-  return (
-    <div className="analytics-donut" style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="analytics-donut__svg">
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--color-bg)" strokeWidth={strokeWidth} />
-        {segments.map((seg, i) => (
-          <circle
-            key={i}
-            cx={cx}
-            cy={cy}
-            r={r}
-            fill="none"
-            stroke={seg.color}
-            strokeWidth={strokeWidth}
-            strokeDasharray={`${seg.dash} ${circumference}`}
-            strokeDashoffset={-seg.offset}
-            strokeLinecap="round"
-            transform={`rotate(-90 ${cx} ${cy})`}
-          />
-        ))}
-      </svg>
-      <span className="analytics-donut__center">{centerLabel}</span>
-    </div>
-  );
-};
-
-// Мини-линия по массиву чисел
-const Sparkline = ({ values, width = 140, height = 44, color = '#2563eb' }) => {
-  const arr = Array.isArray(values) ? values.filter((v) => typeof v === 'number' && !Number.isNaN(v)) : [];
-  if (arr.length < 2) return null;
-  const min = Math.min(...arr);
-  const max = Math.max(...arr);
-  const range = max - min || 1;
-  const padding = 4;
-  const w = width - padding * 2;
-  const h = height - padding * 2;
-  const points = arr.map((v, i) => {
-    const x = padding + (i / (arr.length - 1)) * w;
-    const y = padding + h - ((v - min) / range) * h;
-    return `${x},${y}`;
-  }).join(' ');
-  return (
-    <svg width={width} height={height} className="analytics-sparkline" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-      <defs>
-        <linearGradient id={`spark-fill-${color.replace(/[^a-z0-9]/gi, '')}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.35" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon points={`${padding},${height - padding} ${points} ${width - padding},${height - padding}`} fill={`url(#spark-fill-${(color || '').replace(/[^a-z0-9]/gi, '')})`} />
-      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-};
 
 // expense-detail: для складских строк бэк передаёт type "add" | "restock"; у остальных type нет
 const getExpenseName = (row) => {
@@ -110,64 +27,25 @@ const now = new Date();
 const defaultQuery = { year: now.getFullYear(), month: now.getMonth() + 1, day: '' };
 
 const AnalyticsPage = () => {
-  const [queryState, setQueryState] = useState(defaultQuery);
-  const [summary, setSummary] = useState(null);
-  const [clientStatuses, setClientStatuses] = useState(null);
-  const [clientsBySport, setClientsBySport] = useState(null);
-  const [incomeExpenseDaily, setIncomeExpenseDaily] = useState(null);
-  const [topTrainers, setTopTrainers] = useState(null);
-  const [warehouseRestocks, setWarehouseRestocks] = useState(null);
-  const [salesByProduct, setSalesByProduct] = useState(null);
-  const [salesByCategory, setSalesByCategory] = useState(null);
+  const [queryState, setQueryState, resetFilters] = useAnalyticsFilters(defaultQuery);
+  const {
+    summary,
+    clientStatuses,
+    clientsBySport,
+    incomeExpenseDaily,
+    topTrainers,
+    warehouseRestocks,
+    salesByProduct,
+    salesByCategory,
+    loading,
+    error,
+    loadAll,
+  } = useAnalyticsData(queryState);
   const [salesTab, setSalesTab] = useState('product');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [detailModal, setDetailModal] = useState(null);
   const [detailData, setDetailData] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [statusModal, setStatusModal] = useState(null);
-  const controllerRef = useRef(null);
-
-  const loadAll = useCallback(async () => {
-    controllerRef.current?.abort();
-    controllerRef.current = new AbortController();
-    const s = controllerRef.current.signal;
-    setLoading(true);
-    setError(null);
-    try {
-      const q = queryState;
-      const hasMonth = q.month != null && q.month !== '';
-      const promises = [
-        fetchSummary(q, s).then((r) => r?.data ?? r),
-        fetchClientStatuses(q, s).then((r) => r?.data ?? r),
-        fetchClientsBySport(q, s).then((r) => r?.data ?? r),
-        hasMonth ? fetchIncomeExpenseDaily(q, s).then((r) => r?.data ?? r) : Promise.resolve({ items: [] }),
-        fetchTopTrainers(q, s).then((r) => r?.data ?? r),
-        fetchWarehouseRestocks(q, s).then((r) => r?.data ?? r),
-        fetchSalesByProduct(q, s).then((r) => r?.data ?? r),
-        fetchSalesByCategory(q, s).then((r) => r?.data ?? r),
-      ];
-      const [summaryRes, statusesRes, bySportRes, dailyRes, trainersRes, warehouseRes, salesProductRes, salesCategoryRes] = await Promise.all(promises);
-      setSummary(summaryRes ?? {});
-      setClientStatuses(statusesRes ?? {});
-      setClientsBySport(bySportRes ?? {});
-      setIncomeExpenseDaily(dailyRes ?? {});
-      setTopTrainers(trainersRes ?? {});
-      setWarehouseRestocks(warehouseRes ?? {});
-      setSalesByProduct(salesProductRes ?? {});
-      setSalesByCategory(salesCategoryRes ?? {});
-    } catch (err) {
-      if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
-      setError(err.response?.data?.message || err.response?.data?.detail || 'Ошибка загрузки');
-    } finally {
-      setLoading(false);
-    }
-  }, [queryState.year, queryState.month, queryState.day]);
-
-  useEffect(() => {
-    loadAll();
-    return () => controllerRef.current?.abort();
-  }, [loadAll]);
 
   useEffect(() => {
     if (!detailModal) {
@@ -196,8 +74,6 @@ const AnalyticsPage = () => {
       .finally(() => setDetailLoading(false));
   }, [detailModal, queryState.year, queryState.month, queryState.day]);
 
-  const resetFilters = () => setQueryState(defaultQuery);
-
   const s = summary ?? {};
   const income = s.income ?? 0;
   const expense = s.expense ?? 0;
@@ -207,15 +83,18 @@ const AnalyticsPage = () => {
   const paidCount = s.paidCount ?? byPaid.find((b) => b.paid)?.count ?? null;
   const sportItems = clientsBySport?.items ?? [];
   const dailyItems = incomeExpenseDaily?.items ?? [];
-  const daysInMonth = queryState.month ? new Date(Number(queryState.year) || new Date().getFullYear(), Number(queryState.month), 0).getDate() : 31;
-  const dailyMap = new Map((dailyItems || []).map((x) => [x.day, { income: Number(x.income) || 0, expense: Number(x.expense) || 0 }]));
-  const chartData = Array.from({ length: daysInMonth }, (_, i) => {
+
+  const daysInMonth = useMemo(() => queryState.month ? new Date(Number(queryState.year) || new Date().getFullYear(), Number(queryState.month), 0).getDate() : 31, [queryState.year, queryState.month]);
+  const dailyMap = useMemo(() => new Map((dailyItems || []).map((x) => [x.day, { income: Number(x.income) || 0, expense: Number(x.expense) || 0 }])), [dailyItems]);
+  const chartData = useMemo(() => Array.from({ length: daysInMonth }, (_, i) => {
     const d = i + 1;
     const row = dailyMap.get(d) || { income: 0, expense: 0 };
     return { day: d, income: row.income, expense: row.expense };
-  });
-  const maxVal = Math.max(1, ...chartData.flatMap((x) => [x.income, x.expense]));
-  const yMax = Math.ceil(maxVal / 10000) * 10000 || 10000;
+  }), [daysInMonth, dailyMap]);
+  const yMax = useMemo(() => {
+    const maxVal = Math.max(1, ...chartData.flatMap((x) => [x.income, x.expense]));
+    return Math.ceil(maxVal / 10000) * 10000 || 10000;
+  }, [chartData]);
   const trainerItems = topTrainers?.items ?? [];
   const restocksPayload = warehouseRestocks ?? {};
   const restockItems = restocksPayload.items ?? [];
@@ -223,20 +102,18 @@ const AnalyticsPage = () => {
   const categoryItems = salesByCategory?.items ?? [];
   const salesTotalRevenue = salesTab === 'product' ? (salesByProduct?.totalRevenue ?? null) : (salesByCategory?.totalRevenue ?? null);
 
-  // Данные для доната «Статусы клиентов»
-  const donutStatusesData = [
+  const donutStatusesData = useMemo(() => [
     ...byType.map((x, i) => ({ label: x.label ?? x.type, value: x.count ?? 0, color: DONUT_COLORS[i % DONUT_COLORS.length] })),
     ...byPaid.map((x, i) => ({ label: x.label ?? (x.paid ? 'Оплачено' : 'Не оплачено'), value: x.count ?? 0, color: x.paid ? '#059669' : '#dc2626' })),
-  ].filter((d) => d.value > 0);
-  const totalClientsStatuses = donutStatusesData.reduce((s, d) => s + d.value, 0);
+  ].filter((d) => d.value > 0), [byType, byPaid]);
+  const totalClientsStatuses = useMemo(() => donutStatusesData.reduce((s, d) => s + d.value, 0), [donutStatusesData]);
 
-  // Данные для доната «Клиенты по виду спорта»
-  const donutSportsData = sportItems.map((x, i) => ({
+  const donutSportsData = useMemo(() => sportItems.map((x, i) => ({
     label: x.sportName ?? '—',
     value: x.clientCount ?? 0,
     color: DONUT_COLORS[i % DONUT_COLORS.length],
-  })).filter((d) => d.value > 0);
-  const totalClientsSports = donutSportsData.reduce((s, d) => s + d.value, 0);
+  })).filter((d) => d.value > 0), [sportItems]);
+  const totalClientsSports = useMemo(() => donutSportsData.reduce((s, d) => s + d.value, 0), [donutSportsData]);
 
   // Спарклайны по дням (только при выбранном месяце)
   const hasDaily = queryState.month && chartData.length > 0;
@@ -312,10 +189,14 @@ const AnalyticsPage = () => {
 
       {loading ? (
         <div className="analytics-page__loading-block">
-          <span className="loading-inline">
-            <span className="loading-inline__spinner" aria-hidden />
-            Загрузка…
-          </span>
+          <div className="analytics-page__skeleton-cards">
+            <Skeleton variant="card" className="analytics-page__skeleton-card" />
+            <Skeleton variant="card" className="analytics-page__skeleton-card" />
+            <Skeleton variant="card" className="analytics-page__skeleton-card" />
+          </div>
+          <div className="analytics-page__skeleton-table-wrap">
+            <SkeletonTable rows={6} cols={4} />
+          </div>
         </div>
       ) : (
         <>

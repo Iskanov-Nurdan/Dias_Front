@@ -1,0 +1,59 @@
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg) 0%,
+    var(--color-border) 50%,
+    var(--color-bg) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shine 1s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton--text {
+  height: 1em;
+  min-width: 60px;
+}
+
+.skeleton--title {
+  height: 28px;
+  width: 40%;
+  max-width: 200px;
+  border-radius: var(--radius-md);
+}
+
+.skeleton--card {
+  height: 100px;
+  width: 100%;
+}
+
+.skeleton--row {
+  height: 48px;
+  width: 100%;
+}
+
+@keyframes skeleton-shine {
+  to {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.skeleton-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.skeleton-table .skeleton {
+  height: 16px;
+  width: 80%;
+  max-width: 120px;
+}
+
+.skeleton-table tr:last-child td {
+  border-bottom: none;
+}

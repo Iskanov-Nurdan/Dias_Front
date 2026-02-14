@@ -6,7 +6,8 @@ import './ProductFormModal.scss';
 const ProductFormModal = ({ product, categories = [], onSave, onClose, error, saving }) => {
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [price, setPrice] = useState('');
+  const [purchasePrice, setPurchasePrice] = useState('');
+  const [sellingPrice, setSellingPrice] = useState('');
   const [minQty, setMinQty] = useState('');
   const [qty, setQty] = useState('');
 
@@ -14,13 +15,17 @@ const ProductFormModal = ({ product, categories = [], onSave, onClose, error, sa
     if (product) {
       setName(product.name || '');
       setCategoryId(product.categoryId ?? product.category_id ?? product.category?.id ?? '');
-      setPrice(product.price != null ? String(product.price) : '');
+      const pp = product.purchasePrice;
+      const sp = product.sellingPrice;
+      setPurchasePrice(pp != null ? String(pp) : '');
+      setSellingPrice(sp != null ? String(sp) : '');
       setMinQty(product.minQty != null ? String(product.minQty) : product.min_quantity != null ? String(product.min_quantity) : '');
       setQty(product.qty != null ? String(product.qty) : product.quantity != null ? String(product.quantity) : '');
     } else {
       setName('');
       setCategoryId('');
-      setPrice('');
+      setPurchasePrice('');
+      setSellingPrice('');
       setMinQty('');
       setQty('');
     }
@@ -31,7 +36,8 @@ const ProductFormModal = ({ product, categories = [], onSave, onClose, error, sa
     const payload = {
       name: name.trim(),
       categoryId: categoryId || undefined,
-      price: price !== '' ? Number(price) : undefined,
+      purchasePrice: purchasePrice !== '' ? Number(purchasePrice) : undefined,
+      sellingPrice: sellingPrice !== '' ? Number(sellingPrice) : undefined,
       minQty: minQty !== '' ? Number(minQty) : undefined,
       qty: qty !== '' ? Number(qty) : undefined,
     };
@@ -59,8 +65,12 @@ const ProductFormModal = ({ product, categories = [], onSave, onClose, error, sa
             />
           </label>
           <label className="warehouse-form-modal__label">
-            <span className="warehouse-form-modal__label-caption">Цена</span>
-            <input type="number" step="any" min="0" value={price} onChange={(e) => setPrice(e.target.value)} className="warehouse-form-modal__input" placeholder="0" />
+            <span className="warehouse-form-modal__label-caption">Цена закупки</span>
+            <input type="number" step="any" min="0" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} className="warehouse-form-modal__input" placeholder="0" />
+          </label>
+          <label className="warehouse-form-modal__label">
+            <span className="warehouse-form-modal__label-caption">Цена продажи</span>
+            <input type="number" step="any" min="0" value={sellingPrice} onChange={(e) => setSellingPrice(e.target.value)} className="warehouse-form-modal__input" placeholder="0" />
           </label>
           <label className="warehouse-form-modal__label">
             <span className="warehouse-form-modal__label-caption">Количество</span>

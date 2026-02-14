@@ -238,18 +238,19 @@ const WarehousePage = () => {
           {productsError && <ErrorState message={productsError} onRetry={fetchProductsSafe} />}
           <div className="warehouse-page__table-wrap">
             <table className="warehouse-page__table">
-              <thead><tr><th>Название</th><th>Категория</th><th>Кол-во</th><th>Цена</th><th>Мин. остаток</th><th>Добавлено</th><th>Действия</th></tr></thead>
+              <thead><tr><th>Название</th><th>Категория</th><th>Кол-во</th><th>Закупка</th><th>Продажа</th><th>Мин. остаток</th><th>Добавлено</th><th>Действия</th></tr></thead>
               <tbody>
                 {productsLoading ? (
-                  <tr><td colSpan={7} className="warehouse-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
+                  <tr><td colSpan={8} className="warehouse-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
                 ) : productsItems.length === 0 ? (
-                  <tr><td colSpan={7} className="warehouse-page__empty-cell"><EmptyState message="Нет товаров" /></td></tr>
+                  <tr><td colSpan={8} className="warehouse-page__empty-cell"><EmptyState message="Нет товаров" /></td></tr>
                 ) : productsItems.map((p) => (
                     <tr key={p.id}>
                       <td>{p.name}</td>
                       <td>{p.categoryName ?? p.category?.name ?? '—'}</td>
                       <td>{p.qty ?? p.quantity ?? 0}</td>
-                      <td>{p.price ?? '—'}</td>
+                      <td>{p.purchasePrice ?? '—'}</td>
+                      <td>{p.sellingPrice ?? '—'}</td>
                       <td>{p.minQty ?? p.min_quantity ?? '—'}</td>
                       <td>{(p.createdAt ?? p.created_at) ? new Date(p.createdAt ?? p.created_at).toLocaleDateString('ru-RU') : '—'}</td>
                       <td className="warehouse-page__actions">

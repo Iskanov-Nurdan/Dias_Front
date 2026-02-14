@@ -54,15 +54,15 @@
 
 .login-page__title {
   margin: 0 0 4px;
-  font-size: 24px;
-  font-weight: 400;
+  font-size: 26px;
+  font-weight: 600;
   letter-spacing: -0.02em;
   text-align: center;
   color: var(--color-text);
 }
 
 .login-page__subtitle {
-  margin: 0 0 20px;
+  margin: 0 0 24px;
   font-size: 14px;
   font-weight: 400;
   color: var(--color-text-muted);
@@ -118,17 +118,17 @@
   background: var(--color-primary);
   color: #fff;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   font-size: 15px;
-  font-weight: 400;
+  font-weight: 600;
   margin-top: 4px;
-  transition: background 0.15s ease, transform 0.1s ease;
+  transition: background var(--transition-fast), transform 0.1s ease;
 
   &:hover:not(:disabled) {
     background: var(--color-primary-hover);
   }
   &:active:not(:disabled) {
-    transform: scale(0.99);
+    transform: scale(0.98);
   }
   &:disabled {
     opacity: 0.9;
@@ -172,7 +172,7 @@
 .login-page__success-title {
   margin: 0 0 8px;
   font-size: 20px;
-  font-weight: 400;
+  font-weight: 600;
   color: var(--color-text);
 }
 

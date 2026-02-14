@@ -13,6 +13,7 @@ const SalesPage = React.lazy(() => import('../features/sales/SalesPage'));
 const ExpensesPage = React.lazy(() => import('../features/expenses/ExpensesPage'));
 const SalaryPage = React.lazy(() => import('../features/salary/SalaryPage'));
 const AnalyticsPage = React.lazy(() => import('../features/analytics/AnalyticsPage'));
+const NotFoundPage = React.lazy(() => import('../features/not-found/NotFoundPage'));
 
 const ProtectedRoute = ({ children, pageId }) => {
   const { user, hasAccess } = useAuth();
@@ -101,8 +102,8 @@ const AppRouter = () => (
             </ProtectedRoute>
           }
         />
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   </BrowserRouter>
 );

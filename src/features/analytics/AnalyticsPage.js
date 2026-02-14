@@ -20,6 +20,78 @@ const MONTHS = ['', 'Январь', 'Февраль', 'Март', 'Апрель'
 
 const formatMoney = (v) => (v != null && !Number.isNaN(Number(v)) ? `${Number(v).toLocaleString('ru-RU')} Р` : '—');
 
+const DONUT_COLORS = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#0891b2', '#dc2626', '#4f46e5', '#0d9488'];
+
+// Донат-диаграмма: data = [{ label, value, color? }]
+const DonutChart = ({ data, size = 180, strokeWidth = 22, centerLabel = '' }) => {
+  const total = data.reduce((s, d) => s + (Number(d.value) || 0), 0);
+  if (total === 0) return <div className="analytics-donut analytics-donut--empty">Нет данных</div>;
+  const r = (size - strokeWidth) / 2;
+  const cx = size / 2;
+  const cy = size / 2;
+  const circumference = 2 * Math.PI * r;
+  let offset = 0;
+  const segments = data.filter((d) => Number(d.value) > 0).map((d, i) => {
+    const pct = Number(d.value) / total;
+    const dash = circumference * pct;
+    const seg = { color: d.color || DONUT_COLORS[i % DONUT_COLORS.length], dash, offset };
+    offset += dash;
+    return seg;
+  });
+  return (
+    <div className="analytics-donut" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="analytics-donut__svg">
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--color-bg)" strokeWidth={strokeWidth} />
+        {segments.map((seg, i) => (
+          <circle
+            key={i}
+            cx={cx}
+            cy={cy}
+            r={r}
+            fill="none"
+            stroke={seg.color}
+            strokeWidth={strokeWidth}
+            strokeDasharray={`${seg.dash} ${circumference}`}
+            strokeDashoffset={-seg.offset}
+            strokeLinecap="round"
+            transform={`rotate(-90 ${cx} ${cy})`}
+          />
+        ))}
+      </svg>
+      <span className="analytics-donut__center">{centerLabel}</span>
+    </div>
+  );
+};
+
+// Мини-линия по массиву чисел
+const Sparkline = ({ values, width = 140, height = 44, color = '#2563eb' }) => {
+  const arr = Array.isArray(values) ? values.filter((v) => typeof v === 'number' && !Number.isNaN(v)) : [];
+  if (arr.length < 2) return null;
+  const min = Math.min(...arr);
+  const max = Math.max(...arr);
+  const range = max - min || 1;
+  const padding = 4;
+  const w = width - padding * 2;
+  const h = height - padding * 2;
+  const points = arr.map((v, i) => {
+    const x = padding + (i / (arr.length - 1)) * w;
+    const y = padding + h - ((v - min) / range) * h;
+    return `${x},${y}`;
+  }).join(' ');
+  return (
+    <svg width={width} height={height} className="analytics-sparkline" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+      <defs>
+        <linearGradient id={`spark-fill-${color.replace(/[^a-z0-9]/gi, '')}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.35" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon points={`${padding},${height - padding} ${points} ${width - padding},${height - padding}`} fill={`url(#spark-fill-${(color || '').replace(/[^a-z0-9]/gi, '')})`} />
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+};
+
 // expense-detail: для складских строк бэк передаёт type "add" | "restock"; у остальных type нет
 const getExpenseName = (row) => {
   const type = (row.type ?? row.expenseType ?? '').toLowerCase();
@@ -151,11 +223,54 @@ const AnalyticsPage = () => {
   const categoryItems = salesByCategory?.items ?? [];
   const salesTotalRevenue = salesTab === 'product' ? (salesByProduct?.totalRevenue ?? null) : (salesByCategory?.totalRevenue ?? null);
 
+  // Данные для доната «Статусы клиентов»
+  const donutStatusesData = [
+    ...byType.map((x, i) => ({ label: x.label ?? x.type, value: x.count ?? 0, color: DONUT_COLORS[i % DONUT_COLORS.length] })),
+    ...byPaid.map((x, i) => ({ label: x.label ?? (x.paid ? 'Оплачено' : 'Не оплачено'), value: x.count ?? 0, color: x.paid ? '#059669' : '#dc2626' })),
+  ].filter((d) => d.value > 0);
+  const totalClientsStatuses = donutStatusesData.reduce((s, d) => s + d.value, 0);
+
+  // Данные для доната «Клиенты по виду спорта»
+  const donutSportsData = sportItems.map((x, i) => ({
+    label: x.sportName ?? '—',
+    value: x.clientCount ?? 0,
+    color: DONUT_COLORS[i % DONUT_COLORS.length],
+  })).filter((d) => d.value > 0);
+  const totalClientsSports = donutSportsData.reduce((s, d) => s + d.value, 0);
+
+  // Спарклайны по дням (только при выбранном месяце)
+  const hasDaily = queryState.month && chartData.length > 0;
+  const sparklineIncome = hasDaily ? chartData.map((d) => d.income) : [];
+  const sparklineExpense = hasDaily ? chartData.map((d) => d.expense) : [];
+  const sparklineProfit = hasDaily ? chartData.map((d) => (d.income || 0) - (d.expense || 0)) : [];
+
+  const IconTrendUp = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M22 7L13.5 15.5 8.5 10.5 2 17" />
+      <path d="M16 7h6v6" />
+    </svg>
+  );
+  const IconTrendDown = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M22 17L13.5 8.5 8.5 13.5 2 7" />
+      <path d="M16 17h6v-6" />
+    </svg>
+  );
+  const IconPie = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
+      <path d="M22 12A10 10 0 0 0 12 2v10z" />
+    </svg>
+  );
+
   return (
     <div className="analytics-page">
-      <h1 className="analytics-page__title">Аналитика</h1>
-      <p className="analytics-page__subtitle">За период</p>
-      <div className="analytics-page__filters">
+      <header className="analytics-page__header">
+        <div className="analytics-page__header-text">
+          <h1 className="analytics-page__title">Аналитика</h1>
+          <p className="analytics-page__subtitle">Сводка по выбранному периоду</p>
+        </div>
+        <div className="analytics-page__filters">
         <label className="analytics-page__filter">
           Год
           <input
@@ -190,7 +305,8 @@ const AnalyticsPage = () => {
           />
         </label>
         <button type="button" className="analytics-page__reset" onClick={resetFilters}>Сброс</button>
-      </div>
+        </div>
+      </header>
 
       {error && <ErrorState message={error} onRetry={loadAll} />}
 
@@ -203,80 +319,125 @@ const AnalyticsPage = () => {
         </div>
       ) : (
         <>
-          <div className="analytics-page__kpis-primary">
-            <button type="button" className="analytics-page__card analytics-page__card--income" onClick={() => setDetailModal('income')}>
-              <span className="analytics-page__card-label">Приход (месяц)</span>
-              <span className="analytics-page__card-value">{formatMoney(income)}</span>
-            </button>
-            <button type="button" className="analytics-page__card analytics-page__card--expense" onClick={() => setDetailModal('expense')}>
-              <span className="analytics-page__card-label">Расход (месяц)</span>
-              <span className="analytics-page__card-value">{formatMoney(expense)}</span>
-            </button>
-            <button type="button" className="analytics-page__card analytics-page__card--profit" onClick={() => setDetailModal('profit')}>
-              <span className="analytics-page__card-label">Прибыль (месяц)</span>
-              <span className="analytics-page__card-value">{formatMoney(profit)}</span>
-            </button>
-          </div>
-          <div className="analytics-page__kpis">
-            <div className="analytics-page__card analytics-page__card--static">
-              <span className="analytics-page__card-label">Продаж (месяц)</span>
-              <span className="analytics-page__card-value">{s.salesCount ?? '—'}</span>
-            </div>
-            <div className="analytics-page__card analytics-page__card--static">
-              <span className="analytics-page__card-label">Клиентов (месяц)</span>
-              <span className="analytics-page__card-value">{s.clientsCount ?? '—'}</span>
-            </div>
-            <div className="analytics-page__card analytics-page__card--static">
-              <span className="analytics-page__card-label">Оплачено (клиенты)</span>
-              <span className="analytics-page__card-value">
-                {paidCount != null ? (s.paidPercent != null ? `${paidCount} (${s.paidPercent}%)` : String(paidCount)) : (s.paidPercent != null ? `${s.paidPercent}%` : '—')}
-              </span>
-            </div>
-            <div className="analytics-page__card analytics-page__card--static">
-              <span className="analytics-page__card-label">Видов спорта</span>
-              <span className="analytics-page__card-value">{s.sportsCount ?? '—'}</span>
-            </div>
-          </div>
-
-          <section className="analytics-page__section">
-            <h3 className="analytics-page__section-title">Статусы клиентов (месяц)</h3>
-            <div className="analytics-page__bars">
-              {byType.map((x) => (
-                <button key={x.type ?? x.label} type="button" className="analytics-page__bar-row" onClick={() => setStatusModal({ label: x.label ?? x.type, count: x.count ?? 0, percent: x.percent ?? 0 })}>
-                  <span className="analytics-page__bar-label">{x.label ?? x.type}</span>
-                  <div className="analytics-page__bar-wrap">
-                    <div className="analytics-page__bar" style={{ width: `${x.percent ?? 0}%` }} />
+          <section className="analytics-page__hero">
+            <div className="analytics-page__kpis-primary">
+              <button type="button" className="analytics-page__card analytics-page__card--income" onClick={() => setDetailModal('income')}>
+                <span className="analytics-page__card-icon" aria-hidden><IconTrendUp /></span>
+                <span className="analytics-page__card-label">Приход</span>
+                <span className="analytics-page__card-value">{formatMoney(income)}</span>
+                {sparklineIncome.length >= 2 && (
+                  <div className="analytics-page__card-chart">
+                    <Sparkline values={sparklineIncome} width={140} height={48} color="#059669" />
                   </div>
-                  <span className="analytics-page__bar-value">{x.count ?? 0} клиентов · {x.percent ?? 0}%</span>
-                </button>
-              ))}
-              {byPaid.map((x) => (
-                <button key={String(x.paid)} type="button" className="analytics-page__bar-row" onClick={() => setStatusModal({ label: x.label ?? (x.paid ? 'Оплачено' : 'Не оплачено'), count: x.count ?? 0, percent: x.percent ?? 0 })}>
-                  <span className="analytics-page__bar-label">{x.label ?? (x.paid ? 'Оплачено' : 'Не оплачено')}</span>
-                  <div className="analytics-page__bar-wrap">
-                    <div className={`analytics-page__bar ${x.paid ? 'analytics-page__bar--green' : 'analytics-page__bar--red'}`} style={{ width: `${x.percent ?? 0}%` }} />
+                )}
+                <span className="analytics-page__card-hint">за период · нажмите для детализации</span>
+              </button>
+              <button type="button" className="analytics-page__card analytics-page__card--expense" onClick={() => setDetailModal('expense')}>
+                <span className="analytics-page__card-icon" aria-hidden><IconTrendDown /></span>
+                <span className="analytics-page__card-label">Расход</span>
+                <span className="analytics-page__card-value">{formatMoney(expense)}</span>
+                {sparklineExpense.length >= 2 && (
+                  <div className="analytics-page__card-chart">
+                    <Sparkline values={sparklineExpense} width={140} height={48} color="#dc2626" />
                   </div>
-                  <span className="analytics-page__bar-value">{x.count ?? 0} · {x.percent ?? 0}%</span>
-                </button>
-              ))}
-              {byType.length === 0 && byPaid.length === 0 && <p className="analytics-page__empty">Нет данных</p>}
+                )}
+                <span className="analytics-page__card-hint">за период · нажмите для детализации</span>
+              </button>
+              <button type="button" className="analytics-page__card analytics-page__card--profit" onClick={() => setDetailModal('profit')}>
+                <span className="analytics-page__card-icon" aria-hidden><IconPie /></span>
+                <span className="analytics-page__card-label">Прибыль</span>
+                <span className="analytics-page__card-value">{formatMoney(profit)}</span>
+                {sparklineProfit.length >= 2 && (
+                  <div className="analytics-page__card-chart">
+                    <Sparkline values={sparklineProfit} width={140} height={48} color="#2563eb" />
+                  </div>
+                )}
+                <span className="analytics-page__card-hint">за период · нажмите для детализации</span>
+              </button>
+            </div>
+            <div className="analytics-page__kpis">
+              <div className="analytics-page__card analytics-page__card--static">
+                <span className="analytics-page__card-label">Продаж</span>
+                <span className="analytics-page__card-value analytics-page__card-value--num">{s.salesCount ?? '—'}</span>
+              </div>
+              <div className="analytics-page__card analytics-page__card--static">
+                <span className="analytics-page__card-label">Клиентов</span>
+                <span className="analytics-page__card-value analytics-page__card-value--num">{s.clientsCount ?? '—'}</span>
+              </div>
+              <div className="analytics-page__card analytics-page__card--static">
+                <span className="analytics-page__card-label">Оплачено</span>
+                <span className="analytics-page__card-value analytics-page__card-value--num">
+                  {paidCount != null ? (s.paidPercent != null ? `${paidCount} (${s.paidPercent}%)` : String(paidCount)) : (s.paidPercent != null ? `${s.paidPercent}%` : '—')}
+                </span>
+              </div>
+              <div className="analytics-page__card analytics-page__card--static">
+                <span className="analytics-page__card-label">Видов спорта</span>
+                <span className="analytics-page__card-value analytics-page__card-value--num">{s.sportsCount ?? '—'}</span>
+              </div>
             </div>
           </section>
 
-          <section className="analytics-page__section">
-            <h3 className="analytics-page__section-title">Клиенты по виду спорта (месяц)</h3>
-            <div className="analytics-page__list">
-              {sportItems.map((x) => (
-                <div key={x.sportId ?? x.sportName} className="analytics-page__list-item">
-                  {x.sportName ?? '—'}: {x.clientCount ?? 0} ({x.percent ?? 0}%)
+          <div className="analytics-page__grid analytics-page__grid--two">
+            <section className="analytics-page__section analytics-page__section--card analytics-page__section--with-donut">
+              <h3 className="analytics-page__section-title">Решение по клиентам (статусы)</h3>
+              <div className="analytics-page__statuses-wrap">
+                <div className="analytics-page__bars">
+                  {byType.map((x) => (
+                    <button key={x.type ?? x.label} type="button" className="analytics-page__bar-row" onClick={() => setStatusModal({ label: x.label ?? x.type, count: x.count ?? 0, percent: x.percent ?? 0 })}>
+                      <span className="analytics-page__bar-label">{x.label ?? x.type}</span>
+                      <div className="analytics-page__bar-wrap">
+                        <div className="analytics-page__bar" style={{ width: `${x.percent ?? 0}%` }} />
+                      </div>
+                      <span className="analytics-page__bar-value">{x.count ?? 0} · {x.percent ?? 0}%</span>
+                    </button>
+                  ))}
+                  {byPaid.map((x) => (
+                    <button key={String(x.paid)} type="button" className="analytics-page__bar-row" onClick={() => setStatusModal({ label: x.label ?? (x.paid ? 'Оплачено' : 'Не оплачено'), count: x.count ?? 0, percent: x.percent ?? 0 })}>
+                      <span className="analytics-page__bar-label">{x.label ?? (x.paid ? 'Оплачено' : 'Не оплачено')}</span>
+                      <div className="analytics-page__bar-wrap">
+                        <div className={`analytics-page__bar ${x.paid ? 'analytics-page__bar--green' : 'analytics-page__bar--red'}`} style={{ width: `${x.percent ?? 0}%` }} />
+                      </div>
+                      <span className="analytics-page__bar-value">{x.count ?? 0} · {x.percent ?? 0}%</span>
+                    </button>
+                  ))}
+                  {byType.length === 0 && byPaid.length === 0 && <p className="analytics-page__empty">Нет данных</p>}
                 </div>
-              ))}
-              {sportItems.length === 0 && <p className="analytics-page__empty">Нет данных</p>}
-            </div>
-          </section>
+                <div className="analytics-page__donut-wrap">
+                  <DonutChart
+                    data={donutStatusesData}
+                    size={200}
+                    strokeWidth={24}
+                    centerLabel={totalClientsStatuses > 0 ? `Всего\n${totalClientsStatuses}` : ''}
+                  />
+                </div>
+              </div>
+            </section>
 
-          <section className="analytics-page__section">
-            <h3 className="analytics-page__section-title">Динамика доходов и расходов (дни месяца)</h3>
+            <section className="analytics-page__section analytics-page__section--card analytics-page__section--with-donut">
+              <h3 className="analytics-page__section-title">Клиенты по виду спорта</h3>
+              <div className="analytics-page__sports-wrap">
+                <div className="analytics-page__donut-wrap analytics-page__donut-wrap--sports">
+                  <DonutChart
+                    data={donutSportsData}
+                    size={180}
+                    strokeWidth={22}
+                    centerLabel={totalClientsSports > 0 ? String(totalClientsSports) : ''}
+                  />
+                </div>
+                <div className="analytics-page__list">
+                  {sportItems.map((x) => (
+                    <div key={x.sportId ?? x.sportName} className="analytics-page__list-item">
+                      {x.sportName ?? '—'}: {x.clientCount ?? 0} ({x.percent ?? 0}%)
+                    </div>
+                  ))}
+                  {sportItems.length === 0 && <p className="analytics-page__empty">Нет данных</p>}
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <section className="analytics-page__section analytics-page__section--chart">
+            <h3 className="analytics-page__section-title">Динамика доходов и расходов по дням</h3>
             <div className="analytics-page__chart-wrap">
               {!queryState.month ? (
                 <p className="analytics-page__empty">Выберите месяц для графика по дням</p>
@@ -336,18 +497,19 @@ const AnalyticsPage = () => {
             </div>
           </section>
 
-          <section className="analytics-page__section">
-            <h3 className="analytics-page__section-title">Топ тренеров (клиенты за период)</h3>
+          <div className="analytics-page__grid analytics-page__grid--two">
+            <section className="analytics-page__section analytics-page__section--card">
+              <h3 className="analytics-page__section-title">Топ тренеров</h3>
             <ol className="analytics-page__top-list">
               {trainerItems.map((x, i) => (
                 <li key={x.trainerId ?? i}>{x.trainerName ?? '—'}: {x.clientCount ?? 0} учеников</li>
               ))}
               {trainerItems.length === 0 && <li className="analytics-page__empty">Нет данных</li>}
             </ol>
-          </section>
+            </section>
 
-          <section className="analytics-page__section">
-            <h3 className="analytics-page__section-title">Пополнения за период</h3>
+            <section className="analytics-page__section analytics-page__section--card">
+              <h3 className="analytics-page__section-title">Пополнения склада</h3>
             <p className="analytics-page__section-summary">
               Всего пополнений: <strong>{restocksPayload.restockCount ?? 0}</strong> на сумму <strong>{formatMoney(restocksPayload.totalRestockSum)}</strong>.
               {restocksPayload.totalUnitsAdded != null && ` ${restocksPayload.totalUnitsAdded} единиц добавлено.`}
@@ -370,9 +532,10 @@ const AnalyticsPage = () => {
               </table>
               {restockItems.length === 0 && <p className="analytics-page__empty">Нет пополнений за период</p>}
             </div>
-          </section>
+            </section>
+          </div>
 
-          <section className="analytics-page__section">
+          <section className="analytics-page__section analytics-page__section--table">
             <h3 className="analytics-page__section-title">Продажи за период</h3>
             <div className="analytics-page__tabs">
               <button type="button" className={`analytics-page__tab ${salesTab === 'product' ? 'analytics-page__tab--active' : ''}`} onClick={() => setSalesTab('product')}>Товары</button>

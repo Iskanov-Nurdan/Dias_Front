@@ -8,7 +8,8 @@
   grid-template-areas:
     'sidebar header'
     'sidebar content';
-  transition: grid-template-columns 0.2s ease;
+  transition: grid-template-columns var(--transition-smooth);
+  background: var(--color-bg);
 
   @include mixins.mobile {
     grid-template-columns: 1fr;
@@ -20,13 +21,14 @@
   }
 
   &--sidebar-collapsed {
-    grid-template-columns: var(--sidebar-width-collapsed, 72px) 1fr;
+    grid-template-columns: var(--sidebar-width-collapsed) 1fr;
 
     @include mixins.mobile {
       grid-template-columns: 1fr;
     }
   }
 
+  // —— Header ——
   &__header {
     grid-area: header;
     background: var(--color-bg-card);
@@ -34,7 +36,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 20px 0 16px;
+    padding: 0 24px 0 20px;
     position: sticky;
     top: 0;
     z-index: 10;
@@ -45,7 +47,7 @@
   &__header-left {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
     min-width: 0;
   }
 
@@ -58,20 +60,21 @@
     padding: 0;
     background: transparent;
     border: none;
-    border-radius: var(--radius-sm, 8px);
+    border-radius: var(--radius-sm);
     color: var(--color-text-muted);
-    transition: color 0.15s ease, background 0.15s ease;
+    transition: color var(--transition-fast), background var(--transition-fast);
     flex-shrink: 0;
 
     &:hover {
       color: var(--color-primary);
-      background: rgba(37, 99, 235, 0.08);
+      background: var(--color-primary-light);
     }
   }
 
   &__brand {
-    font-weight: 400;
+    font-weight: 600;
     font-size: 18px;
+    letter-spacing: -0.02em;
     color: var(--color-text);
     white-space: nowrap;
     @include mixins.text-ellipsis;
@@ -86,6 +89,10 @@
     align-items: center;
     gap: 12px;
     flex-shrink: 0;
+    padding: 6px 12px 6px 6px;
+    border-radius: var(--radius-lg);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
   }
 
   &__user-icon {
@@ -95,7 +102,7 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: rgba(37, 99, 235, 0.1);
+    background: var(--color-primary-light);
     color: var(--color-primary);
     flex-shrink: 0;
   }
@@ -114,7 +121,7 @@
 
   &__user-name {
     font-size: 14px;
-    font-weight: 400;
+    font-weight: 500;
     color: var(--color-text);
     @include mixins.text-ellipsis;
   }
@@ -131,15 +138,15 @@
     gap: 8px;
     padding: 8px 14px;
     font-size: 13px;
-    font-weight: 400;
+    font-weight: 500;
     background: transparent;
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm, 8px);
-    color: var(--color-text);
-    transition: background 0.15s ease, border-color 0.15s ease;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
+    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 
     &:hover {
-      background: var(--color-bg);
+      background: var(--color-bg-card);
       border-color: var(--color-primary);
       color: var(--color-primary);
     }
@@ -151,40 +158,44 @@
     }
   }
 
+  // —— Sidebar: контрастный фон и чёткая граница, не смешивается с контентом ——
   &__sidebar {
     grid-area: sidebar;
-    background: var(--color-bg-card);
-    border-right: 1px solid var(--color-border);
+    background: var(--color-sidebar-bg);
+    border-right: 2px solid var(--color-sidebar-border);
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.06);
     position: sticky;
     top: 0;
     height: 100vh;
     overflow-x: hidden;
     overflow-y: auto;
     @include mixins.scrollbar;
-    transition: width 0.2s ease;
+    transition: width var(--transition-smooth), box-shadow var(--transition-smooth);
 
     @include mixins.mobile {
       height: auto;
       max-height: 50vh;
       position: relative;
       border-right: none;
-      border-bottom: 1px solid var(--color-border);
+      border-bottom: 1px solid var(--color-sidebar-border);
       overflow-x: auto;
       overflow-y: hidden;
+      box-shadow: none;
     }
   }
 
   &__nav {
     display: flex;
     flex-direction: column;
-    padding: 12px 0;
+    padding: 16px 12px;
+    gap: 4px;
     min-width: 0;
 
     @include mixins.mobile {
       flex-direction: row;
       flex-wrap: wrap;
-      gap: 4px;
-      padding: 8px 12px;
+      gap: 6px;
+      padding: 12px 16px;
       justify-content: center;
     }
   }
@@ -194,36 +205,53 @@
     align-items: center;
     gap: 12px;
     text-align: left;
-    padding: 12px 20px;
+    padding: 12px 14px;
     font-size: 14px;
-    font-weight: 400;
+    font-weight: 500;
     background: none;
     border: none;
-    color: var(--color-text);
-    border-left: 3px solid transparent;
-    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    color: var(--color-text-muted);
+    border-radius: var(--radius-md);
+    transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
     min-width: 0;
     white-space: nowrap;
+    position: relative;
 
     @include mixins.mobile {
-      border-left: none;
-      border-radius: var(--radius-sm, 8px);
+      border-radius: var(--radius-sm);
       padding: 10px 14px;
       flex: 0 0 auto;
     }
 
     &:hover {
-      background: var(--color-bg);
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--color-text);
     }
 
     &--active {
-      background: rgba(37, 99, 235, 0.1);
-      border-left-color: var(--color-primary);
+      background: var(--color-bg-card);
       color: var(--color-primary);
+      font-weight: 600;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 24px;
+        background: var(--color-primary);
+        border-radius: 0 2px 2px 0;
+      }
 
       @include mixins.mobile {
-        border-left: none;
+        &::before {
+          display: none;
+        }
         border-bottom: 2px solid var(--color-primary);
+        border-radius: var(--radius-sm) var(--radius-sm) 0 0;
       }
     }
   }
@@ -233,8 +261,13 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
+    opacity: 0.9;
+  }
+
+  &__nav-item--active &__nav-icon {
+    opacity: 1;
   }
 
   &__nav-label {
@@ -243,7 +276,7 @@
     min-width: 0;
   }
 
-  // Свёрнутый сайдбар: только иконки
+  // Свёрнутый сайдбар
   &--sidebar-collapsed &__nav-item {
     padding: 12px;
     justify-content: center;
@@ -252,6 +285,11 @@
       padding: 10px 14px;
       justify-content: center;
     }
+  }
+
+  &--sidebar-collapsed &__nav-item--active::before {
+    left: 0;
+    height: 20px;
   }
 
   &--sidebar-collapsed &__nav-label {
@@ -268,14 +306,13 @@
 
   &__content {
     grid-area: content;
-    padding: 24px;
+    padding: 28px 24px;
     overflow: auto;
     @include mixins.scrollbar;
     min-width: 0;
   }
 }
 
-// Для скрытия текста в сайдбаре только на desktop (не на mobile)
 @include mixins.mobile {
   .main-layout--sidebar-collapsed .main-layout__nav-label {
     width: auto;

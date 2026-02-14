@@ -2,11 +2,21 @@
 
 .empty-state {
   @include mixins.flex-center;
+  flex-direction: column;
+  gap: 16px;
   padding: 48px 24px;
+
+  &__icon {
+    color: var(--color-text-muted);
+    opacity: 0.6;
+    flex-shrink: 0;
+  }
 
   &__message {
     margin: 0;
     color: var(--color-text-muted);
     font-size: 15px;
+    text-align: center;
+    max-width: 320px;
   }
 }

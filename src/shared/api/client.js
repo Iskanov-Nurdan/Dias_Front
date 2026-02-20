@@ -7,7 +7,7 @@ const USE_LOCAL_API = false;
 
 const API_BASE = USE_LOCAL_API
   ? 'http://127.0.0.1:8000/api'
-  : 'http://rahmanata.tw1.su/api';
+  : 'https://rahmanata.tw1.su/api';
 
 export const apiClient = axios.create({
   baseURL: API_BASE,

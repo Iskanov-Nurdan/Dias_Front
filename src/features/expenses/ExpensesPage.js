@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchExpenseCategories, fetchExpenses, saveExpense, createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, updateExpense, deleteExpense } from './api';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { ExpenseCategoryFormModal, ExpenseFormModal } from './components';
-import { ErrorState, EmptyState, ConfirmModal } from '../../shared/ui';
+import { ErrorState, EmptyState, ConfirmModal, Pagination } from '../../shared/ui';
 import './ExpensesPage.scss';
 
 const ExpensesPage = () => {
@@ -203,6 +203,13 @@ const ExpensesPage = () => {
               </tbody>
             </table>
           </div>
+          <Pagination
+            meta={expensesData?.meta}
+            currentPage={queryState.page}
+            onPage={(p) => setQueryState((q) => ({ ...q, page: p }))}
+            loading={expensesLoading}
+            entityLabel="расходов"
+          />
         </>
       )}
       {formCategory !== null && (

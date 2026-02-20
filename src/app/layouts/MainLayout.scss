@@ -1,7 +1,7 @@
 @use '../../shared/styles/mixins';
 
 .main-layout {
-  min-height: 100vh;
+  height: 100vh;
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;
   grid-template-rows: var(--header-height) 1fr;

@@ -7,3 +7,4 @@ export { default as DonutChart } from './DonutChart';
 export { default as Sparkline } from './Sparkline';
 export { default as Skeleton } from './Skeleton';
 export { SkeletonTable } from './Skeleton';
+export { default as Pagination } from './Pagination';

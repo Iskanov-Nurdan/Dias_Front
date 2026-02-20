@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchSalesSummary, fetchSales, createSale } from './api';
 import { fetchProducts } from '../warehouse/api';
 import SaleFormModal from './components/SaleFormModal';
-import { ErrorState, EmptyState } from '../../shared/ui';
+import { ErrorState, EmptyState, Pagination } from '../../shared/ui';
 import './SalesPage.scss';
 
 const SalesPage = () => {
@@ -138,6 +138,13 @@ const SalesPage = () => {
           </tbody>
         </table>
       </div>
+      <Pagination
+        meta={salesData?.meta}
+        currentPage={queryState.page}
+        onPage={(p) => setQueryState((q) => ({ ...q, page: p }))}
+        loading={salesLoading}
+        entityLabel="продаж"
+      />
       {formSaleOpen && (
         <SaleFormModal
           products={products}

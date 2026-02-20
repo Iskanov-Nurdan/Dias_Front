@@ -14,7 +14,7 @@ import {
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
 import { useDebounce } from '../../shared/hooks/useDebounce';
-import { Select } from '../../shared/ui';
+import { Select, Pagination } from '../../shared/ui';
 import { EmployeesList, RolesList, EmployeeFormModal, RoleFormModal, AccessModal } from './components';
 import './EmployeesPage.scss';
 
@@ -258,20 +258,29 @@ const EmployeesPage = () => {
       )}
 
       {activeTab === TAB_EMPLOYEES && (
-        <EmployeesList
-          items={employeesItems}
-          loading={employeesLoading}
-          error={employeesError}
-          onRetry={fetchEmployeesSafe}
-          onEdit={(emp) => (isAdmin ? setFormEmployee(emp) : showAccessDenied())}
-          onDelete={(emp) => (isAdmin ? setConfirmDeleteEmployee(emp) : showAccessDenied())}
-          onAccess={handleOpenAccess}
-          confirmDelete={confirmDeleteEmployee}
-          onConfirmDelete={handleDeleteEmployee}
-          onCancelDelete={() => setConfirmDeleteEmployee(null)}
-          emptyStateActionLabel="Добавить сотрудника"
-          emptyStateOnAction={() => setFormEmployee({})}
-        />
+        <>
+          <EmployeesList
+            items={employeesItems}
+            loading={employeesLoading}
+            error={employeesError}
+            onRetry={fetchEmployeesSafe}
+            onEdit={(emp) => (isAdmin ? setFormEmployee(emp) : showAccessDenied())}
+            onDelete={(emp) => (isAdmin ? setConfirmDeleteEmployee(emp) : showAccessDenied())}
+            onAccess={handleOpenAccess}
+            confirmDelete={confirmDeleteEmployee}
+            onConfirmDelete={handleDeleteEmployee}
+            onCancelDelete={() => setConfirmDeleteEmployee(null)}
+            emptyStateActionLabel="Добавить сотрудника"
+            emptyStateOnAction={() => setFormEmployee({})}
+          />
+          <Pagination
+            meta={employeesData?.meta}
+            currentPage={queryState.page}
+            onPage={(p) => setQueryState((q) => ({ ...q, page: p }))}
+            loading={employeesLoading}
+            entityLabel="сотрудников"
+          />
+        </>
       )}
 
       {activeTab === TAB_ROLES && (

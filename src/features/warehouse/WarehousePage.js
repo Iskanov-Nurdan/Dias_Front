@@ -14,7 +14,7 @@ import {
 import { CategoryFormModal, ProductFormModal } from './components';
 import RestockModal from './components/RestockModal';
 import { useAuth } from '../../app/providers/AuthProvider';
-import { ErrorState, EmptyState, ConfirmModal, Select } from '../../shared/ui';
+import { ErrorState, EmptyState, ConfirmModal, Select, Pagination } from '../../shared/ui';
 import './WarehousePage.scss';
 
 const TAB_PRODUCTS = 'products';
@@ -263,6 +263,13 @@ const WarehousePage = () => {
               </tbody>
             </table>
           </div>
+          <Pagination
+            meta={productsData?.meta}
+            currentPage={queryState.page}
+            onPage={(p) => setQueryState((q) => ({ ...q, page: p }))}
+            loading={productsLoading}
+            entityLabel="товаров"
+          />
         </>
       )}
       {activeTab === TAB_CATEGORIES && (

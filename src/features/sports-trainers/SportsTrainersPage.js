@@ -10,7 +10,7 @@ import {
   deleteTrainer,
 } from './api';
 import { useAuth } from '../../app/providers/AuthProvider';
-import { Select } from '../../shared/ui';
+import { Select, Pagination } from '../../shared/ui';
 import { SportsList, TrainersList, SportFormModal, TrainerFormModal } from './components';
 import './SportsTrainersPage.scss';
 
@@ -201,7 +201,16 @@ const SportsTrainersPage = () => {
         <SportsList items={sportsData} loading={sportsLoading} error={sportsError} onRetry={fetchSportsSafe} onEdit={(s) => (isAdmin ? setFormSport(s) : showAccessDenied())} onDelete={(s) => (isAdmin ? setConfirmDeleteSport(s) : showAccessDenied())} confirmDelete={confirmDeleteSport} onConfirmDelete={handleDeleteSport} onCancelDelete={() => setConfirmDeleteSport(null)} />
       )}
       {activeTab === TAB_TRAINERS && (
-        <TrainersList items={trainersItems} sports={sportsData} loading={trainersLoading} error={trainersError} onRetry={fetchTrainersSafe} onEdit={(t) => (isAdmin ? setFormTrainer(t) : showAccessDenied())} onDelete={(t) => (isAdmin ? setConfirmDeleteTrainer(t) : showAccessDenied())} confirmDelete={confirmDeleteTrainer} onConfirmDelete={handleDeleteTrainer} onCancelDelete={() => setConfirmDeleteTrainer(null)} />
+        <>
+          <TrainersList items={trainersItems} sports={sportsData} loading={trainersLoading} error={trainersError} onRetry={fetchTrainersSafe} onEdit={(t) => (isAdmin ? setFormTrainer(t) : showAccessDenied())} onDelete={(t) => (isAdmin ? setConfirmDeleteTrainer(t) : showAccessDenied())} confirmDelete={confirmDeleteTrainer} onConfirmDelete={handleDeleteTrainer} onCancelDelete={() => setConfirmDeleteTrainer(null)} />
+          <Pagination
+            meta={trainersData?.meta}
+            currentPage={queryState.page}
+            onPage={(p) => setQueryState((q) => ({ ...q, page: p }))}
+            loading={trainersLoading}
+            entityLabel="тренеров"
+          />
+        </>
       )}
       {formSport && (
         <SportFormModal

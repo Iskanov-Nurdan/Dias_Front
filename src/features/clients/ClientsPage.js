@@ -6,7 +6,7 @@ import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
 import { useDebounce } from '../../shared/hooks/useDebounce';
 import { SEARCH_DEBOUNCE_MS } from '../../shared/constants/common';
-import { Select, ConfirmModal } from '../../shared/ui';
+import { Select, ConfirmModal, Pagination } from '../../shared/ui';
 import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal } from './components';
 import './ClientsPage.scss';
 
@@ -154,6 +154,13 @@ const ClientsPage = () => {
         </button>
       </div>
       <ClientsList items={items} loading={loading} error={error} onRetry={fetchSafe} onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())} onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())} onDetails={handleOpenCard} onExtend={setExtendClientObj} />
+      <Pagination
+        meta={data?.meta}
+        currentPage={queryState.page}
+        onPage={(p) => setQueryState((q) => ({ ...q, page: p }))}
+        loading={loading}
+        entityLabel="клиентов"
+      />
       {formClient && (
         <ClientFormModal
           client={formClient}

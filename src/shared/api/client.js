@@ -29,7 +29,7 @@ apiClient.interceptors.response.use(
     if (err.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.hash = '#/login';
+      window.location.replace('/login');
     }
     return Promise.reject(err);
   }

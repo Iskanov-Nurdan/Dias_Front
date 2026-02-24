@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchExpenseCategories, fetchExpenses, saveExpense, createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, updateExpense, deleteExpense } from './api';
 import { useAuth } from '../../app/providers/AuthProvider';
+import { useToast } from '../../app/providers/ToastProvider';
 import { ExpenseCategoryFormModal, ExpenseFormModal } from './components';
 import { ErrorState, EmptyState, ConfirmModal, Pagination } from '../../shared/ui';
 import './ExpensesPage.scss';
 
 const ExpensesPage = () => {
   const { isAdmin, showAccessDenied } = useAuth();
+  const toast = useToast();
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [categorySearch, setCategorySearch] = useState('');
   const [expensesSearch, setExpensesSearch] = useState('');
@@ -118,18 +120,33 @@ const ExpensesPage = () => {
 
   const handleDeleteCategory = () => {
     if (!confirmDeleteCategory?.id) return;
-    deleteExpenseCategory(confirmDeleteCategory.id, null).then(() => {
-      setConfirmDeleteCategory(null);
-      fetchCategoriesSafe();
-    }).catch(console.error);
+    deleteExpenseCategory(confirmDeleteCategory.id, null)
+      .then(() => {
+        setConfirmDeleteCategory(null);
+        fetchCategoriesSafe();
+        toast.success('Категория удалена');
+      })
+      .catch((e) => {
+        const msg = e.response?.data?.error?.message ?? e.response?.data?.message ?? e.response?.data?.detail;
+        const text = e.response?.status === 409
+          ? (msg || 'Категорию нельзя удалить: в ней есть сохранённые расходы')
+          : (msg || 'Ошибка удаления категории');
+        toast.error(text);
+      });
   };
 
   const handleDeleteExpense = () => {
     if (!confirmDeleteExpense?.id) return;
-    deleteExpense(confirmDeleteExpense.id, null).then(() => {
-      setConfirmDeleteExpense(null);
-      fetchExpensesSafe();
-    }).catch(console.error);
+    deleteExpense(confirmDeleteExpense.id, null)
+      .then(() => {
+        setConfirmDeleteExpense(null);
+        fetchExpensesSafe();
+        toast.success('Расход удалён');
+      })
+      .catch((e) => {
+        const msg = e.response?.data?.error?.message ?? e.response?.data?.message ?? e.response?.data?.detail;
+        toast.error(msg || 'Ошибка удаления расхода');
+      });
   };
 
   const selectedCategory = selectedCategoryId != null ? categoriesList.find((c) => c.id === selectedCategoryId) : null;
@@ -195,8 +212,12 @@ const ExpensesPage = () => {
                       <td>{e.saved ? 'Да' : 'Нет'}</td>
                       <td className="expenses-page__actions">
                         {!e.saved && <button type="button" className="expenses-page__save-btn" onClick={() => handleSaveExpense(e.id)}>Сохранить</button>}
-                        <button type="button" className="expenses-page__action expenses-page__action--edit" onClick={() => (isAdmin ? setFormExpense(e) : showAccessDenied())}>Изменить</button>
-                        <button type="button" className="expenses-page__action expenses-page__action--delete" onClick={() => (isAdmin ? setConfirmDeleteExpense(e) : showAccessDenied())}>Удалить</button>
+                        {!e.saved && (
+                          <>
+                            <button type="button" className="expenses-page__action expenses-page__action--edit" onClick={() => (isAdmin ? setFormExpense(e) : showAccessDenied())}>Изменить</button>
+                            <button type="button" className="expenses-page__action expenses-page__action--delete" onClick={() => (isAdmin ? setConfirmDeleteExpense(e) : showAccessDenied())}>Удалить</button>
+                          </>
+                        )}
                       </td>
                     </tr>
                 ))}

@@ -28,21 +28,21 @@ const LeadMiniCard = ({ lead, onClick, onDragStart, onDragEnd }) => (
   >
     <div className="funnel-board__card-name">{lead.name ?? '—'}</div>
     <div className="funnel-board__card-phone">{lead.phone ?? ''}</div>
-    {lead.channel && (
-      <span className="funnel-board__card-tag">{CHANNEL_LABELS[lead.channel] ?? lead.channel}</span>
+      {lead.channel && (
+      <span className="funnel-board__card-tag">{CHANNEL_LABELS[(lead.channel ?? '').toLowerCase()] ?? lead.channel}</span>
     )}
     <div className="funnel-board__card-statuses">
-      {lead.trialStatus ?? lead.trial_status ? (
-        <span className={`funnel-board__card-status funnel-board__card-status--${statusColor(lead.trialStatus ?? lead.trial_status, TRIAL_LABELS) ?? 'gray'}`}>
-          {TRIAL_LABELS[lead.trialStatus ?? lead.trial_status] ?? (lead.trialStatus ?? lead.trial_status)}
+      {(lead.trialStatus ?? lead.trial_status) ? (
+        <span className={`funnel-board__card-status funnel-board__card-status--${statusColor((lead.trialStatus ?? lead.trial_status).toLowerCase(), TRIAL_LABELS) ?? 'gray'}`}>
+          {TRIAL_LABELS[(lead.trialStatus ?? lead.trial_status).toLowerCase()] ?? (lead.trialStatus ?? lead.trial_status)}
         </span>
       ) : (
         <span className="funnel-board__card-status funnel-board__card-status--gray">Без статуса</span>
       )}
     </div>
     {(lead.resultStatus ?? lead.result_status) && (
-      <span className={`funnel-board__card-result funnel-board__card-result--${statusColor(lead.resultStatus ?? lead.result_status, RESULT_LABELS) ?? 'gray'}`}>
-        {RESULT_LABELS[lead.resultStatus ?? lead.result_status] ?? (lead.resultStatus ?? lead.result_status)}
+      <span className={`funnel-board__card-result funnel-board__card-result--${statusColor((lead.resultStatus ?? lead.result_status).toLowerCase(), RESULT_LABELS) ?? 'gray'}`}>
+        {RESULT_LABELS[(lead.resultStatus ?? lead.result_status).toLowerCase()] ?? (lead.resultStatus ?? lead.result_status)}
       </span>
     )}
   </div>

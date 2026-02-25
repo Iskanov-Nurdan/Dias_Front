@@ -55,6 +55,7 @@
 ```
 
 - `stageId: null` — убрать из воронки
+- `trainerId` / `trainer_id` — фронт отправляет оба для совместимости; бэкенд должен сохранять и возвращать в ответе
 - Если `status` меняется на `accepted` и передан `stageId` — поставить этот этап
 - Если `status` = `accepted`/`rejected` уже стоит → 409 Conflict (как раньше), **кроме** полей карточки (source, targetType, sport, trainer, trialStatus, resultStatus, amount, comment, stageId) — **их редактировать разрешить даже после принятия**
 

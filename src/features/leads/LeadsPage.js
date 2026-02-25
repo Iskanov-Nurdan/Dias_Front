@@ -87,8 +87,9 @@ const LeadsPage = () => {
     try {
       const res = await fetchFunnelStages(null);
       const list = Array.isArray(res) ? res : res?.items ?? res?.results ?? [];
-      setStages(list);
-      return list;
+      const sorted = [...list].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      setStages(sorted);
+      return sorted;
     } catch {
       return [];
     } finally {
@@ -140,20 +141,30 @@ const LeadsPage = () => {
   }, [funnelLeads, funnelSearchNorm]);
 
   // ── Группировка лидов по этапам ────────────────────────────────────────
+  const NO_STAGE_KEY = '__no_stage__';
   const leadsByStage = useMemo(() => {
     const byStage = {};
     filteredFunnelLeads.forEach((lead) => {
       const sid = lead.stageId ?? lead.stage_id ?? lead.stage?.id;
-      if (sid == null) return;
-      if (!byStage[sid]) byStage[sid] = [];
-      byStage[sid].push(lead);
+      const key = sid ?? NO_STAGE_KEY;
+      if (!byStage[key]) byStage[key] = [];
+      byStage[key].push(lead);
     });
     return byStage;
   }, [filteredFunnelLeads]);
 
+  const stagesForBoard = useMemo(() => {
+    const noStageLeads = leadsByStage[NO_STAGE_KEY];
+    if (noStageLeads?.length) {
+      return [...stages, { id: NO_STAGE_KEY, name: 'Без этапа', order: 999 }];
+    }
+    return stages;
+  }, [stages, leadsByStage]);
+
   // ── Тренеры по виду спорта (для карточки) ─────────────────────────────
   const loadTrainers = useCallback(async (sportId) => {
-    const res = await fetchTrainers({ sportId }, null);
+    const id = sportId ? Number(sportId) : undefined;
+    const res = await fetchTrainers({ sportId: id }, null);
     return Array.isArray(res) ? res : res?.items ?? res?.results ?? [];
   }, []);
 
@@ -214,7 +225,8 @@ const LeadsPage = () => {
 
   const handleMoveLead = async (leadId, stageId) => {
     try {
-      await updateLead(leadId, { stageId }, null);
+      const payload = { stageId: stageId === NO_STAGE_KEY ? null : stageId };
+      await updateLead(leadId, payload, null);
       toast.success('Лид перемещён');
       fetchFunnelLeads();
     } catch (e) {
@@ -308,7 +320,7 @@ const LeadsPage = () => {
                     <tr key={lead.id}>
                       <td>{lead.name ?? '—'}</td>
                       <td>{lead.phone ?? '—'}</td>
-                      <td>{CHANNEL_LABELS[lead.channel] ?? lead.channel ?? '—'}</td>
+                      <td>{CHANNEL_LABELS[(lead.channel ?? '').toLowerCase()] ?? lead.channel ?? '—'}</td>
                       <td>{getStatusLabel(lead.status)}</td>
                       <td className="leads-page__actions">
                         {!hasFinalStatus(lead) ? (
@@ -392,7 +404,7 @@ const LeadsPage = () => {
             </div>
           ) : (
             <FunnelBoard
-              stages={stages}
+              stages={stagesForBoard}
               leadsByStage={leadsByStage}
               onCardClick={(lead) => setCardLead(lead)}
               onMoveLead={handleMoveLead}

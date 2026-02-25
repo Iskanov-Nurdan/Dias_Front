@@ -66,7 +66,7 @@ const LeadCardModal = ({ lead, stages = [], sports = [], trainers = [], onSave, 
     setSource(lead.source ?? '');
     setTargetType(lead.targetType ?? lead.target_type ?? '');
     setSportId(String(lead.sportId ?? lead.sport_id ?? lead.sport?.id ?? ''));
-    setTrainerId(String(lead.trainerId ?? lead.trainer_id ?? lead.trainer?.id ?? ''));
+    setTrainerId(String(lead.trainerId ?? lead.trainer_id ?? lead.trainer?.id ?? lead.trainer?.pk ?? ''));
     setTrialStatus(lead.trialStatus ?? lead.trial_status ?? '');
     setResultStatus(lead.resultStatus ?? lead.result_status ?? '');
     setAmount(lead.amount != null ? String(lead.amount) : '');
@@ -74,13 +74,18 @@ const LeadCardModal = ({ lead, stages = [], sports = [], trainers = [], onSave, 
     setStageId(String(lead.stageId ?? lead.stage_id ?? lead.stage?.id ?? ''));
   }, [lead]);
 
+  const prevSportIdRef = React.useRef('');
   useEffect(() => {
     if (!onLoadTrainers) return;
     if (sportId) {
       onLoadTrainers(sportId).then(setTrainersList).catch(() => setTrainersList([]));
+      prevSportIdRef.current = sportId;
     } else {
       setTrainersList([]);
-      setTrainerId('');
+      if (prevSportIdRef.current) {
+        setTrainerId('');
+        prevSportIdRef.current = '';
+      }
     }
   }, [sportId, onLoadTrainers]);
 
@@ -96,22 +101,26 @@ const LeadCardModal = ({ lead, stages = [], sports = [], trainers = [], onSave, 
 
   const trainerOptions = [
     { value: '', label: 'Не выбрано' },
-    ...(trainersList.length > 0 ? trainersList : trainers).map((t) => ({
-      value: String(t.id),
-      label: t.fio ?? t.name ?? String(t.id),
+    ...(trainersList.length > 0 ? trainersList : trainers ?? []).map((t) => ({
+      value: String(t.id ?? t.pk ?? ''),
+      label: t.fio ?? t.name ?? String(t.id ?? t.pk ?? ''),
     })),
   ];
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const tid = trainerId ? Number(trainerId) : null;
+    const sid = sportId ? Number(sportId) : null;
     onSave({
       name: name.trim() || undefined,
       phone: phone.trim() || undefined,
       channel: channel || undefined,
       source: source || undefined,
       targetType: targetType || undefined,
-      sportId: sportId ? Number(sportId) : undefined,
-      trainerId: trainerId ? Number(trainerId) : undefined,
+      sportId: sid,
+      sport_id: sid,
+      trainerId: tid,
+      trainer_id: tid,
       trialStatus: trialStatus || undefined,
       resultStatus: resultStatus || undefined,
       amount: amount !== '' ? Number(amount) : undefined,

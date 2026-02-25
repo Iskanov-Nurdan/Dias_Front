@@ -59,3 +59,6 @@ export const fetchExpenseDetail = (queryState, signal) => get('expense-detail', 
 
 /** GET /api/analytics/profit-detail/ */
 export const fetchProfitDetail = (queryState, signal) => get('profit-detail', queryState, signal);
+
+/** GET /api/analytics/leads/ — агрегаты по заявкам и воронке (year, month, day) */
+export const fetchLeadsAnalytics = (queryState, signal) => get('leads', queryState, signal);

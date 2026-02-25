@@ -24,10 +24,14 @@ export const deleteSport = async (id, signal) => {
   await apiClient.delete(`/sports/${id}/`, withSignal({}, signal));
 };
 
-/** ТЗ: GET /api/trainers/ — query: sportId, search, page, perPage (camelCase) */
+/** ТЗ: GET /api/trainers/ — query: sportId, sport_id, search, page, perPage */
 export const fetchTrainers = async (queryState, signal) => {
   const params = {};
-  if (queryState?.sportId) params.sportId = queryState.sportId;
+  const sid = queryState?.sportId ?? queryState?.sport_id;
+  if (sid != null) {
+    params.sportId = sid;
+    params.sport_id = sid;
+  }
   if (queryState?.search) params.search = queryState.search;
   if (queryState?.page) params.page = queryState.page;
   if (queryState?.perPage) params.perPage = queryState.perPage;

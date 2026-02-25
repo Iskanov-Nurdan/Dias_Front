@@ -8,9 +8,8 @@ import {
   fetchWarehouseRestocks,
   fetchSalesByProduct,
   fetchSalesByCategory,
+  fetchLeadsAnalytics,
 } from '../api';
-import { fetchLeads, fetchFunnelStages } from '../../leads/api';
-import { fetchSports } from '../../sports-trainers/api';
 
 /**
  * Загрузка и состояние данных аналитики по queryState (year, month, day).
@@ -25,9 +24,7 @@ export function useAnalyticsData(queryState) {
   const [warehouseRestocks, setWarehouseRestocks] = useState(null);
   const [salesByProduct, setSalesByProduct] = useState(null);
   const [salesByCategory, setSalesByCategory] = useState(null);
-  const [leadsData, setLeadsData] = useState(null);
-  const [funnelStages, setFunnelStages] = useState(null);
-  const [sportsList, setSportsList] = useState([]);
+  const [leadsAnalytics, setLeadsAnalytics] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const controllerRef = useRef(null);
@@ -50,11 +47,9 @@ export function useAnalyticsData(queryState) {
         fetchWarehouseRestocks(q, s).then((r) => r?.data ?? r),
         fetchSalesByProduct(q, s).then((r) => r?.data ?? r),
         fetchSalesByCategory(q, s).then((r) => r?.data ?? r),
-        fetchLeads({ perPage: 2000 }, s).then((r) => r?.items ?? r?.results ?? (Array.isArray(r) ? r : []) ?? []),
-        fetchFunnelStages(s).then((r) => Array.isArray(r) ? r : r?.items ?? r?.results ?? []),
-        fetchSports({}, s).then((r) => Array.isArray(r) ? r : r?.items ?? r?.results ?? []),
+        fetchLeadsAnalytics(q, s).then((r) => r?.data ?? r),
       ];
-      const [summaryRes, statusesRes, bySportRes, dailyRes, trainersRes, warehouseRes, salesProductRes, salesCategoryRes, leadsListRes, stagesRes, sportsRes] = await Promise.all(promises);
+      const [summaryRes, statusesRes, bySportRes, dailyRes, trainersRes, warehouseRes, salesProductRes, salesCategoryRes, leadsAnalyticsRes] = await Promise.all(promises);
       setSummary(summaryRes ?? {});
       setClientStatuses(statusesRes ?? {});
       setClientsBySport(bySportRes ?? {});
@@ -63,9 +58,7 @@ export function useAnalyticsData(queryState) {
       setWarehouseRestocks(warehouseRes ?? {});
       setSalesByProduct(salesProductRes ?? {});
       setSalesByCategory(salesCategoryRes ?? {});
-      setLeadsData(Array.isArray(leadsListRes) ? leadsListRes : []);
-      setFunnelStages(Array.isArray(stagesRes) ? stagesRes : []);
-      setSportsList(Array.isArray(sportsRes) ? sportsRes : []);
+      setLeadsAnalytics(leadsAnalyticsRes ?? {});
     } catch (err) {
       if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
       setError(err.response?.data?.message || err.response?.data?.detail || 'Ошибка загрузки');
@@ -88,9 +81,7 @@ export function useAnalyticsData(queryState) {
     warehouseRestocks,
     salesByProduct,
     salesByCategory,
-    leadsData,
-    funnelStages,
-    sportsList,
+    leadsAnalytics,
     loading,
     error,
     loadAll,

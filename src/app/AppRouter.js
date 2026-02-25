@@ -12,6 +12,7 @@ const WarehousePage = React.lazy(() => import('../features/warehouse/WarehousePa
 const SalesPage = React.lazy(() => import('../features/sales/SalesPage'));
 const ExpensesPage = React.lazy(() => import('../features/expenses/ExpensesPage'));
 const SalaryPage = React.lazy(() => import('../features/salary/SalaryPage'));
+const LeadsPage = React.lazy(() => import('../features/leads/LeadsPage'));
 const AnalyticsPage = React.lazy(() => import('../features/analytics/AnalyticsPage'));
 const NotFoundPage = React.lazy(() => import('../features/not-found/NotFoundPage'));
 
@@ -91,6 +92,14 @@ const AppRouter = () => (
           element={
             <ProtectedRoute pageId="salary">
               <SalaryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="leads"
+          element={
+            <ProtectedRoute pageId="leads">
+              <LeadsPage />
             </ProtectedRoute>
           }
         />

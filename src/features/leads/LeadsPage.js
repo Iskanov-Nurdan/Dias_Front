@@ -1,0 +1,444 @@
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { fetchLeads, createLead, updateLead, deleteLead, fetchFunnelStages } from './api';
+import { fetchSports, fetchTrainers } from '../sports-trainers/api';
+import { useAuth } from '../../app/providers/AuthProvider';
+import { useToast } from '../../app/providers/ToastProvider';
+import { useDebounce } from '../../shared/hooks/useDebounce';
+import { SEARCH_DEBOUNCE_MS } from '../../shared/constants/common';
+import { LeadFormModal, LeadCardModal, FunnelBoard } from './components';
+import { ErrorState, EmptyState, ConfirmModal, Pagination } from '../../shared/ui';
+import './LeadsPage.scss';
+
+const CHANNEL_LABELS = { instagram: 'Instagram', whatsapp: 'WhatsApp', tiktok: 'TikTok', other: 'Другое' };
+
+const getStatusLabel = (status) => {
+  if (status === 'accepted') return 'Принято';
+  if (status === 'rejected') return 'Отказано';
+  return '—';
+};
+
+const hasFinalStatus = (lead) => lead?.status === 'accepted' || lead?.status === 'rejected';
+
+const TAB_LEADS = 'leads';
+const TAB_FUNNEL = 'funnel';
+
+const LeadsPage = () => {
+  const { isAdmin, showAccessDenied } = useAuth();
+  const toast = useToast();
+
+  const [activeTab, setActiveTab] = useState(TAB_LEADS);
+
+  // ── Список заявок ──────────────────────────────────────────────────────────
+  const [searchInput, setSearchInput] = useState('');
+  const debouncedSearch = useDebounce(searchInput, SEARCH_DEBOUNCE_MS);
+  const [queryState, setQueryState] = useState({ page: 1, perPage: 20 });
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [formLead, setFormLead] = useState(null);
+  const [formError, setFormError] = useState(null);
+  const [formSaving, setFormSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [statusSaving, setStatusSaving] = useState(null);
+  const controllerRef = useRef(null);
+  const lastRequestId = useRef(0);
+
+  // ── Воронка ────────────────────────────────────────────────────────────────
+  const [funnelSearch, setFunnelSearch] = useState('');
+  const [stages, setStages] = useState([]);
+  const [stagesLoading, setStagesLoading] = useState(false);
+  const [funnelLeads, setFunnelLeads] = useState([]);
+  const [funnelLeadsLoading, setFunnelLeadsLoading] = useState(false);
+  const [cardLead, setCardLead] = useState(null);          // лид, открытый в карточке
+  const [cardError, setCardError] = useState(null);
+  const [cardSaving, setCardSaving] = useState(false);
+
+  // ── Справочники ─────────────────────────────────────────────────────────────
+  const [sports, setSports] = useState([]);
+
+  // ── Загрузка заявок ────────────────────────────────────────────────────────
+  const fetchSafe = useCallback(async () => {
+    controllerRef.current?.abort();
+    controllerRef.current = new AbortController();
+    const rid = ++lastRequestId.current;
+    setLoading(true);
+    setError(null);
+    try {
+      const q = { ...queryState, search: debouncedSearch.trim() || undefined };
+      const res = await fetchLeads(q, controllerRef.current.signal);
+      if (rid !== lastRequestId.current) return;
+      setData(res);
+    } catch (err) {
+      if (rid !== lastRequestId.current || err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
+      setError(err.response?.data?.message || err.response?.data?.detail || 'Ошибка загрузки');
+    } finally {
+      if (rid === lastRequestId.current) setLoading(false);
+    }
+  }, [queryState, debouncedSearch]);
+
+  useEffect(() => {
+    fetchSafe();
+    return () => controllerRef.current?.abort();
+  }, [fetchSafe]);
+
+  // ── Загрузка этапов воронки ─────────────────────────────────────────────
+  const fetchStages = useCallback(async () => {
+    setStagesLoading(true);
+    try {
+      const res = await fetchFunnelStages(null);
+      const list = Array.isArray(res) ? res : res?.items ?? res?.results ?? [];
+      setStages(list);
+      return list;
+    } catch {
+      return [];
+    } finally {
+      setStagesLoading(false);
+    }
+  }, []);
+
+  // ── Загрузка лидов воронки (accepted, со stageId) ─────────────────────
+  const fetchFunnelLeads = useCallback(async () => {
+    setFunnelLeadsLoading(true);
+    try {
+      const res = await fetchLeads({ status: 'accepted', perPage: 500 }, null);
+      const list = res?.items ?? res?.results ?? (Array.isArray(res) ? res : []);
+      setFunnelLeads(list);
+    } catch {
+      /* ignore */
+    } finally {
+      setFunnelLeadsLoading(false);
+    }
+  }, []);
+
+  // ── Загрузка видов спорта ──────────────────────────────────────────────
+  useEffect(() => {
+    fetchSports({}, null)
+      .then((d) => setSports(Array.isArray(d) ? d : d?.items ?? d?.results ?? []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === TAB_FUNNEL) {
+      fetchStages();
+      fetchFunnelLeads();
+    }
+  }, [activeTab, fetchStages, fetchFunnelLeads]);
+
+  const items = data?.items ?? data?.results ?? (Array.isArray(data) ? data : []) ?? [];
+
+  // ── Поиск по воронке (клиентский, без учёта регистра) ─────────────────────
+  const norm = (s) => (s ?? '').toString().trim().toLowerCase();
+  const funnelSearchNorm = norm(funnelSearch);
+  const filteredFunnelLeads = useMemo(() => {
+    if (!funnelSearchNorm) return funnelLeads;
+    return funnelLeads.filter((lead) => {
+      const name = norm(lead.name);
+      const phone = norm(lead.phone);
+      const channel = norm(lead.channel);
+      return name.includes(funnelSearchNorm) || phone.includes(funnelSearchNorm) || channel.includes(funnelSearchNorm);
+    });
+  }, [funnelLeads, funnelSearchNorm]);
+
+  // ── Группировка лидов по этапам ────────────────────────────────────────
+  const leadsByStage = useMemo(() => {
+    const byStage = {};
+    filteredFunnelLeads.forEach((lead) => {
+      const sid = lead.stageId ?? lead.stage_id ?? lead.stage?.id;
+      if (sid == null) return;
+      if (!byStage[sid]) byStage[sid] = [];
+      byStage[sid].push(lead);
+    });
+    return byStage;
+  }, [filteredFunnelLeads]);
+
+  // ── Тренеры по виду спорта (для карточки) ─────────────────────────────
+  const loadTrainers = useCallback(async (sportId) => {
+    const res = await fetchTrainers({ sportId }, null);
+    return Array.isArray(res) ? res : res?.items ?? res?.results ?? [];
+  }, []);
+
+  // ── Handlers: заявки ───────────────────────────────────────────────────
+  const handleSaveLead = async (payload) => {
+    setFormError(null);
+    setFormSaving(true);
+    try {
+      if (formLead?.id) {
+        await updateLead(formLead.id, payload, null);
+        toast.success('Заявка обновлена');
+      } else {
+        await createLead(payload, null);
+        toast.success('Заявка создана');
+      }
+      setFormLead(null);
+      fetchSafe();
+    } catch (e) {
+      const d = e.response?.data;
+      setFormError(d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка сохранения');
+    } finally {
+      setFormSaving(false);
+    }
+  };
+
+  const handleSetStatus = async (lead, status) => {
+    setStatusSaving(lead.id);
+    try {
+      const stageList = stages.length > 0 ? stages : await fetchStages();
+      const firstStage = stageList.length > 0 ? stageList[0] : null;
+      const payload = { status };
+      if (status === 'accepted' && firstStage) payload.stageId = firstStage.id;
+      await updateLead(lead.id, payload, null);
+      toast.success(status === 'accepted' ? 'Заявка принята и добавлена в воронку' : 'Заявка отклонена');
+      fetchSafe();
+      if (activeTab === TAB_FUNNEL) fetchFunnelLeads();
+    } catch (e) {
+      const d = e.response?.data;
+      toast.error(d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка');
+    } finally {
+      setStatusSaving(null);
+    }
+  };
+
+  const handleDeleteLead = () => {
+    if (!confirmDelete?.id) return;
+    deleteLead(confirmDelete.id, null)
+      .then(() => {
+        setConfirmDelete(null);
+        fetchSafe();
+        toast.success('Заявка удалена');
+      })
+      .catch((e) => {
+        const msg = e.response?.data?.error?.message ?? e.response?.data?.message ?? e.response?.data?.detail;
+        toast.error(e.response?.status === 409 ? (msg || 'Нельзя удалить заявку со статусом') : (msg || 'Ошибка удаления'));
+      });
+  };
+
+  const handleMoveLead = async (leadId, stageId) => {
+    try {
+      await updateLead(leadId, { stageId }, null);
+      toast.success('Лид перемещён');
+      fetchFunnelLeads();
+    } catch (e) {
+      const d = e.response?.data;
+      toast.error(d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка перемещения');
+    }
+  };
+
+  // ── Handlers: карточка лида (в воронке) ────────────────────────────────
+  const handleSaveCard = async (payload) => {
+    if (!cardLead?.id) return;
+    setCardError(null);
+    setCardSaving(true);
+    try {
+      await updateLead(cardLead.id, payload, null);
+      toast.success('Карточка сохранена');
+      setCardLead(null);
+      fetchFunnelLeads();
+    } catch (e) {
+      const d = e.response?.data;
+      setCardError(d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка сохранения');
+    } finally {
+      setCardSaving(false);
+    }
+  };
+
+  return (
+    <div className="leads-page">
+      <h1 className="leads-page__title">Лиды</h1>
+
+      {/* Табы */}
+      <div className="leads-page__tabs">
+        <button
+          type="button"
+          className={`leads-page__tab ${activeTab === TAB_LEADS ? 'leads-page__tab--active' : ''}`}
+          onClick={() => setActiveTab(TAB_LEADS)}
+        >
+          Заявки
+        </button>
+        <button
+          type="button"
+          className={`leads-page__tab ${activeTab === TAB_FUNNEL ? 'leads-page__tab--active' : ''}`}
+          onClick={() => setActiveTab(TAB_FUNNEL)}
+        >
+          Воронка лидов
+        </button>
+      </div>
+
+      {/* ══ Таб: Заявки ══ */}
+      {activeTab === TAB_LEADS && (
+        <>
+          <div className="leads-page__toolbar">
+            <input
+              type="text"
+              placeholder="Поиск по имени, телефону, каналу…"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="leads-page__search"
+            />
+            <button type="button" className="leads-page__add" onClick={() => (isAdmin ? setFormLead({}) : showAccessDenied())}>
+              Новая заявка
+            </button>
+          </div>
+          {error && <ErrorState message={error} onRetry={fetchSafe} />}
+          <div className="leads-page__table-wrap">
+            <table className="leads-page__table">
+              <thead>
+                <tr>
+                  <th>Имя</th>
+                  <th>Телефон</th>
+                  <th>Канал</th>
+                  <th>Статус</th>
+                  <th>Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} className="leads-page__loading-cell">
+                      <span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span>
+                    </td>
+                  </tr>
+                ) : items.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="leads-page__empty-cell">
+                      <EmptyState message="Нет заявок" />
+                    </td>
+                  </tr>
+                ) : (
+                  items.map((lead) => (
+                    <tr key={lead.id}>
+                      <td>{lead.name ?? '—'}</td>
+                      <td>{lead.phone ?? '—'}</td>
+                      <td>{CHANNEL_LABELS[lead.channel] ?? lead.channel ?? '—'}</td>
+                      <td>{getStatusLabel(lead.status)}</td>
+                      <td className="leads-page__actions">
+                        {!hasFinalStatus(lead) ? (
+                          <>
+                            <button
+                              type="button"
+                              className="leads-page__action leads-page__action--accept"
+                              disabled={statusSaving === lead.id}
+                              onClick={() => (isAdmin ? handleSetStatus(lead, 'accepted') : showAccessDenied())}
+                            >
+                              Принять
+                            </button>
+                            <button
+                              type="button"
+                              className="leads-page__action leads-page__action--reject"
+                              disabled={statusSaving === lead.id}
+                              onClick={() => (isAdmin ? handleSetStatus(lead, 'rejected') : showAccessDenied())}
+                            >
+                              Отказать
+                            </button>
+                            <button
+                              type="button"
+                              className="leads-page__action leads-page__action--edit"
+                              onClick={() => (isAdmin ? setFormLead(lead) : showAccessDenied())}
+                            >
+                              Изменить
+                            </button>
+                            <button
+                              type="button"
+                              className="leads-page__action leads-page__action--delete"
+                              onClick={() => (isAdmin ? setConfirmDelete(lead) : showAccessDenied())}
+                            >
+                              Удалить
+                            </button>
+                          </>
+                        ) : (
+                          <span className={`leads-page__status-badge leads-page__status-badge--${lead.status}`}>
+                            {getStatusLabel(lead.status)}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <Pagination
+            meta={data?.meta}
+            currentPage={queryState.page}
+            onPage={(p) => setQueryState((q) => ({ ...q, page: p }))}
+            loading={loading}
+            entityLabel="заявок"
+          />
+        </>
+      )}
+
+      {/* ══ Таб: Воронка ══ */}
+      {activeTab === TAB_FUNNEL && (
+        <>
+          <div className="leads-page__funnel-toolbar">
+            <p className="leads-page__funnel-hint">Следите за движением клиентов от первого контакта до покупки</p>
+            <input
+              type="text"
+              placeholder="Поиск по имени, телефону, каналу…"
+              value={funnelSearch}
+              onChange={(e) => setFunnelSearch(e.target.value)}
+              className="leads-page__search leads-page__search--funnel"
+            />
+            <button
+              type="button"
+              className="leads-page__refresh-btn"
+              onClick={() => { fetchStages(); fetchFunnelLeads(); }}
+            >
+              ↺ Обновить
+            </button>
+          </div>
+          {stagesLoading ? (
+            <div className="leads-page__loading-cell">
+              <span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span>
+            </div>
+          ) : (
+            <FunnelBoard
+              stages={stages}
+              leadsByStage={leadsByStage}
+              onCardClick={(lead) => setCardLead(lead)}
+              onMoveLead={handleMoveLead}
+              loading={funnelLeadsLoading}
+            />
+          )}
+        </>
+      )}
+
+      {/* ── Модалки заявок ── */}
+      {formLead !== null && (
+        <LeadFormModal
+          lead={formLead?.id ? items.find((l) => l.id === formLead.id) ?? formLead : formLead}
+          onSave={handleSaveLead}
+          onClose={() => { setFormLead(null); setFormError(null); }}
+          error={formError}
+          saving={formSaving}
+        />
+      )}
+      {confirmDelete !== null && (
+        <ConfirmModal
+          title="Удалить заявку?"
+          message={`Удалить «${confirmDelete.name ?? 'заявку'}»?`}
+          confirmText="Удалить"
+          danger
+          onConfirm={handleDeleteLead}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {/* ── Карточка лида (воронка) ── */}
+      {cardLead !== null && (
+        <LeadCardModal
+          lead={cardLead}
+          stages={stages}
+          sports={sports}
+          onLoadTrainers={loadTrainers}
+          onSave={handleSaveCard}
+          onClose={() => { setCardLead(null); setCardError(null); }}
+          error={cardError}
+          saving={cardSaving}
+        />
+      )}
+
+    </div>
+  );
+};
+
+export default LeadsPage;

@@ -107,7 +107,7 @@ const EmployeesPage = () => {
   }, [fetchRolesSafe]);
 
   const rolesList = Array.isArray(rolesData) ? rolesData : rolesData?.results ?? rolesData?.items ?? [];
-  const employeesItems = employeesData?.items ?? employeesData?.results ?? employeesData?.data ?? employeesData;
+  const employeesItems = employeesData?.items ?? employeesData?.results ?? employeesData?.data ?? employeesData ?? [];
 
   const roleOptions = [{ value: '', label: 'Все роли' }, ...rolesList.map((r) => ({ value: String(r.id), label: r.name || '' }))];
 

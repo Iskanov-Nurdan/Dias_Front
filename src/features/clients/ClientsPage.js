@@ -117,7 +117,8 @@ const ClientsPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchClients(queryState, controllerRef.current.signal);
+      const q = { ...queryState, search: debouncedSearch.trim() || undefined };
+      const res = await fetchClients(q, controllerRef.current.signal);
       if (rid !== lastRequestId.current) return;
       setData(res);
     } catch (err) {
@@ -126,7 +127,7 @@ const ClientsPage = () => {
     } finally {
       if (rid === lastRequestId.current) setLoading(false);
     }
-  }, [queryState]);
+  }, [queryState, debouncedSearch]);
 
   const fetchAllClients = useCallback(async () => {
     allControllerRef.current?.abort();
@@ -165,7 +166,7 @@ const ClientsPage = () => {
     fetchSports(null).then((d) => setSports(Array.isArray(d) ? d : d?.results ?? d?.items ?? [])).catch(() => {});
   }, []);
 
-  const items = data?.items ?? data?.results ?? data ?? [];
+  const items = data?.items ?? data?.results ?? (Array.isArray(data) ? data : []) ?? [];
 
   const exactGroups  = useMemo(() => getExactDuplicates(allClients), [allClients]);
   const similarGroups = useMemo(() => getSimilarGroups(allClients), [allClients]);

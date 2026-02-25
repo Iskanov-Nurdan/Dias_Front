@@ -9,6 +9,12 @@ import './AnalyticsPage.scss';
 
 const formatMoney = (v) => (v != null && !Number.isNaN(Number(v)) ? `${Number(v).toLocaleString('ru-RU')} Р` : '—');
 
+const CHANNEL_LABELS = { instagram: 'Instagram', whatsapp: 'WhatsApp', tiktok: 'TikTok', other: 'Другое' };
+const SOURCE_LABELS = { target: 'Реклама (таргет)', reels: 'Reels', stories: 'Stories', direct: 'Direct', post: 'Пост/лента' };
+const TARGET_TYPE_LABELS = { adult: 'Взрослый', children: 'Дети' };
+const TRIAL_LABELS = { came: 'Пришли', rescheduled: 'Перенесли', no_contact: 'Не вышли на связь', rejected: 'Отказались' };
+const RESULT_LABELS = { bought: 'Купили', thinking: 'Ушли подумать', rejected: 'Отказались' };
+
 // expense-detail: для складских строк бэк передаёт type "add" | "restock"; у остальных type нет
 const getExpenseName = (row) => {
   const type = (row.type ?? row.expenseType ?? '').toLowerCase();
@@ -37,6 +43,9 @@ const AnalyticsPage = () => {
     warehouseRestocks,
     salesByProduct,
     salesByCategory,
+    leadsData,
+    funnelStages,
+    sportsList,
     loading,
     error,
     loadAll,
@@ -114,6 +123,169 @@ const AnalyticsPage = () => {
     color: DONUT_COLORS[i % DONUT_COLORS.length],
   })).filter((d) => d.value > 0), [sportItems]);
   const totalClientsSports = useMemo(() => donutSportsData.reduce((s, d) => s + d.value, 0), [donutSportsData]);
+
+  // ── Лиды: фильтрация по периоду и агрегаты ───────────────────────────────
+  const leadsList = useMemo(() => Array.isArray(leadsData) ? leadsData : [], [leadsData]);
+  const stagesSorted = useMemo(() => {
+    const list = Array.isArray(funnelStages) ? funnelStages : [];
+    return [...list].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  }, [funnelStages]);
+
+  const leadsFilteredByPeriod = useMemo(() => {
+    const q = queryState;
+    const year = Number(q.year) || 0;
+    const month = Number(q.month) || 0;
+    const day = Number(q.day) || 0;
+    if (!year) return leadsList;
+    return leadsList.filter((lead) => {
+      const created = lead.createdAt ?? lead.created_at;
+      if (!created) return false;
+      const d = new Date(created);
+      if (d.getFullYear() !== year) return false;
+      if (month && d.getMonth() + 1 !== month) return false;
+      if (day && d.getDate() !== day) return false;
+      return true;
+    });
+  }, [leadsList, queryState.year, queryState.month, queryState.day]);
+
+  const leadsByStatus = useMemo(() => {
+    const accepted = leadsFilteredByPeriod.filter((l) => (l.status ?? '').toLowerCase() === 'accepted').length;
+    const rejected = leadsFilteredByPeriod.filter((l) => (l.status ?? '').toLowerCase() === 'rejected').length;
+    const pending = leadsFilteredByPeriod.filter((l) => {
+      const s = (l.status ?? '').toLowerCase();
+      return s !== 'accepted' && s !== 'rejected';
+    }).length;
+    return { accepted, rejected, pending, total: leadsFilteredByPeriod.length };
+  }, [leadsFilteredByPeriod]);
+
+  const leadsByChannel = useMemo(() => {
+    const map = new Map();
+    leadsFilteredByPeriod.forEach((l) => {
+      const ch = (l.channel ?? 'other').toLowerCase();
+      const key = ['instagram', 'whatsapp', 'tiktok'].includes(ch) ? ch : 'other';
+      map.set(key, (map.get(key) ?? 0) + 1);
+    });
+    return Array.from(map.entries()).map(([key, count]) => ({ key, count, label: CHANNEL_LABELS[key] ?? key }));
+  }, [leadsFilteredByPeriod]);
+
+  const leadsByStage = useMemo(() => {
+    const accepted = leadsFilteredByPeriod.filter((l) => (l.status ?? '').toLowerCase() === 'accepted');
+    const map = new Map();
+    stagesSorted.forEach((s) => map.set(s.id, { stageId: s.id, stageName: s.name, count: 0 }));
+    accepted.forEach((l) => {
+      const sid = l.stageId ?? l.stage_id ?? l.stage?.id;
+      if (sid != null) {
+        const cur = map.get(sid);
+        if (cur) cur.count += 1;
+        else map.set(sid, { stageId: sid, stageName: l.stage?.name ?? `Этап ${sid}`, count: 1 });
+      }
+    });
+    return stagesSorted.map((s) => map.get(s.id) ?? { stageId: s.id, stageName: s.name, count: 0 });
+  }, [leadsFilteredByPeriod, stagesSorted]);
+
+  const leadsByResult = useMemo(() => {
+    const accepted = leadsFilteredByPeriod.filter((l) => (l.status ?? '').toLowerCase() === 'accepted');
+    const map = new Map();
+    accepted.forEach((l) => {
+      const r = (l.resultStatus ?? l.result_status ?? 'none').toLowerCase();
+      const key = ['bought', 'thinking', 'rejected'].includes(r) ? r : 'none';
+      map.set(key, (map.get(key) ?? 0) + 1);
+    });
+    return [
+      { key: 'bought', count: map.get('bought') ?? 0, label: RESULT_LABELS.bought },
+      { key: 'thinking', count: map.get('thinking') ?? 0, label: RESULT_LABELS.thinking },
+      { key: 'rejected', count: map.get('rejected') ?? 0, label: RESULT_LABELS.rejected },
+      { key: 'none', count: map.get('none') ?? 0, label: 'Без результата' },
+    ].filter((x) => x.count > 0);
+  }, [leadsFilteredByPeriod]);
+
+  const donutLeadsChannelData = useMemo(() => leadsByChannel.map((x, i) => ({
+    label: x.label,
+    value: x.count,
+    color: DONUT_COLORS[i % DONUT_COLORS.length],
+  })), [leadsByChannel]);
+
+  const leadsFunnelTotal = useMemo(() => leadsByStage.reduce((s, x) => s + x.count, 0), [leadsByStage]);
+  const leadsStageMax = useMemo(() => Math.max(1, ...leadsByStage.map((x) => x.count)), [leadsByStage]);
+
+  // ── По полям карточки лида ───────────────────────────────────────────────
+  const sportsMap = useMemo(() => new Map((sportsList ?? []).map((s) => [s.id, s.name ?? s.title ?? '—'])), [sportsList]);
+
+  const leadsBySource = useMemo(() => {
+    const map = new Map();
+    leadsFilteredByPeriod.forEach((l) => {
+      const src = (l.source ?? '').toLowerCase();
+      const key = ['target', 'reels', 'stories', 'direct', 'post'].includes(src) ? src : 'other';
+      map.set(key, (map.get(key) ?? 0) + 1);
+    });
+    return ['target', 'reels', 'stories', 'direct', 'post'].map((k) => ({
+      key: k, count: map.get(k) ?? 0, label: SOURCE_LABELS[k] ?? k,
+    })).concat(map.get('other') > 0 ? [{ key: 'other', count: map.get('other'), label: 'Другое' }] : []).filter((x) => x.count > 0);
+  }, [leadsFilteredByPeriod]);
+
+  const leadsByTargetType = useMemo(() => {
+    const map = new Map();
+    leadsFilteredByPeriod.forEach((l) => {
+      const t = (l.targetType ?? l.target_type ?? '').toLowerCase();
+      const key = ['adult', 'children'].includes(t) ? t : 'none';
+      map.set(key, (map.get(key) ?? 0) + 1);
+    });
+    return [
+      { key: 'adult', count: map.get('adult') ?? 0, label: TARGET_TYPE_LABELS.adult },
+      { key: 'children', count: map.get('children') ?? 0, label: TARGET_TYPE_LABELS.children },
+      { key: 'none', count: map.get('none') ?? 0, label: 'Не указано' },
+    ].filter((x) => x.count > 0);
+  }, [leadsFilteredByPeriod]);
+
+  const leadsBySport = useMemo(() => {
+    const map = new Map();
+    leadsFilteredByPeriod.forEach((l) => {
+      const sid = l.sportId ?? l.sport_id ?? l.sport?.id;
+      const name = l.sport?.name ?? l.sportName ?? sportsMap.get(sid) ?? (sid ? `ID ${sid}` : 'Без спорта');
+      const key = sid ?? 'none';
+      if (!map.has(key)) map.set(key, { sportId: sid, sportName: name, count: 0 });
+      map.get(key).count += 1;
+    });
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  }, [leadsFilteredByPeriod, sportsMap]);
+
+  const leadsByTrainer = useMemo(() => {
+    const map = new Map();
+    leadsFilteredByPeriod.forEach((l) => {
+      const tid = l.trainerId ?? l.trainer_id ?? l.trainer?.id;
+      const name = l.trainer?.fio ?? l.trainer?.name ?? l.trainerName ?? (tid ? `ID ${tid}` : 'Без тренера');
+      const key = tid ?? 'none';
+      if (!map.has(key)) map.set(key, { trainerId: tid, trainerName: name, count: 0 });
+      map.get(key).count += 1;
+    });
+    return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, 10);
+  }, [leadsFilteredByPeriod]);
+
+  const leadsByTrialStatus = useMemo(() => {
+    const accepted = leadsFilteredByPeriod.filter((l) => (l.status ?? '').toLowerCase() === 'accepted');
+    const map = new Map();
+    accepted.forEach((l) => {
+      const t = (l.trialStatus ?? l.trial_status ?? 'none').toLowerCase();
+      const key = ['came', 'rescheduled', 'no_contact', 'rejected'].includes(t) ? t : 'none';
+      map.set(key, (map.get(key) ?? 0) + 1);
+    });
+    return [
+      { key: 'came', count: map.get('came') ?? 0, label: TRIAL_LABELS.came },
+      { key: 'rescheduled', count: map.get('rescheduled') ?? 0, label: TRIAL_LABELS.rescheduled },
+      { key: 'no_contact', count: map.get('no_contact') ?? 0, label: TRIAL_LABELS.no_contact },
+      { key: 'rejected', count: map.get('rejected') ?? 0, label: TRIAL_LABELS.rejected },
+      { key: 'none', count: map.get('none') ?? 0, label: 'Не указано' },
+    ].filter((x) => x.count > 0);
+  }, [leadsFilteredByPeriod]);
+
+  const leadsCardMax = useMemo(() => Math.max(
+    1,
+    ...leadsBySource.map((x) => x.count),
+    ...leadsByTargetType.map((x) => x.count),
+    ...leadsBySport.map((x) => x.count),
+    ...leadsByTrainer.map((x) => x.count),
+    ...leadsByTrialStatus.map((x) => x.count),
+  ), [leadsBySource, leadsByTargetType, leadsBySport, leadsByTrainer, leadsByTrialStatus]);
 
   // Спарклайны по дням (только при выбранном месяце)
   const hasDaily = queryState.month && chartData.length > 0;
@@ -316,6 +488,164 @@ const AnalyticsPage = () => {
               </div>
             </section>
           </div>
+
+          <section className="analytics-page__section analytics-page__section--leads">
+            <h3 className="analytics-page__section-title">Заявки и воронка лидов</h3>
+            <p className="analytics-page__section-hint">
+              {queryState.year ? `Период: ${queryState.year}${queryState.month ? ` / ${queryState.month}` : ''}${queryState.day ? ` / ${queryState.day}` : ''}` : 'Выберите год для фильтрации по периоду'}
+            </p>
+            <div className="analytics-page__leads-kpis">
+              <div className="analytics-page__card analytics-page__card--static">
+                <span className="analytics-page__card-label">Всего заявок</span>
+                <span className="analytics-page__card-value analytics-page__card-value--num">{leadsByStatus.total}</span>
+              </div>
+              <div className="analytics-page__card analytics-page__card--static analytics-page__card--green">
+                <span className="analytics-page__card-label">Принято</span>
+                <span className="analytics-page__card-value analytics-page__card-value--num">{leadsByStatus.accepted}</span>
+              </div>
+              <div className="analytics-page__card analytics-page__card--static analytics-page__card--red">
+                <span className="analytics-page__card-label">Отказано</span>
+                <span className="analytics-page__card-value analytics-page__card-value--num">{leadsByStatus.rejected}</span>
+              </div>
+              <div className="analytics-page__card analytics-page__card--static analytics-page__card--gray">
+                <span className="analytics-page__card-label">В работе</span>
+                <span className="analytics-page__card-value analytics-page__card-value--num">{leadsByStatus.pending}</span>
+              </div>
+            </div>
+            <div className="analytics-page__leads-grid">
+              <div className="analytics-page__leads-block">
+                <h4 className="analytics-page__leads-subtitle">Лиды по каналам</h4>
+                <div className="analytics-page__leads-donut-wrap">
+                  <DonutChart
+                    data={donutLeadsChannelData}
+                    size={180}
+                    strokeWidth={22}
+                    centerLabel={leadsByStatus.total > 0 ? String(leadsByStatus.total) : ''}
+                  />
+                </div>
+                <ul className="analytics-page__leads-channel-list">
+                  {leadsByChannel.map((x) => (
+                    <li key={x.key}>{x.label}: {x.count}</li>
+                  ))}
+                  {leadsByChannel.length === 0 && <li className="analytics-page__empty">Нет данных</li>}
+                </ul>
+              </div>
+              <div className="analytics-page__leads-block">
+                <h4 className="analytics-page__leads-subtitle">Воронка по этапам</h4>
+                <div className="analytics-page__bars">
+                  {leadsByStage.map((x) => (
+                    <div key={x.stageId} className="analytics-page__bar-row analytics-page__bar-row--readonly">
+                      <span className="analytics-page__bar-label">{x.stageName}</span>
+                      <div className="analytics-page__bar-wrap">
+                        <div className="analytics-page__bar analytics-page__bar--blue" style={{ width: `${(x.count / leadsStageMax) * 100}%` }} />
+                      </div>
+                      <span className="analytics-page__bar-value">{x.count}</span>
+                    </div>
+                  ))}
+                  {leadsByStage.length === 0 && <p className="analytics-page__empty">Нет этапов или лидов в воронке</p>}
+                </div>
+                {leadsFunnelTotal > 0 && (
+                  <p className="analytics-page__leads-funnel-total">В воронке: <strong>{leadsFunnelTotal}</strong> лидов</p>
+                )}
+              </div>
+              <div className="analytics-page__leads-block analytics-page__leads-block--wide">
+                <h4 className="analytics-page__leads-subtitle">Результат (принятые лиды)</h4>
+                <div className="analytics-page__bars">
+                  {leadsByResult.map((x) => (
+                    <div key={x.key} className="analytics-page__bar-row analytics-page__bar-row--readonly">
+                      <span className="analytics-page__bar-label">{x.label}</span>
+                      <div className="analytics-page__bar-wrap">
+                        <div
+                          className={`analytics-page__bar ${x.key === 'bought' ? 'analytics-page__bar--green' : x.key === 'rejected' ? 'analytics-page__bar--red' : 'analytics-page__bar--gray'}`}
+                          style={{ width: `${leadsByStatus.accepted > 0 ? (x.count / leadsByStatus.accepted) * 100 : 0}%` }}
+                        />
+                      </div>
+                      <span className="analytics-page__bar-value">{x.count}</span>
+                    </div>
+                  ))}
+                  {leadsByResult.length === 0 && leadsByStatus.accepted > 0 && <p className="analytics-page__empty">Статусы результата не заполнены</p>}
+                  {leadsByStatus.accepted === 0 && <p className="analytics-page__empty">Нет принятых лидов</p>}
+                </div>
+              </div>
+            </div>
+
+            <h4 className="analytics-page__leads-section-title">По полям карточки лида</h4>
+            <div className="analytics-page__leads-grid analytics-page__leads-grid--card">
+              <div className="analytics-page__leads-block">
+                <h4 className="analytics-page__leads-subtitle">Источник лида</h4>
+                <div className="analytics-page__bars">
+                  {leadsBySource.map((x) => (
+                    <div key={x.key} className="analytics-page__bar-row analytics-page__bar-row--readonly">
+                      <span className="analytics-page__bar-label">{x.label}</span>
+                      <div className="analytics-page__bar-wrap">
+                        <div className="analytics-page__bar" style={{ width: `${(x.count / leadsCardMax) * 100}%` }} />
+                      </div>
+                      <span className="analytics-page__bar-value">{x.count}</span>
+                    </div>
+                  ))}
+                  {leadsBySource.length === 0 && <p className="analytics-page__empty">Нет данных</p>}
+                </div>
+              </div>
+              <div className="analytics-page__leads-block">
+                <h4 className="analytics-page__leads-subtitle">Для себя или для детей</h4>
+                <div className="analytics-page__bars">
+                  {leadsByTargetType.map((x) => (
+                    <div key={x.key} className="analytics-page__bar-row analytics-page__bar-row--readonly">
+                      <span className="analytics-page__bar-label">{x.label}</span>
+                      <div className="analytics-page__bar-wrap">
+                        <div className="analytics-page__bar" style={{ width: `${(x.count / leadsCardMax) * 100}%` }} />
+                      </div>
+                      <span className="analytics-page__bar-value">{x.count}</span>
+                    </div>
+                  ))}
+                  {leadsByTargetType.length === 0 && <p className="analytics-page__empty">Нет данных</p>}
+                </div>
+              </div>
+              <div className="analytics-page__leads-block">
+                <h4 className="analytics-page__leads-subtitle">Вид спорта</h4>
+                <div className="analytics-page__bars">
+                  {leadsBySport.slice(0, 8).map((x) => (
+                    <div key={x.sportId ?? 'none'} className="analytics-page__bar-row analytics-page__bar-row--readonly">
+                      <span className="analytics-page__bar-label">{x.sportName}</span>
+                      <div className="analytics-page__bar-wrap">
+                        <div className="analytics-page__bar analytics-page__bar--blue" style={{ width: `${(x.count / leadsCardMax) * 100}%` }} />
+                      </div>
+                      <span className="analytics-page__bar-value">{x.count}</span>
+                    </div>
+                  ))}
+                  {leadsBySport.length === 0 && <p className="analytics-page__empty">Нет данных</p>}
+                </div>
+              </div>
+              <div className="analytics-page__leads-block">
+                <h4 className="analytics-page__leads-subtitle">Топ тренеров по лидам</h4>
+                <ol className="analytics-page__top-list">
+                  {leadsByTrainer.map((x, i) => (
+                    <li key={x.trainerId ?? i}>{x.trainerName}: {x.count}</li>
+                  ))}
+                  {leadsByTrainer.length === 0 && <li className="analytics-page__empty">Нет данных</li>}
+                </ol>
+              </div>
+              <div className="analytics-page__leads-block">
+                <h4 className="analytics-page__leads-subtitle">Пробная тренировка</h4>
+                <div className="analytics-page__bars">
+                  {leadsByTrialStatus.map((x) => (
+                    <div key={x.key} className="analytics-page__bar-row analytics-page__bar-row--readonly">
+                      <span className="analytics-page__bar-label">{x.label}</span>
+                      <div className="analytics-page__bar-wrap">
+                        <div
+                          className={`analytics-page__bar ${x.key === 'came' ? 'analytics-page__bar--green' : x.key === 'rejected' || x.key === 'no_contact' ? 'analytics-page__bar--red' : 'analytics-page__bar--gray'}`}
+                          style={{ width: `${leadsByStatus.accepted > 0 ? (x.count / leadsByStatus.accepted) * 100 : 0}%` }}
+                        />
+                      </div>
+                      <span className="analytics-page__bar-value">{x.count}</span>
+                    </div>
+                  ))}
+                  {leadsByTrialStatus.length === 0 && leadsByStatus.accepted > 0 && <p className="analytics-page__empty">Статусы не заполнены</p>}
+                  {leadsByStatus.accepted === 0 && <p className="analytics-page__empty">Нет принятых лидов</p>}
+                </div>
+              </div>
+            </div>
+          </section>
 
           <section className="analytics-page__section analytics-page__section--chart">
             <h3 className="analytics-page__section-title">Динамика доходов и расходов по дням</h3>

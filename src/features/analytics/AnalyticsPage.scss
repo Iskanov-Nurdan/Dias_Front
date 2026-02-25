@@ -431,6 +431,145 @@
   color: var(--color-text);
 }
 
+.analytics-page__section-hint {
+  margin: -8px 0 16px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+// ——— Секция «Заявки и воронка лидов» ———
+.analytics-page__section--leads {
+  margin-bottom: 20px;
+}
+
+.analytics-page__leads-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 768px) {
+  .analytics-page__leads-kpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.analytics-page__leads-kpis .analytics-page__card {
+  padding: 16px 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-border);
+  background: var(--color-bg-card);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.analytics-page__leads-kpis .analytics-page__card--green { border-left-color: #059669; .analytics-page__card-value { color: #059669; } }
+.analytics-page__leads-kpis .analytics-page__card--red { border-left-color: #dc2626; .analytics-page__card-value { color: #dc2626; } }
+.analytics-page__leads-kpis .analytics-page__card--gray { border-left-color: #6b7280; .analytics-page__card-value { color: #6b7280; } }
+
+.analytics-page__leads-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  .analytics-page__leads-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.analytics-page__leads-block {
+  padding: 20px;
+  background: var(--color-bg);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+}
+
+.analytics-page__leads-block--wide {
+  grid-column: 1 / -1;
+}
+
+.analytics-page__leads-subtitle {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.analytics-page__leads-donut-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.analytics-page__leads-channel-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  color: var(--color-text);
+  line-height: 1.8;
+}
+
+.analytics-page__leads-channel-list li {
+  padding: 4px 0;
+}
+
+.analytics-page__leads-funnel-total {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.analytics-page__leads-section-title {
+  margin: 28px 0 16px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.analytics-page__leads-grid--card {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 1100px) {
+  .analytics-page__leads-grid--card {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .analytics-page__leads-grid--card {
+    grid-template-columns: 1fr;
+  }
+}
+
+.analytics-page__leads-amount {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.analytics-page__leads-amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.analytics-page__leads-amount-row strong {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
 // ——— Прогресс-бары (статусы клиентов) ———
 .analytics-page__bars {
   display: flex;
@@ -487,6 +626,22 @@
 
 .analytics-page__bar--red {
   background: linear-gradient(90deg, #b91c1c, #ef4444);
+}
+
+.analytics-page__bar--blue {
+  background: linear-gradient(90deg, var(--color-primary), #3b82f6);
+}
+
+.analytics-page__bar--gray {
+  background: linear-gradient(90deg, #6b7280, #9ca3af);
+}
+
+.analytics-page__bar-row--readonly {
+  cursor: default;
+}
+
+.analytics-page__bar-row--readonly:hover {
+  background: transparent;
 }
 
 .analytics-page__bar-value {

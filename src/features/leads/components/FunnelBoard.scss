@@ -1,0 +1,158 @@
+.funnel-board {
+  overflow-x: auto;
+  padding-bottom: 16px;
+
+  &::-webkit-scrollbar { height: 6px; }
+  &::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 4px; }
+}
+
+.funnel-board__columns {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  min-width: max-content;
+}
+
+.funnel-board__column {
+  width: 260px;
+  flex-shrink: 0;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.funnel-board__column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.funnel-board__column-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.funnel-board__column-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.funnel-board__column-body {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 80px;
+  max-height: 70vh;
+  overflow-y: auto;
+
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 4px; }
+}
+
+.funnel-board__card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: grab;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  &:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  }
+  &:active { cursor: grabbing; }
+}
+
+.funnel-board__column-body--drag-over {
+  background: var(--color-primary-light);
+  border: 2px dashed var(--color-primary);
+  border-radius: 8px;
+}
+
+.funnel-board__card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+
+.funnel-board__card-phone {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
+
+.funnel-board__card-tag {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.funnel-board__card-statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.funnel-board__card-status,
+.funnel-board__card-result {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  &--green { background: rgba(22,163,74,0.12); color: #16a34a; }
+  &--yellow { background: rgba(202,138,4,0.12); color: #b45309; }
+  &--red { background: rgba(220,38,38,0.10); color: #dc2626; }
+  &--gray { background: rgba(0,0,0,0.06); color: var(--color-text-muted); }
+}
+
+.funnel-board__card-result {
+  display: block;
+  margin-top: 4px;
+  text-align: center;
+}
+
+.funnel-board__loading,
+.funnel-board__no-leads {
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  padding: 12px 0;
+}
+
+.funnel-board__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px 0;
+}
+
+.funnel-board__empty-text {
+  font-size: 14px;
+  color: var(--color-text-muted);
+}

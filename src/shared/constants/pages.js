@@ -3,6 +3,7 @@ export const PAGE_IDS = [
   'employees',
   'sports-trainers',
   'clients',
+  'leads',
   'warehouse',
   'sales',
   'expenses',
@@ -14,6 +15,7 @@ export const PAGE_LABELS = {
   employees: 'Сотрудники',
   'sports-trainers': 'Виды спорта / Тренеры',
   clients: 'Клиенты',
+  leads: 'Лиды',
   warehouse: 'Склад',
   sales: 'Продажи',
   expenses: 'Расходы',
@@ -25,6 +27,7 @@ export const PAGE_ROUTES = {
   employees: '/employees',
   'sports-trainers': '/sports-trainers',
   clients: '/clients',
+  leads: '/leads',
   warehouse: '/warehouse',
   sales: '/sales',
   expenses: '/expenses',
@@ -34,7 +37,7 @@ export const PAGE_ROUTES = {
 /** Группы пунктов меню: ключ группы → массив pageId */
 export const PAGE_GROUPS = {
   'Аналитика': ['analytics'],
-  'Люди': ['employees', 'sports-trainers', 'clients'],
+  'Люди': ['employees', 'sports-trainers', 'clients', 'leads'],
   'Склад': ['warehouse'],
   'Финансы': ['sales', 'expenses', 'salary'],
 };

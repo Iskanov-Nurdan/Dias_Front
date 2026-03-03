@@ -49,11 +49,12 @@ const IconTrophy = () => (
     <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
   </svg>
 );
-const IconUserCircle = () => (
+const IconUsersRound = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <circle cx="12" cy="12" r="10" />
-    <path d="M12 16v-4" />
-    <path d="M12 8h.01" />
+    <path d="M18 21a8 8 0 0 0-16 0" />
+    <circle cx="10" cy="8" r="5" />
+    <path d="M22 21a8 8 0 0 0-11-8" />
+    <path d="M16 3.13a8 8 0 0 1 0 15.75" />
   </svg>
 );
 const IconPackage = () => (
@@ -109,7 +110,7 @@ const PAGE_ICONS = {
   analytics: IconChart,
   employees: IconUsers,
   'sports-trainers': IconTrophy,
-  clients: IconUserCircle,
+  clients: IconUsersRound,
   leads: IconInbox,
   warehouse: IconPackage,
   sales: IconShoppingCart,

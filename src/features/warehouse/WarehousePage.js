@@ -14,7 +14,7 @@ import {
 import { CategoryFormModal, ProductFormModal } from './components';
 import RestockModal from './components/RestockModal';
 import { useAuth } from '../../app/providers/AuthProvider';
-import { ErrorState, EmptyState, ConfirmModal, Select, Pagination } from '../../shared/ui';
+import { ErrorState, EmptyState, ConfirmModal, Select, Pagination, FiltersModal } from '../../shared/ui';
 import { formatMoney } from '../../shared/constants/common';
 import './WarehousePage.scss';
 
@@ -48,6 +48,7 @@ const WarehousePage = () => {
   const [restockFormSaving, setRestockFormSaving] = useState(false);
   const [confirmDeleteProduct, setConfirmDeleteProduct] = useState(null);
   const [confirmDeleteCategory, setConfirmDeleteCategory] = useState(null);
+  const [filtersModalOpen, setFiltersModalOpen] = useState(false);
   const productsControllerRef = useRef(null);
   const categoriesControllerRef = useRef(null);
   const restocksControllerRef = useRef(null);
@@ -224,7 +225,7 @@ const WarehousePage = () => {
       {activeTab === TAB_PRODUCTS && (
         <>
           <div className="warehouse-page__toolbar">
-            <div className="warehouse-page__filters">
+            <div className="warehouse-page__filters warehouse-page__filters--desktop">
               <input type="text" placeholder="Поиск" value={queryState.search} onChange={(e) => setQueryState((q) => ({ ...q, search: e.target.value, page: 1 }))} className="warehouse-page__search" />
               <Select
                 value={queryState.categoryId}
@@ -233,9 +234,31 @@ const WarehousePage = () => {
                 placeholder="Все категории"
                 className="warehouse-page__select-wrap"
               />
+              <button type="button" className="warehouse-page__add" onClick={() => setFormProduct({})}>Добавить товар</button>
             </div>
-            <button type="button" className="warehouse-page__add" onClick={() => setFormProduct({})}>Добавить товар</button>
+            <div className="warehouse-page__toolbar-mobile">
+              <input type="text" placeholder="Поиск" value={queryState.search} onChange={(e) => setQueryState((q) => ({ ...q, search: e.target.value, page: 1 }))} className="warehouse-page__search warehouse-page__search--mobile" />
+              <div className="warehouse-page__toolbar-mobile-actions">
+                <button type="button" className="warehouse-page__filters-btn" onClick={() => setFiltersModalOpen(true)}>Фильтры</button>
+                <button type="button" className="warehouse-page__add warehouse-page__add--mobile" onClick={() => setFormProduct({})}>Добавить товар</button>
+              </div>
+            </div>
           </div>
+          <FiltersModal open={filtersModalOpen} onClose={() => setFiltersModalOpen(false)} title="Фильтры">
+            <div className="warehouse-page__filters-modal-content">
+              <label className="warehouse-page__filter-label">
+                <span>Категория</span>
+                <Select
+                  value={queryState.categoryId}
+                  onChange={(v) => setQueryState((q) => ({ ...q, categoryId: v, page: 1 }))}
+                  options={[{ value: '', label: 'Все' }, ...categoriesList.map((c) => ({ value: String(c.id), label: c.name || '' }))]}
+                  placeholder="Все"
+                  className="warehouse-page__select-wrap"
+                />
+              </label>
+              <button type="button" className="warehouse-page__filter-apply" onClick={() => setFiltersModalOpen(false)}>Применить</button>
+            </div>
+          </FiltersModal>
           {productsError && <ErrorState message={productsError} onRetry={fetchProductsSafe} />}
           <div className="warehouse-page__table-wrap">
             <table className="warehouse-page__table">
@@ -246,15 +269,15 @@ const WarehousePage = () => {
                 ) : productsItems.length === 0 ? (
                   <tr><td colSpan={8} className="warehouse-page__empty-cell"><EmptyState message="Нет товаров" /></td></tr>
                 ) : productsItems.map((p) => (
-                    <tr key={p.id}>
-                      <td>{p.name}</td>
-                      <td>{p.categoryName ?? p.category?.name ?? '—'}</td>
-                      <td>{p.qty ?? p.quantity ?? 0}</td>
-                      <td>{formatMoney(p.purchasePrice)}</td>
-                      <td>{formatMoney(p.sellingPrice)}</td>
-                      <td>{p.minQty ?? p.min_quantity ?? '—'}</td>
-                      <td>{(p.createdAt ?? p.created_at) ? new Date(p.createdAt ?? p.created_at).toLocaleDateString('ru-RU') : '—'}</td>
-                      <td className="warehouse-page__actions">
+                    <tr key={p.id} className="warehouse-page__product-row">
+                      <td data-label="Название">{p.name}</td>
+                      <td data-label="Категория">{p.categoryName ?? p.category?.name ?? '—'}</td>
+                      <td data-label="Кол-во">{p.qty ?? p.quantity ?? 0}</td>
+                      <td data-label="Закупка">{formatMoney(p.purchasePrice)}</td>
+                      <td data-label="Продажа">{formatMoney(p.sellingPrice)}</td>
+                      <td data-label="Мин. остаток">{p.minQty ?? p.min_quantity ?? '—'}</td>
+                      <td data-label="Добавлено">{(p.createdAt ?? p.created_at) ? new Date(p.createdAt ?? p.created_at).toLocaleDateString('ru-RU') : '—'}</td>
+                      <td className="warehouse-page__actions" data-label="">
                         <button type="button" className="warehouse-page__action warehouse-page__action--edit" onClick={() => (isAdmin ? setFormProduct(p) : showAccessDenied())} title="Редактировать">Редактировать</button>
                         <button type="button" className="warehouse-page__action warehouse-page__action--restock" onClick={() => setRestockProductItem(p)} title="Пополнить">Пополнить</button>
                         <button type="button" className="warehouse-page__action warehouse-page__action--delete" onClick={() => (isAdmin ? setConfirmDeleteProduct(p) : showAccessDenied())} title="Удалить">Удалить</button>
@@ -276,10 +299,14 @@ const WarehousePage = () => {
       {activeTab === TAB_CATEGORIES && (
         <>
           <div className="warehouse-page__toolbar">
-            <div className="warehouse-page__filters">
+            <div className="warehouse-page__filters warehouse-page__filters--desktop">
               <input type="text" placeholder="Поиск" value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="warehouse-page__search" />
+              <button type="button" className="warehouse-page__add" onClick={() => setFormCategory({})}>Добавить категорию</button>
             </div>
-            <button type="button" className="warehouse-page__add" onClick={() => setFormCategory({})}>Добавить категорию</button>
+            <div className="warehouse-page__toolbar-mobile">
+              <input type="text" placeholder="Поиск" value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="warehouse-page__search warehouse-page__search--mobile" />
+              <button type="button" className="warehouse-page__add warehouse-page__add--mobile" onClick={() => setFormCategory({})}>Добавить категорию</button>
+            </div>
           </div>
           {categoriesError && <ErrorState message={categoriesError} onRetry={fetchCategoriesSafe} />}
           <div className="warehouse-page__table-wrap">
@@ -291,9 +318,9 @@ const WarehousePage = () => {
                 ) : categoriesList.length === 0 ? (
                   <tr><td colSpan={2} className="warehouse-page__empty-cell"><EmptyState message="Нет категорий" /></td></tr>
                 ) : categoriesList.map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.name}</td>
-                    <td className="warehouse-page__actions">
+                  <tr key={c.id} className="warehouse-page__product-row">
+                    <td data-label="Название">{c.name}</td>
+                    <td className="warehouse-page__actions" data-label="">
                       <button type="button" className="warehouse-page__action warehouse-page__action--edit" onClick={() => (isAdmin ? setFormCategory(c) : showAccessDenied())} title="Редактировать">Редактировать</button>
                       <button type="button" className="warehouse-page__action warehouse-page__action--delete" onClick={() => (isAdmin ? setConfirmDeleteCategory(c) : showAccessDenied())} title="Удалить">Удалить</button>
                     </td>
@@ -355,8 +382,11 @@ const WarehousePage = () => {
       {activeTab === TAB_HISTORY && (
         <>
           <div className="warehouse-page__toolbar">
-            <div className="warehouse-page__filters">
+            <div className="warehouse-page__filters warehouse-page__filters--desktop">
               <input type="text" placeholder="Поиск" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} className="warehouse-page__search" />
+            </div>
+            <div className="warehouse-page__toolbar-mobile">
+              <input type="text" placeholder="Поиск" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} className="warehouse-page__search warehouse-page__search--mobile" />
             </div>
           </div>
           <h3 className="warehouse-page__section">История пополнений</h3>
@@ -369,7 +399,13 @@ const WarehousePage = () => {
                   <tr><td colSpan={3} className="warehouse-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
                 ) : restocksItems.length === 0 ? (
                   <tr><td colSpan={3} className="warehouse-page__empty-cell"><EmptyState message="Нет пополнений" /></td></tr>
-                ) : restocksItems.map((r) => <tr key={r.id}><td>{r.productName ?? r.product?.name ?? '—'}</td><td>{r.qty ?? r.quantity}</td><td>{r.date ? new Date(r.date).toLocaleDateString() : '—'}</td></tr>)}
+                ) : restocksItems.map((r) => (
+                  <tr key={r.id} className="warehouse-page__product-row">
+                    <td data-label="Товар">{r.productName ?? r.product?.name ?? '—'}</td>
+                    <td data-label="Кол-во">{r.qty ?? r.quantity}</td>
+                    <td data-label="Дата">{r.date ? new Date(r.date).toLocaleDateString() : '—'}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

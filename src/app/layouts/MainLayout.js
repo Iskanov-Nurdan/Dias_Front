@@ -105,6 +105,11 @@ const IconLogOut = () => (
     <path d="M21 12H9" />
   </svg>
 );
+const IconClose = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M18 6L6 18M6 6l12 12" />
+  </svg>
+);
 
 const PAGE_ICONS = {
   analytics: IconChart,
@@ -127,11 +132,44 @@ const getStoredSidebarCollapsed = () => {
   }
 };
 
+const MOBILE_BREAKPOINT = 768;
+
 const MainLayout = () => {
   const { user, logout, hasAccess } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(getStoredSidebarCollapsed);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`);
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    if (isMobile) setMobileMenuOpen(false);
+  }, [location.pathname, isMobile]);
+
+  useEffect(() => {
+    if (!isMobile) setMobileMenuOpen(false);
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen || !isMobile) return;
+    const onEscape = (e) => {
+      if (e.key === 'Escape') setMobileMenuOpen(false);
+    };
+    document.addEventListener('keydown', onEscape);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onEscape);
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen, isMobile]);
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_STORAGE_KEY, sidebarCollapsed ? '1' : '0');
@@ -143,6 +181,7 @@ const MainLayout = () => {
   };
 
   const toggleSidebar = () => setSidebarCollapsed((prev) => !prev);
+  const toggleMobileMenu = () => setMobileMenuOpen((prev) => !prev);
 
   const visiblePages = PAGE_IDS.filter((id) => hasAccess(id));
   const visibleSet = new Set(visiblePages);
@@ -152,17 +191,30 @@ const MainLayout = () => {
   })).filter((g) => g.pages.length > 0);
 
   return (
-    <div className={`main-layout ${sidebarCollapsed ? 'main-layout--sidebar-collapsed' : ''}`}>
+    <div className={`main-layout ${sidebarCollapsed ? 'main-layout--sidebar-collapsed' : ''} ${mobileMenuOpen ? 'main-layout--mobile-menu-open' : ''}`}>
+      {isMobile && mobileMenuOpen && (
+        <div className="main-layout__mobile-overlay" onClick={toggleMobileMenu} aria-hidden="false" />
+      )}
       <header className="main-layout__header">
         <div className="main-layout__header-left">
           <button
             type="button"
-            className="main-layout__sidebar-toggle"
+            className="main-layout__sidebar-toggle main-layout__sidebar-toggle--desktop"
             onClick={toggleSidebar}
             title={sidebarCollapsed ? 'Открыть меню' : 'Свернуть меню'}
             aria-label={sidebarCollapsed ? 'Открыть меню' : 'Свернуть меню'}
           >
             {sidebarCollapsed ? <IconChevronRight /> : <IconChevronLeft />}
+          </button>
+          <button
+            type="button"
+            className="main-layout__sidebar-toggle main-layout__sidebar-toggle--mobile"
+            onClick={toggleMobileMenu}
+            title={mobileMenuOpen ? 'Закрыть меню' : 'Меню'}
+            aria-label={mobileMenuOpen ? 'Закрыть меню' : 'Открыть меню'}
+            aria-expanded={mobileMenuOpen}
+          >
+            {mobileMenuOpen ? <IconClose /> : <IconMenu />}
           </button>
           <span className="main-layout__brand">Рахман Ата</span>
         </div>
@@ -198,7 +250,7 @@ const MainLayout = () => {
                     key={pageId}
                     type="button"
                     className={`main-layout__nav-item ${isActive ? 'main-layout__nav-item--active' : ''}`}
-                    onClick={() => navigate(path)}
+                    onClick={() => { navigate(path); if (isMobile) setMobileMenuOpen(false); }}
                     title={Label}
                   >
                     {Icon && <span className="main-layout__nav-icon" aria-hidden><Icon /></span>}

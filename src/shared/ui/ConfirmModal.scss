@@ -12,9 +12,17 @@
   background: var(--color-bg-card);
   border-radius: var(--radius-lg);
   padding: 24px;
-  min-width: 320px;
-  max-width: 90vw;
+  min-width: 280px;
+  max-width: calc(100vw - 24px);
+  margin: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+
+  @media (max-width: 374px) {
+    padding: 16px;
+    min-width: 0;
+    width: calc(100% - 16px);
+    margin: 8px;
+  }
 
   &__title {
     margin: 0 0 12px;

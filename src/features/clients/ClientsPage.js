@@ -6,7 +6,7 @@ import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
 import { useDebounce } from '../../shared/hooks/useDebounce';
 import { SEARCH_DEBOUNCE_MS, isClientPaid } from '../../shared/constants/common';
-import { Select, ConfirmModal, Pagination } from '../../shared/ui';
+import { Select, ConfirmModal, Pagination, FiltersModal } from '../../shared/ui';
 import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal } from './components';
 import './ClientsPage.scss';
 
@@ -148,6 +148,7 @@ const ClientsPage = () => {
   const [clientFormSaving, setClientFormSaving] = useState(false);
   const [extendFormError, setExtendFormError] = useState(null);
   const [extendFormSaving, setExtendFormSaving] = useState(false);
+  const [filtersModalOpen, setFiltersModalOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
   const fetchSafe = useCallback(async () => {
@@ -320,7 +321,7 @@ const ClientsPage = () => {
       {activeTab === TAB_LIST && (
         <>
           <div className="clients-page__toolbar">
-            <div className="clients-page__filters">
+            <div className="clients-page__filters clients-page__filters--desktop">
               <input type="text" placeholder="Поиск (ФИО, телефон)" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="clients-page__search" />
               <Select value={queryState.sportId} onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))} options={[{ value: '', label: 'Все виды спорта' }, ...sports.map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="Все виды спорта" className="clients-page__select-wrap" />
               <Select value={queryState.trainerId} onChange={(v) => setQueryState((q) => ({ ...q, trainerId: v, page: 1 }))} options={[{ value: '', label: 'Тренер — все' }, ...trainers.map((t) => ({ value: String(t.id), label: t.fio || '' }))]} placeholder="Тренер — все" className="clients-page__select-wrap" />
@@ -354,9 +355,28 @@ const ClientsPage = () => {
               {(queryState.year || queryState.month || queryState.day) && (
                 <button type="button" className="clients-page__date-clear" onClick={() => setQueryState((q) => ({ ...q, year: '', month: '', day: '', page: 1 }))} title="Сбросить дату">✕</button>
               )}
+              <button type="button" className="clients-page__add clients-page__add--desktop" onClick={() => setFormClient({})}>Добавить клиента</button>
             </div>
-            <button type="button" className="clients-page__add" onClick={() => setFormClient({})}>Добавить клиента</button>
+            <div className="clients-page__toolbar-mobile">
+              <input type="text" placeholder="Поиск" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="clients-page__search clients-page__search--mobile" />
+              <div className="clients-page__toolbar-mobile-actions">
+                <button type="button" className="clients-page__filters-btn" onClick={() => setFiltersModalOpen(true)}>Фильтры</button>
+                <button type="button" className="clients-page__add" onClick={() => setFormClient({})}>Добавить</button>
+              </div>
+            </div>
           </div>
+          <FiltersModal open={filtersModalOpen} onClose={() => setFiltersModalOpen(false)} title="Фильтры">
+            <div className="clients-page__filters-modal-content">
+              <label className="clients-page__filter-label"><span>Вид спорта</span><Select value={queryState.sportId} onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...sports.map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="Все" className="clients-page__select-wrap" /></label>
+              <label className="clients-page__filter-label"><span>Тренер</span><Select value={queryState.trainerId} onChange={(v) => setQueryState((q) => ({ ...q, trainerId: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...trainers.map((t) => ({ value: String(t.id), label: t.fio || '' }))]} placeholder="Все" className="clients-page__select-wrap" /></label>
+              <label className="clients-page__filter-label"><span>Оплата</span><Select value={queryState.paid} onChange={(v) => setQueryState((q) => ({ ...q, paid: v, page: 1 }))} options={[{ value: '', label: 'Все' }, { value: 'true', label: 'Оплачено' }, { value: 'false', label: 'Не оплачено' }]} placeholder="Все" className="clients-page__select-wrap" /></label>
+              <label className="clients-page__filter-label"><span>Тип</span><Select value={queryState.clientType} onChange={(v) => setQueryState((q) => ({ ...q, clientType: v, page: 1 }))} options={[{ value: '', label: 'Все' }, { value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }]} placeholder="Все" className="clients-page__select-wrap" /></label>
+              <label className="clients-page__filter-label"><span>Год</span><Select value={queryState.year} onChange={(v) => setQueryState((q) => ({ ...q, year: v, month: v ? q.month : '', day: v ? q.day : '', page: 1 }))} options={[{ value: '', label: 'Все' }, { value: '2026', label: '2026' }, { value: '2027', label: '2027' }]} placeholder="Все" className="clients-page__select-wrap" /></label>
+              {queryState.year && <label className="clients-page__filter-label"><span>Месяц</span><Select value={queryState.month} onChange={(v) => setQueryState((q) => ({ ...q, month: v, day: v ? q.day : '', page: 1 }))} options={[{ value: '', label: 'Все' }, ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: MONTH_NAMES[i + 1] }))]} placeholder="Все" className="clients-page__select-wrap" /></label>}
+              {queryState.year && queryState.month && <label className="clients-page__filter-label"><span>День</span><Select value={queryState.day} onChange={(v) => setQueryState((q) => ({ ...q, day: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...Array.from({ length: 31 }, (_, i) => i + 1).map((d) => ({ value: String(d), label: String(d) }))]} placeholder="Все" className="clients-page__select-wrap" /></label>}
+              <button type="button" className="clients-page__filter-apply" onClick={() => setFiltersModalOpen(false)}>Применить</button>
+            </div>
+          </FiltersModal>
           <ClientsList items={items} loading={loading} error={error} onRetry={fetchSafe} onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())} onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())} onDetails={handleOpenCard} onExtend={setExtendClientObj} />
           <Pagination meta={data?.meta} currentPage={queryState.page} onPage={(p) => setQueryState((q) => ({ ...q, page: p }))} loading={loading} entityLabel="клиентов" />
         </>

@@ -5,6 +5,10 @@
   box-sizing: border-box;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
@@ -13,6 +17,7 @@ body {
   color: var(--color-text);
   min-width: 320px;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 a {
@@ -45,6 +50,11 @@ textarea {
     border-color: var(--color-primary);
     box-shadow: 0 0 0 3px var(--color-primary-light);
   }
+
+  /* Предотвращение зума на iOS при фокусе (zoom при font-size < 16px) */
+  @media (max-width: 768px) {
+    font-size: 16px !important;
+  }
 }
 
 /* Единый вид полей ввода */
@@ -55,6 +65,11 @@ textarea {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+
+  @media (max-width: 768px) {
+    padding: 12px 14px;
+    min-height: 44px;
+  }
 }
 
 /* Обозначение обязательных полей в формах (звёздочка рядом с подписью) */

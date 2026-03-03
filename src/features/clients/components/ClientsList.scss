@@ -3,11 +3,19 @@
 .clients-list {
   &__table-wrap {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     border-radius: var(--radius-lg);
     border: 1px solid var(--color-border);
     box-shadow: var(--shadow-card);
     background: var(--color-bg-card);
     @include mixins.scrollbar;
+
+    @include mixins.mobile {
+      overflow-x: visible;
+      border: none;
+      box-shadow: none;
+      background: transparent;
+    }
   }
 
   &__table {
@@ -20,6 +28,74 @@
       padding: 14px 18px;
       text-align: left;
       border-bottom: 1px solid var(--color-border);
+    }
+
+    @include mixins.mobile {
+      display: block;
+      background: transparent;
+
+      thead {
+        display: none;
+      }
+
+      tbody {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      tr {
+        display: block;
+        padding: 14px 16px;
+        background: var(--color-bg-card);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-card);
+      }
+
+      td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 6px 0;
+        border-bottom: none;
+        font-size: 14px;
+
+        &::before {
+          content: attr(data-label);
+          font-size: 11px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          color: var(--color-text-muted);
+          flex-shrink: 0;
+        }
+
+        &:last-child {
+          padding-top: 12px;
+          margin-top: 8px;
+          border-top: 1px solid var(--color-border);
+          justify-content: flex-end;
+
+          &::before {
+            display: none;
+          }
+        }
+
+        &.clients-list__loading-cell,
+        &.clients-list__empty-cell {
+          display: flex;
+          justify-content: center;
+          &::before {
+            display: none;
+          }
+        }
+
+        @include mixins.xs {
+          font-size: 13px;
+        }
+      }
     }
 
     th {

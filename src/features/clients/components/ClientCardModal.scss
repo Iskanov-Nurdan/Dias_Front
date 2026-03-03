@@ -1,5 +1,10 @@
-.client-card-modal__backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.client-card-modal__backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 12px; }
 .client-card-modal { background: var(--color-bg-card); border-radius: 12px; padding: 24px; max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15); }
+@media (max-width: 374px) {
+  .client-card-modal__backdrop { padding: 8px; }
+  .client-card-modal { padding: 16px; border-radius: 10px; }
+  .client-card-modal__dl { grid-template-columns: 1fr; }
+}
 .client-card-modal__title { margin: 0 0 20px; font-size: 18px; }
 .client-card-modal__dl { display: grid; grid-template-columns: 1fr 2fr; gap: 8px 16px; margin: 0 0 20px; font-size: 14px; }
 .client-card-modal__dl dt { color: var(--color-text-muted); }

@@ -20,6 +20,12 @@
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-card);
+
+  @include mixins.xs {
+    padding: 14px 12px;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
 }
 
 .analytics-page__header-text {
@@ -32,6 +38,10 @@
   font-weight: 600;
   color: var(--color-text);
   letter-spacing: -0.02em;
+
+  @include mixins.xs {
+    font-size: 18px;
+  }
 }
 
 .analytics-page__subtitle {
@@ -93,6 +103,11 @@
   padding: 10px 14px;
   border-radius: var(--radius-md);
   font-size: 14px;
+
+  @media (max-width: 768px) {
+    font-size: 16px;
+    padding: 12px 14px;
+  }
   border: 1px solid var(--color-border);
   background: var(--color-bg-card);
   width: 100%;

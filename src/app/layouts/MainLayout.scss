@@ -13,10 +13,9 @@
 
   @include mixins.mobile {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto 1fr;
+    grid-template-rows: var(--header-height) 1fr;
     grid-template-areas:
       'header'
-      'sidebar'
       'content';
   }
 
@@ -42,6 +41,11 @@
     z-index: 10;
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
     gap: 16px;
+
+    @include mixins.xs {
+      padding: 0 12px 0 10px;
+      gap: 8px;
+    }
   }
 
   &__header-left {
@@ -69,6 +73,25 @@
       color: var(--color-primary);
       background: var(--color-primary-light);
     }
+
+    @include mixins.xs {
+      width: 36px;
+      height: 36px;
+    }
+
+    &--desktop {
+      @include mixins.mobile {
+        display: none;
+      }
+    }
+
+    &--mobile {
+      display: none;
+
+      @include mixins.mobile {
+        display: flex;
+      }
+    }
   }
 
   &__brand {
@@ -81,6 +104,11 @@
 
     @include mixins.mobile {
       font-size: 16px;
+    }
+
+    @include mixins.xs {
+      font-size: 14px;
+      max-width: 120px;
     }
   }
 
@@ -158,7 +186,15 @@
     }
   }
 
-  // —— Sidebar: контрастный фон и чёткая граница, не смешивается с контентом ——
+  &__mobile-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 100;
+    animation: main-layout-fade-in 0.2s ease;
+  }
+
+  // —— Sidebar: контрастный фон и чёткая граница ——
   &__sidebar {
     grid-area: sidebar;
     background: var(--color-sidebar-bg);
@@ -170,21 +206,49 @@
     overflow-x: hidden;
     overflow-y: auto;
     @include mixins.scrollbar;
-    transition: width var(--transition-smooth), box-shadow var(--transition-smooth);
+    transition: transform var(--transition-smooth), box-shadow var(--transition-smooth);
 
     @include mixins.mobile {
-      height: auto;
-      max-height: 50vh;
-      position: relative;
-      border-right: none;
-      border-bottom: 1px solid var(--color-sidebar-border);
-      overflow-x: auto;
-      overflow-y: hidden;
-      box-shadow: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: min(280px, 85vw);
+      max-width: 280px;
+      height: 100vh;
+      z-index: 101;
+      transform: translateX(-100%);
+      border-right: 2px solid var(--color-sidebar-border);
+      overflow-y: auto;
+      overflow-x: hidden;
+      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
+    }
+  }
+
+  &--mobile-menu-open &__sidebar {
+    @include mixins.mobile {
+      transform: translateX(0);
+    }
+  }
+
+  &--mobile-menu-open.main-layout--sidebar-collapsed &__nav-label {
+    @include mixins.mobile {
+      width: auto;
+      overflow: visible;
+      opacity: 1;
+      position: static;
+    }
+  }
+
+  &--mobile-menu-open.main-layout--sidebar-collapsed &__nav-item {
+    @include mixins.mobile {
+      justify-content: flex-start;
     }
   }
 
   &__sidebar-logo {
+    @include mixins.mobile {
+      padding: 16px 14px 12px;
+    }
     padding: 10px 12px 8px;
     display: flex;
     align-items: center;
@@ -208,11 +272,18 @@
     }
 
     @include mixins.mobile {
-      padding: 10px 14px 6px;
       margin-bottom: 0;
 
       img {
-        height: 120px;
+        height: 100px;
+      }
+    }
+
+    @include mixins.xs {
+      padding: 8px 10px 4px;
+
+      img {
+        height: 80px;
       }
     }
   }
@@ -225,11 +296,13 @@
     min-width: 0;
 
     @include mixins.mobile {
-      flex-direction: row;
-      flex-wrap: wrap;
-      gap: 6px;
+      flex-direction: column;
       padding: 12px 16px;
-      justify-content: center;
+      gap: 2px;
+    }
+
+    @include mixins.xs {
+      padding: 10px 12px;
     }
   }
 
@@ -256,6 +329,11 @@
     letter-spacing: 0.06em;
     color: var(--color-sidebar-text-muted);
     @include mixins.text-ellipsis;
+
+    @include mixins.mobile {
+      padding: 12px 12px 6px;
+      margin-top: 4px;
+    }
   }
 
   &__nav-item {
@@ -276,9 +354,15 @@
     position: relative;
 
     @include mixins.mobile {
-      border-radius: var(--radius-sm);
-      padding: 10px 12px;
-      flex: 0 0 auto;
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      width: 100%;
+      justify-content: flex-start;
+    }
+
+    @include mixins.xs {
+      padding: 8px 10px;
+      font-size: 13px;
     }
 
     &:hover {
@@ -305,10 +389,8 @@
 
       @include mixins.mobile {
         &::before {
-          display: none;
+          display: block;
         }
-        border-bottom: 2px solid var(--color-primary);
-        border-radius: var(--radius-sm) var(--radius-sm) 0 0;
       }
     }
   }
@@ -367,6 +449,14 @@
     overflow: auto;
     @include mixins.scrollbar;
     min-width: 0;
+
+    @include mixins.mobile {
+      padding: 16px 12px;
+    }
+
+    @include mixins.xs {
+      padding: 12px 10px;
+    }
   }
 }
 
@@ -377,4 +467,9 @@
     opacity: 1;
     position: static;
   }
+}
+
+@keyframes main-layout-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

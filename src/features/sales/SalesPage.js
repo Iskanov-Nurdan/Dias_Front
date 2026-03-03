@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchSalesSummary, fetchSales, createSale } from './api';
 import { fetchProducts } from '../warehouse/api';
 import SaleFormModal from './components/SaleFormModal';
+import { useToast } from '../../app/providers/ToastProvider';
 import { ErrorState, EmptyState, Pagination } from '../../shared/ui';
 import { formatMoney } from '../../shared/constants/common';
 import './SalesPage.scss';
 
 const SalesPage = () => {
+  const toast = useToast();
   const [queryState, setQueryState] = useState({ dateFrom: '', dateTo: '', page: 1, perPage: 20 });
   const [summary, setSummary] = useState(null);
   const [salesData, setSalesData] = useState(null);
@@ -73,7 +75,12 @@ const SalesPage = () => {
   }, [fetchSalesSafe]);
 
   useEffect(() => {
-    fetchProducts({ page: 1, perPage: 500 }, null).then((d) => setProducts(d?.items ?? d?.results ?? [])).catch(() => setProducts([]));
+    fetchProducts({ page: 1, perPage: 500 }, null)
+      .then((d) => setProducts(d?.items ?? d?.results ?? []))
+      .catch((e) => {
+        setProducts([]);
+        toast.error(e?.userMessage ?? e?.response?.data?.message ?? 'Ошибка загрузки товаров');
+      });
   }, []);
 
   const handleSaveSale = async (payload) => {

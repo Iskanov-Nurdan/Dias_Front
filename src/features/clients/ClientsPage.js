@@ -203,11 +203,19 @@ const ClientsPage = () => {
   }, [activeTab, fetchAllClients]);
 
   useEffect(() => {
-    fetchSports(null).then((d) => setSports(Array.isArray(d) ? d : d?.results ?? d?.items ?? [])).catch(() => {});
+    fetchSports(null)
+      .then((d) => setSports(Array.isArray(d) ? d : d?.results ?? d?.items ?? []))
+      .catch((e) => {
+        toast.error(e?.userMessage ?? e?.response?.data?.message ?? 'Ошибка загрузки видов спорта');
+      });
   }, []);
 
   useEffect(() => {
-    fetchTrainers({ perPage: 500 }, null).then((d) => setTrainers(Array.isArray(d) ? d : d?.results ?? d?.items ?? [])).catch(() => {});
+    fetchTrainers({ perPage: 500 }, null)
+      .then((d) => setTrainers(Array.isArray(d) ? d : d?.results ?? d?.items ?? []))
+      .catch((e) => {
+        toast.error(e?.userMessage ?? e?.response?.data?.message ?? 'Ошибка загрузки тренеров');
+      });
   }, []);
 
   const items = data?.items ?? data?.results ?? (Array.isArray(data) ? data : []) ?? [];
@@ -257,7 +265,10 @@ const ClientsPage = () => {
   const handleOpenCard = (c) =>
     fetchClient(c.id, null)
       .then((res) => setCardClient(res?.data ?? res))
-      .catch(console.error);
+      .catch((e) => {
+        const msg = e?.userMessage ?? e?.response?.data?.message ?? e?.response?.data?.detail ?? e?.message ?? 'Ошибка загрузки';
+        toast.error(msg);
+      });
 
   const handleSaveExtend = async (payload) => {
     if (!extendClientObj) return;

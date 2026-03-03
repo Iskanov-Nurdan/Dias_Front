@@ -19,8 +19,23 @@ export const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+const getToken = () => {
+  try {
+    return localStorage.getItem('token');
+  } catch {
+    return null;
+  }
+};
+
+const clearAuth = () => {
+  try {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  } catch {}
+};
+
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = getToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -31,9 +46,14 @@ apiClient.interceptors.response.use(
   (r) => r,
   (err) => {
     if (err.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.replace('/login');
+      const path = window.location.pathname || '';
+      if (!path.startsWith('/login')) {
+        clearAuth();
+        window.location.replace('/login');
+      }
+    }
+    if (err.message === 'Network Error' || !err.response) {
+      err.userMessage = 'Нет соединения с сервером';
     }
     return Promise.reject(err);
   }

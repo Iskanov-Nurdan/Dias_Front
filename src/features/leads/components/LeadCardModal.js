@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useToast } from '../../../app/providers/ToastProvider';
 import { Select } from '../../../shared/ui';
 import './LeadCardModal.scss';
 
@@ -44,6 +45,7 @@ const RESULT_OPTIONS = [
 const STAGE_OPTIONS_PREFIX = [{ value: '', label: 'Не выбрано' }];
 
 const LeadCardModal = ({ lead, stages = [], sports = [], trainers = [], onSave, onClose, error, saving, onLoadTrainers }) => {
+  const toast = useToast();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [channel, setChannel] = useState('');
@@ -78,7 +80,12 @@ const LeadCardModal = ({ lead, stages = [], sports = [], trainers = [], onSave, 
   useEffect(() => {
     if (!onLoadTrainers) return;
     if (sportId) {
-      onLoadTrainers(sportId).then(setTrainersList).catch(() => setTrainersList([]));
+      onLoadTrainers(sportId)
+        .then(setTrainersList)
+        .catch((e) => {
+          setTrainersList([]);
+          toast.error(e?.userMessage ?? e?.response?.data?.message ?? 'Ошибка загрузки тренеров');
+        });
       prevSportIdRef.current = sportId;
     } else {
       setTrainersList([]);

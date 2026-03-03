@@ -115,7 +115,9 @@ const LeadsPage = () => {
   useEffect(() => {
     fetchSports({}, null)
       .then((d) => setSports(Array.isArray(d) ? d : d?.items ?? d?.results ?? []))
-      .catch(() => {});
+      .catch((e) => {
+        toast.error(e?.userMessage ?? e?.response?.data?.message ?? 'Ошибка загрузки видов спорта');
+      });
   }, []);
 
   useEffect(() => {

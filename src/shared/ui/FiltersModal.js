@@ -11,10 +11,8 @@ import './FiltersModal.scss';
  */
 const FiltersModal = ({ open, onClose, title = 'Фильтры', children }) => {
   React.useEffect(() => {
-    if (open) {
-      document.body.style.overflow = 'hidden';
-      return () => { document.body.style.overflow = ''; };
-    }
+    if (open) document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
   }, [open]);
 
   if (!open) return null;

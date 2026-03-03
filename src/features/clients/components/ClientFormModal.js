@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useToast } from '../../../app/providers/ToastProvider';
 import { Select } from '../../../shared/ui';
 import { isClientPaid } from '../../../shared/constants/common';
 import './ClientFormModal.scss';
 
 const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose, error, saving }) => {
+  const toast = useToast();
   const [fio, setFio] = useState('');
   const [phone, setPhone] = useState('');
   const [sportId, setSportId] = useState('');
@@ -39,7 +41,10 @@ const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose, error
     if (sportId) {
       fetchTrainers({ sportId }, null)
         .then((d) => setTrainersList(d?.items ?? d?.results ?? (Array.isArray(d) ? d : []) ?? []))
-        .catch(() => setTrainersList([]));
+        .catch((e) => {
+          setTrainersList([]);
+          toast.error(e?.userMessage ?? e?.response?.data?.message ?? 'Ошибка загрузки тренеров');
+        });
     } else {
       setTrainersList([]);
     }

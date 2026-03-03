@@ -43,14 +43,18 @@ export const AuthProvider = ({ children }) => {
 
   const login = useCallback((userData, token) => {
     const normalized = normalizeUserAccess(userData);
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(normalized));
+    try {
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(normalized));
+    } catch {}
     setUser(normalized);
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    try {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    } catch {}
     setUser(null);
   }, []);
 
@@ -71,10 +75,6 @@ export const AuthProvider = ({ children }) => {
     }
     return '/employees';
   }, [hasAccess]);
-
-  useEffect(() => {
-    setUser(getStoredUser());
-  }, []);
 
   const accessDeniedModal =
     showAccessDenied &&

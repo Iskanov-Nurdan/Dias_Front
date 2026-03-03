@@ -14,6 +14,7 @@ import {
 import { CategoryFormModal, ProductFormModal } from './components';
 import RestockModal from './components/RestockModal';
 import { useAuth } from '../../app/providers/AuthProvider';
+import { useToast } from '../../app/providers/ToastProvider';
 import { ErrorState, EmptyState, ConfirmModal, Select, Pagination, FiltersModal } from '../../shared/ui';
 import { formatMoney } from '../../shared/constants/common';
 import './WarehousePage.scss';
@@ -24,6 +25,7 @@ const TAB_HISTORY = 'history';
 
 const WarehousePage = () => {
   const { isAdmin, showAccessDenied } = useAuth();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState(TAB_PRODUCTS);
   const [queryState, setQueryState] = useState({ search: '', categoryId: '', page: 1, perPage: 20 });
   const [categorySearch, setCategorySearch] = useState('');
@@ -190,11 +192,13 @@ const WarehousePage = () => {
       .then(() => {
         setConfirmDeleteProduct(null);
         fetchProductsSafe();
+        toast.success('Товар удалён');
       })
       .catch((e) => {
-        const msg = e.response?.data?.error?.message || e.response?.data?.message || e.response?.data?.detail || e.message || 'Ошибка удаления';
+        const msg = e?.userMessage ?? (e.response?.data?.error?.message || e.response?.data?.message || e.response?.data?.detail || e.message || 'Ошибка удаления');
         setProductsError(msg);
         setConfirmDeleteProduct(null);
+        toast.error(msg);
       });
   };
 
@@ -206,11 +210,13 @@ const WarehousePage = () => {
         setConfirmDeleteCategory(null);
         fetchCategoriesSafe();
         if (activeTab === TAB_PRODUCTS) fetchProductsSafe();
+        toast.success('Категория удалена');
       })
       .catch((e) => {
-        const msg = e.response?.data?.error?.message || e.response?.data?.message || e.response?.data?.detail || e.message || 'Ошибка удаления';
+        const msg = e?.userMessage ?? (e.response?.data?.error?.message || e.response?.data?.message || e.response?.data?.detail || e.message || 'Ошибка удаления');
         setCategoriesError(msg);
         setConfirmDeleteCategory(null);
+        toast.error(msg);
       });
   };
 

@@ -180,6 +180,9 @@ const MainLayout = () => {
         </div>
       </header>
       <aside className="main-layout__sidebar">
+        <div className="main-layout__sidebar-logo">
+          <img src={`${process.env.PUBLIC_URL || ''}/logo.png`} alt="Рахман Ата" />
+        </div>
         <nav className="main-layout__nav">
           {navGroups.map((group) => (
             <div key={group.label} className="main-layout__nav-group">

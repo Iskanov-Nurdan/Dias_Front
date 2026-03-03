@@ -4,7 +4,7 @@ import './Sparkline.scss';
 /**
  * Мини-линия по массиву чисел (спарклайн).
  */
-const Sparkline = ({ values, width = 140, height = 44, color = '#2563eb' }) => {
+const Sparkline = ({ values, width = 140, height = 44, color = '#c53030' }) => {
   const arr = Array.isArray(values) ? values.filter((v) => typeof v === 'number' && !Number.isNaN(v)) : [];
   if (arr.length < 2) return null;
   const min = Math.min(...arr);

@@ -5,9 +5,13 @@ import axios from 'axios';
 // false = запросы на бэкенд по домену (rahmanata.tw1.su)
 const USE_LOCAL_API = false;
 
+// В dev (npm start) используем прокси — запросы идут на localhost, CRA проксирует на сервер (обход CORS)
+const isDev = process.env.NODE_ENV === 'development';
 const API_BASE = USE_LOCAL_API
   ? 'http://127.0.0.1:8000/api'
-  : 'https://rahmanata.tw1.su/api';
+  : isDev
+    ? '/api'
+    : 'https://rahmanata.tw1.su/api';
 
 export const apiClient = axios.create({
   baseURL: API_BASE,

@@ -6,16 +6,10 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "theme_color": "#2563eb",
-  "background_color": "#ffffff",
+  "theme_color": "#1e3a5f",
+  "background_color": "#1e3a5f",
   "lang": "ru",
   "icons": [
-    {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon",
-      "purpose": "any"
-    },
     {
       "src": "logo192.png",
       "sizes": "192x192",

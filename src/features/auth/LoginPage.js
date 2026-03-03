@@ -65,7 +65,6 @@ const LoginPage = () => {
     <div className="login-page">
       <div className="login-page__card">
         <h1 className="login-page__title">Рахман Ата</h1>
-        <p className="login-page__subtitle">Вход в систему</p>
         <form className="login-page__form" onSubmit={handleSubmit}>
           {error && (
             <div className="login-page__error">{error}</div>

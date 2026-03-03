@@ -1,22 +1,25 @@
 :root {
-  --color-bg: #f1f5f9;
+  /* Цвета под логотип Рахман Ата: тёмно-синий, красный, серебристый */
+  --color-bg: #f0f4f8;
   --color-bg-card: #ffffff;
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
-  --color-primary-light: rgba(37, 99, 235, 0.08);
-  --color-text: #0f172a;
-  --color-text-muted: #64748b;
+  --color-primary: #c53030;
+  --color-primary-hover: #9b2c2c;
+  --color-primary-light: rgba(197, 48, 48, 0.1);
+  --color-text: #1a202c;
+  --color-text-muted: #4a5568;
   --color-border: #e2e8f0;
-  --color-error: #dc2626;
-  --color-error-light: rgba(220, 38, 38, 0.08);
+  --color-error: #c53030;
+  --color-error-light: rgba(197, 48, 48, 0.1);
   --color-success: #16a34a;
   --color-warning: #d97706;
   --sidebar-width: 260px;
   --sidebar-width-collapsed: 72px;
-  --header-height: 60px;
-  /* Сайдбар — заметно темнее контента, сразу читается как отдельная зона */
-  --color-sidebar-bg: #d8dee8;
-  --color-sidebar-border: #b8c2d0;
+  --header-height: 64px;
+  /* Сайдбар — тёмно-синий как фон логотипа */
+  --color-sidebar-bg: #1e3a5f;
+  --color-sidebar-border: #2d4a6f;
+  --color-sidebar-text: rgba(255, 255, 255, 0.9);
+  --color-sidebar-text-muted: rgba(255, 255, 255, 0.6);
   --radius-sm: 8px;
   --radius-md: 10px;
   --radius-lg: 12px;

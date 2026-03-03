@@ -32,7 +32,7 @@
   &__header {
     grid-area: header;
     background: var(--color-bg-card);
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 2px solid var(--color-primary);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -184,10 +184,43 @@
     }
   }
 
+  &__sidebar-logo {
+    padding: 10px 12px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0;
+
+    img {
+      height: 140px;
+      width: auto;
+      max-width: 100%;
+      object-fit: contain;
+      mix-blend-mode: lighten;
+    }
+
+    .main-layout--sidebar-collapsed & img {
+      height: 96px;
+    }
+
+    .main-layout--sidebar-collapsed & {
+      padding: 8px 10px;
+    }
+
+    @include mixins.mobile {
+      padding: 10px 14px 6px;
+      margin-bottom: 0;
+
+      img {
+        height: 120px;
+      }
+    }
+  }
+
   &__nav {
     display: flex;
     flex-direction: column;
-    padding: 16px 12px;
+    padding: 10px 12px;
     gap: 4px;
     min-width: 0;
 
@@ -204,38 +237,38 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
 
     &:last-child {
       margin-bottom: 0;
     }
 
     @include mixins.mobile {
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
   }
 
   &__nav-group-label {
-    padding: 8px 14px 4px;
+    padding: 8px 12px 4px;
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: var(--color-text-muted);
+    color: var(--color-sidebar-text-muted);
     @include mixins.text-ellipsis;
   }
 
   &__nav-item {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     text-align: left;
-    padding: 12px 14px;
+    padding: 10px 12px;
     font-size: 14px;
     font-weight: 500;
     background: none;
     border: none;
-    color: var(--color-text-muted);
+    color: var(--color-sidebar-text-muted);
     border-radius: var(--radius-md);
     transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
     min-width: 0;
@@ -244,20 +277,19 @@
 
     @include mixins.mobile {
       border-radius: var(--radius-sm);
-      padding: 10px 14px;
+      padding: 10px 12px;
       flex: 0 0 auto;
     }
 
     &:hover {
-      background: rgba(255, 255, 255, 0.7);
-      color: var(--color-text);
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--color-sidebar-text);
     }
 
     &--active {
-      background: var(--color-bg-card);
-      color: var(--color-primary);
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
       font-weight: 600;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 
       &::before {
         content: '';
@@ -267,7 +299,7 @@
         transform: translateY(-50%);
         width: 3px;
         height: 24px;
-        background: var(--color-primary);
+        background: #e53e3e;
         border-radius: 0 2px 2px 0;
       }
 
@@ -275,7 +307,7 @@
         &::before {
           display: none;
         }
-        border-bottom: 2px solid var(--color-primary);
+        border-bottom: 2px solid #e53e3e;
         border-radius: var(--radius-sm) var(--radius-sm) 0 0;
       }
     }
@@ -307,7 +339,7 @@
     justify-content: center;
 
     @include mixins.mobile {
-      padding: 10px 14px;
+      padding: 10px 12px;
       justify-content: center;
     }
   }

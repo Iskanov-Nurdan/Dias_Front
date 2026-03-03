@@ -260,7 +260,7 @@ const AnalyticsPage = () => {
                 <span className="analytics-page__card-value">{formatMoney(profit)}</span>
                 {sparklineProfit.length >= 2 && (
                   <div className="analytics-page__card-chart">
-                    <Sparkline values={sparklineProfit} width={140} height={48} color="#2563eb" />
+                    <Sparkline values={sparklineProfit} width={140} height={48} color="#c53030" />
                   </div>
                 )}
                 <span className="analytics-page__card-hint">за период · нажмите для детализации</span>

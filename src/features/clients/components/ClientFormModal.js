@@ -14,7 +14,19 @@ const capitalizeWords = (str) => {
     .join(' ');
 };
 
-const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose, error, saving }) => {
+const isAutoCommentLine = (line) => {
+  const t = (line || '').trim();
+  return t.startsWith('Добавлен:') || t.startsWith('Скидка ');
+};
+
+const parseComment = (raw) => {
+  const lines = (raw || '').split('\n');
+  const auto = lines.filter((l) => isAutoCommentLine(l));
+  const manual = lines.filter((l) => !isAutoCommentLine(l)).join('\n').trim();
+  return { auto, manual };
+};
+
+const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave, onClose, error, saving }) => {
   const toast = useToast();
   const [fio, setFio] = useState('');
   const [phone, setPhone] = useState('');
@@ -27,7 +39,8 @@ const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose, error
   const [paid, setPaid] = useState(false);
   const [clientType, setClientType] = useState('regular');
   const [gender, setGender] = useState('');
-  const [comment, setComment] = useState('');
+  const [commentManual, setCommentManual] = useState('');
+  const [commentAuto, setCommentAuto] = useState([]);
 
   useEffect(() => {
     if (client) {
@@ -41,7 +54,9 @@ const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose, error
       setPaid(isClientPaid(client));
       setClientType(client.clientType || 'regular');
       setGender(client.gender || '');
-      setComment(client.comment || '');
+      const { auto, manual } = parseComment(client.comment);
+      setCommentAuto(auto);
+      setCommentManual(manual);
     }
   }, [client]);
 
@@ -59,8 +74,25 @@ const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose, error
     }
   }, [sportId, fetchTrainers]);
 
+  const priceBase = Number(price) || 0;
+  const discountPct = Number(discount) || 0;
+  const priceAfterDiscount = discountPct > 0 ? priceBase * (1 - discountPct / 100) : priceBase;
+  const formatSum = (v) => (v != null && !Number.isNaN(v) ? `${Number(v).toLocaleString('ru-RU')} сом` : '—');
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    const autoLines = [...commentAuto];
+    if (!client?.id && currentUserFio) {
+      const addedLine = `Добавлен: ${currentUserFio}`;
+      if (!autoLines.some((l) => l.trim().startsWith('Добавлен:'))) autoLines.push(addedLine);
+    }
+    const discountLine = discountPct > 0 && priceBase > 0
+      ? `Скидка ${discountPct}%. До: ${formatSum(priceBase)}. После: ${formatSum(priceAfterDiscount)}.`
+      : '';
+    const autoWithoutDiscount = autoLines.filter((l) => !l.trim().startsWith('Скидка'));
+    if (discountLine) autoWithoutDiscount.push(discountLine);
+    const manualPart = (commentManual || '').trim();
+    const finalComment = [...autoWithoutDiscount, manualPart].filter(Boolean).join('\n').trim() || undefined;
     onSave({
       fio,
       phone,
@@ -72,7 +104,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose, error
       paid,
       clientType,
       gender: gender || undefined,
-      comment: comment || undefined,
+      comment: finalComment || undefined,
     });
   };
 
@@ -125,6 +157,20 @@ const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose, error
               </div>
             </div>
           </div>
+          {priceBase > 0 && (
+            <div className="client-form-modal__price-summary">
+              <div className="client-form-modal__price-row">
+                <span>До скидки</span>
+                <strong>{formatSum(priceBase)}</strong>
+              </div>
+              {discountPct > 0 && (
+                <div className="client-form-modal__price-row client-form-modal__price-row--discount">
+                  <span>Со скидкой ({discountPct}%)</span>
+                  <strong>{formatSum(priceAfterDiscount)}</strong>
+                </div>
+              )}
+            </div>
+          )}
           <div className="client-form-modal__row">
             <label className="client-form-modal__label">
               <span className="client-form-modal__label-text">Тип</span>
@@ -135,10 +181,17 @@ const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose, error
               <Select value={gender} onChange={setGender} options={[{ value: '', label: '—' }, { value: 'male', label: 'М' }, { value: 'female', label: 'Ж' }]} placeholder="—" className="client-form-modal__select" />
             </label>
           </div>
-          <label className="client-form-modal__label client-form-modal__label--full">
+          <div className="client-form-modal__label client-form-modal__label--full">
             <span className="client-form-modal__label-text">Комментарий</span>
-            <textarea value={comment} onChange={(e) => setComment(e.target.value)} className="client-form-modal__input" rows={2} placeholder="Необязательно" />
-          </label>
+            {commentAuto.length > 0 && (
+              <div className="client-form-modal__comment-auto" aria-readonly="true">
+                {commentAuto.map((line, i) => (
+                  <div key={i} className="client-form-modal__comment-auto-line">{line}</div>
+                ))}
+              </div>
+            )}
+            <textarea value={commentManual} onChange={(e) => setCommentManual(e.target.value)} className="client-form-modal__input" rows={2} placeholder="Дополнительный комментарий (необязательно)" />
+          </div>
           <div className="client-form-modal__actions">
             <button type="button" className="client-form-modal__btn client-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
             <button type="submit" className="client-form-modal__btn client-form-modal__btn--submit" disabled={saving}>{saving ? 'Сохранение…' : 'Сохранить'}</button>

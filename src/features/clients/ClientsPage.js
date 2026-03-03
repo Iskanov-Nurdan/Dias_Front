@@ -113,7 +113,7 @@ const getSimilarGroups = (clients) => {
 };
 
 const ClientsPage = () => {
-  const { isAdmin, showAccessDenied } = useAuth();
+  const { user, isAdmin, showAccessDenied } = useAuth();
   const toast = useToast();
 
   const [activeTab, setActiveTab] = useState(TAB_LIST);
@@ -530,7 +530,7 @@ const ClientsPage = () => {
 
       {/* ── Модалки ── */}
       {formClient && (
-        <ClientFormModal client={formClient} sports={sports} fetchTrainers={fetchTrainers} onSave={handleSaveClient} onClose={() => { setFormClient(null); setClientFormError(null); }} error={clientFormError} saving={clientFormSaving} />
+        <ClientFormModal client={formClient} sports={sports} fetchTrainers={fetchTrainers} currentUserFio={user?.fio || user?.login || ''} onSave={handleSaveClient} onClose={() => { setFormClient(null); setClientFormError(null); }} error={clientFormError} saving={clientFormSaving} />
       )}
       {cardClient && (
         <ClientCardModal client={cardClient} onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())} onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())} onClose={() => setCardClient(null)} />

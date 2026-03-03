@@ -5,6 +5,9 @@ import './ClientCardModal.scss';
 
 const ClientCardModal = ({ client, onEdit, onDelete, onClose }) => {
   if (!client) return null;
+  const priceBase = Number(client.price) || 0;
+  const discountPct = Number(client.discount ?? client.discount_percent) || 0;
+  const priceFinal = discountPct > 0 ? priceBase * (1 - discountPct / 100) : priceBase;
   const content = (
     <div className="client-card-modal__backdrop" onClick={onClose}>
       <div className="client-card-modal" onClick={(e) => e.stopPropagation()}>
@@ -15,7 +18,8 @@ const ClientCardModal = ({ client, onEdit, onDelete, onClose }) => {
           <dt>Вид спорта</dt><dd>{client.sportName ?? client.sport?.name ?? '—'}</dd>
           <dt>Тренер</dt><dd>{client.trainerName ?? client.trainer?.fio ?? '—'}</dd>
           <dt>Дата начала</dt><dd>{client.dateStart ? new Date(client.dateStart).toLocaleDateString() : '—'}</dd>
-          <dt>Цена</dt><dd>{formatMoney(client.price)}</dd>
+          {discountPct > 0 && <><dt>Скидка</dt><dd>{discountPct}%</dd></>}
+          <dt>Цена</dt><dd>{formatMoney(priceFinal)}</dd>
           <dt>Оплачено</dt><dd>{isClientPaid(client) ? 'Да' : 'Нет'}</dd>
           <dt>Тип</dt><dd><span className={client.clientType === 'individual' ? 'client-card-modal__type client-card-modal__type--individual' : ''}>{client.clientType === 'individual' ? 'Индивидуальный' : client.clientType === 'regular' ? 'Регулярный' : client.clientType || '—'}</span></dd>
           <dt>Комментарий</dt><dd>{client.comment || '—'}</dd>

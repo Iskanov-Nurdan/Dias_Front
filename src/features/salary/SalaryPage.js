@@ -113,21 +113,22 @@ const SalaryPage = () => {
           <thead>
             <tr>
               <th className="salary-page__th-name">Тренер</th>
-              <th className="salary-page__th-num">Клиентов</th>
+              <th className="salary-page__th-num">Всего</th>
+              <th className="salary-page__th-num">Оплатили</th>
+              <th className="salary-page__th-num">Не оплатили</th>
               <th className="salary-page__th-money">Доход</th>
               <th className="salary-page__th-percent">% тренеру</th>
               <th className="salary-page__th-money">Тренеру</th>
               <th className="salary-page__th-money">Клубу</th>
               <th className="salary-page__th-money">К выплате</th>
-              <th className="salary-page__th-status">Сохранён</th>
               <th className="salary-page__th-actions">Действия</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={9} className="salary-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
+              <tr><td colSpan={10} className="salary-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
             ) : items.length === 0 ? (
-              <tr><td colSpan={9} className="salary-page__empty-cell"><EmptyState message="Нет данных за период" /></td></tr>
+              <tr><td colSpan={10} className="salary-page__empty-cell"><EmptyState message="Нет данных за период" /></td></tr>
             ) : items.map((row, index) => {
                 const trainerId = row.trainerId ?? row.trainer_id ?? row.id ?? index;
                 const income = row.income ?? row.revenue ?? row.clientIncome ?? 0;
@@ -138,11 +139,18 @@ const SalaryPage = () => {
                 const total = trainerShare;
                 const saved = row.saved === true || row.saved === 'true';
                 const isSaving = savingTrainerId === trainerId;
+                const paidCount = row.clientCount ?? row.clientsCount ?? row.clients_count ?? row.paidClientCount ?? row.count ?? 0;
+                const unpaidCount = row.unpaidClientCount ?? row.unpaidCount ?? row.clientsUnpaid ?? row.unpaid ?? 0;
+                const totalCount = (Number(paidCount) || 0) + (Number(unpaidCount) || 0);
+                const hasUnpaid = Number(unpaidCount) > 0;
+                const canSave = isMonthEnded && !hasUnpaid && !saved;
                 const format = (v) => (typeof v === 'number' && !Number.isNaN(v) ? `${Number(v).toLocaleString('ru-RU')} сом` : (v ?? '—'));
                 return (
-                  <tr key={trainerId}>
+                  <tr key={trainerId} className={`salary-page__row salary-page__row--${saved ? 'saved' : 'pending'}`}>
                     <td className="salary-page__td-name">{row.trainerName ?? row.trainer?.fio ?? row.fio ?? '—'}</td>
-                    <td className="salary-page__td-num">{row.clientCount ?? row.clientsCount ?? row.clients_count ?? row.count ?? '—'}</td>
+                    <td className="salary-page__td-num">{totalCount ?? '—'}</td>
+                    <td className="salary-page__td-num">{paidCount ?? '—'}</td>
+                    <td className={`salary-page__td-num ${hasUnpaid ? 'salary-page__td-num--unpaid' : ''}`}>{unpaidCount !== undefined && unpaidCount !== null ? unpaidCount : '—'}</td>
                     <td className="salary-page__td-money">{format(income)}</td>
                     <td className="salary-page__percent-cell">
                       <input
@@ -158,19 +166,14 @@ const SalaryPage = () => {
                     <td className="salary-page__td-money">{format(trainerShare)}</td>
                     <td className="salary-page__td-money">{format(clubShare)}</td>
                     <td className="salary-page__td-money salary-page__td-total">{format(total)}</td>
-                    <td className="salary-page__td-status">
-                      <span className={`salary-page__badge salary-page__badge--${saved ? 'saved' : 'pending'}`}>
-                        {saved ? 'Да' : 'Нет'}
-                      </span>
-                    </td>
                     <td className="salary-page__actions">
                       {!saved && (
                         <button
                           type="button"
                           className="salary-page__save-btn"
                           onClick={() => handleSaveSalary(row)}
-                          disabled={isSaving || !isMonthEnded}
-                          title={!isMonthEnded ? 'Сохранять можно только за прошедший месяц' : undefined}
+                          disabled={isSaving || !canSave}
+                          title={!isMonthEnded ? 'Сохранять можно только за прошедший месяц' : hasUnpaid ? 'Сохранить можно только когда все клиенты оплатили' : undefined}
                         >
                           {isSaving ? 'Сохранение…' : 'Сохранить'}
                         </button>

@@ -5,6 +5,15 @@ import { Select } from '../../../shared/ui';
 import { isClientPaid } from '../../../shared/constants/common';
 import './ClientFormModal.scss';
 
+// Первая буква каждого слова — заглавная (работает для любого языка и вставленного текста)
+const capitalizeWords = (str) => {
+  if (!str) return '';
+  return str
+    .split(' ')
+    .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : ''))
+    .join(' ');
+};
+
 const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose, error, saving }) => {
   const toast = useToast();
   const [fio, setFio] = useState('');
@@ -22,7 +31,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose, error
 
   useEffect(() => {
     if (client) {
-      setFio(client.fio || '');
+      setFio(capitalizeWords(client.fio || ''));
       setPhone(client.phone || '');
       setSportId(client.sportId ?? client.sport_id ?? client.sport?.id ?? '');
       setTrainerId(client.trainerId ?? client.trainer_id ?? client.trainer?.id ?? '');
@@ -76,7 +85,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose, error
           <div className="client-form-modal__row">
             <label className="client-form-modal__label">
               <span className="client-form-modal__label-text">ФИО <span className="form-label-required" aria-hidden="true">*</span></span>
-              <input type="text" value={fio} onChange={(e) => setFio(e.target.value)} required className="client-form-modal__input" />
+              <input type="text" value={fio} onChange={(e) => setFio(capitalizeWords(e.target.value))} required className="client-form-modal__input" />
             </label>
             <label className="client-form-modal__label">
               <span className="client-form-modal__label-text">Телефон</span>

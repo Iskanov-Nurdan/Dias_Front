@@ -137,7 +137,7 @@ const SalaryPage = () => {
                 const total = trainerShare;
                 const saved = row.saved === true || row.saved === 'true';
                 const isSaving = savingTrainerId === trainerId;
-                const format = (v) => (typeof v === 'number' && !Number.isNaN(v) ? `${Number(v).toLocaleString('ru-RU')} Р` : (v ?? '—'));
+                const format = (v) => (typeof v === 'number' && !Number.isNaN(v) ? `${Number(v).toLocaleString('ru-RU')} сом` : (v ?? '—'));
                 return (
                   <tr key={trainerId}>
                     <td>{row.trainerName ?? row.trainer?.fio ?? row.fio ?? '—'}</td>

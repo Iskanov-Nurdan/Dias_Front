@@ -15,6 +15,7 @@ import { CategoryFormModal, ProductFormModal } from './components';
 import RestockModal from './components/RestockModal';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { ErrorState, EmptyState, ConfirmModal, Select, Pagination } from '../../shared/ui';
+import { formatMoney } from '../../shared/constants/common';
 import './WarehousePage.scss';
 
 const TAB_PRODUCTS = 'products';
@@ -249,8 +250,8 @@ const WarehousePage = () => {
                       <td>{p.name}</td>
                       <td>{p.categoryName ?? p.category?.name ?? '—'}</td>
                       <td>{p.qty ?? p.quantity ?? 0}</td>
-                      <td>{p.purchasePrice ?? '—'}</td>
-                      <td>{p.sellingPrice ?? '—'}</td>
+                      <td>{formatMoney(p.purchasePrice)}</td>
+                      <td>{formatMoney(p.sellingPrice)}</td>
                       <td>{p.minQty ?? p.min_quantity ?? '—'}</td>
                       <td>{(p.createdAt ?? p.created_at) ? new Date(p.createdAt ?? p.created_at).toLocaleDateString('ru-RU') : '—'}</td>
                       <td className="warehouse-page__actions">

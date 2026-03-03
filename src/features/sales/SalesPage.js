@@ -3,6 +3,7 @@ import { fetchSalesSummary, fetchSales, createSale } from './api';
 import { fetchProducts } from '../warehouse/api';
 import SaleFormModal from './components/SaleFormModal';
 import { ErrorState, EmptyState, Pagination } from '../../shared/ui';
+import { formatMoney } from '../../shared/constants/common';
 import './SalesPage.scss';
 
 const SalesPage = () => {
@@ -130,7 +131,7 @@ const SalesPage = () => {
                 <tr key={s.id}>
                   <td>{s.productName ?? s.product?.name ?? '—'}</td>
                   <td>{s.qty ?? s.quantity ?? 0}</td>
-                  <td>{s.total ?? '—'}</td>
+                  <td>{formatMoney(s.total)}</td>
                   <td>{s.discountPercent != null ? `${s.discountPercent}%` : (s.discount != null ? `${s.discount}%` : '—')}</td>
                   <td>{s.date ? new Date(s.date).toLocaleDateString() : '—'}</td>
                 </tr>

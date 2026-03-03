@@ -217,14 +217,14 @@
 }
 
 .analytics-page__card--expense {
-  background: linear-gradient(145deg, rgba(220, 38, 38, 0.06) 0%, var(--color-bg-card) 50%);
-  border-left-color: #dc2626;
-  .analytics-page__card-icon { background: rgba(220, 38, 38, 0.15); color: #dc2626; }
-  .analytics-page__card-value { color: #dc2626; font-weight: 700; }
+  background: linear-gradient(145deg, var(--color-error-light) 0%, var(--color-bg-card) 50%);
+  border-left-color: var(--color-error);
+  .analytics-page__card-icon { background: var(--color-error-light); color: var(--color-error); }
+  .analytics-page__card-value { color: var(--color-error); font-weight: 700; }
 }
 
 .analytics-page__card--profit {
-  background: linear-gradient(145deg, rgba(37, 99, 235, 0.08) 0%, var(--color-bg-card) 50%);
+  background: linear-gradient(145deg, var(--color-primary-light) 0%, var(--color-bg-card) 50%);
   border-left-color: var(--color-primary);
   .analytics-page__card-icon { background: var(--color-primary-light); color: var(--color-primary); }
   .analytics-page__card-value { color: var(--color-primary); font-weight: 700; }
@@ -468,7 +468,7 @@
 }
 
 .analytics-page__leads-kpis .analytics-page__card--green { border-left-color: #059669; .analytics-page__card-value { color: #059669; } }
-.analytics-page__leads-kpis .analytics-page__card--red { border-left-color: #dc2626; .analytics-page__card-value { color: #dc2626; } }
+.analytics-page__leads-kpis .analytics-page__card--red { border-left-color: var(--color-error); .analytics-page__card-value { color: var(--color-error); } }
 .analytics-page__leads-kpis .analytics-page__card--gray { border-left-color: #6b7280; .analytics-page__card-value { color: #6b7280; } }
 
 .analytics-page__leads-grid {
@@ -614,7 +614,7 @@
 
 .analytics-page__bar {
   height: 100%;
-  background: linear-gradient(90deg, var(--color-primary), #3b82f6);
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-hover));
   border-radius: 8px;
   min-width: 6px;
   transition: width 0.4s ease;
@@ -625,11 +625,11 @@
 }
 
 .analytics-page__bar--red {
-  background: linear-gradient(90deg, #b91c1c, #ef4444);
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-hover));
 }
 
 .analytics-page__bar--blue {
-  background: linear-gradient(90deg, var(--color-primary), #3b82f6);
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-hover));
 }
 
 .analytics-page__bar--gray {
@@ -717,7 +717,7 @@
 }
 
 .analytics-page__chart-legend-item--expense::before {
-  background: linear-gradient(135deg, #dc2626, #ef4444);
+  background: linear-gradient(135deg, var(--color-error), var(--color-primary-hover));
 }
 
 .analytics-page__chart {

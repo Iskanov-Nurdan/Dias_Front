@@ -4,6 +4,7 @@ import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
 import { ExpenseCategoryFormModal, ExpenseFormModal } from './components';
 import { ErrorState, EmptyState, ConfirmModal, Pagination } from '../../shared/ui';
+import { formatMoney } from '../../shared/constants/common';
 import './ExpensesPage.scss';
 
 const ExpensesPage = () => {
@@ -207,7 +208,7 @@ const ExpensesPage = () => {
                     <tr key={e.id}>
                       <td>{e.name ?? '—'}</td>
                       <td>{e.categoryName ?? e.category?.name ?? '—'}</td>
-                      <td>{e.amount ?? '—'}</td>
+                      <td>{formatMoney(e.amount)}</td>
                       <td>{e.date ? new Date(e.date).toLocaleDateString() : '—'}</td>
                       <td>{e.saved ? 'Да' : 'Нет'}</td>
                       <td className="expenses-page__actions">

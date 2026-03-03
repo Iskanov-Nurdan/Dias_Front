@@ -30,7 +30,7 @@ const SaleFormModal = ({ products = [], onSave, onClose, error, saving }) => {
   const priceAfterDiscount = priceBase * (1 - discountPct / 100);
   const qtyNum = Math.max(0, parseInt(qty, 10) || 0);
   const totalSum = priceAfterDiscount * qtyNum;
-  const formatSum = (v) => (v != null && !Number.isNaN(v) ? `${Number(v).toLocaleString('ru-RU')} ₽` : '—');
+  const formatSum = (v) => (v != null && !Number.isNaN(v) ? `${Number(v).toLocaleString('ru-RU')} сом` : '—');
 
   const handleSubmit = (e) => {
     e.preventDefault();

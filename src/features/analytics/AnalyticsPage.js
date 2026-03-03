@@ -2,12 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { fetchIncomeDetail, fetchExpenseDetail, fetchProfitDetail } from './api';
 import { fetchSalary } from '../salary/api';
 import { ErrorState, Select, DonutChart, Sparkline, Skeleton, SkeletonTable } from '../../shared/ui';
-import { MONTHS, DONUT_COLORS } from '../../shared/constants/common';
+import { MONTHS, DONUT_COLORS, formatMoney } from '../../shared/constants/common';
 import { useAnalyticsFilters } from './hooks/useAnalyticsFilters';
 import { useAnalyticsData } from './hooks/useAnalyticsData';
 import './AnalyticsPage.scss';
-
-const formatMoney = (v) => (v != null && !Number.isNaN(Number(v)) ? `${Number(v).toLocaleString('ru-RU')} Р` : '—');
 
 // expense-detail: для складских строк бэк передаёт type "add" | "restock"; у остальных type нет
 const getExpenseName = (row) => {
@@ -105,7 +103,7 @@ const AnalyticsPage = () => {
 
   const donutStatusesData = useMemo(() => [
     ...byType.map((x, i) => ({ label: x.label ?? x.type, value: x.count ?? 0, color: DONUT_COLORS[i % DONUT_COLORS.length] })),
-    ...byPaid.map((x, i) => ({ label: x.label ?? (x.paid ? 'Оплачено' : 'Не оплачено'), value: x.count ?? 0, color: x.paid ? '#059669' : '#dc2626' })),
+    ...byPaid.map((x, i) => ({ label: x.label ?? (x.paid ? 'Оплачено' : 'Не оплачено'), value: x.count ?? 0, color: x.paid ? '#059669' : '#c53030' })),
   ].filter((d) => d.value > 0), [byType, byPaid]);
   const totalClientsStatuses = useMemo(() => donutStatusesData.reduce((s, d) => s + d.value, 0), [donutStatusesData]);
 
@@ -249,7 +247,7 @@ const AnalyticsPage = () => {
                 <span className="analytics-page__card-value">{formatMoney(expense)}</span>
                 {sparklineExpense.length >= 2 && (
                   <div className="analytics-page__card-chart">
-                    <Sparkline values={sparklineExpense} width={140} height={48} color="#dc2626" />
+                    <Sparkline values={sparklineExpense} width={140} height={48} color="#c53030" />
                   </div>
                 )}
                 <span className="analytics-page__card-hint">за период · нажмите для детализации</span>
@@ -523,8 +521,8 @@ const AnalyticsPage = () => {
                         <stop offset="100%" stopColor="#ea580c" stopOpacity="0.05" />
                       </linearGradient>
                       <linearGradient id="chart-expense-fill" x1="0" y1="1" x2="0" y2="0">
-                        <stop offset="0%" stopColor="#dc2626" stopOpacity="0.35" />
-                        <stop offset="100%" stopColor="#dc2626" stopOpacity="0.05" />
+                        <stop offset="0%" stopColor="#c53030" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#c53030" stopOpacity="0.05" />
                       </linearGradient>
                     </defs>
                     {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -551,7 +549,7 @@ const AnalyticsPage = () => {
                       return (
                         <g key="areas">
                           <path d={incomePath} fill="url(#chart-income-fill)" stroke="#ea580c" strokeWidth="1.5" strokeLinejoin="round" />
-                          <path d={expensePath} fill="url(#chart-expense-fill)" stroke="#dc2626" strokeWidth="1.5" strokeLinejoin="round" />
+                          <path d={expensePath} fill="url(#chart-expense-fill)" stroke="#c53030" strokeWidth="1.5" strokeLinejoin="round" />
                         </g>
                       );
                     })()}

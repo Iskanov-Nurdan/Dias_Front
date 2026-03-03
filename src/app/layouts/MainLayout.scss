@@ -299,7 +299,7 @@
         transform: translateY(-50%);
         width: 3px;
         height: 24px;
-        background: #e53e3e;
+        background: var(--color-primary);
         border-radius: 0 2px 2px 0;
       }
 
@@ -307,7 +307,7 @@
         &::before {
           display: none;
         }
-        border-bottom: 2px solid #e53e3e;
+        border-bottom: 2px solid var(--color-primary);
         border-radius: var(--radius-sm) var(--radius-sm) 0 0;
       }
     }

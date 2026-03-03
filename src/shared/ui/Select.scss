@@ -36,7 +36,7 @@
   &:focus {
     outline: none;
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    box-shadow: 0 0 0 2px rgba(197, 48, 48, 0.15);
   }
 }
 
@@ -91,7 +91,7 @@
   }
 
   &--selected {
-    background: rgba(37, 99, 235, 0.1);
+    background: var(--color-primary-light);
     color: var(--color-primary);
   }
 }

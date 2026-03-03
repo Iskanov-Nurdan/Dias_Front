@@ -107,19 +107,20 @@ const SalaryPage = () => {
       {!isMonthEnded && !error && (
         <p className="salary-page__hint">Сохранять зарплату можно только за прошедший месяц (после его окончания).</p>
       )}
+      <h2 className="salary-page__section-title">Расчёт по тренерам</h2>
       <div className="salary-page__table-wrap">
         <table className="salary-page__table">
           <thead>
             <tr>
-              <th>Тренер</th>
-              <th>Кол-во клиентов</th>
-              <th>Доход от клиентов</th>
-              <th>Процент тренеру</th>
-              <th>Тренеру</th>
-              <th>Клубу</th>
-              <th>Итого к выплате</th>
-              <th>Сохранён</th>
-              <th>Действия</th>
+              <th className="salary-page__th-name">Тренер</th>
+              <th className="salary-page__th-num">Клиентов</th>
+              <th className="salary-page__th-money">Доход</th>
+              <th className="salary-page__th-percent">% тренеру</th>
+              <th className="salary-page__th-money">Тренеру</th>
+              <th className="salary-page__th-money">Клубу</th>
+              <th className="salary-page__th-money">К выплате</th>
+              <th className="salary-page__th-status">Сохранён</th>
+              <th className="salary-page__th-actions">Действия</th>
             </tr>
           </thead>
           <tbody>
@@ -140,22 +141,28 @@ const SalaryPage = () => {
                 const format = (v) => (typeof v === 'number' && !Number.isNaN(v) ? `${Number(v).toLocaleString('ru-RU')} сом` : (v ?? '—'));
                 return (
                   <tr key={trainerId}>
-                    <td>{row.trainerName ?? row.trainer?.fio ?? row.fio ?? '—'}</td>
-                    <td>{row.clientCount ?? row.clientsCount ?? row.clients_count ?? row.count ?? '—'}</td>
-                    <td>{format(income)}</td>
+                    <td className="salary-page__td-name">{row.trainerName ?? row.trainer?.fio ?? row.fio ?? '—'}</td>
+                    <td className="salary-page__td-num">{row.clientCount ?? row.clientsCount ?? row.clients_count ?? row.count ?? '—'}</td>
+                    <td className="salary-page__td-money">{format(income)}</td>
                     <td className="salary-page__percent-cell">
                       <input
                         type="text"
+                        inputMode="numeric"
                         value={percent === '' ? '' : percent}
                         onChange={(e) => setTrainerPercent(row, e.target.value)}
                         className="salary-page__percent-input"
-                        placeholder="%"
+                        placeholder="60"
+                        aria-label="Процент тренеру"
                       />
                     </td>
-                    <td>{format(trainerShare)}</td>
-                    <td>{format(clubShare)}</td>
-                    <td>{format(total)}</td>
-                    <td>{saved ? 'Да' : 'Нет'}</td>
+                    <td className="salary-page__td-money">{format(trainerShare)}</td>
+                    <td className="salary-page__td-money">{format(clubShare)}</td>
+                    <td className="salary-page__td-money salary-page__td-total">{format(total)}</td>
+                    <td className="salary-page__td-status">
+                      <span className={`salary-page__badge salary-page__badge--${saved ? 'saved' : 'pending'}`}>
+                        {saved ? 'Да' : 'Нет'}
+                      </span>
+                    </td>
                     <td className="salary-page__actions">
                       {!saved && (
                         <button

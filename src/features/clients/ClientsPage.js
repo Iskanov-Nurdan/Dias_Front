@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { fetchClients, fetchClient, createClient, updateClient, deleteClient, extendClient } from './api';
+import { fetchClients, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchAllClientsPaginated } from './api';
 import { fetchSports } from '../sports-trainers/api';
 import { fetchTrainers } from '../sports-trainers/api';
 import { useAuth } from '../../app/providers/AuthProvider';
@@ -12,9 +12,44 @@ import './ClientsPage.scss';
 
 const TAB_LIST = 'list';
 const TAB_DUPS = 'dups';
+const TAB_STATS = 'stats';
 
 const SUBTAB_EXACT   = 'exact';
 const SUBTAB_SIMILAR = 'similar';
+
+const MONTH_NAMES = ['', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+const STATS_YEARS = ['2026', '2027'];
+
+// Фильтрация клиентов по году/месяцу (по dateStart)
+const filterClientsByPeriod = (clients, year, month) => {
+  if (!year) return clients;
+  const y = Number(year);
+  const m = month ? Number(month) : null;
+  return clients.filter((c) => {
+    const ds = c.dateStart ?? c.date_start;
+    if (!ds) return false;
+    const d = new Date(ds);
+    if (isNaN(d.getTime())) return false;
+    if (d.getFullYear() !== y) return false;
+    if (m != null && d.getMonth() + 1 !== m) return false;
+    return true;
+  });
+};
+
+// Статистика по тренерам: { trainerId, trainerName, total, paid, unpaid }
+const getStatsByTrainer = (clients) => {
+  const map = {};
+  clients.forEach((c) => {
+    const id = c.trainerId ?? c.trainer_id ?? (c.trainer?.id != null ? c.trainer.id : null);
+    const key = id ?? '__no_trainer__';
+    const name = c.trainerName ?? c.trainer?.fio ?? (key === '__no_trainer__' ? 'Без тренера' : '—');
+    if (!map[key]) map[key] = { trainerId: id, trainerName: name, total: 0, paid: 0, unpaid: 0 };
+    map[key].total += 1;
+    if (c.paid) map[key].paid += 1;
+    else map[key].unpaid += 1;
+  });
+  return Object.values(map).sort((a, b) => b.total - a.total);
+};
 
 // Расстояние Левенштейна
 const levenshtein = (a, b) => {
@@ -84,12 +119,17 @@ const ClientsPage = () => {
   const [activeTab, setActiveTab] = useState(TAB_LIST);
   const [activeDupTab, setActiveDupTab] = useState(SUBTAB_EXACT);
 
+  // ── Статистика ──
+  const [statsYear, setStatsYear] = useState(new Date().getFullYear().toString());
+  const [statsMonth, setStatsMonth] = useState(String(new Date().getMonth() + 1));
+
   // ── Основной список ──
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebounce(searchInput, SEARCH_DEBOUNCE_MS);
-  const [queryState, setQueryState] = useState({ search: '', sportId: '', paid: '', clientType: '', year: '', month: '', day: '', page: 1, perPage: 20 });
+  const [queryState, setQueryState] = useState({ search: '', sportId: '', trainerId: '', paid: '', clientType: '', year: '', month: '', day: '', page: 1, perPage: 20 });
   const [data, setData] = useState(null);
   const [sports, setSports] = useState([]);
+  const [trainers, setTrainers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const controllerRef = useRef(null);
@@ -134,8 +174,7 @@ const ClientsPage = () => {
     allControllerRef.current = new AbortController();
     setAllLoading(true);
     try {
-      const res = await fetchClients({ page: 1, perPage: 2000 }, allControllerRef.current.signal);
-      const list = res?.items ?? res?.results ?? [];
+      const list = await fetchAllClientsPaginated({}, allControllerRef.current.signal);
       setAllClients(list);
     } catch (err) {
       if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
@@ -156,7 +195,7 @@ const ClientsPage = () => {
   }, [activeTab, fetchSafe]);
 
   useEffect(() => {
-    if (activeTab === TAB_DUPS) {
+    if (activeTab === TAB_DUPS || activeTab === TAB_STATS) {
       fetchAllClients();
       return () => allControllerRef.current?.abort();
     }
@@ -166,10 +205,20 @@ const ClientsPage = () => {
     fetchSports(null).then((d) => setSports(Array.isArray(d) ? d : d?.results ?? d?.items ?? [])).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    fetchTrainers({ perPage: 500 }, null).then((d) => setTrainers(Array.isArray(d) ? d : d?.results ?? d?.items ?? [])).catch(() => {});
+  }, []);
+
   const items = data?.items ?? data?.results ?? (Array.isArray(data) ? data : []) ?? [];
 
   const exactGroups  = useMemo(() => getExactDuplicates(allClients), [allClients]);
   const similarGroups = useMemo(() => getSimilarGroups(allClients), [allClients]);
+
+  const statsFilteredClients = useMemo(
+    () => filterClientsByPeriod(allClients, statsYear, statsMonth || null),
+    [allClients, statsYear, statsMonth]
+  );
+  const statsByTrainer = useMemo(() => getStatsByTrainer(statsFilteredClients), [statsFilteredClients]);
 
   const handleSaveClient = async (payload) => {
     setClientFormError(null);
@@ -264,6 +313,7 @@ const ClientsPage = () => {
       <div className="clients-page__tabs">
         <button type="button" className={`clients-page__tab${activeTab === TAB_LIST ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_LIST)}>Клиенты</button>
         <button type="button" className={`clients-page__tab${activeTab === TAB_DUPS ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_DUPS)}>Дубликаты</button>
+        <button type="button" className={`clients-page__tab${activeTab === TAB_STATS ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_STATS)}>Статистика</button>
       </div>
 
       {/* ── Список ── */}
@@ -273,6 +323,7 @@ const ClientsPage = () => {
             <div className="clients-page__filters">
               <input type="text" placeholder="Поиск (ФИО, телефон)" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="clients-page__search" />
               <Select value={queryState.sportId} onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))} options={[{ value: '', label: 'Все виды спорта' }, ...sports.map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="Все виды спорта" className="clients-page__select-wrap" />
+              <Select value={queryState.trainerId} onChange={(v) => setQueryState((q) => ({ ...q, trainerId: v, page: 1 }))} options={[{ value: '', label: 'Тренер — все' }, ...trainers.map((t) => ({ value: String(t.id), label: t.fio || '' }))]} placeholder="Тренер — все" className="clients-page__select-wrap" />
               <Select value={queryState.paid} onChange={(v) => setQueryState((q) => ({ ...q, paid: v, page: 1 }))} options={[{ value: '', label: 'Оплата — все' }, { value: 'true', label: 'Оплачено' }, { value: 'false', label: 'Не оплачено' }]} placeholder="Оплата — все" className="clients-page__select-wrap" />
               <Select value={queryState.clientType} onChange={(v) => setQueryState((q) => ({ ...q, clientType: v, page: 1 }))} options={[{ value: '', label: 'Тип — все' }, { value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }]} placeholder="Тип — все" className="clients-page__select-wrap" />
               <Select
@@ -340,6 +391,68 @@ const ClientsPage = () => {
                 {similarGroups.map((group, i) => <DuplicateGroup key={i} group={group} label={`${group[0].fio} / ${group[1].fio}${group.length > 2 ? ` +${group.length - 2}` : ''}`} />)}
               </>
             )
+          )}
+        </div>
+      )}
+
+      {/* ── Статистика ── */}
+      {activeTab === TAB_STATS && (
+        <div className="clients-page__stats-section">
+          <div className="clients-page__stats-toolbar">
+            <Select
+              value={statsYear}
+              onChange={setStatsYear}
+              options={[{ value: '', label: 'Год — все' }, ...STATS_YEARS.map((y) => ({ value: y, label: y }))]}
+              placeholder="Год"
+              className="clients-page__stats-select"
+            />
+            <Select
+              value={statsMonth}
+              onChange={setStatsMonth}
+              options={[
+                { value: '', label: 'Месяц — все' },
+                ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: MONTH_NAMES[i + 1] })),
+              ]}
+              placeholder="Месяц"
+              className="clients-page__stats-select"
+            />
+          </div>
+
+          {allLoading ? (
+            <div className="clients-page__dup-loading"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка клиентов…</span></div>
+          ) : (
+            <>
+              <p className="clients-page__stats-info">
+                Период: <strong>{statsYear || 'все годы'}</strong>
+                {statsMonth ? ` · ${MONTH_NAMES[Number(statsMonth)]}` : ''}
+                {' · '}Учеников: <strong>{statsFilteredClients.length}</strong>
+                {' · '}Оплатили: <strong>{statsFilteredClients.filter((c) => c.paid).length}</strong>
+                {' · '}Не оплатили: <strong>{statsFilteredClients.filter((c) => !c.paid).length}</strong>
+              </p>
+
+              <div className="clients-page__stats-block">
+                <h3 className="clients-page__stats-block-title">По тренерам</h3>
+                <table className="clients-page__stats-table">
+                  <thead>
+                    <tr><th>Тренер</th><th>Учеников</th><th>Оплатили</th><th>Не оплатили</th></tr>
+                  </thead>
+                  <tbody>
+                    {statsByTrainer.length === 0 ? (
+                      <tr><td colSpan={4} className="clients-page__stats-empty">Нет данных</td></tr>
+                    ) : (
+                      statsByTrainer.map((r) => (
+                        <tr key={r.trainerId ?? r.trainerName}>
+                          <td>{r.trainerName}</td>
+                          <td>{r.total}</td>
+                          <td>{r.paid}</td>
+                          <td>{r.unpaid}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       )}

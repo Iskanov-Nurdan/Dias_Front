@@ -165,6 +165,11 @@
     padding: 24px !important;
   }
 
+  &__type--individual {
+    color: var(--color-success);
+    font-weight: 500;
+  }
+
   &__toolbar {
     display: flex;
     align-items: center;

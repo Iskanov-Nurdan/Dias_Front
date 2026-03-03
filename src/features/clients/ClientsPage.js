@@ -294,7 +294,7 @@ const ClientsPage = () => {
               <td>{c.phone || '—'}</td>
               <td>{c.sportName ?? c.sport?.name ?? '—'}</td>
               <td>{isClientPaid(c) ? 'Да' : 'Нет'}</td>
-              <td>{c.clientType === 'individual' ? 'Индивид.' : c.clientType === 'regular' ? 'Регуляр' : c.clientType || '—'}</td>
+              <td><span className={c.clientType === 'individual' ? 'clients-page__type clients-page__type--individual' : ''}>{c.clientType === 'individual' ? 'Индивид.' : c.clientType === 'regular' ? 'Регуляр' : c.clientType || '—'}</span></td>
               <td>
                 <button type="button" className="dup-group__btn" onClick={() => handleOpenCard(c)}>Подробнее</button>
               </td>

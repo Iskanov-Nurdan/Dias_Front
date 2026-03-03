@@ -37,8 +37,17 @@
     tbody tr:nth-child(even) {
       background: rgba(0, 0, 0, 0.02);
     }
+    tbody tr.clients-list__row--unpaid {
+      background: rgba(197, 48, 48, 0.14);
+    }
+    tbody tr.clients-list__row--unpaid:nth-child(even) {
+      background: rgba(197, 48, 48, 0.2);
+    }
     tbody tr:hover {
       background: var(--color-primary-light);
+    }
+    tbody tr.clients-list__row--unpaid:hover {
+      background: rgba(197, 48, 48, 0.22);
     }
     tbody tr:last-child td {
       border-bottom: none;
@@ -62,6 +71,11 @@
   &__table th:last-child,
   &__table td.clients-list__actions {
     text-align: right;
+  }
+
+  &__type--individual {
+    color: var(--color-success);
+    font-weight: 500;
   }
 
   &__btn {

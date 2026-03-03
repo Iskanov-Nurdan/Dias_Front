@@ -17,7 +17,7 @@ const ClientCardModal = ({ client, onEdit, onDelete, onClose }) => {
           <dt>Дата начала</dt><dd>{client.dateStart ? new Date(client.dateStart).toLocaleDateString() : '—'}</dd>
           <dt>Цена</dt><dd>{formatMoney(client.price)}</dd>
           <dt>Оплачено</dt><dd>{isClientPaid(client) ? 'Да' : 'Нет'}</dd>
-          <dt>Тип</dt><dd>{client.clientType || '—'}</dd>
+          <dt>Тип</dt><dd><span className={client.clientType === 'individual' ? 'client-card-modal__type client-card-modal__type--individual' : ''}>{client.clientType === 'individual' ? 'Индивидуальный' : client.clientType === 'regular' ? 'Регулярный' : client.clientType || '—'}</span></dd>
           <dt>Комментарий</dt><dd>{client.comment || '—'}</dd>
         </dl>
         <div className="client-card-modal__actions">

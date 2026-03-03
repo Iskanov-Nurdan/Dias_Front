@@ -38,12 +38,12 @@ const ClientsList = ({ items, loading, error, onRetry, onEdit, onDelete, onDetai
                 </td>
               </tr>
             ) : list.map((c) => (
-              <tr key={c.id}>
+              <tr key={c.id} className={!isClientPaid(c) ? 'clients-list__row clients-list__row--unpaid' : 'clients-list__row'}>
                 <td>{c.fio || '—'}</td>
                 <td>{c.phone || '—'}</td>
                 <td>{c.sportName ?? c.sport?.name ?? '—'}</td>
                 <td>{isClientPaid(c) ? 'Да' : 'Нет'}</td>
-                <td>{c.clientType === 'individual' ? 'Индивид.' : c.clientType === 'regular' ? 'Регуляр' : c.clientType || '—'}</td>
+                <td><span className={c.clientType === 'individual' ? 'clients-list__type clients-list__type--individual' : ''}>{c.clientType === 'individual' ? 'Индивид.' : c.clientType === 'regular' ? 'Регуляр' : c.clientType || '—'}</span></td>
                 <td className="clients-list__actions">
                   <button type="button" className="clients-list__btn" onClick={() => onDetails(c)}>Подробнее</button>
                   <button type="button" className="clients-list__btn" onClick={() => onExtend(c)}>Продлить</button>

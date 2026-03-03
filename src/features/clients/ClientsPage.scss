@@ -301,7 +301,7 @@
     color: var(--color-text-muted);
 
     span {
-      font-weight: 500;
+      font-weight: 400;
       color: var(--color-text);
     }
   }
@@ -439,13 +439,13 @@
 
   &__label {
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 400;
     color: var(--color-text);
   }
 
   &__count {
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 400;
     padding: 2px 10px;
     border-radius: 99px;
     background: var(--color-primary-light);

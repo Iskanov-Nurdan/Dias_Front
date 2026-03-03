@@ -73,7 +73,7 @@ textarea {
 }
 
 /* Обозначение обязательных полей в формах (звёздочка рядом с подписью) */
-.form-label-required { color: var(--color-error, #b91c1c); font-weight: 500; }
+.form-label-required { color: var(--color-error, #b91c1c); font-weight: 400; }
 
 /* Компактная загрузка внутри таблиц — без полноэкранного спиннера */
 .loading-inline {

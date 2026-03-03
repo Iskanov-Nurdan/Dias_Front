@@ -62,7 +62,7 @@
   flex-direction: column;
   gap: 6px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -247,7 +247,7 @@
 
 .analytics-page__card-label {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -428,7 +428,7 @@
   margin: 0 0 18px;
   padding-bottom: 12px;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--color-text);
   border-bottom: 1px solid var(--color-border);
   letter-spacing: -0.01em;
@@ -442,7 +442,7 @@
 }
 
 .analytics-page__section-summary strong {
-  font-weight: 600;
+  font-weight: 400;
   color: var(--color-text);
 }
 
@@ -512,7 +512,7 @@
 .analytics-page__leads-subtitle {
   margin: 0 0 16px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--color-text);
 }
 
@@ -546,7 +546,7 @@
   padding-top: 20px;
   border-top: 1px solid var(--color-border);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--color-text);
 }
 
@@ -582,7 +582,7 @@
 
 .analytics-page__leads-amount-row strong {
   color: var(--color-primary);
-  font-weight: 600;
+  font-weight: 400;
 }
 
 // ——— Прогресс-бары (статусы клиентов) ———
@@ -661,7 +661,7 @@
 
 .analytics-page__bar-value {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--color-text-muted);
   white-space: nowrap;
   min-width: 70px;
@@ -890,7 +890,7 @@
 .analytics-page__modal-title {
   margin: 0 0 24px;
   font-size: 20px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--color-text);
   letter-spacing: -0.02em;
 }
@@ -912,7 +912,7 @@
 .analytics-page__modal-total {
   margin: 20px 0 0;
   padding-top: 16px;
-  font-weight: 600;
+  font-weight: 400;
   font-size: 16px;
   border-top: 2px solid var(--color-border);
   color: var(--color-text);

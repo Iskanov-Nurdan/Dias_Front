@@ -5,7 +5,7 @@ import { fetchTrainers } from '../sports-trainers/api';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
 import { useDebounce } from '../../shared/hooks/useDebounce';
-import { SEARCH_DEBOUNCE_MS } from '../../shared/constants/common';
+import { SEARCH_DEBOUNCE_MS, isClientPaid } from '../../shared/constants/common';
 import { Select, ConfirmModal, Pagination } from '../../shared/ui';
 import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal } from './components';
 import './ClientsPage.scss';
@@ -45,7 +45,7 @@ const getStatsByTrainer = (clients) => {
     const name = c.trainerName ?? c.trainer?.fio ?? (key === '__no_trainer__' ? 'Без тренера' : '—');
     if (!map[key]) map[key] = { trainerId: id, trainerName: name, total: 0, paid: 0, unpaid: 0 };
     map[key].total += 1;
-    if (c.paid) map[key].paid += 1;
+    if (isClientPaid(c)) map[key].paid += 1;
     else map[key].unpaid += 1;
   });
   return Object.values(map).sort((a, b) => b.total - a.total);
@@ -293,7 +293,7 @@ const ClientsPage = () => {
               <td>{c.fio || '—'}</td>
               <td>{c.phone || '—'}</td>
               <td>{c.sportName ?? c.sport?.name ?? '—'}</td>
-              <td>{c.paid ? 'Да' : 'Нет'}</td>
+              <td>{isClientPaid(c) ? 'Да' : 'Нет'}</td>
               <td>{c.clientType === 'individual' ? 'Индивид.' : c.clientType === 'regular' ? 'Регуляр' : c.clientType || '—'}</td>
               <td>
                 <button type="button" className="dup-group__btn" onClick={() => handleOpenCard(c)}>Подробнее</button>
@@ -426,8 +426,8 @@ const ClientsPage = () => {
                 Период: <strong>{statsYear || 'все годы'}</strong>
                 {statsMonth ? ` · ${MONTH_NAMES[Number(statsMonth)]}` : ''}
                 {' · '}Учеников: <strong>{statsFilteredClients.length}</strong>
-                {' · '}Оплатили: <strong>{statsFilteredClients.filter((c) => c.paid).length}</strong>
-                {' · '}Не оплатили: <strong>{statsFilteredClients.filter((c) => !c.paid).length}</strong>
+                {' · '}Оплатили: <strong>{statsFilteredClients.filter((c) => isClientPaid(c)).length}</strong>
+                {' · '}Не оплатили: <strong>{statsFilteredClients.filter((c) => !isClientPaid(c)).length}</strong>
               </p>
 
               <div className="clients-page__stats-block">

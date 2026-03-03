@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { formatMoney } from '../../../shared/constants/common';
+import { formatMoney, isClientPaid } from '../../../shared/constants/common';
 import './ClientCardModal.scss';
 
 const ClientCardModal = ({ client, onEdit, onDelete, onClose }) => {
@@ -16,7 +16,7 @@ const ClientCardModal = ({ client, onEdit, onDelete, onClose }) => {
           <dt>Тренер</dt><dd>{client.trainerName ?? client.trainer?.fio ?? '—'}</dd>
           <dt>Дата начала</dt><dd>{client.dateStart ? new Date(client.dateStart).toLocaleDateString() : '—'}</dd>
           <dt>Цена</dt><dd>{formatMoney(client.price)}</dd>
-          <dt>Оплачено</dt><dd>{client.paid ? 'Да' : 'Нет'}</dd>
+          <dt>Оплачено</dt><dd>{isClientPaid(client) ? 'Да' : 'Нет'}</dd>
           <dt>Тип</dt><dd>{client.clientType || '—'}</dd>
           <dt>Комментарий</dt><dd>{client.comment || '—'}</dd>
         </dl>

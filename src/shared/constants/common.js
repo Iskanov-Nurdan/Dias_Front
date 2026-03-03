@@ -9,3 +9,15 @@ export const DONUT_COLORS = ['#c53030', '#059669', '#d97706', '#7c3aed', '#0891b
 
 /** Дебаунс поиска (мс) */
 export const SEARCH_DEBOUNCE_MS = 350;
+
+/** Проверка «оплачено» у клиента (поддержка paid, is_paid, paid_status) */
+export const isClientPaid = (c) => {
+  if (!c) return false;
+  const v = c.paid ?? c.is_paid ?? c.paid_status;
+  if (v === true || v === 'true' || v === 1) return true;
+  if (v === false || v === 'false' || v === 0 || v === null || v === undefined) return false;
+  return Boolean(v);
+};
+
+/** Проверка «оплачено» в byPaid-элементе аналитики (поддержка paid, is_paid) */
+export const isByPaidItemPaid = (x) => x?.paid ?? x?.is_paid ?? false;

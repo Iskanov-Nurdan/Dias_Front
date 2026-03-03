@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Select } from '../../../shared/ui';
+import { isClientPaid } from '../../../shared/constants/common';
 import './ClientFormModal.scss';
 
 const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose, error, saving }) => {
@@ -26,7 +27,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, onSave, onClose, error
       setDateStart(client.dateStart ? client.dateStart.slice(0, 10) : '');
       setPrice(client.price ?? '');
       setDiscount(client.discount ?? '');
-      setPaid(!!client.paid);
+      setPaid(isClientPaid(client));
       setClientType(client.clientType || 'regular');
       setGender(client.gender || '');
       setComment(client.comment || '');

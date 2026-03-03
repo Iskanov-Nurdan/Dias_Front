@@ -1,5 +1,6 @@
 import React from 'react';
 import { ErrorState, EmptyState } from '../../../shared/ui';
+import { isClientPaid } from '../../../shared/constants/common';
 import './ClientsList.scss';
 
 const ClientsList = ({ items, loading, error, onRetry, onEdit, onDelete, onDetails, onExtend }) => {
@@ -41,7 +42,7 @@ const ClientsList = ({ items, loading, error, onRetry, onEdit, onDelete, onDetai
                 <td>{c.fio || '—'}</td>
                 <td>{c.phone || '—'}</td>
                 <td>{c.sportName ?? c.sport?.name ?? '—'}</td>
-                <td>{c.paid ? 'Да' : 'Нет'}</td>
+                <td>{isClientPaid(c) ? 'Да' : 'Нет'}</td>
                 <td>{c.clientType === 'individual' ? 'Индивид.' : c.clientType === 'regular' ? 'Регуляр' : c.clientType || '—'}</td>
                 <td className="clients-list__actions">
                   <button type="button" className="clients-list__btn" onClick={() => onDetails(c)}>Подробнее</button>

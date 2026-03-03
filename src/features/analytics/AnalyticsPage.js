@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { fetchIncomeDetail, fetchExpenseDetail, fetchProfitDetail } from './api';
 import { fetchSalary } from '../salary/api';
 import { ErrorState, Select, DonutChart, Sparkline, Skeleton, SkeletonTable } from '../../shared/ui';
-import { MONTHS, DONUT_COLORS, formatMoney } from '../../shared/constants/common';
+import { MONTHS, DONUT_COLORS, formatMoney, isByPaidItemPaid } from '../../shared/constants/common';
 import { useAnalyticsFilters } from './hooks/useAnalyticsFilters';
 import { useAnalyticsData } from './hooks/useAnalyticsData';
 import './AnalyticsPage.scss';
@@ -79,7 +79,7 @@ const AnalyticsPage = () => {
   const profit = s.profit;
   const byType = clientStatuses?.byType ?? [];
   const byPaid = clientStatuses?.byPaid ?? [];
-  const paidCount = s.paidCount ?? byPaid.find((b) => b.paid)?.count ?? null;
+  const paidCount = s.paidCount ?? byPaid.find((b) => isByPaidItemPaid(b))?.count ?? null;
   const sportItems = clientsBySport?.items ?? [];
   const dailyItems = incomeExpenseDaily?.items ?? [];
 
@@ -103,7 +103,7 @@ const AnalyticsPage = () => {
 
   const donutStatusesData = useMemo(() => [
     ...byType.map((x, i) => ({ label: x.label ?? x.type, value: x.count ?? 0, color: DONUT_COLORS[i % DONUT_COLORS.length] })),
-    ...byPaid.map((x, i) => ({ label: x.label ?? (x.paid ? 'Оплачено' : 'Не оплачено'), value: x.count ?? 0, color: x.paid ? '#059669' : '#c53030' })),
+    ...byPaid.map((x, i) => { const paid = isByPaidItemPaid(x); return { label: x.label ?? (paid ? 'Оплачено' : 'Не оплачено'), value: x.count ?? 0, color: paid ? '#059669' : '#c53030' }; }),
   ].filter((d) => d.value > 0), [byType, byPaid]);
   const totalClientsStatuses = useMemo(() => donutStatusesData.reduce((s, d) => s + d.value, 0), [donutStatusesData]);
 
@@ -300,15 +300,18 @@ const AnalyticsPage = () => {
                       <span className="analytics-page__bar-value">{x.count ?? 0} · {x.percent ?? 0}%</span>
                     </button>
                   ))}
-                  {byPaid.map((x) => (
-                    <button key={String(x.paid)} type="button" className="analytics-page__bar-row" onClick={() => setStatusModal({ label: x.label ?? (x.paid ? 'Оплачено' : 'Не оплачено'), count: x.count ?? 0, percent: x.percent ?? 0 })}>
-                      <span className="analytics-page__bar-label">{x.label ?? (x.paid ? 'Оплачено' : 'Не оплачено')}</span>
+                  {byPaid.map((x) => {
+                      const paid = isByPaidItemPaid(x);
+                      return (
+                    <button key={String(paid)} type="button" className="analytics-page__bar-row" onClick={() => setStatusModal({ label: x.label ?? (paid ? 'Оплачено' : 'Не оплачено'), count: x.count ?? 0, percent: x.percent ?? 0 })}>
+                      <span className="analytics-page__bar-label">{x.label ?? (paid ? 'Оплачено' : 'Не оплачено')}</span>
                       <div className="analytics-page__bar-wrap">
-                        <div className={`analytics-page__bar ${x.paid ? 'analytics-page__bar--green' : 'analytics-page__bar--red'}`} style={{ width: `${x.percent ?? 0}%` }} />
+                        <div className={`analytics-page__bar ${paid ? 'analytics-page__bar--green' : 'analytics-page__bar--red'}`} style={{ width: `${x.percent ?? 0}%` }} />
                       </div>
                       <span className="analytics-page__bar-value">{x.count ?? 0} · {x.percent ?? 0}%</span>
                     </button>
-                  ))}
+                  );
+                  })}
                   {byType.length === 0 && byPaid.length === 0 && <p className="analytics-page__empty">Нет данных</p>}
                 </div>
                 <div className="analytics-page__donut-wrap">

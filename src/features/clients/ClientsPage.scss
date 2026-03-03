@@ -116,6 +116,21 @@
     color: var(--color-text-muted);
   }
 
+  &__dup-toolbar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 16px 18px;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+  }
+
+  &__dup-select {
+    min-width: 140px;
+  }
+
   &__stats-section {
     margin-top: 4px;
   }

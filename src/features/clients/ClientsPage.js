@@ -123,6 +123,13 @@ const ClientsPage = () => {
   const [statsYear, setStatsYear] = useState(new Date().getFullYear().toString());
   const [statsMonth, setStatsMonth] = useState(String(new Date().getMonth() + 1));
 
+  // ── Дубликаты: фильтр по году/месяцу (2026/2027) ──
+  const [dupYear, setDupYear] = useState(() => {
+    const y = new Date().getFullYear();
+    return (y === 2026 || y === 2027) ? String(y) : '2026';
+  });
+  const [dupMonth, setDupMonth] = useState(String(new Date().getMonth() + 1));
+
   // ── Основной список ──
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebounce(searchInput, SEARCH_DEBOUNCE_MS);
@@ -220,8 +227,13 @@ const ClientsPage = () => {
 
   const items = data?.items ?? data?.results ?? (Array.isArray(data) ? data : []) ?? [];
 
-  const exactGroups  = useMemo(() => getExactDuplicates(allClients), [allClients]);
-  const similarGroups = useMemo(() => getSimilarGroups(allClients), [allClients]);
+  // Дубликаты только среди клиентов выбранного месяца (по dateStart)
+  const dupFilteredClients = useMemo(
+    () => filterClientsByPeriod(allClients, dupYear, dupMonth || null),
+    [allClients, dupYear, dupMonth]
+  );
+  const exactGroups  = useMemo(() => getExactDuplicates(dupFilteredClients), [dupFilteredClients]);
+  const similarGroups = useMemo(() => getSimilarGroups(dupFilteredClients), [dupFilteredClients]);
 
   const statsFilteredClients = useMemo(
     () => filterClientsByPeriod(allClients, statsYear, statsMonth || null),
@@ -396,6 +408,26 @@ const ClientsPage = () => {
       {/* ── Дубликаты ── */}
       {activeTab === TAB_DUPS && (
         <div className="clients-page__dup-section">
+          {/* Фильтр по году/месяцу */}
+          <div className="clients-page__dup-toolbar">
+            <Select
+              value={dupYear}
+              onChange={setDupYear}
+              options={[{ value: '', label: 'Год — все' }, ...STATS_YEARS.map((y) => ({ value: y, label: y }))]}
+              placeholder="Год"
+              className="clients-page__dup-select"
+            />
+            <Select
+              value={dupMonth}
+              onChange={setDupMonth}
+              options={[
+                { value: '', label: 'Месяц — все' },
+                ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: MONTH_NAMES[i + 1] })),
+              ]}
+              placeholder="Месяц"
+              className="clients-page__dup-select"
+            />
+          </div>
           {/* Подтабы */}
           <div className="clients-page__subtabs">
             <button type="button" className={`clients-page__subtab${activeDupTab === SUBTAB_EXACT ? ' clients-page__subtab--active' : ''}`} onClick={() => setActiveDupTab(SUBTAB_EXACT)}>Точные дубликаты</button>
@@ -404,12 +436,17 @@ const ClientsPage = () => {
 
           {allLoading ? (
             <div className="clients-page__dup-loading"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка всех клиентов…</span></div>
+          ) : !dupYear ? (
+            <div className="clients-page__dup-empty">Выберите год и месяц для просмотра дубликатов</div>
           ) : activeDupTab === SUBTAB_EXACT ? (
             exactGroups.length === 0 ? (
               <div className="clients-page__dup-empty">Точных дубликатов не найдено 👍</div>
             ) : (
               <>
-                <p className="clients-page__dup-info">Найдено групп с одинаковым ФИО: <strong>{exactGroups.length}</strong></p>
+                <p className="clients-page__dup-info">
+                  Период: <strong>{dupYear}</strong>{dupMonth ? ` · ${MONTH_NAMES[Number(dupMonth)]}` : ' · весь год'}
+                  {' · '}Найдено групп с одинаковым ФИО: <strong>{exactGroups.length}</strong>
+                </p>
                 {exactGroups.map((group, i) => <DuplicateGroup key={i} group={group} label={group[0].fio} />)}
               </>
             )
@@ -418,7 +455,10 @@ const ClientsPage = () => {
               <div className="clients-page__dup-empty">Похожих имён не найдено 👍</div>
             ) : (
               <>
-                <p className="clients-page__dup-info">Найдено групп с похожими именами: <strong>{similarGroups.length}</strong></p>
+                <p className="clients-page__dup-info">
+                  Период: <strong>{dupYear}</strong>{dupMonth ? ` · ${MONTH_NAMES[Number(dupMonth)]}` : ' · весь год'}
+                  {' · '}Найдено групп с похожими именами: <strong>{similarGroups.length}</strong>
+                </p>
                 {similarGroups.map((group, i) => <DuplicateGroup key={i} group={group} label={`${group[0].fio} / ${group[1].fio}${group.length > 2 ? ` +${group.length - 2}` : ''}`} />)}
               </>
             )

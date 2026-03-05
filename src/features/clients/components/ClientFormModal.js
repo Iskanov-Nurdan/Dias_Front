@@ -52,7 +52,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       setPrice(client.price ?? '');
       setDiscount(client.discount ?? '');
       setPaid(isClientPaid(client));
-      setClientType(client.clientType || 'regular');
+      setClientType(client.clientType || client.client_type || 'regular');
       setGender(client.gender || '');
       const { auto, manual } = parseComment(client.comment);
       setCommentAuto(auto);
@@ -174,7 +174,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
           <div className="client-form-modal__row">
             <label className="client-form-modal__label">
               <span className="client-form-modal__label-text">Тип</span>
-              <Select value={clientType} onChange={setClientType} options={[{ value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }]} className="client-form-modal__select" />
+              <Select value={clientType} onChange={setClientType} options={[{ value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }, { value: 'one-time', label: 'Разовый' }]} className="client-form-modal__select" />
             </label>
             <label className="client-form-modal__label">
               <span className="client-form-modal__label-text">Пол</span>

@@ -1,8 +1,8 @@
 /** Месяцы для фильтров (индекс 0 — пусто) */
 export const MONTHS = ['', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 
-/** Форматирование суммы в сомах */
-export const formatMoney = (v) => (v != null && !Number.isNaN(Number(v)) ? `${Number(v).toLocaleString('ru-RU')} сом` : '—');
+/** Форматирование суммы в сомах (целые числа) */
+export const formatMoney = (v) => (v != null && !Number.isNaN(Number(v)) ? `${Math.round(Number(v)).toLocaleString('ru-RU')} сом` : '—');
 
 /** Цвета сегментов для донат-диаграмм */
 export const DONUT_COLORS = ['#c53030', '#059669', '#d97706', '#7c3aed', '#0891b2', '#1e3a5f', '#4f46e5', '#0d9488'];

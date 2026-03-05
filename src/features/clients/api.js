@@ -20,11 +20,12 @@ export const fetchClients = async (queryState, signal) => {
   const d = queryState?.day;
 
   if (y) {
+    params.year = y;
+    if (m) params.month = m;
     const month = m ? pad(m) : '01';
     const monthEnd = m ? pad(m) : '12';
     const dayStart = d ? pad(d) : '01';
     const dayEnd = d ? pad(d) : String(m ? getLastDay(Number(y), Number(m)) : 31);
-
     params.dateFrom = `${y}-${month}-${dayStart}`;
     params.dateTo   = `${y}-${monthEnd}-${dayEnd}`;
   }
@@ -59,7 +60,28 @@ export const extendClient = async (id, body, signal) => {
   return data;
 };
 
-/** Загружает ВСЕ клиенты, проходя по всем страницам (для дубликатов и статистики) */
+/** GET /api/clients/{id}/one-time/ — список разовых оплат клиента */
+export const fetchClientOneTimePayments = async (clientId, signal) => {
+  const { data } = await apiClient.get(`/clients/${clientId}/one-time/`, withSignal({}, signal));
+  return data;
+};
+
+/** POST /api/clients/{id}/one-time/ — создать разовую оплату */
+export const createOneTimePayment = async (clientId, body, signal) => {
+  const { data } = await apiClient.post(`/clients/${clientId}/one-time/`, body, withSignal({}, signal));
+  return data;
+};
+
+/** GET /api/clients/stats/ — статистика по клиентам (year, month) */
+export const fetchClientsStats = async ({ year, month }, signal) => {
+  const params = {};
+  if (year) params.year = year;
+  if (month) params.month = month;
+  const { data } = await apiClient.get('/clients/stats/', { params, ...withSignal({}, signal) });
+  return data;
+};
+
+/** Загружает ВСЕ клиенты, проходя по всем страницам (для дубликатов) */
 export const fetchAllClientsPaginated = async (queryOverrides, signal) => {
   const perPage = 100;
   const maxPages = 200; // защита от бесконечного цикла

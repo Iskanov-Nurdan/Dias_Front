@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { fetchClients, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchAllClientsPaginated } from './api';
+import { fetchClients, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchAllClientsPaginated, fetchClientsStats, createOneTimePayment } from './api';
 import { fetchSports } from '../sports-trainers/api';
 import { fetchTrainers } from '../sports-trainers/api';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
 import { useDebounce } from '../../shared/hooks/useDebounce';
-import { SEARCH_DEBOUNCE_MS, isClientPaid } from '../../shared/constants/common';
+import { SEARCH_DEBOUNCE_MS, isClientPaid, formatMoney } from '../../shared/constants/common';
 import { Select, ConfirmModal, Pagination, FiltersModal } from '../../shared/ui';
 import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal } from './components';
 import './ClientsPage.scss';
@@ -13,6 +13,7 @@ import './ClientsPage.scss';
 const TAB_LIST = 'list';
 const TAB_DUPS = 'dups';
 const TAB_STATS = 'stats';
+const TAB_ONETIME = 'onetime';
 
 const SUBTAB_EXACT   = 'exact';
 const SUBTAB_SIMILAR = 'similar';
@@ -34,21 +35,6 @@ const filterClientsByPeriod = (clients, year, month) => {
     if (m != null && d.getMonth() + 1 !== m) return false;
     return true;
   });
-};
-
-// Статистика по тренерам: { trainerId, trainerName, total, paid, unpaid }
-const getStatsByTrainer = (clients) => {
-  const map = {};
-  clients.forEach((c) => {
-    const id = c.trainerId ?? c.trainer_id ?? (c.trainer?.id != null ? c.trainer.id : null);
-    const key = id ?? '__no_trainer__';
-    const name = c.trainerName ?? c.trainer?.fio ?? (key === '__no_trainer__' ? 'Без тренера' : '—');
-    if (!map[key]) map[key] = { trainerId: id, trainerName: name, total: 0, paid: 0, unpaid: 0 };
-    map[key].total += 1;
-    if (isClientPaid(c)) map[key].paid += 1;
-    else map[key].unpaid += 1;
-  });
-  return Object.values(map).sort((a, b) => b.total - a.total);
 };
 
 // Расстояние Левенштейна
@@ -147,6 +133,23 @@ const ClientsPage = () => {
   const [allLoading, setAllLoading] = useState(false);
   const allControllerRef = useRef(null);
 
+  // ── Статистика (с бэкенда) ──
+  const [statsData, setStatsData] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const statsControllerRef = useRef(null);
+
+  // ── Разовые оплаты ──
+  const [oneTimeSearch, setOneTimeSearch] = useState('');
+  const oneTimeDebounced = useDebounce(oneTimeSearch, SEARCH_DEBOUNCE_MS);
+  const [oneTimeYear, setOneTimeYear] = useState('');
+  const [oneTimeMonth, setOneTimeMonth] = useState('');
+  const [oneTimePage, setOneTimePage] = useState(1);
+  const [oneTimeData, setOneTimeData] = useState(null);
+  const [oneTimeLoading, setOneTimeLoading] = useState(false);
+  const [oneTimeAddInputs, setOneTimeAddInputs] = useState({});
+  const [oneTimeAddLoading, setOneTimeAddLoading] = useState({});
+  const oneTimeControllerRef = useRef(null);
+
   // ── Модалки ──
   const [formClient, setFormClient] = useState(null);
   const [cardClient, setCardClient] = useState(null);
@@ -203,11 +206,89 @@ const ClientsPage = () => {
   }, [activeTab, fetchSafe]);
 
   useEffect(() => {
-    if (activeTab === TAB_DUPS || activeTab === TAB_STATS) {
+    if (activeTab === TAB_DUPS) {
       fetchAllClients();
       return () => allControllerRef.current?.abort();
     }
   }, [activeTab, fetchAllClients]);
+
+  const fetchStats = useCallback(async () => {
+    statsControllerRef.current?.abort();
+    statsControllerRef.current = new AbortController();
+    setStatsLoading(true);
+    setStatsData(null);
+    try {
+      const params = {};
+      if (statsYear) params.year = statsYear;
+      if (statsMonth) params.month = statsMonth;
+      const res = await fetchClientsStats(params, statsControllerRef.current.signal);
+      setStatsData(res);
+    } catch (err) {
+      if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [statsYear, statsMonth]);
+
+  useEffect(() => {
+    if (activeTab === TAB_STATS) {
+      fetchStats();
+      return () => statsControllerRef.current?.abort();
+    }
+  }, [activeTab, fetchStats]);
+
+  const fetchOneTime = useCallback(async () => {
+    oneTimeControllerRef.current?.abort();
+    oneTimeControllerRef.current = new AbortController();
+    setOneTimeLoading(true);
+    setOneTimeData(null);
+    try {
+      const params = { clientType: 'one-time', page: oneTimePage, perPage: 20 };
+      if (oneTimeDebounced.trim()) params.search = oneTimeDebounced.trim();
+      if (oneTimeYear) params.year = oneTimeYear;
+      if (oneTimeMonth) params.month = oneTimeMonth;
+      const res = await fetchClients(params, oneTimeControllerRef.current.signal);
+      setOneTimeData(res);
+    } catch (err) {
+      if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
+    } finally {
+      setOneTimeLoading(false);
+    }
+  }, [oneTimePage, oneTimeDebounced, oneTimeYear, oneTimeMonth]);
+
+  useEffect(() => {
+    if (activeTab === TAB_ONETIME) {
+      setOneTimePage(1);
+    }
+  }, [activeTab, oneTimeDebounced, oneTimeYear, oneTimeMonth]);
+
+  useEffect(() => {
+    if (activeTab === TAB_ONETIME) {
+      fetchOneTime();
+      return () => oneTimeControllerRef.current?.abort();
+    }
+  }, [activeTab, fetchOneTime]);
+
+  const handleAddOneTimeAmount = async (client) => {
+    const val = oneTimeAddInputs[client.id];
+    const amount = Number(val);
+    if (!val || Number.isNaN(amount) || amount <= 0) {
+      toast.error('Введите корректную сумму');
+      return;
+    }
+    setOneTimeAddLoading((prev) => ({ ...prev, [client.id]: true }));
+    try {
+      await createOneTimePayment(client.id, { amount }, null);
+      setOneTimeAddInputs((prev) => ({ ...prev, [client.id]: '' }));
+      fetchOneTime();
+      toast.success(`Добавлено ${amount.toLocaleString('ru-RU')} сом`);
+    } catch (e) {
+      const msg = e.response?.data?.message ?? e.response?.data?.detail ?? e.message ?? 'Ошибка';
+      toast.error(msg);
+    } finally {
+      setOneTimeAddLoading((prev) => ({ ...prev, [client.id]: false }));
+    }
+  };
 
   useEffect(() => {
     fetchSports(null)
@@ -235,11 +316,6 @@ const ClientsPage = () => {
   const exactGroups  = useMemo(() => getExactDuplicates(dupFilteredClients), [dupFilteredClients]);
   const similarGroups = useMemo(() => getSimilarGroups(dupFilteredClients), [dupFilteredClients]);
 
-  const statsFilteredClients = useMemo(
-    () => filterClientsByPeriod(allClients, statsYear, statsMonth || null),
-    [allClients, statsYear, statsMonth]
-  );
-  const statsByTrainer = useMemo(() => getStatsByTrainer(statsFilteredClients), [statsFilteredClients]);
 
   const handleSaveClient = async (payload) => {
     setClientFormError(null);
@@ -318,7 +394,7 @@ const ClientsPage = () => {
               <td>{c.phone || '—'}</td>
               <td>{c.sportName ?? c.sport?.name ?? '—'}</td>
               <td>{isClientPaid(c) ? 'Да' : 'Нет'}</td>
-              <td><span className={c.clientType === 'individual' ? 'clients-page__type clients-page__type--individual' : ''}>{c.clientType === 'individual' ? 'Индивид.' : c.clientType === 'regular' ? 'Регуляр' : c.clientType || '—'}</span></td>
+              <td><span className={c.clientType === 'individual' ? 'clients-page__type clients-page__type--individual' : ''}>{c.clientType === 'individual' ? 'Индивид.' : c.clientType === 'regular' ? 'Регуляр' : c.clientType === 'one-time' ? 'Разовый' : c.clientType || '—'}</span></td>
               <td>
                 <button type="button" className="dup-group__btn" onClick={() => handleOpenCard(c)}>Подробнее</button>
               </td>
@@ -338,6 +414,7 @@ const ClientsPage = () => {
         <button type="button" className={`clients-page__tab${activeTab === TAB_LIST ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_LIST)}>Клиенты</button>
         <button type="button" className={`clients-page__tab${activeTab === TAB_DUPS ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_DUPS)}>Дубликаты</button>
         <button type="button" className={`clients-page__tab${activeTab === TAB_STATS ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_STATS)}>Статистика</button>
+        <button type="button" className={`clients-page__tab${activeTab === TAB_ONETIME ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_ONETIME)}>Разовый</button>
       </div>
 
       {/* ── Список ── */}
@@ -349,7 +426,7 @@ const ClientsPage = () => {
               <Select value={queryState.sportId} onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))} options={[{ value: '', label: 'Все виды спорта' }, ...sports.map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="Все виды спорта" className="clients-page__select-wrap" />
               <Select value={queryState.trainerId} onChange={(v) => setQueryState((q) => ({ ...q, trainerId: v, page: 1 }))} options={[{ value: '', label: 'Тренер — все' }, ...trainers.map((t) => ({ value: String(t.id), label: t.fio || '' }))]} placeholder="Тренер — все" className="clients-page__select-wrap" />
               <Select value={queryState.paid} onChange={(v) => setQueryState((q) => ({ ...q, paid: v, page: 1 }))} options={[{ value: '', label: 'Оплата — все' }, { value: 'true', label: 'Оплачено' }, { value: 'false', label: 'Не оплачено' }]} placeholder="Оплата — все" className="clients-page__select-wrap" />
-              <Select value={queryState.clientType} onChange={(v) => setQueryState((q) => ({ ...q, clientType: v, page: 1 }))} options={[{ value: '', label: 'Тип — все' }, { value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }]} placeholder="Тип — все" className="clients-page__select-wrap" />
+              <Select value={queryState.clientType} onChange={(v) => setQueryState((q) => ({ ...q, clientType: v, page: 1 }))} options={[{ value: '', label: 'Тип — все' }, { value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }, { value: 'one-time', label: 'Разовый' }]} placeholder="Тип — все" className="clients-page__select-wrap" />
               <Select
                 value={queryState.year}
                 onChange={(v) => setQueryState((q) => ({ ...q, year: v, month: v ? q.month : '', day: v ? q.day : '', page: 1 }))}
@@ -393,7 +470,7 @@ const ClientsPage = () => {
               <label className="clients-page__filter-label"><span>Вид спорта</span><Select value={queryState.sportId} onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...sports.map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="Все" className="clients-page__select-wrap" /></label>
               <label className="clients-page__filter-label"><span>Тренер</span><Select value={queryState.trainerId} onChange={(v) => setQueryState((q) => ({ ...q, trainerId: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...trainers.map((t) => ({ value: String(t.id), label: t.fio || '' }))]} placeholder="Все" className="clients-page__select-wrap" /></label>
               <label className="clients-page__filter-label"><span>Оплата</span><Select value={queryState.paid} onChange={(v) => setQueryState((q) => ({ ...q, paid: v, page: 1 }))} options={[{ value: '', label: 'Все' }, { value: 'true', label: 'Оплачено' }, { value: 'false', label: 'Не оплачено' }]} placeholder="Все" className="clients-page__select-wrap" /></label>
-              <label className="clients-page__filter-label"><span>Тип</span><Select value={queryState.clientType} onChange={(v) => setQueryState((q) => ({ ...q, clientType: v, page: 1 }))} options={[{ value: '', label: 'Все' }, { value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }]} placeholder="Все" className="clients-page__select-wrap" /></label>
+              <label className="clients-page__filter-label"><span>Тип</span><Select value={queryState.clientType} onChange={(v) => setQueryState((q) => ({ ...q, clientType: v, page: 1 }))} options={[{ value: '', label: 'Все' }, { value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }, { value: 'one-time', label: 'Разовый' }]} placeholder="Все" className="clients-page__select-wrap" /></label>
               <label className="clients-page__filter-label"><span>Год</span><Select value={queryState.year} onChange={(v) => setQueryState((q) => ({ ...q, year: v, month: v ? q.month : '', day: v ? q.day : '', page: 1 }))} options={[{ value: '', label: 'Все' }, { value: '2026', label: '2026' }, { value: '2027', label: '2027' }]} placeholder="Все" className="clients-page__select-wrap" /></label>
               {queryState.year && <label className="clients-page__filter-label"><span>Месяц</span><Select value={queryState.month} onChange={(v) => setQueryState((q) => ({ ...q, month: v, day: v ? q.day : '', page: 1 }))} options={[{ value: '', label: 'Все' }, ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: MONTH_NAMES[i + 1] }))]} placeholder="Все" className="clients-page__select-wrap" /></label>}
               {queryState.year && queryState.month && <label className="clients-page__filter-label"><span>День</span><Select value={queryState.day} onChange={(v) => setQueryState((q) => ({ ...q, day: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...Array.from({ length: 31 }, (_, i) => i + 1).map((d) => ({ value: String(d), label: String(d) }))]} placeholder="Все" className="clients-page__select-wrap" /></label>}
@@ -489,16 +566,16 @@ const ClientsPage = () => {
             />
           </div>
 
-          {allLoading ? (
-            <div className="clients-page__dup-loading"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка клиентов…</span></div>
-          ) : (
+          {statsLoading ? (
+            <div className="clients-page__dup-loading"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка статистики…</span></div>
+          ) : statsData ? (
             <>
               <p className="clients-page__stats-info">
                 Период: <strong>{statsYear || 'все годы'}</strong>
                 {statsMonth ? ` · ${MONTH_NAMES[Number(statsMonth)]}` : ''}
-                {' · '}Учеников: <strong>{statsFilteredClients.length}</strong>
-                {' · '}Оплатили: <strong>{statsFilteredClients.filter((c) => isClientPaid(c)).length}</strong>
-                {' · '}Не оплатили: <strong>{statsFilteredClients.filter((c) => !isClientPaid(c)).length}</strong>
+                {' · '}Учеников: <strong>{statsData.summary?.total ?? 0}</strong>
+                {' · '}Оплатили: <strong>{statsData.summary?.paid ?? 0}</strong>
+                {' · '}Не оплатили: <strong>{statsData.summary?.unpaid ?? 0}</strong>
               </p>
 
               <div className="clients-page__stats-block">
@@ -508,11 +585,11 @@ const ClientsPage = () => {
                     <tr><th>Тренер</th><th>Учеников</th><th>Оплатили</th><th>Не оплатили</th></tr>
                   </thead>
                   <tbody>
-                    {statsByTrainer.length === 0 ? (
+                    {!statsData.byTrainer?.length ? (
                       <tr><td colSpan={4} className="clients-page__stats-empty">Нет данных</td></tr>
                     ) : (
-                      statsByTrainer.map((r) => (
-                        <tr key={r.trainerId ?? r.trainerName}>
+                      statsData.byTrainer.map((r) => (
+                        <tr key={r.trainerId ?? r.trainerName ?? 'no-trainer'}>
                           <td>{r.trainerName}</td>
                           <td>{r.total}</td>
                           <td>{r.paid}</td>
@@ -522,6 +599,114 @@ const ClientsPage = () => {
                     )}
                   </tbody>
                 </table>
+              </div>
+            </>
+          ) : null}
+        </div>
+      )}
+
+      {/* ── Разовый ── */}
+      {activeTab === TAB_ONETIME && (
+        <div className="clients-page__onetime-section">
+          <div className="clients-page__onetime-toolbar">
+            <div className="clients-page__onetime-search-wrap">
+              <input
+                type="text"
+                placeholder="Поиск по имени"
+                value={oneTimeSearch}
+                onChange={(e) => setOneTimeSearch(e.target.value)}
+                className="clients-page__onetime-search"
+              />
+            </div>
+            <Select
+              value={oneTimeYear}
+              onChange={setOneTimeYear}
+              options={[{ value: '', label: 'Год — все' }, { value: '2025', label: '2025' }, ...STATS_YEARS.map((y) => ({ value: y, label: y }))]}
+              placeholder="Год"
+              className="clients-page__onetime-select"
+            />
+            <Select
+              value={oneTimeMonth}
+              onChange={setOneTimeMonth}
+              options={[
+                { value: '', label: 'Месяц — все' },
+                ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: MONTH_NAMES[i + 1] })),
+              ]}
+              placeholder="Месяц"
+              className="clients-page__onetime-select"
+            />
+            {(oneTimeYear || oneTimeMonth) && (
+              <button type="button" className="clients-page__date-clear" onClick={() => { setOneTimeYear(''); setOneTimeMonth(''); setOneTimePage(1); }} title="Сбросить дату">✕</button>
+            )}
+          </div>
+
+          {oneTimeLoading ? (
+            <div className="clients-page__dup-loading"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></div>
+          ) : (
+            <>
+              <div className="clients-page__onetime-block">
+                <table className="clients-page__onetime-table">
+                  <thead>
+                    <tr><th>Имя</th><th>Месяц</th><th>Год</th><th>Оплата</th><th>Действие</th></tr>
+                  </thead>
+                  <tbody>
+                    {!(oneTimeData?.items ?? oneTimeData?.results ?? []).length ? (
+                      <tr>
+                        <td colSpan={5} className="clients-page__stats-empty">
+                          Нет данных
+                          {(oneTimeYear || oneTimeMonth) && <span className="clients-page__onetime-empty-hint"> · Попробуйте сбросить год/месяц</span>}
+                        </td>
+                      </tr>
+                    ) : (
+                      (oneTimeData.items ?? oneTimeData.results ?? []).map((c) => {
+                        const ds = c.dateStart ?? c.date_start;
+                        const d = ds ? new Date(ds) : null;
+                        const yearStr = d && !isNaN(d.getTime()) ? String(d.getFullYear()) : '—';
+                        const monthName = d && !isNaN(d.getTime()) ? MONTH_NAMES[d.getMonth() + 1] : '—';
+                        const priceDisplay = c.priceDisplay ?? c.totalPrice ?? c.price_display ?? c.total_price;
+                        const priceBase = Number(c.price) || 0;
+                        const discountPct = Number(c.discount ?? c.discount_percent) || 0;
+                        const oneTimeTotal = Number(c.oneTimeTotal ?? c.one_time_total) || 0;
+                        const totalAmount = priceDisplay != null ? Number(priceDisplay) : (discountPct > 0 ? priceBase * (1 - discountPct / 100) : priceBase) + oneTimeTotal;
+                        const amountStr = formatMoney(totalAmount);
+                        const isLoading = oneTimeAddLoading[c.id];
+                        const inputVal = oneTimeAddInputs[c.id] ?? '';
+                        return (
+                          <tr key={c.id}>
+                            <td>{c.fio || '—'}</td>
+                            <td>{monthName}</td>
+                            <td>{yearStr}</td>
+                            <td>{amountStr}</td>
+                            <td>
+                              <div className="clients-page__onetime-actions">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  placeholder="Добавить сум"
+                                  value={inputVal}
+                                  onChange={(e) => setOneTimeAddInputs((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                                  className="clients-page__onetime-input"
+                                  disabled={isLoading}
+                                />
+                                <button
+                                  type="button"
+                                  className="clients-page__onetime-add-btn"
+                                  onClick={() => handleAddOneTimeAmount(c)}
+                                  disabled={isLoading}
+                                >
+                                  {isLoading ? '…' : '+'} Добавить
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <div className="clients-page__onetime-pagination">
+                <Pagination meta={oneTimeData?.meta} currentPage={oneTimePage} onPage={(p) => setOneTimePage(p)} loading={oneTimeLoading} entityLabel="записей" />
               </div>
             </>
           )}

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { fetchIncomeDetail, fetchExpenseDetail, fetchProfitDetail } from './api';
 import { fetchSalary } from '../salary/api';
 import { ErrorState, Select, DonutChart, Sparkline, Skeleton, SkeletonTable } from '../../shared/ui';
-import { MONTHS, DONUT_COLORS, formatMoney, isByPaidItemPaid } from '../../shared/constants/common';
+import { MONTHS, DONUT_COLORS, formatMoney } from '../../shared/constants/common';
 import { useAnalyticsFilters } from './hooks/useAnalyticsFilters';
 import { useAnalyticsData } from './hooks/useAnalyticsData';
 import './AnalyticsPage.scss';
@@ -28,7 +28,6 @@ const AnalyticsPage = () => {
   const [queryState, setQueryState, resetFilters] = useAnalyticsFilters(defaultQuery);
   const {
     summary,
-    clientStatuses,
     clientsBySport,
     incomeExpenseDaily,
     topTrainers,
@@ -44,7 +43,6 @@ const AnalyticsPage = () => {
   const [detailModal, setDetailModal] = useState(null);
   const [detailData, setDetailData] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [statusModal, setStatusModal] = useState(null);
 
   useEffect(() => {
     if (!detailModal) {
@@ -77,9 +75,7 @@ const AnalyticsPage = () => {
   const income = s.income ?? 0;
   const expense = s.expense ?? 0;
   const profit = s.profit;
-  const byType = clientStatuses?.byType ?? [];
-  const byPaid = clientStatuses?.byPaid ?? [];
-  const paidCount = s.paidCount ?? byPaid.find((b) => isByPaidItemPaid(b))?.count ?? null;
+  const paidCount = s.paidCount ?? null;
   const sportItems = clientsBySport?.items ?? [];
   const dailyItems = incomeExpenseDaily?.items ?? [];
 
@@ -100,12 +96,6 @@ const AnalyticsPage = () => {
   const productItems = salesByProduct?.items ?? [];
   const categoryItems = salesByCategory?.items ?? [];
   const salesTotalRevenue = salesTab === 'product' ? (salesByProduct?.totalRevenue ?? null) : (salesByCategory?.totalRevenue ?? null);
-
-  const donutStatusesData = useMemo(() => [
-    ...byType.map((x, i) => ({ label: x.label ?? x.type, value: x.count ?? 0, color: DONUT_COLORS[i % DONUT_COLORS.length] })),
-    ...byPaid.map((x, i) => { const paid = isByPaidItemPaid(x); return { label: x.label ?? (paid ? 'Оплачено' : 'Не оплачено'), value: x.count ?? 0, color: paid ? '#059669' : '#c53030' }; }),
-  ].filter((d) => d.value > 0), [byType, byPaid]);
-  const totalClientsStatuses = useMemo(() => donutStatusesData.reduce((s, d) => s + d.value, 0), [donutStatusesData]);
 
   const donutSportsData = useMemo(() => sportItems.map((x, i) => ({
     label: x.sportName ?? '—',
@@ -287,44 +277,6 @@ const AnalyticsPage = () => {
           </section>
 
           <div className="analytics-page__grid analytics-page__grid--two">
-            <section className="analytics-page__section analytics-page__section--card analytics-page__section--with-donut">
-              <h3 className="analytics-page__section-title">Решение по клиентам (статусы)</h3>
-              <div className="analytics-page__statuses-wrap">
-                <div className="analytics-page__bars">
-                  {byType.map((x) => (
-                    <button key={x.type ?? x.label} type="button" className="analytics-page__bar-row" onClick={() => setStatusModal({ label: x.label ?? x.type, count: x.count ?? 0, percent: x.percent ?? 0 })}>
-                      <span className="analytics-page__bar-label">{x.label ?? x.type}</span>
-                      <div className="analytics-page__bar-wrap">
-                        <div className="analytics-page__bar" style={{ width: `${x.percent ?? 0}%` }} />
-                      </div>
-                      <span className="analytics-page__bar-value">{x.count ?? 0} · {x.percent ?? 0}%</span>
-                    </button>
-                  ))}
-                  {byPaid.map((x) => {
-                      const paid = isByPaidItemPaid(x);
-                      return (
-                    <button key={String(paid)} type="button" className="analytics-page__bar-row" onClick={() => setStatusModal({ label: x.label ?? (paid ? 'Оплачено' : 'Не оплачено'), count: x.count ?? 0, percent: x.percent ?? 0 })}>
-                      <span className="analytics-page__bar-label">{x.label ?? (paid ? 'Оплачено' : 'Не оплачено')}</span>
-                      <div className="analytics-page__bar-wrap">
-                        <div className={`analytics-page__bar ${paid ? 'analytics-page__bar--green' : 'analytics-page__bar--red'}`} style={{ width: `${x.percent ?? 0}%` }} />
-                      </div>
-                      <span className="analytics-page__bar-value">{x.count ?? 0} · {x.percent ?? 0}%</span>
-                    </button>
-                  );
-                  })}
-                  {byType.length === 0 && byPaid.length === 0 && <p className="analytics-page__empty">Нет данных</p>}
-                </div>
-                <div className="analytics-page__donut-wrap">
-                  <DonutChart
-                    data={donutStatusesData}
-                    size={200}
-                    strokeWidth={24}
-                    centerLabel={totalClientsStatuses > 0 ? `Всего\n${totalClientsStatuses}` : ''}
-                  />
-                </div>
-              </div>
-            </section>
-
             <section className="analytics-page__section analytics-page__section--card analytics-page__section--with-donut">
               <h3 className="analytics-page__section-title">Клиенты по виду спорта</h3>
               <div className="analytics-page__sports-wrap">
@@ -733,15 +685,6 @@ const AnalyticsPage = () => {
         </div>
       )}
 
-      {statusModal && (
-        <div className="analytics-page__modal" onClick={() => setStatusModal(null)}>
-          <div className="analytics-page__modal-content" onClick={(e) => e.stopPropagation()}>
-            <h3 className="analytics-page__modal-title">{statusModal.label}</h3>
-            <p><strong>{statusModal.count}</strong> клиентов · {statusModal.percent}%</p>
-            <button type="button" className="analytics-page__modal-close" onClick={() => setStatusModal(null)}>Закрыть</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -18,9 +18,6 @@ const get = (path, queryState, signal, extraParams) => {
 /** GET /api/analytics/summary/ */
 export const fetchSummary = (queryState, signal) => get('summary', queryState, signal);
 
-/** GET /api/analytics/client-statuses/ */
-export const fetchClientStatuses = (queryState, signal) => get('client-statuses', queryState, signal);
-
 /** GET /api/analytics/clients-by-sport/ */
 export const fetchClientsBySport = (queryState, signal) => get('clients-by-sport', queryState, signal);
 

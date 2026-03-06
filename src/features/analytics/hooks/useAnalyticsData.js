@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   fetchSummary,
-  fetchClientStatuses,
   fetchClientsBySport,
   fetchIncomeExpenseDaily,
   fetchTopTrainers,
@@ -17,7 +16,6 @@ import {
  */
 export function useAnalyticsData(queryState) {
   const [summary, setSummary] = useState(null);
-  const [clientStatuses, setClientStatuses] = useState(null);
   const [clientsBySport, setClientsBySport] = useState(null);
   const [incomeExpenseDaily, setIncomeExpenseDaily] = useState(null);
   const [topTrainers, setTopTrainers] = useState(null);
@@ -40,7 +38,6 @@ export function useAnalyticsData(queryState) {
     try {
       const promises = [
         fetchSummary(q, s).then((r) => r?.data ?? r),
-        fetchClientStatuses(q, s).then((r) => r?.data ?? r),
         fetchClientsBySport(q, s).then((r) => r?.data ?? r),
         hasMonth ? fetchIncomeExpenseDaily(q, s).then((r) => r?.data ?? r) : Promise.resolve({ items: [] }),
         fetchTopTrainers(q, s).then((r) => r?.data ?? r),
@@ -49,9 +46,8 @@ export function useAnalyticsData(queryState) {
         fetchSalesByCategory(q, s).then((r) => r?.data ?? r),
         fetchLeadsAnalytics(q, s).then((r) => r?.data ?? r),
       ];
-      const [summaryRes, statusesRes, bySportRes, dailyRes, trainersRes, warehouseRes, salesProductRes, salesCategoryRes, leadsAnalyticsRes] = await Promise.all(promises);
+      const [summaryRes, bySportRes, dailyRes, trainersRes, warehouseRes, salesProductRes, salesCategoryRes, leadsAnalyticsRes] = await Promise.all(promises);
       setSummary(summaryRes ?? {});
-      setClientStatuses(statusesRes ?? {});
       setClientsBySport(bySportRes ?? {});
       setIncomeExpenseDaily(dailyRes ?? {});
       setTopTrainers(trainersRes ?? {});
@@ -74,7 +70,6 @@ export function useAnalyticsData(queryState) {
 
   return {
     summary,
-    clientStatuses,
     clientsBySport,
     incomeExpenseDaily,
     topTrainers,

@@ -11,6 +11,7 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [rateLimitBlocked, setRateLimitBlocked] = useState(false);
   const { login: doLogin, getFirstAvailableRoute } = useAuth();
   const navigate = useNavigate();
   const successTimeoutRef = useRef(null);
@@ -23,18 +24,29 @@ const LoginPage = () => {
       const res = await login({ login: loginValue, password });
       const payload = res?.data ?? res;
       const token = payload?.token ?? payload?.access ?? payload?.access_token;
+      const refresh = payload?.refresh ?? null;
       const user = payload?.user ?? payload;
       if (!token) {
         setError('Некорректный ответ сервера');
         return;
       }
-      doLogin(user, token);
+      doLogin(user, token, refresh);
       setSuccess(true);
       successTimeoutRef.current = setTimeout(() => {
         navigate(getFirstAvailableRoute(), { replace: true });
       }, 1800);
     } catch (err) {
-      setError(getApiErrorMessage(err));
+      const code = err?.response?.data?.error?.code;
+      if (code === 'too_many_requests') {
+        const msg = err?.response?.data?.error?.message ?? '';
+        const match = msg.match(/(\d+)\s*seconds?/i) || msg.match(/(\d+)/);
+        const sec = Math.min(parseInt(match?.[1] || '60', 10) || 60, 120);
+        setError(`Слишком много попыток. Попробуйте через ${sec} секунд.`);
+        setRateLimitBlocked(true);
+        setTimeout(() => setRateLimitBlocked(false), sec * 1000);
+      } else {
+        setError(getApiErrorMessage(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -91,7 +103,7 @@ const LoginPage = () => {
               autoComplete="current-password"
             />
           </label>
-          <button type="submit" className="login-page__submit" disabled={loading}>
+          <button type="submit" className="login-page__submit" disabled={loading || rateLimitBlocked}>
             {loading ? (
               <span className="login-page__submit-text">
                 <span className="login-page__spinner" aria-hidden />

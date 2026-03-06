@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './providers/AuthProvider';
 import MainLayout from './layouts/MainLayout';
-import { PAGE_ROUTES, PAGE_IDS } from '../shared/constants/pages';
+import { PAGE_IDS } from '../shared/constants/pages';
 
 const LoginPage = React.lazy(() => import('../features/auth/LoginPage'));
 const EmployeesPage = React.lazy(() => import('../features/employees/EmployeesPage'));
@@ -16,12 +16,20 @@ const LeadsPage = React.lazy(() => import('../features/leads/LeadsPage'));
 const AnalyticsPage = React.lazy(() => import('../features/analytics/AnalyticsPage'));
 const NotFoundPage = React.lazy(() => import('../features/not-found/NotFoundPage'));
 
+const NoAccessPage = () => (
+  <div style={{ padding: 48, textAlign: 'center' }}>
+    <h2>Нет доступа</h2>
+    <p>У вас нет прав для просмотра этого раздела.</p>
+  </div>
+);
+
 const ProtectedRoute = ({ children, pageId }) => {
-  const { user, hasAccess } = useAuth();
+  const { user, hasAccess, getFirstAvailableRoute } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
   if (pageId && !hasAccess(pageId)) {
-    const firstRoute = PAGE_IDS.map((id) => PAGE_ROUTES[id]).find((_, i) => hasAccess(PAGE_IDS[i]));
-    return <Navigate to={firstRoute || '/employees'} replace />;
+    const hasAnyAccess = PAGE_IDS.some((id) => hasAccess(id));
+    if (!hasAnyAccess) return <NoAccessPage />;
+    return <Navigate to={getFirstAvailableRoute()} replace />;
   }
   return children;
 };

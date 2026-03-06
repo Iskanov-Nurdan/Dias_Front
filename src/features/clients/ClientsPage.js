@@ -6,6 +6,7 @@ import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
 import { useDebounce } from '../../shared/hooks/useDebounce';
 import { SEARCH_DEBOUNCE_MS, isClientPaid, formatMoney } from '../../shared/constants/common';
+import { isPeriodClosedError } from '../../shared/lib/apiError';
 import { Select, ConfirmModal, Pagination, FiltersModal } from '../../shared/ui';
 import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal } from './components';
 import './ClientsPage.scss';
@@ -283,7 +284,9 @@ const ClientsPage = () => {
       fetchOneTime();
       toast.success(`Добавлено ${amount.toLocaleString('ru-RU')} сом`);
     } catch (e) {
-      const msg = e.response?.data?.message ?? e.response?.data?.detail ?? e.message ?? 'Ошибка';
+      const msg = isPeriodClosedError(e)
+        ? 'Период закрыт. Изменение финансовых данных запрещено.'
+        : (e.response?.data?.error?.message ?? e.response?.data?.message ?? e.response?.data?.detail ?? e.message ?? 'Ошибка');
       toast.error(msg);
     } finally {
       setOneTimeAddLoading((prev) => ({ ...prev, [client.id]: false }));
@@ -328,7 +331,9 @@ const ClientsPage = () => {
       toast.success(formClient?.id ? 'Клиент сохранён' : 'Клиент добавлен');
     } catch (e) {
       const d = e.response?.data;
-      const msg = d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка сохранения';
+      const msg = isPeriodClosedError(e)
+        ? 'Период закрыт. Изменение финансовых данных запрещено.'
+        : (d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка сохранения');
       setClientFormError(msg);
       toast.error(msg);
     } finally {
@@ -718,7 +723,13 @@ const ClientsPage = () => {
         <ClientFormModal client={formClient} sports={sports} fetchTrainers={fetchTrainers} currentUserFio={user?.fio || user?.login || ''} onSave={handleSaveClient} onClose={() => { setFormClient(null); setClientFormError(null); }} error={clientFormError} saving={clientFormSaving} />
       )}
       {cardClient && (
-        <ClientCardModal client={cardClient} onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())} onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())} onClose={() => setCardClient(null)} />
+        <ClientCardModal
+          client={cardClient}
+          onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())}
+          onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())}
+          onRefresh={() => fetchClient(cardClient.id, null).then((res) => setCardClient(res?.data ?? res)).catch(() => {})}
+          onClose={() => setCardClient(null)}
+        />
       )}
       {extendClientObj && (
         <ExtendModal client={extendClientObj} onSave={handleSaveExtend} onClose={() => { setExtendClientObj(null); setExtendFormError(null); }} error={extendFormError} saving={extendFormSaving} />

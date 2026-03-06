@@ -27,3 +27,15 @@ export const createSale = async (body, signal) => {
   const { data } = await apiClient.post('/sales/', body, withSignal({}, signal));
   return data;
 };
+
+/** GET /api/sales/{id}/ — детали продажи */
+export const fetchSale = async (id, signal) => {
+  const { data } = await apiClient.get(`/sales/${id}/`, withSignal({}, signal));
+  return data;
+};
+
+/** POST /api/sales/{id}/cancel/ — отменить продажу. 409 если уже отменена. */
+export const cancelSale = async (id, signal) => {
+  const { data } = await apiClient.post(`/sales/${id}/cancel/`, {}, withSignal({}, signal));
+  return data;
+};

@@ -3,6 +3,20 @@ export const isCanceledError = (err) =>
   !err ? false : err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED';
 
 /**
+ * Код ошибки API: { error: { code, message } }
+ */
+export const getApiErrorCode = (err) => err?.response?.data?.error?.code ?? null;
+
+/** Проверка: нет доступа (403 forbidden/permission_denied) */
+export const isForbiddenError = (err) => err?.response?.status === 403;
+
+/** Проверка: период закрыт (409 period_closed) */
+export const isPeriodClosedError = (err) => getApiErrorCode(err) === 'period_closed';
+
+/** Проверка: rate limit (429 too_many_requests) */
+export const isTooManyRequestsError = (err) => getApiErrorCode(err) === 'too_many_requests';
+
+/**
  * Формат ошибок API по ТЗ: { error: { code, message }, errors?: [{ field, message }] }
  */
 export const getApiErrorMessage = (err) => {

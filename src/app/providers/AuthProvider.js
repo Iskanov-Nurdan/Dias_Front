@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { PAGE_IDS, PAGE_ROUTES } from '../../shared/constants/pages';
+import { logout as logoutApi } from '../../features/auth/api';
+import { setAuthTokens, clearAuth } from '../../shared/api/client';
 
 const ADMIN_ROLE_NAME = 'Администратор';
 
@@ -41,32 +43,36 @@ export const AuthProvider = ({ children }) => {
     (user?.canManageRoles === true || user?.can_manage_roles === true || roleName === ADMIN_ROLE_NAME) &&
     (roleName === '' || roleName === ADMIN_ROLE_NAME);
 
-  const login = useCallback((userData, token) => {
+  const login = useCallback((userData, token, refresh) => {
     const normalized = normalizeUserAccess(userData);
+    setAuthTokens(token, refresh);
     try {
-      localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(normalized));
     } catch {}
     setUser(normalized);
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    const refresh = typeof localStorage !== 'undefined' ? localStorage.getItem('refresh') : null;
     try {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-    } catch {}
+      if (refresh) await logoutApi(refresh, null);
+    } catch {
+      // Игнорируем ошибку — всё равно очищаем локально
+    }
+    clearAuth();
     setUser(null);
   }, []);
 
-  /** ТЗ: доступ только при явном true; false или отсутствие ключа — нет доступа */
+  /** ТЗ: доступ при явном true; is_system/Admin — полный доступ */
   const hasAccess = useCallback(
     (pageId) => {
       if (!user) return false;
+      if (isAdmin) return true;
       const access = user.access ?? user.data?.access;
       if (!access || typeof access !== 'object') return false;
       return access[pageId] === true;
     },
-    [user]
+    [user, isAdmin]
   );
 
   const getFirstAvailableRoute = useCallback(() => {

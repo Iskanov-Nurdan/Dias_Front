@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { fetchSalesSummary, fetchSales, createSale } from './api';
+import { fetchSalesSummary, fetchSales, createSale, cancelSale } from './api';
 import { fetchProducts } from '../warehouse/api';
 import SaleFormModal from './components/SaleFormModal';
 import { useToast } from '../../app/providers/ToastProvider';
@@ -19,6 +19,7 @@ const SalesPage = () => {
   const [formSaleOpen, setFormSaleOpen] = useState(false);
   const [saleFormError, setSaleFormError] = useState(null);
   const [saleFormSaving, setSaleFormSaving] = useState(false);
+  const [cancellingId, setCancellingId] = useState(null);
   const [products, setProducts] = useState([]);
   const controllerRef = useRef(null);
   const lastSummaryRequestId = useRef(0);
@@ -99,6 +100,22 @@ const SalesPage = () => {
     }
   };
 
+  const handleCancelSale = async (sale) => {
+    if (sale?.status === 'cancelled') return;
+    setCancellingId(sale?.id);
+    try {
+      await cancelSale(sale.id, null);
+      fetchSummarySafe();
+      fetchSalesSafe();
+      toast.success('Продажа отменена');
+    } catch (e) {
+      const d = e.response?.data;
+      toast.error(d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка отмены');
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
   const salesItems = salesData?.items ?? salesData?.results ?? (Array.isArray(salesData) ? salesData : []);
   const summaryData = summary?.data ?? summary;
 
@@ -128,21 +145,36 @@ const SalesPage = () => {
       {salesError && <ErrorState message={salesError} onRetry={fetchSalesSafe} />}
       <div className="sales-page__table-wrap">
         <table className="sales-page__table">
-          <thead><tr><th>Товар</th><th>Кол-во</th><th>Сумма</th><th>Скидка</th><th>Дата</th></tr></thead>
+          <thead><tr><th>Товар</th><th>Кол-во</th><th>Сумма</th><th>Скидка</th><th>Дата</th><th>Статус</th><th></th></tr></thead>
           <tbody>
             {salesLoading ? (
-              <tr><td colSpan={5} className="sales-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
+              <tr><td colSpan={7} className="sales-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
             ) : salesItems.length === 0 ? (
-              <tr><td colSpan={5} className="sales-page__empty-cell"><EmptyState message="Нет продаж" /></td></tr>
-            ) : salesItems.map((s) => (
-                <tr key={s.id}>
+              <tr><td colSpan={7} className="sales-page__empty-cell"><EmptyState message="Нет продаж" /></td></tr>
+            ) : salesItems.map((s) => {
+                const isCancelled = s.status === 'cancelled';
+                return (
+                <tr key={s.id} className={isCancelled ? 'sales-page__row--cancelled' : ''}>
                   <td>{s.productName ?? s.product?.name ?? '—'}</td>
                   <td>{s.qty ?? s.quantity ?? 0}</td>
                   <td>{formatMoney(s.total)}</td>
                   <td>{s.discountPercent != null ? `${s.discountPercent}%` : (s.discount != null ? `${s.discount}%` : '—')}</td>
                   <td>{s.date ? new Date(s.date).toLocaleDateString() : '—'}</td>
+                  <td>{isCancelled ? 'Отменена' : 'Активна'}</td>
+                  <td>
+                    {!isCancelled && (
+                      <button
+                        type="button"
+                        className="sales-page__cancel-btn"
+                        onClick={() => handleCancelSale(s)}
+                        disabled={cancellingId === s.id}
+                      >
+                        {cancellingId === s.id ? '…' : 'Отменить'}
+                      </button>
+                    )}
+                  </td>
                 </tr>
-            ))}
+            );})}
           </tbody>
         </table>
       </div>

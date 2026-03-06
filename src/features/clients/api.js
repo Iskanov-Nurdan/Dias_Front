@@ -66,10 +66,15 @@ export const fetchClientOneTimePayments = async (clientId, signal) => {
   return data;
 };
 
-/** POST /api/clients/{id}/one-time/ — создать разовую оплату */
+/** POST /api/clients/{id}/one-time/ — создать разовую оплату. 409 если период закрыт. */
 export const createOneTimePayment = async (clientId, body, signal) => {
   const { data } = await apiClient.post(`/clients/${clientId}/one-time/`, body, withSignal({}, signal));
   return data;
+};
+
+/** DELETE /api/clients/{id}/one-time/{payment_id}/ — удалить разовую доплату. 409 если период закрыт. */
+export const deleteOneTimePayment = async (clientId, paymentId, signal) => {
+  await apiClient.delete(`/clients/${clientId}/one-time/${paymentId}/`, withSignal({}, signal));
 };
 
 /** GET /api/clients/stats/ — статистика по клиентам (year, month) */

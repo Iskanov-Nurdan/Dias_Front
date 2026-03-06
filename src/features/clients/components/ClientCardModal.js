@@ -1,9 +1,47 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { formatMoney, isClientPaid } from '../../../shared/constants/common';
+import { fetchClientOneTimePayments, deleteOneTimePayment } from '../api';
+import { useToast } from '../../../app/providers/ToastProvider';
+import { isPeriodClosedError } from '../../../shared/lib/apiError';
 import './ClientCardModal.scss';
 
-const ClientCardModal = ({ client, onEdit, onDelete, onClose }) => {
+const ClientCardModal = ({ client, onEdit, onDelete, onRefresh, onClose }) => {
+  const toast = useToast();
+  const [oneTimePayments, setOneTimePayments] = useState([]);
+  const [oneTimeLoading, setOneTimeLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+
+  useEffect(() => {
+    if (!client?.id) return;
+    setOneTimeLoading(true);
+    fetchClientOneTimePayments(client.id, null)
+      .then((res) => {
+        const items = res?.items ?? res?.results ?? res?.data ?? [];
+        setOneTimePayments(Array.isArray(items) ? items : []);
+      })
+      .catch(() => setOneTimePayments([]))
+      .finally(() => setOneTimeLoading(false));
+  }, [client?.id]);
+
+  const handleDeleteOneTime = async (payment) => {
+    if (!client?.id || !payment?.id) return;
+    setDeletingId(payment.id);
+    try {
+      await deleteOneTimePayment(client.id, payment.id, null);
+      setOneTimePayments((prev) => prev.filter((p) => p.id !== payment.id));
+      onRefresh?.();
+      toast.success('Доплата удалена');
+    } catch (e) {
+      const msg = isPeriodClosedError(e)
+        ? 'Период закрыт. Изменение финансовых данных запрещено.'
+        : (e.response?.data?.error?.message ?? e.response?.data?.message ?? e.message ?? 'Ошибка удаления');
+      toast.error(msg);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   if (!client) return null;
   const priceDisplay = client.priceDisplay ?? client.totalPrice ?? client.price_display ?? client.total_price;
   const priceBase = Number(client.price) || 0;
@@ -25,6 +63,29 @@ const ClientCardModal = ({ client, onEdit, onDelete, onClose }) => {
           <dt>Тип</dt><dd><span className={client.clientType === 'individual' ? 'client-card-modal__type client-card-modal__type--individual' : ''}>{client.clientType === 'individual' ? 'Индивидуальный' : client.clientType === 'regular' ? 'Регулярный' : client.clientType === 'one-time' ? 'Разовый' : client.clientType || '—'}</span></dd>
           <dt>Комментарий</dt><dd>{client.comment || '—'}</dd>
         </dl>
+        {oneTimePayments.length > 0 && (
+          <div className="client-card-modal__onetime">
+            <h3 className="client-card-modal__onetime-title">Разовые доплаты</h3>
+            <ul className="client-card-modal__onetime-list">
+              {oneTimePayments.map((p) => (
+                <li key={p.id} className="client-card-modal__onetime-item">
+                  <span>{formatMoney(p.amount)}</span>
+                  <span>{p.date ? new Date(p.date).toLocaleDateString() : '—'}</span>
+                  <button
+                    type="button"
+                    className="client-card-modal__onetime-delete"
+                    onClick={() => handleDeleteOneTime(p)}
+                    disabled={deletingId === p.id}
+                    title="Удалить доплату"
+                  >
+                    {deletingId === p.id ? '…' : '✕'}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {oneTimeLoading && oneTimePayments.length === 0 && <p className="client-card-modal__onetime-loading">Загрузка доплат…</p>}
         <div className="client-card-modal__actions">
           <button type="button" className="client-card-modal__btn" onClick={() => { onEdit(client); onClose(); }}>Редактировать</button>
           <button type="button" className="client-card-modal__btn client-card-modal__btn--danger" onClick={() => { onDelete(client); onClose(); }}>Удалить</button>

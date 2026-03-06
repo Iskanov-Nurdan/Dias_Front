@@ -1,8 +1,10 @@
 export { default as Loading } from './Loading';
+export { default as Badge } from './Badge';
 export { default as ErrorState } from './ErrorState';
 export { default as EmptyState } from './EmptyState';
 export { default as ConfirmModal } from './ConfirmModal';
 export { default as FiltersModal } from './FiltersModal';
+export { default as FilterBar } from './FilterBar';
 export { default as Select } from './Select';
 export { default as DonutChart } from './DonutChart';
 export { default as Sparkline } from './Sparkline';

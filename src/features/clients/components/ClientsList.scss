@@ -4,9 +4,9 @@
   &__table-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--color-border);
-    box-shadow: var(--shadow-card);
+    border-radius: var(--block-radius);
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    box-shadow: var(--shadow-sm);
     background: var(--color-bg-card);
     @include mixins.scrollbar;
 
@@ -25,9 +25,9 @@
 
     th,
     td {
-      padding: 14px 18px;
+      padding: var(--table-cell-padding);
       text-align: left;
-      border-bottom: 1px solid var(--color-border);
+      border-bottom: 1px solid rgba(226, 232, 240, 0.6);
     }
 
     @include mixins.mobile {
@@ -48,8 +48,8 @@
         display: block;
         padding: 14px 16px;
         background: var(--color-bg-card);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-md);
+        border: 1px solid var(--block-border);
+        border-radius: var(--block-radius);
         box-shadow: var(--shadow-card);
       }
 
@@ -119,11 +119,29 @@
     tbody tr.clients-list__row--unpaid:nth-child(even) {
       background: rgba(197, 48, 48, 0.2);
     }
+    tbody tr.clients-list__row--one-time {
+      background: rgba(37, 99, 235, 0.14);
+    }
+    tbody tr.clients-list__row--one-time:nth-child(even) {
+      background: rgba(37, 99, 235, 0.2);
+    }
+    tbody tr.clients-list__row--individual {
+      background: rgba(22, 163, 74, 0.14);
+    }
+    tbody tr.clients-list__row--individual:nth-child(even) {
+      background: rgba(22, 163, 74, 0.2);
+    }
     tbody tr:hover {
       background: var(--color-primary-light);
     }
     tbody tr.clients-list__row--unpaid:hover {
       background: rgba(197, 48, 48, 0.22);
+    }
+    tbody tr.clients-list__row--one-time:hover {
+      background: rgba(37, 99, 235, 0.22);
+    }
+    tbody tr.clients-list__row--individual:hover {
+      background: rgba(22, 163, 74, 0.22);
     }
     tbody tr:last-child td {
       border-bottom: none;
@@ -149,18 +167,23 @@
     text-align: right;
   }
 
-  &__type--individual {
+  &__type-cell--individual {
     color: var(--color-success);
     font-weight: 500;
   }
 
+  &__type-cell--one-time {
+    color: var(--color-info);
+    font-weight: 500;
+  }
+
   &__btn {
-    padding: 6px 12px;
+    padding: 8px 14px;
     font-size: 13px;
     font-weight: 500;
     background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
+    border: 1px solid var(--block-border);
+    border-radius: var(--input-radius);
     color: var(--color-text);
     transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
     &:hover {

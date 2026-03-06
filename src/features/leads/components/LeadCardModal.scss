@@ -10,7 +10,7 @@
 }
 
 .lead-card-modal {
-  background: var(--color-bg-card);
+  background: #FFFFFF;
   border-radius: 14px;
   padding: 28px 32px;
   width: 100%;
@@ -118,13 +118,13 @@
 }
 
 .lead-card-modal__input {
-  padding: 9px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  padding: 9px 14px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-radius);
   font-size: 14px;
-  background: var(--color-bg-card);
+  background: #FFFFFF;
   color: var(--color-text);
-  &:focus { outline: none; border-color: var(--color-primary); }
+  &:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--input-shadow-focus); }
   &--readonly { background: var(--color-bg); color: var(--color-text-muted); cursor: default; }
   &--half { max-width: 200px; }
 }
@@ -135,16 +135,16 @@
 }
 
 .lead-card-modal__textarea {
-  padding: 10px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-radius);
   font-size: 14px;
   resize: vertical;
   min-height: 80px;
-  background: var(--color-bg-card);
+  background: #FFFFFF;
   color: var(--color-text);
   font-family: inherit;
-  &:focus { outline: none; border-color: var(--color-primary); }
+  &:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--input-shadow-focus); }
 }
 
 .lead-card-modal__actions {

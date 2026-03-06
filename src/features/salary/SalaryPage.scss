@@ -17,21 +17,10 @@
     }
   }
 
-  &__filters {
-    display: flex;
-    align-items: flex-end;
-    gap: 12px;
+  &__filter-bar {
     margin-bottom: 20px;
-    padding: 16px 18px;
-    background: var(--color-bg-card);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
-    flex-wrap: wrap;
 
     @include mixins.xs {
-      padding: 12px;
-      gap: 10px;
       margin-bottom: 16px;
     }
   }

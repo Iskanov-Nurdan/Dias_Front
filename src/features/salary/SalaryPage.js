@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchSalary, saveSalary } from './api';
-import { ErrorState, EmptyState, Select } from '../../shared/ui';
+import { ErrorState, EmptyState, Select, Skeleton, FilterBar } from '../../shared/ui';
 import './SalaryPage.scss';
 
 const MONTHS = ['', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
@@ -85,7 +85,7 @@ const SalaryPage = () => {
   return (
     <div className="salary-page">
       <h1 className="salary-page__title">Зарплата</h1>
-      <div className="salary-page__filters">
+      <FilterBar className="salary-page__filter-bar">
         <div className="salary-page__filter-item">
           <input type="number" placeholder="Год" value={queryState.year} onChange={(e) => setQueryState((q) => ({ ...q, year: Number(e.target.value) || q.year }))} className="salary-page__input" min="2020" max="2030" />
         </div>
@@ -101,7 +101,7 @@ const SalaryPage = () => {
         <div className="salary-page__filter-item">
           <input type="number" placeholder="День" value={queryState.day} onChange={(e) => setQueryState((q) => ({ ...q, day: e.target.value }))} className="salary-page__input" min="1" max="31" />
         </div>
-      </div>
+      </FilterBar>
       {error && <ErrorState message={error} onRetry={fetchSafe} />}
       {saveError && <div className="salary-page__save-error" role="alert">{saveError}</div>}
       {!isMonthEnded && !error && (
@@ -126,7 +126,13 @@ const SalaryPage = () => {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={10} className="salary-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
+              Array.from({ length: 5 }, (_, i) => (
+                <tr key={`sk-${i}`}>
+                  {Array.from({ length: 10 }, (_, j) => (
+                    <td key={j}><Skeleton variant="text" /></td>
+                  ))}
+                </tr>
+              ))
             ) : items.length === 0 ? (
               <tr><td colSpan={10} className="salary-page__empty-cell"><EmptyState message="Нет данных за период" /></td></tr>
             ) : items.map((row, index) => {

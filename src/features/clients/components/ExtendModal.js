@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { ConfirmModal } from '../../../shared/ui';
 import './ExtendModal.scss';
 
 const ExtendModal = ({ client, onSave, onClose, error, saving }) => {
   const [months, setMonths] = useState(1);
+  const [showConfirm, setShowConfirm] = useState(false);
   const handleSubmit = (e) => {
     e.preventDefault();
+    setShowConfirm(true);
+  };
+  const handleConfirm = () => {
+    setShowConfirm(false);
     onSave({ months });
   };
   const content = (
@@ -21,6 +27,15 @@ const ExtendModal = ({ client, onSave, onClose, error, saving }) => {
             <button type="submit" className="extend-modal__btn extend-modal__btn--submit" disabled={saving}>{saving ? 'Продление…' : 'Продлить'}</button>
           </div>
         </form>
+        {showConfirm && (
+          <ConfirmModal
+            title="Продлить абонемент?"
+            message={`Продлить абонемент ${client?.fio || 'клиента'} на ${months} ${months === 1 ? 'месяц' : months < 5 ? 'месяца' : 'месяцев'}?`}
+            confirmText="Продлить"
+            onConfirm={handleConfirm}
+            onCancel={() => setShowConfirm(false)}
+          />
+        )}
       </div>
     </div>
   );

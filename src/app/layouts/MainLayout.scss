@@ -27,31 +27,32 @@
     }
   }
 
-  // —— Header ——
+  // —— Header (64px, белый, компактный user block) ——
   &__header {
     grid-area: header;
-    background: var(--color-bg-card);
-    border-bottom: 2px solid var(--color-primary);
+    height: 64px;
+    min-height: 64px;
+    background: #FFFFFF;
+    border-bottom: 1px solid #E2E8F0;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 24px 0 20px;
+    padding: 0 var(--space-6) 0 var(--space-5);
     position: sticky;
     top: 0;
-    z-index: 10;
-    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
-    gap: 16px;
+    z-index: var(--z-sticky);
+    gap: var(--space-4);
 
     @include mixins.xs {
-      padding: 0 12px 0 10px;
-      gap: 8px;
+      padding: 0 var(--space-3) 0 var(--space-2);
+      gap: var(--space-2);
     }
   }
 
   &__header-left {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: var(--space-3);
     min-width: 0;
   }
 
@@ -64,14 +65,14 @@
     padding: 0;
     background: transparent;
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-lg);
     color: var(--color-text-muted);
     transition: color var(--transition-fast), background var(--transition-fast);
     flex-shrink: 0;
 
     &:hover {
       color: var(--color-primary);
-      background: var(--color-primary-light);
+      background: var(--color-primary-soft);
     }
 
     @include mixins.xs {
@@ -112,25 +113,22 @@
     }
   }
 
+  // Компактный user block без карточки
   &__user {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-3);
     flex-shrink: 0;
-    padding: 6px 12px 6px 6px;
-    border-radius: var(--radius-lg);
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
   }
 
   &__user-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    background: var(--color-primary-light);
+    background: var(--color-primary-soft);
     color: var(--color-primary);
     flex-shrink: 0;
   }
@@ -138,7 +136,7 @@
   &__user-info {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
+    align-items: flex-start;
     gap: 0;
     min-width: 0;
 
@@ -151,6 +149,7 @@
     font-size: 14px;
     font-weight: 500;
     color: var(--color-text);
+    line-height: 1.2;
     @include mixins.text-ellipsis;
   }
 
@@ -158,24 +157,24 @@
     font-size: 12px;
     font-weight: 400;
     color: var(--color-text-muted);
+    line-height: 1.2;
   }
 
   &__logout {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 14px;
+    gap: var(--space-2);
+    padding: 6px 10px;
     font-size: 13px;
     font-weight: 500;
     background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
+    border: none;
+    border-radius: var(--radius-md);
     color: var(--color-text-muted);
-    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+    transition: background var(--transition-fast), color var(--transition-fast);
 
     &:hover {
-      background: var(--color-bg-card);
-      border-color: var(--color-primary);
+      background: var(--color-surface-secondary);
       color: var(--color-primary);
     }
   }
@@ -189,24 +188,23 @@
   &__mobile-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 100;
+    background: rgba(15, 23, 42, 0.48);
+    z-index: var(--z-modal);
     animation: main-layout-fade-in 0.2s ease;
   }
 
-  // —— Sidebar: контрастный фон и чёткая граница ——
+  // —— Sidebar (менее тяжёлый, аккуратный) ——
   &__sidebar {
     grid-area: sidebar;
     background: var(--color-sidebar-bg);
-    border-right: 2px solid var(--color-sidebar-border);
-    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.06);
+    border-right: 1px solid var(--color-sidebar-border);
     position: sticky;
     top: 0;
     height: 100vh;
     overflow-x: hidden;
     overflow-y: auto;
     @include mixins.scrollbar;
-    transition: transform var(--transition-smooth), box-shadow var(--transition-smooth);
+    transition: transform var(--transition-smooth);
 
     @include mixins.mobile {
       position: fixed;
@@ -217,10 +215,10 @@
       height: 100vh;
       z-index: 101;
       transform: translateX(-100%);
-      border-right: 2px solid var(--color-sidebar-border);
+      border-right: 1px solid var(--color-sidebar-border);
       overflow-y: auto;
       overflow-x: hidden;
-      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
+      box-shadow: var(--shadow-xl);
     }
   }
 
@@ -247,16 +245,16 @@
 
   &__sidebar-logo {
     @include mixins.mobile {
-      padding: 16px 14px 12px;
+      padding: var(--space-4) var(--space-3) var(--space-3);
     }
-    padding: 10px 12px 8px;
+    padding: var(--space-3) var(--space-3) var(--space-2);
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 0;
 
     img {
-      height: 140px;
+      height: 120px;
       width: auto;
       max-width: 100%;
       object-fit: contain;
@@ -264,11 +262,11 @@
     }
 
     .main-layout--sidebar-collapsed & img {
-      height: 96px;
+      height: 80px;
     }
 
     .main-layout--sidebar-collapsed & {
-      padding: 8px 10px;
+      padding: var(--space-2) var(--space-3);
     }
 
     @include mixins.mobile {
@@ -280,7 +278,7 @@
     }
 
     @include mixins.xs {
-      padding: 8px 10px 4px;
+      padding: var(--space-2) var(--space-3) var(--space-1);
 
       img {
         height: 80px;
@@ -291,87 +289,87 @@
   &__nav {
     display: flex;
     flex-direction: column;
-    padding: 10px 12px;
-    gap: 4px;
+    padding: var(--space-3) var(--space-3);
+    gap: var(--space-1);
     min-width: 0;
 
     @include mixins.mobile {
       flex-direction: column;
-      padding: 12px 16px;
-      gap: 2px;
+      padding: var(--space-4) var(--space-4);
+      gap: var(--space-1);
     }
 
     @include mixins.xs {
-      padding: 10px 12px;
+      padding: var(--space-3) var(--space-3);
     }
   }
 
   &__nav-group {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    margin-bottom: 4px;
+    gap: var(--space-1);
+    margin-bottom: var(--space-2);
 
     &:last-child {
       margin-bottom: 0;
     }
 
     @include mixins.mobile {
-      margin-bottom: 2px;
+      margin-bottom: var(--space-2);
     }
   }
 
   &__nav-group-label {
-    padding: 8px 12px 4px;
-    font-size: 11px;
-    font-weight: 400;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--color-sidebar-text-muted);
+    padding: var(--space-2) var(--space-3) var(--space-1);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--color-sidebar-muted);
     @include mixins.text-ellipsis;
 
     @include mixins.mobile {
-      padding: 12px 12px 6px;
-      margin-top: 4px;
+      padding: var(--space-3) var(--space-3) var(--space-2);
+      margin-top: var(--space-1);
     }
   }
 
   &__nav-item {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--space-3);
     text-align: left;
-    padding: 10px 12px;
+    height: 44px;
+    padding: 0 var(--space-3);
     font-size: 14px;
     font-weight: 500;
     background: none;
     border: none;
-    color: var(--color-sidebar-text-muted);
-    border-radius: var(--radius-md);
-    transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+    color: var(--color-sidebar-muted);
+    border-radius: var(--radius-lg);
+    transition: background var(--transition-fast), color var(--transition-fast);
     min-width: 0;
     white-space: nowrap;
     position: relative;
 
     @include mixins.mobile {
-      border-radius: var(--radius-md);
-      padding: 12px 14px;
+      border-radius: var(--radius-lg);
+      padding: 0 var(--space-4);
       width: 100%;
       justify-content: flex-start;
     }
 
     @include mixins.xs {
-      padding: 8px 10px;
+      padding: 0 var(--space-3);
       font-size: 13px;
     }
 
     &:hover {
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--color-sidebar-hover);
       color: var(--color-sidebar-text);
     }
 
     &--active {
-      background: rgba(255, 255, 255, 0.12);
+      background: var(--color-sidebar-active);
       color: #fff;
       font-weight: 600;
 
@@ -381,9 +379,9 @@
         left: 0;
         top: 50%;
         transform: translateY(-50%);
-        width: 3px;
-        height: 24px;
-        background: var(--color-primary);
+        width: 2px;
+        height: 20px;
+        background: rgba(255, 255, 255, 0.5);
         border-radius: 0 2px 2px 0;
       }
 
@@ -400,8 +398,8 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     opacity: 0.9;
   }
 
@@ -415,20 +413,20 @@
     min-width: 0;
   }
 
-  // Свёрнутый сайдбар
   &--sidebar-collapsed &__nav-item {
-    padding: 12px;
+    padding: 0;
     justify-content: center;
+    height: 44px;
 
     @include mixins.mobile {
-      padding: 10px 12px;
+      padding: 0 var(--space-3);
       justify-content: center;
     }
   }
 
   &--sidebar-collapsed &__nav-item--active::before {
     left: 0;
-    height: 20px;
+    height: 18px;
   }
 
   &--sidebar-collapsed &__nav-label {
@@ -445,17 +443,17 @@
 
   &__content {
     grid-area: content;
-    padding: 28px 24px;
+    padding: var(--space-8);
     overflow: auto;
     @include mixins.scrollbar;
     min-width: 0;
 
     @include mixins.mobile {
-      padding: 16px 12px;
+      padding: var(--space-5);
     }
 
     @include mixins.xs {
-      padding: 12px 10px;
+      padding: var(--space-4);
     }
   }
 }

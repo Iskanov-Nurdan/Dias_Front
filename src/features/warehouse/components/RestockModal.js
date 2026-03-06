@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { ConfirmModal } from '../../../shared/ui';
 import './RestockModal.scss';
 
 const RestockModal = ({ product, onSave, onClose, error, saving }) => {
   const [qty, setQty] = useState('');
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     setQty('');
+    setShowConfirm(false);
   }, [product]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const num = Number(qty);
     if (Number.isNaN(num) || num <= 0) return;
+    setShowConfirm(true);
+  };
+  const handleConfirm = () => {
+    const num = Number(qty);
+    setShowConfirm(false);
     onSave({ qty: num });
   };
 
@@ -33,6 +41,15 @@ const RestockModal = ({ product, onSave, onClose, error, saving }) => {
             <button type="submit" className="warehouse-form-modal__btn warehouse-form-modal__btn--submit" disabled={saving}>{saving ? 'Пополнение…' : 'Пополнить'}</button>
           </div>
         </form>
+        {showConfirm && (
+          <ConfirmModal
+            title="Пополнить товар?"
+            message={`Пополнить «${product.name}» на ${qty} шт.?`}
+            confirmText="Пополнить"
+            onConfirm={handleConfirm}
+            onCancel={() => setShowConfirm(false)}
+          />
+        )}
       </div>
     </div>
   );

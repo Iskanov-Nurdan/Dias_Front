@@ -3,32 +3,35 @@
 .empty-state {
   @include mixins.flex-center;
   flex-direction: column;
-  gap: 16px;
-  padding: 48px 24px;
+  gap: var(--space-4);
+  padding: 48px var(--space-6);
 
   &__icon {
     color: var(--color-text-muted);
-    opacity: 0.6;
+    opacity: 0.5;
     flex-shrink: 0;
   }
 
   &__message {
     margin: 0;
-    color: var(--color-text-muted);
+    color: var(--color-text-secondary);
     font-size: 15px;
+    font-weight: 400;
+    line-height: 1.5;
     text-align: center;
     max-width: 320px;
   }
 
   &__action {
-    margin-top: 8px;
-    padding: 10px 20px;
+    margin-top: var(--space-2);
+    height: 40px;
+    padding: 0 16px;
     background: var(--color-primary);
     color: #fff;
     border: none;
     border-radius: var(--radius-md);
     font-size: 14px;
-    font-weight: 400;
+    font-weight: 600;
     cursor: pointer;
     transition: background var(--transition-fast);
   }

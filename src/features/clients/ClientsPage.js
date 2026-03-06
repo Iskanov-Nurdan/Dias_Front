@@ -7,7 +7,7 @@ import { useToast } from '../../app/providers/ToastProvider';
 import { useDebounce } from '../../shared/hooks/useDebounce';
 import { SEARCH_DEBOUNCE_MS, isClientPaid, formatMoney } from '../../shared/constants/common';
 import { isPeriodClosedError } from '../../shared/lib/apiError';
-import { Select, ConfirmModal, Pagination, FiltersModal } from '../../shared/ui';
+import { Select, ConfirmModal, Pagination, FiltersModal, FilterBar } from '../../shared/ui';
 import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal } from './components';
 import './ClientsPage.scss';
 
@@ -149,6 +149,7 @@ const ClientsPage = () => {
   const [oneTimeLoading, setOneTimeLoading] = useState(false);
   const [oneTimeAddInputs, setOneTimeAddInputs] = useState({});
   const [oneTimeAddLoading, setOneTimeAddLoading] = useState({});
+  const [confirmAddOneTime, setConfirmAddOneTime] = useState(null);
   const oneTimeControllerRef = useRef(null);
 
   // ── Модалки ──
@@ -270,13 +271,9 @@ const ClientsPage = () => {
     }
   }, [activeTab, fetchOneTime]);
 
-  const handleAddOneTimeAmount = async (client) => {
-    const val = oneTimeAddInputs[client.id];
-    const amount = Number(val);
-    if (!val || Number.isNaN(amount) || amount <= 0) {
-      toast.error('Введите корректную сумму');
-      return;
-    }
+  const handleAddOneTimeAmount = async (client, amount) => {
+    if (!client?.id || !amount || amount <= 0) return;
+    setConfirmAddOneTime(null);
     setOneTimeAddLoading((prev) => ({ ...prev, [client.id]: true }));
     try {
       await createOneTimePayment(client.id, { amount }, null);
@@ -394,12 +391,23 @@ const ClientsPage = () => {
         </thead>
         <tbody>
           {group.map((c) => (
-            <tr key={c.id}>
+            <tr
+              key={c.id}
+              className={
+                !isClientPaid(c)
+                  ? 'dup-group__row dup-group__row--unpaid'
+                  : c.clientType === 'one-time'
+                    ? 'dup-group__row dup-group__row--one-time'
+                    : c.clientType === 'individual'
+                      ? 'dup-group__row dup-group__row--individual'
+                      : 'dup-group__row'
+              }
+            >
               <td>{c.fio || '—'}</td>
               <td>{c.phone || '—'}</td>
               <td>{c.sportName ?? c.sport?.name ?? '—'}</td>
               <td>{isClientPaid(c) ? 'Да' : 'Нет'}</td>
-              <td><span className={c.clientType === 'individual' ? 'clients-page__type clients-page__type--individual' : ''}>{c.clientType === 'individual' ? 'Индивид.' : c.clientType === 'regular' ? 'Регуляр' : c.clientType === 'one-time' ? 'Разовый' : c.clientType || '—'}</span></td>
+              <td className={c.clientType === 'individual' ? 'dup-group__type-cell dup-group__type-cell--individual' : c.clientType === 'one-time' ? 'dup-group__type-cell dup-group__type-cell--one-time' : ''}>{c.clientType === 'individual' ? 'Индивид.' : c.clientType === 'regular' ? 'Регуляр' : c.clientType === 'one-time' ? 'Разовый' : c.clientType || '—'}</td>
               <td>
                 <button type="button" className="dup-group__btn" onClick={() => handleOpenCard(c)}>Подробнее</button>
               </td>
@@ -425,7 +433,7 @@ const ClientsPage = () => {
       {/* ── Список ── */}
       {activeTab === TAB_LIST && (
         <>
-          <div className="clients-page__toolbar">
+          <FilterBar className="clients-page__filter-bar">
             <div className="clients-page__filters clients-page__filters--desktop">
               <input type="text" placeholder="Поиск (ФИО, телефон)" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="clients-page__search" />
               <Select value={queryState.sportId} onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))} options={[{ value: '', label: 'Все виды спорта' }, ...sports.map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="Все виды спорта" className="clients-page__select-wrap" />
@@ -460,16 +468,16 @@ const ClientsPage = () => {
               {(queryState.year || queryState.month || queryState.day) && (
                 <button type="button" className="clients-page__date-clear" onClick={() => setQueryState((q) => ({ ...q, year: '', month: '', day: '', page: 1 }))} title="Сбросить дату">✕</button>
               )}
-              <button type="button" className="clients-page__add clients-page__add--desktop" onClick={() => setFormClient({})}>Добавить клиента</button>
+              <button type="button" className="clients-page__add clients-page__add--desktop filter-bar__action" onClick={() => setFormClient({})}>Добавить клиента</button>
             </div>
-            <div className="clients-page__toolbar-mobile">
+            <div className="clients-page__toolbar-mobile clients-page__toolbar-mobile--filter-bar">
               <input type="text" placeholder="Поиск" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="clients-page__search clients-page__search--mobile" />
               <div className="clients-page__toolbar-mobile-actions">
                 <button type="button" className="clients-page__filters-btn" onClick={() => setFiltersModalOpen(true)}>Фильтры</button>
-                <button type="button" className="clients-page__add" onClick={() => setFormClient({})}>Добавить</button>
+                <button type="button" className="clients-page__add filter-bar__action" onClick={() => setFormClient({})}>Добавить</button>
               </div>
             </div>
-          </div>
+          </FilterBar>
           <FiltersModal open={filtersModalOpen} onClose={() => setFiltersModalOpen(false)} title="Фильтры">
             <div className="clients-page__filters-modal-content">
               <label className="clients-page__filter-label"><span>Вид спорта</span><Select value={queryState.sportId} onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...sports.map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="Все" className="clients-page__select-wrap" /></label>
@@ -491,7 +499,7 @@ const ClientsPage = () => {
       {activeTab === TAB_DUPS && (
         <div className="clients-page__dup-section">
           {/* Фильтр по году/месяцу */}
-          <div className="clients-page__dup-toolbar">
+          <FilterBar className="clients-page__dup-toolbar">
             <Select
               value={dupYear}
               onChange={setDupYear}
@@ -509,7 +517,7 @@ const ClientsPage = () => {
               placeholder="Месяц"
               className="clients-page__dup-select"
             />
-          </div>
+          </FilterBar>
           {/* Подтабы */}
           <div className="clients-page__subtabs">
             <button type="button" className={`clients-page__subtab${activeDupTab === SUBTAB_EXACT ? ' clients-page__subtab--active' : ''}`} onClick={() => setActiveDupTab(SUBTAB_EXACT)}>Точные дубликаты</button>
@@ -551,7 +559,7 @@ const ClientsPage = () => {
       {/* ── Статистика ── */}
       {activeTab === TAB_STATS && (
         <div className="clients-page__stats-section">
-          <div className="clients-page__stats-toolbar">
+          <FilterBar className="clients-page__stats-toolbar">
             <Select
               value={statsYear}
               onChange={setStatsYear}
@@ -569,7 +577,7 @@ const ClientsPage = () => {
               placeholder="Месяц"
               className="clients-page__stats-select"
             />
-          </div>
+          </FilterBar>
 
           {statsLoading ? (
             <div className="clients-page__dup-loading"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка статистики…</span></div>
@@ -613,7 +621,7 @@ const ClientsPage = () => {
       {/* ── Разовый ── */}
       {activeTab === TAB_ONETIME && (
         <div className="clients-page__onetime-section">
-          <div className="clients-page__onetime-toolbar">
+          <FilterBar className="clients-page__onetime-toolbar">
             <div className="clients-page__onetime-search-wrap">
               <input
                 type="text"
@@ -643,7 +651,7 @@ const ClientsPage = () => {
             {(oneTimeYear || oneTimeMonth) && (
               <button type="button" className="clients-page__date-clear" onClick={() => { setOneTimeYear(''); setOneTimeMonth(''); setOneTimePage(1); }} title="Сбросить дату">✕</button>
             )}
-          </div>
+          </FilterBar>
 
           {oneTimeLoading ? (
             <div className="clients-page__dup-loading"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></div>
@@ -696,7 +704,15 @@ const ClientsPage = () => {
                                 <button
                                   type="button"
                                   className="clients-page__onetime-add-btn"
-                                  onClick={() => handleAddOneTimeAmount(c)}
+                                  onClick={() => {
+                                    const val = oneTimeAddInputs[c.id];
+                                    const amount = Number(val);
+                                    if (!val || Number.isNaN(amount) || amount <= 0) {
+                                      toast.error('Введите корректную сумму');
+                                      return;
+                                    }
+                                    setConfirmAddOneTime({ client: c, amount });
+                                  }}
                                   disabled={isLoading}
                                 >
                                   {isLoading ? '…' : '+'} Добавить
@@ -736,6 +752,15 @@ const ClientsPage = () => {
       )}
       {confirmDelete && (
         <ConfirmModal title="Удалить клиента?" message={confirmDelete.fio} confirmText="Удалить" onConfirm={handleDeleteClient} onCancel={() => setConfirmDelete(null)} danger />
+      )}
+      {confirmAddOneTime && (
+        <ConfirmModal
+          title="Добавить доплату?"
+          message={`Добавить доплату ${confirmAddOneTime.amount.toLocaleString('ru-RU')} сом для ${confirmAddOneTime.client?.fio || '—'}?`}
+          confirmText="Добавить"
+          onConfirm={() => handleAddOneTimeAmount(confirmAddOneTime.client, confirmAddOneTime.amount)}
+          onCancel={() => setConfirmAddOneTime(null)}
+        />
       )}
     </div>
   );

@@ -5,10 +5,11 @@
   overflow-x: hidden;
 
   &__title {
-    margin: 0 0 12px;
-    font-size: 26px;
-    font-weight: 600;
+    margin: 0 0 var(--space-5);
+    font-size: var(--font-page-title);
+    font-weight: var(--font-weight-page-title);
     letter-spacing: -0.02em;
+    line-height: 1.2;
     color: var(--color-text);
 
     @include mixins.mobile {
@@ -17,7 +18,7 @@
 
     @include mixins.xs {
       font-size: 18px;
-      margin-bottom: 8px;
+      margin-bottom: var(--space-2);
     }
   }
 
@@ -83,7 +84,7 @@
     padding: 8px 18px;
     font-size: 13px;
     font-weight: 500;
-    background: var(--color-bg-card);
+    background: #FFFFFF;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     color: var(--color-text-muted);
@@ -105,7 +106,7 @@
     text-align: center;
     color: var(--color-text-muted);
     font-size: 15px;
-    background: var(--color-bg-card);
+    background: #FFFFFF;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
   }
@@ -117,14 +118,7 @@
   }
 
   &__dup-toolbar {
-    display: flex;
-    gap: 12px;
     margin-bottom: 16px;
-    padding: 16px 18px;
-    background: var(--color-bg-card);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
   }
 
   &__dup-select {
@@ -136,14 +130,7 @@
   }
 
   &__stats-toolbar {
-    display: flex;
-    gap: 12px;
     margin-bottom: 16px;
-    padding: 16px 18px;
-    background: var(--color-bg-card);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
   }
 
   &__stats-select {
@@ -157,7 +144,7 @@
   }
 
   &__stats-block {
-    background: var(--color-bg-card);
+    background: #FFFFFF;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card);
@@ -209,16 +196,7 @@
   }
 
   &__onetime-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
     margin-bottom: 16px;
-    padding: 16px 18px;
-    background: var(--color-bg-card);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
-    flex-wrap: wrap;
   }
 
   &__onetime-search-wrap {
@@ -235,7 +213,7 @@
     border-radius: var(--radius-md);
     font-size: 14px;
     min-width: 200px;
-    background: var(--color-bg-card);
+    background: #FFFFFF;
     color: var(--color-text);
 
     &:focus {
@@ -250,7 +228,7 @@
   }
 
   &__onetime-block {
-    background: var(--color-bg-card);
+    background: #FFFFFF;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card);
@@ -292,7 +270,7 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     font-size: 14px;
-    background: var(--color-bg-card);
+    background: #FFFFFF;
     color: var(--color-text);
 
     &:focus {
@@ -335,34 +313,14 @@
     }
   }
 
-  &__type--individual {
-    color: var(--color-success);
-    font-weight: 500;
-  }
-
-  &__toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    padding: 16px 18px;
-    background: var(--color-bg-card);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
-    min-width: 0;
+  &__filter-bar {
+    margin-bottom: var(--space-6);
 
     @include mixins.mobile {
-      padding: 12px 14px;
-      gap: 12px;
       margin-bottom: 16px;
     }
 
     @include mixins.xs {
-      padding: 10px 12px;
-      gap: 10px;
       margin-bottom: 12px;
     }
   }
@@ -370,7 +328,7 @@
   &__filters {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     flex-wrap: wrap;
     flex: 1;
     min-width: 0;
@@ -443,7 +401,8 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    font-size: 14px;
+    font-size: var(--font-label);
+    font-weight: var(--font-weight-label);
     color: var(--color-text-muted);
 
     span {
@@ -454,13 +413,14 @@
 
   &__filter-apply {
     margin-top: 8px;
-    padding: 14px;
+    height: 40px;
+    padding: 0 16px;
     background: var(--color-primary);
     color: #fff;
     border: none;
-    border-radius: var(--radius-md);
-    font-size: 16px;
-    font-weight: 600;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
     transition: background var(--transition-fast);
 
@@ -470,17 +430,18 @@
   }
 
   &__search {
-    padding: 10px 14px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--input-border);
+    border-radius: var(--input-radius);
     font-size: 14px;
     min-width: 200px;
-    background: var(--color-bg-card);
+    background: #FFFFFF;
     color: var(--color-text);
     &:focus {
       outline: none;
       border-color: var(--color-primary);
-      box-shadow: 0 0 0 3px var(--color-primary-light);
+      box-shadow: var(--input-shadow-focus);
     }
 
     @include mixins.mobile {
@@ -490,7 +451,7 @@
     }
 
     @include mixins.xs {
-      padding: 12px 14px;
+      padding: 10px 14px;
     }
   }
 
@@ -522,8 +483,8 @@
     width: 32px;
     height: 38px;
     background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
+    border: 1px solid var(--input-border);
+    border-radius: var(--input-radius);
     font-size: 12px;
     color: var(--color-text-muted);
     cursor: pointer;
@@ -538,13 +499,14 @@
   }
 
   &__add {
-    padding: 10px 20px;
+    height: 40px;
+    padding: 0 16px;
     background: var(--color-primary);
     color: #fff;
     border: none;
-    border-radius: var(--radius-md);
+    border-radius: var(--input-radius);
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
     flex-shrink: 0;
     transition: background var(--transition-fast);
     &:hover {
@@ -558,7 +520,7 @@
     }
 
     @include mixins.xs {
-      padding: 10px 16px;
+      padding: 0 16px;
       font-size: 13px;
       width: 100%;
     }
@@ -568,8 +530,8 @@
 
 .dup-group {
   margin-bottom: 16px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--block-border);
+  border-radius: var(--block-radius);
   overflow: hidden;
   box-shadow: var(--shadow-card);
 
@@ -602,7 +564,7 @@
   &__table {
     width: 100%;
     border-collapse: collapse;
-    background: var(--color-bg-card);
+    background: #FFFFFF;
 
     th, td {
       padding: 12px 18px;
@@ -621,15 +583,27 @@
 
     tbody tr:last-child td { border-bottom: none; }
     tbody tr:hover { background: var(--color-primary-light); }
+    tbody tr.dup-group__row--unpaid { background: rgba(197, 48, 48, 0.14); }
+    tbody tr.dup-group__row--unpaid:nth-child(even) { background: rgba(197, 48, 48, 0.2); }
+    tbody tr.dup-group__row--unpaid:hover { background: rgba(197, 48, 48, 0.22); }
+    tbody tr.dup-group__row--one-time { background: rgba(37, 99, 235, 0.14); }
+    tbody tr.dup-group__row--one-time:nth-child(even) { background: rgba(37, 99, 235, 0.2); }
+    tbody tr.dup-group__row--one-time:hover { background: rgba(37, 99, 235, 0.22); }
+    tbody tr.dup-group__row--individual { background: rgba(22, 163, 74, 0.14); }
+    tbody tr.dup-group__row--individual:nth-child(even) { background: rgba(22, 163, 74, 0.2); }
+    tbody tr.dup-group__row--individual:hover { background: rgba(22, 163, 74, 0.22); }
   }
 
+  &__type-cell--individual { color: var(--color-success); font-weight: 500; }
+  &__type-cell--one-time { color: var(--color-info); font-weight: 500; }
+
   &__btn {
-    padding: 5px 12px;
+    padding: 6px 12px;
     font-size: 13px;
     font-weight: 500;
-    background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
+    background: #FFFFFF;
+    border: 1px solid var(--input-border);
+    border-radius: var(--input-radius);
     color: var(--color-text);
     cursor: pointer;
     transition: border-color var(--transition-fast), color var(--transition-fast);

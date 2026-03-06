@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { fetchIncomeDetail, fetchExpenseDetail, fetchProfitDetail } from './api';
 import { fetchSalary } from '../salary/api';
-import { ErrorState, Select, DonutChart, Sparkline, Skeleton, SkeletonTable } from '../../shared/ui';
+import { ErrorState, Select, DonutChart, Sparkline, Skeleton, SkeletonTable, FilterBar } from '../../shared/ui';
 import { MONTHS, DONUT_COLORS, formatMoney } from '../../shared/constants/common';
 import { useAnalyticsFilters } from './hooks/useAnalyticsFilters';
 import { useAnalyticsData } from './hooks/useAnalyticsData';
@@ -165,7 +165,7 @@ const AnalyticsPage = () => {
           <h1 className="analytics-page__title">Аналитика</h1>
           <p className="analytics-page__subtitle">Сводка по выбранному периоду</p>
         </div>
-        <div className="analytics-page__filters">
+        <FilterBar className="analytics-page__filter-bar">
         <label className="analytics-page__filter">
           Год
           <input
@@ -200,7 +200,7 @@ const AnalyticsPage = () => {
           />
         </label>
         <button type="button" className="analytics-page__reset" onClick={resetFilters}>Сброс</button>
-        </div>
+        </FilterBar>
       </header>
 
       {error && <ErrorState message={error} onRetry={loadAll} />}

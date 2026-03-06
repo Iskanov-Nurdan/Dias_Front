@@ -15,7 +15,7 @@ import { CategoryFormModal, ProductFormModal } from './components';
 import RestockModal from './components/RestockModal';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
-import { ErrorState, EmptyState, ConfirmModal, Select, Pagination, FiltersModal } from '../../shared/ui';
+import { ErrorState, EmptyState, ConfirmModal, Select, Pagination, FiltersModal, Skeleton, FilterBar } from '../../shared/ui';
 import { formatMoney } from '../../shared/constants/common';
 import './WarehousePage.scss';
 
@@ -230,7 +230,7 @@ const WarehousePage = () => {
       </div>
       {activeTab === TAB_PRODUCTS && (
         <>
-          <div className="warehouse-page__toolbar">
+          <FilterBar className="warehouse-page__filter-bar">
             <div className="warehouse-page__filters warehouse-page__filters--desktop">
               <input type="text" placeholder="Поиск" value={queryState.search} onChange={(e) => setQueryState((q) => ({ ...q, search: e.target.value, page: 1 }))} className="warehouse-page__search" />
               <Select
@@ -240,16 +240,16 @@ const WarehousePage = () => {
                 placeholder="Все категории"
                 className="warehouse-page__select-wrap"
               />
-              <button type="button" className="warehouse-page__add" onClick={() => setFormProduct({})}>Добавить товар</button>
+              <button type="button" className="warehouse-page__add filter-bar__action" onClick={() => setFormProduct({})}>Добавить товар</button>
             </div>
             <div className="warehouse-page__toolbar-mobile">
               <input type="text" placeholder="Поиск" value={queryState.search} onChange={(e) => setQueryState((q) => ({ ...q, search: e.target.value, page: 1 }))} className="warehouse-page__search warehouse-page__search--mobile" />
               <div className="warehouse-page__toolbar-mobile-actions">
                 <button type="button" className="warehouse-page__filters-btn" onClick={() => setFiltersModalOpen(true)}>Фильтры</button>
-                <button type="button" className="warehouse-page__add warehouse-page__add--mobile" onClick={() => setFormProduct({})}>Добавить товар</button>
+                <button type="button" className="warehouse-page__add warehouse-page__add--mobile filter-bar__action" onClick={() => setFormProduct({})}>Добавить товар</button>
               </div>
             </div>
-          </div>
+          </FilterBar>
           <FiltersModal open={filtersModalOpen} onClose={() => setFiltersModalOpen(false)} title="Фильтры">
             <div className="warehouse-page__filters-modal-content">
               <label className="warehouse-page__filter-label">
@@ -271,11 +271,21 @@ const WarehousePage = () => {
               <thead><tr><th>Название</th><th>Категория</th><th>Кол-во</th><th>Закупка</th><th>Продажа</th><th>Мин. остаток</th><th>Добавлено</th><th>Действия</th></tr></thead>
               <tbody>
                 {productsLoading ? (
-                  <tr><td colSpan={8} className="warehouse-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
+                  Array.from({ length: 5 }, (_, i) => (
+                    <tr key={`sk-${i}`}>
+                      {Array.from({ length: 8 }, (_, j) => (
+                        <td key={j}><Skeleton variant="text" /></td>
+                      ))}
+                    </tr>
+                  ))
                 ) : productsItems.length === 0 ? (
                   <tr><td colSpan={8} className="warehouse-page__empty-cell"><EmptyState message="Нет товаров" /></td></tr>
-                ) : productsItems.map((p) => (
-                    <tr key={p.id} className="warehouse-page__product-row">
+                ) : productsItems.map((p) => {
+                    const qty = Number(p.qty ?? p.quantity ?? 0);
+                    const minQtyVal = Number(p.minQty ?? p.min_quantity);
+                    const isAtMin = !Number.isNaN(minQtyVal) && qty === minQtyVal;
+                    return (
+                    <tr key={p.id} className={`warehouse-page__product-row${isAtMin ? ' warehouse-page__product-row--at-min' : ''}`}>
                       <td data-label="Название">{p.name}</td>
                       <td data-label="Категория">{p.categoryName ?? p.category?.name ?? '—'}</td>
                       <td data-label="Кол-во">{p.qty ?? p.quantity ?? 0}</td>
@@ -289,7 +299,7 @@ const WarehousePage = () => {
                         <button type="button" className="warehouse-page__action warehouse-page__action--delete" onClick={() => (isAdmin ? setConfirmDeleteProduct(p) : showAccessDenied())} title="Удалить">Удалить</button>
                       </td>
                     </tr>
-                ))}
+                ); })}
               </tbody>
             </table>
           </div>
@@ -304,23 +314,29 @@ const WarehousePage = () => {
       )}
       {activeTab === TAB_CATEGORIES && (
         <>
-          <div className="warehouse-page__toolbar">
+          <FilterBar className="warehouse-page__filter-bar">
             <div className="warehouse-page__filters warehouse-page__filters--desktop">
               <input type="text" placeholder="Поиск" value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="warehouse-page__search" />
-              <button type="button" className="warehouse-page__add" onClick={() => setFormCategory({})}>Добавить категорию</button>
+              <button type="button" className="warehouse-page__add filter-bar__action" onClick={() => setFormCategory({})}>Добавить категорию</button>
             </div>
             <div className="warehouse-page__toolbar-mobile">
               <input type="text" placeholder="Поиск" value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="warehouse-page__search warehouse-page__search--mobile" />
-              <button type="button" className="warehouse-page__add warehouse-page__add--mobile" onClick={() => setFormCategory({})}>Добавить категорию</button>
+              <button type="button" className="warehouse-page__add warehouse-page__add--mobile filter-bar__action" onClick={() => setFormCategory({})}>Добавить категорию</button>
             </div>
-          </div>
+          </FilterBar>
           {categoriesError && <ErrorState message={categoriesError} onRetry={fetchCategoriesSafe} />}
           <div className="warehouse-page__table-wrap">
             <table className="warehouse-page__table">
               <thead><tr><th>Название</th><th>Действия</th></tr></thead>
               <tbody>
                 {categoriesLoading ? (
-                  <tr><td colSpan={2} className="warehouse-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
+                  Array.from({ length: 5 }, (_, i) => (
+                    <tr key={`sk-${i}`}>
+                      {Array.from({ length: 2 }, (_, j) => (
+                        <td key={j}><Skeleton variant="text" /></td>
+                      ))}
+                    </tr>
+                  ))
                 ) : categoriesList.length === 0 ? (
                   <tr><td colSpan={2} className="warehouse-page__empty-cell"><EmptyState message="Нет категорий" /></td></tr>
                 ) : categoriesList.map((c) => (
@@ -387,14 +403,14 @@ const WarehousePage = () => {
       )}
       {activeTab === TAB_HISTORY && (
         <>
-          <div className="warehouse-page__toolbar">
+          <FilterBar className="warehouse-page__filter-bar">
             <div className="warehouse-page__filters warehouse-page__filters--desktop">
               <input type="text" placeholder="Поиск" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} className="warehouse-page__search" />
             </div>
             <div className="warehouse-page__toolbar-mobile">
               <input type="text" placeholder="Поиск" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} className="warehouse-page__search warehouse-page__search--mobile" />
             </div>
-          </div>
+          </FilterBar>
           <h3 className="warehouse-page__section">История пополнений</h3>
           {restocksError && <ErrorState message={restocksError} onRetry={fetchRestocksSafe} />}
           <div className="warehouse-page__table-wrap">
@@ -402,7 +418,13 @@ const WarehousePage = () => {
               <thead><tr><th>Товар</th><th>Кол-во</th><th>Дата</th></tr></thead>
               <tbody>
                 {restocksLoading ? (
-                  <tr><td colSpan={3} className="warehouse-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
+                  Array.from({ length: 5 }, (_, i) => (
+                    <tr key={`sk-${i}`}>
+                      {Array.from({ length: 3 }, (_, j) => (
+                        <td key={j}><Skeleton variant="text" /></td>
+                      ))}
+                    </tr>
+                  ))
                 ) : restocksItems.length === 0 ? (
                   <tr><td colSpan={3} className="warehouse-page__empty-cell"><EmptyState message="Нет пополнений" /></td></tr>
                 ) : restocksItems.map((r) => (

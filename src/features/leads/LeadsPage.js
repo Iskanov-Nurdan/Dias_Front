@@ -6,7 +6,7 @@ import { useToast } from '../../app/providers/ToastProvider';
 import { useDebounce } from '../../shared/hooks/useDebounce';
 import { SEARCH_DEBOUNCE_MS } from '../../shared/constants/common';
 import { LeadFormModal, LeadCardModal, FunnelBoard } from './components';
-import { ErrorState, EmptyState, ConfirmModal, Pagination } from '../../shared/ui';
+import { ErrorState, EmptyState, ConfirmModal, Pagination, FilterBar } from '../../shared/ui';
 import './LeadsPage.scss';
 
 const CHANNEL_LABELS = { instagram: 'Instagram', whatsapp: 'WhatsApp', tiktok: 'TikTok', other: 'Другое' };
@@ -280,7 +280,7 @@ const LeadsPage = () => {
       {/* ══ Таб: Заявки ══ */}
       {activeTab === TAB_LEADS && (
         <>
-          <div className="leads-page__toolbar">
+          <FilterBar className="leads-page__filter-bar">
             <input
               type="text"
               placeholder="Поиск по имени, телефону, каналу…"
@@ -288,10 +288,10 @@ const LeadsPage = () => {
               onChange={(e) => setSearchInput(e.target.value)}
               className="leads-page__search"
             />
-            <button type="button" className="leads-page__add" onClick={() => (isAdmin ? setFormLead({}) : showAccessDenied())}>
+            <button type="button" className="leads-page__add filter-bar__action" onClick={() => (isAdmin ? setFormLead({}) : showAccessDenied())}>
               Новая заявка
             </button>
-          </div>
+          </FilterBar>
           {error && <ErrorState message={error} onRetry={fetchSafe} />}
           <div className="leads-page__table-wrap">
             <table className="leads-page__table">
@@ -383,7 +383,7 @@ const LeadsPage = () => {
       {/* ══ Таб: Воронка ══ */}
       {activeTab === TAB_FUNNEL && (
         <>
-          <div className="leads-page__funnel-toolbar">
+          <FilterBar className="leads-page__funnel-toolbar">
             <p className="leads-page__funnel-hint">Следите за движением клиентов от первого контакта до покупки</p>
             <input
               type="text"
@@ -394,12 +394,12 @@ const LeadsPage = () => {
             />
             <button
               type="button"
-              className="leads-page__refresh-btn"
+              className="leads-page__refresh-btn filter-bar__action"
               onClick={() => { fetchStages(); fetchFunnelLeads(); }}
             >
               ↺ Обновить
             </button>
-          </div>
+          </FilterBar>
           {stagesLoading ? (
             <div className="leads-page__loading-cell">
               <span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span>

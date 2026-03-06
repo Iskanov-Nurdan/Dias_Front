@@ -3,7 +3,7 @@ import { fetchSalesSummary, fetchSales, createSale, cancelSale } from './api';
 import { fetchProducts } from '../warehouse/api';
 import SaleFormModal from './components/SaleFormModal';
 import { useToast } from '../../app/providers/ToastProvider';
-import { ErrorState, EmptyState, Pagination } from '../../shared/ui';
+import { ErrorState, EmptyState, Pagination, Badge, Skeleton, FilterBar, ConfirmModal } from '../../shared/ui';
 import { formatMoney } from '../../shared/constants/common';
 import './SalesPage.scss';
 
@@ -20,6 +20,7 @@ const SalesPage = () => {
   const [saleFormError, setSaleFormError] = useState(null);
   const [saleFormSaving, setSaleFormSaving] = useState(false);
   const [cancellingId, setCancellingId] = useState(null);
+  const [confirmCancelSale, setConfirmCancelSale] = useState(null);
   const [products, setProducts] = useState([]);
   const controllerRef = useRef(null);
   const lastSummaryRequestId = useRef(0);
@@ -102,6 +103,7 @@ const SalesPage = () => {
 
   const handleCancelSale = async (sale) => {
     if (sale?.status === 'cancelled') return;
+    setConfirmCancelSale(null);
     setCancellingId(sale?.id);
     try {
       await cancelSale(sale.id, null);
@@ -122,13 +124,11 @@ const SalesPage = () => {
   return (
     <div className="sales-page">
       <h1 className="sales-page__title">Продажи</h1>
-      <div className="sales-page__toolbar-top">
-        <div className="sales-page__filters">
-          <input type="date" placeholder="Дата с" value={queryState.dateFrom} onChange={(e) => setQueryState((q) => ({ ...q, dateFrom: e.target.value }))} className="sales-page__input" />
-          <input type="date" placeholder="Дата по" value={queryState.dateTo} onChange={(e) => setQueryState((q) => ({ ...q, dateTo: e.target.value }))} className="sales-page__input" />
-        </div>
-        <button type="button" className="sales-page__add" onClick={() => setFormSaleOpen(true)}>Новая продажа</button>
-      </div>
+      <FilterBar className="sales-page__filter-bar">
+        <input type="date" placeholder="Дата с" value={queryState.dateFrom} onChange={(e) => setQueryState((q) => ({ ...q, dateFrom: e.target.value }))} className="sales-page__input" />
+        <input type="date" placeholder="Дата по" value={queryState.dateTo} onChange={(e) => setQueryState((q) => ({ ...q, dateTo: e.target.value }))} className="sales-page__input" />
+        <button type="button" className="sales-page__add filter-bar__action" onClick={() => setFormSaleOpen(true)}>Новая продажа</button>
+      </FilterBar>
       {summaryError && <ErrorState message={summaryError} onRetry={fetchSummarySafe} />}
       <div className="sales-page__summary">
         {summaryLoading ? (
@@ -148,7 +148,13 @@ const SalesPage = () => {
           <thead><tr><th>Товар</th><th>Кол-во</th><th>Сумма</th><th>Скидка</th><th>Дата</th><th>Статус</th><th></th></tr></thead>
           <tbody>
             {salesLoading ? (
-              <tr><td colSpan={7} className="sales-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
+              Array.from({ length: 5 }, (_, i) => (
+                <tr key={`sk-${i}`}>
+                  {Array.from({ length: 7 }, (_, j) => (
+                    <td key={j}><Skeleton variant="text" /></td>
+                  ))}
+                </tr>
+              ))
             ) : salesItems.length === 0 ? (
               <tr><td colSpan={7} className="sales-page__empty-cell"><EmptyState message="Нет продаж" /></td></tr>
             ) : salesItems.map((s) => {
@@ -160,13 +166,13 @@ const SalesPage = () => {
                   <td>{formatMoney(s.total)}</td>
                   <td>{s.discountPercent != null ? `${s.discountPercent}%` : (s.discount != null ? `${s.discount}%` : '—')}</td>
                   <td>{s.date ? new Date(s.date).toLocaleDateString() : '—'}</td>
-                  <td>{isCancelled ? 'Отменена' : 'Активна'}</td>
+                  <td><Badge variant={isCancelled ? 'danger' : 'success'}>{isCancelled ? 'Отменена' : 'Активна'}</Badge></td>
                   <td>
                     {!isCancelled && (
                       <button
                         type="button"
                         className="sales-page__cancel-btn"
-                        onClick={() => handleCancelSale(s)}
+                        onClick={() => setConfirmCancelSale(s)}
                         disabled={cancellingId === s.id}
                       >
                         {cancellingId === s.id ? '…' : 'Отменить'}
@@ -185,6 +191,16 @@ const SalesPage = () => {
         loading={salesLoading}
         entityLabel="продаж"
       />
+      {confirmCancelSale && (
+        <ConfirmModal
+          title="Отменить продажу?"
+          message={`Отменить продажу: ${confirmCancelSale.productName ?? confirmCancelSale.product?.name ?? '—'}, ${formatMoney(confirmCancelSale.total)}?`}
+          confirmText="Отменить"
+          onConfirm={() => handleCancelSale(confirmCancelSale)}
+          onCancel={() => setConfirmCancelSale(null)}
+          danger
+        />
+      )}
       {formSaleOpen && (
         <SaleFormModal
           products={products}

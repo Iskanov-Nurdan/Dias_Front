@@ -10,7 +10,7 @@ import {
   deleteTrainer,
 } from './api';
 import { useAuth } from '../../app/providers/AuthProvider';
-import { Select, Pagination } from '../../shared/ui';
+import { Select, Pagination, FilterBar } from '../../shared/ui';
 import { SportsList, TrainersList, SportFormModal, TrainerFormModal } from './components';
 import './SportsTrainersPage.scss';
 
@@ -153,49 +153,45 @@ const SportsTrainersPage = () => {
 
   return (
     <div className="sports-trainers-page">
-      <h1 className="sports-trainers-page__title">Виды спорта / Тренеры</h1>
+      <h1 className="sports-trainers-page__title">Спорт и тренеры</h1>
       <div className="sports-trainers-page__tabs">
         <button type="button" className={`sports-trainers-page__tab ${activeTab === TAB_SPORTS ? 'sports-trainers-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_SPORTS)}>Виды спорта</button>
         <button type="button" className={`sports-trainers-page__tab ${activeTab === TAB_TRAINERS ? 'sports-trainers-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_TRAINERS)}>Тренеры</button>
       </div>
       {activeTab === TAB_SPORTS && (
-        <div className="sports-trainers-page__toolbar">
-          <div className="sports-trainers-page__filters">
-            <input
-              type="text"
-              placeholder="Поиск по названию"
-              value={sportSearch}
-              onChange={(e) => setSportSearch(e.target.value)}
-              className="sports-trainers-page__search"
-            />
-          </div>
-          <button type="button" className="sports-trainers-page__add" onClick={() => setFormSport({})}>
+        <FilterBar className="sports-trainers-page__filter-bar">
+          <input
+            type="text"
+            placeholder="Поиск по названию"
+            value={sportSearch}
+            onChange={(e) => setSportSearch(e.target.value)}
+            className="sports-trainers-page__search"
+          />
+          <button type="button" className="sports-trainers-page__add filter-bar__action" onClick={() => setFormSport({})}>
             Добавить
           </button>
-        </div>
+        </FilterBar>
       )}
       {activeTab === TAB_TRAINERS && (
-        <div className="sports-trainers-page__toolbar">
-          <div className="sports-trainers-page__filters">
-            <input
-              type="text"
-              placeholder="Поиск (ФИО тренера)"
-              value={trainerSearch}
-              onChange={(e) => setTrainerSearch(e.target.value)}
-              className="sports-trainers-page__search"
-            />
-            <Select
-              value={queryState.sportId}
-              onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))}
-              options={[{ value: '', label: 'Все виды спорта' }, ...sportsData.map((s) => ({ value: String(s.id), label: s.name || '' }))]}
-              placeholder="Все виды спорта"
-              className="sports-trainers-page__select-wrap"
-            />
-          </div>
-          <button type="button" className="sports-trainers-page__add" onClick={() => setFormTrainer({})}>
+        <FilterBar className="sports-trainers-page__filter-bar">
+          <input
+            type="text"
+            placeholder="Поиск (ФИО тренера)"
+            value={trainerSearch}
+            onChange={(e) => setTrainerSearch(e.target.value)}
+            className="sports-trainers-page__search"
+          />
+          <Select
+            value={queryState.sportId}
+            onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))}
+            options={[{ value: '', label: 'Все виды спорта' }, ...sportsData.map((s) => ({ value: String(s.id), label: s.name || '' }))]}
+            placeholder="Все виды спорта"
+            className="sports-trainers-page__select-wrap"
+          />
+          <button type="button" className="sports-trainers-page__add filter-bar__action" onClick={() => setFormTrainer({})}>
             Добавить
           </button>
-        </div>
+        </FilterBar>
       )}
       {activeTab === TAB_SPORTS && (
         <SportsList items={sportsData} loading={sportsLoading} error={sportsError} onRetry={fetchSportsSafe} onEdit={(s) => (isAdmin ? setFormSport(s) : showAccessDenied())} onDelete={(s) => (isAdmin ? setConfirmDeleteSport(s) : showAccessDenied())} confirmDelete={confirmDeleteSport} onConfirmDelete={handleDeleteSport} onCancelDelete={() => setConfirmDeleteSport(null)} />

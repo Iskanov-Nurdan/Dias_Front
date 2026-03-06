@@ -77,7 +77,7 @@ const Select = ({ value, onChange, options = [], placeholder = 'Выберите
       >
         <span className="select__value">{displayLabel}</span>
         <span className="select__chevron" aria-hidden>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 9l6 6 6-6" />
           </svg>
         </span>
@@ -92,6 +92,7 @@ const Select = ({ value, onChange, options = [], placeholder = 'Выберите
             top: dropdownPosition.top,
             left: dropdownPosition.left,
             width: dropdownPosition.width,
+            zIndex: 1100,
           }}
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setOpen(false);

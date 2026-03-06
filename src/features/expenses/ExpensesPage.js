@@ -3,7 +3,7 @@ import { fetchExpenseCategories, fetchExpenses, saveExpense, createExpenseCatego
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
 import { ExpenseCategoryFormModal, ExpenseFormModal } from './components';
-import { ErrorState, EmptyState, ConfirmModal, Pagination } from '../../shared/ui';
+import { ErrorState, EmptyState, ConfirmModal, Pagination, Badge, Skeleton, FilterBar } from '../../shared/ui';
 import { formatMoney } from '../../shared/constants/common';
 import './ExpensesPage.scss';
 
@@ -157,12 +157,10 @@ const ExpensesPage = () => {
       <h1 className="expenses-page__title">Расходы</h1>
       {selectedCategoryId == null ? (
         <>
-          <div className="expenses-page__toolbar">
-            <div className="expenses-page__toolbar-left">
-              <input type="text" placeholder="Поиск" value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="expenses-page__search" />
-            </div>
-            <button type="button" className="expenses-page__add" onClick={() => setFormCategory({})}>Добавить</button>
-          </div>
+          <FilterBar className="expenses-page__filter-bar">
+            <input type="text" placeholder="Поиск" value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="expenses-page__search" />
+            <button type="button" className="expenses-page__add filter-bar__action" onClick={() => setFormCategory({})}>Добавить</button>
+          </FilterBar>
           {categoriesError && <ErrorState message={categoriesError} onRetry={fetchCategoriesSafe} />}
           <div className="expenses-page__table-wrap">
             <table className="expenses-page__table">
@@ -187,13 +185,11 @@ const ExpensesPage = () => {
         </>
       ) : (
         <>
-          <div className="expenses-page__toolbar">
-            <div className="expenses-page__toolbar-left">
-              <button type="button" className="expenses-page__back" onClick={() => setSelectedCategoryId(null)}>← К категориям</button>
-              <input type="text" placeholder="Поиск" value={expensesSearch} onChange={(e) => setExpensesSearch(e.target.value)} className="expenses-page__search" />
-            </div>
-            <button type="button" className="expenses-page__add" onClick={() => setFormExpense({ categoryId: selectedCategoryId })}>Добавить расход</button>
-          </div>
+          <FilterBar className="expenses-page__filter-bar">
+            <button type="button" className="expenses-page__back" onClick={() => setSelectedCategoryId(null)}>← К категориям</button>
+            <input type="text" placeholder="Поиск" value={expensesSearch} onChange={(e) => setExpensesSearch(e.target.value)} className="expenses-page__search" />
+            <button type="button" className="expenses-page__add filter-bar__action" onClick={() => setFormExpense({ categoryId: selectedCategoryId })}>Добавить расход</button>
+          </FilterBar>
           <h3 className="expenses-page__section">{selectedCategory?.name ?? 'Расходы по категории'}</h3>
           {expensesError && <ErrorState message={expensesError} onRetry={fetchExpensesSafe} />}
           <div className="expenses-page__table-wrap">
@@ -201,7 +197,13 @@ const ExpensesPage = () => {
               <thead><tr><th>Название</th><th>Категория</th><th>Сумма</th><th>Дата</th><th>Сохранён</th><th>Действия</th></tr></thead>
               <tbody>
                 {expensesLoading ? (
-                  <tr><td colSpan={6} className="expenses-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
+                  Array.from({ length: 5 }, (_, i) => (
+                    <tr key={`sk-${i}`}>
+                      {Array.from({ length: 6 }, (_, j) => (
+                        <td key={j}><Skeleton variant="text" /></td>
+                      ))}
+                    </tr>
+                  ))
                 ) : expensesItems.length === 0 ? (
                   <tr><td colSpan={6} className="expenses-page__empty-cell"><EmptyState message="Нет расходов" /></td></tr>
                 ) : expensesItems.map((e) => (
@@ -210,7 +212,7 @@ const ExpensesPage = () => {
                       <td>{e.categoryName ?? e.category?.name ?? '—'}</td>
                       <td>{formatMoney(e.amount)}</td>
                       <td>{e.date ? new Date(e.date).toLocaleDateString() : '—'}</td>
-                      <td>{e.saved ? 'Да' : 'Нет'}</td>
+                      <td><Badge variant={e.saved ? 'success' : 'neutral'}>{e.saved ? 'Сохранён' : 'Черновик'}</Badge></td>
                       <td className="expenses-page__actions">
                         {!e.saved && <button type="button" className="expenses-page__save-btn" onClick={() => handleSaveExpense(e.id)}>Сохранить</button>}
                         {!e.saved && (

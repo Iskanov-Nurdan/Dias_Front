@@ -1,0 +1,13 @@
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  width: 100%;
+
+  // Кнопка действия всегда справа
+  .filter-bar__action {
+    margin-left: auto;
+  }
+}

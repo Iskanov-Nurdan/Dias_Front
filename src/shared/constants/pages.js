@@ -13,7 +13,7 @@ export const PAGE_IDS = [
 export const PAGE_LABELS = {
   analytics: 'Аналитика',
   employees: 'Сотрудники',
-  'sports-trainers': 'Виды спорта / Тренеры',
+  'sports-trainers': 'Спорт и тренеры',
   clients: 'Клиенты',
   leads: 'Лиды',
   warehouse: 'Склад',

@@ -22,31 +22,34 @@
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  padding: 10px 12px;
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md, 10px);
+  height: 40px;
+  min-height: 40px;
+  padding: 0 12px;
+  background: #FFFFFF;
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-radius);
   font-size: 14px;
   font-weight: 400;
-  color: var(--color-text);
+  color: #0F172A;
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: all 0.15s ease;
   box-sizing: border-box;
 
   @media (max-width: 768px) {
     font-size: 16px;
-    padding: 12px 14px;
+    padding: 10px 12px;
     min-height: 44px;
   }
 
   &:hover:not(:disabled) {
-    border-color: var(--color-primary);
+    border-color: var(--input-border-hover);
+    background: #FAFAFA;
   }
 
   &:focus {
     outline: none;
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px rgba(197, 48, 48, 0.15);
+    box-shadow: var(--input-shadow-focus);
   }
 }
 
@@ -63,51 +66,53 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-muted);
+  width: 18px;
+  height: 18px;
+  color: var(--input-placeholder);
   transition: transform 0.2s ease;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
 }
 
 .select__dropdown {
   max-height: 280px;
   overflow-y: auto;
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md, 10px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  z-index: 9999;
-  padding: 4px;
-
-  /* Позиция задаётся inline при рендере через Portal */
-  &--portal {
-    /* position: fixed задаётся в style */
-  }
+  background: #FFFFFF;
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-radius);
+  box-shadow: var(--dropdown-shadow);
+  z-index: 1100;
+  padding: 6px;
 }
 
 .select__option {
   display: block;
   width: 100%;
-  padding: 10px 12px;
+  padding: 8px 10px;
   text-align: left;
   font-size: 14px;
-
-  @media (max-width: 768px) {
-    font-size: 16px;
-    padding: 12px 14px;
-  }
   font-weight: 400;
   background: none;
   border: none;
-  border-radius: 6px;
-  color: var(--color-text);
+  border-radius: 8px;
+  color: #0F172A;
   cursor: pointer;
   transition: background 0.1s ease;
 
+  @media (max-width: 768px) {
+    font-size: 16px;
+    padding: 10px 12px;
+  }
+
   &:hover {
-    background: var(--color-bg);
+    background: var(--dropdown-item-hover);
   }
 
   &--selected {
-    background: var(--color-primary-light);
+    background: var(--color-primary-soft);
     color: var(--color-primary);
   }
 }

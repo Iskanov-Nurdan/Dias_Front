@@ -14,7 +14,7 @@ import {
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
 import { useDebounce } from '../../shared/hooks/useDebounce';
-import { Select, Pagination } from '../../shared/ui';
+import { Select, Pagination, FilterBar } from '../../shared/ui';
 import { EmployeesList, RolesList, EmployeeFormModal, RoleFormModal, AccessModal } from './components';
 import './EmployeesPage.scss';
 
@@ -234,27 +234,25 @@ const EmployeesPage = () => {
       </div>
 
       {activeTab === TAB_EMPLOYEES && (
-        <div className="employees-page__toolbar">
-          <div className="employees-page__filters">
-            <input
-              type="text"
-              placeholder="Поиск (ФИО, логин, телефон)"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="employees-page__search"
-            />
-            <Select
-              value={queryState.roleId}
-              onChange={(v) => handleRoleFilter(v)}
-              options={roleOptions}
-              placeholder="Все роли"
-              className="employees-page__select-wrap"
-            />
-          </div>
-          <button type="button" className="employees-page__add" onClick={() => setFormEmployee({})}>
+        <FilterBar className="employees-page__filter-bar">
+          <input
+            type="text"
+            placeholder="Поиск (ФИО, логин, телефон)"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="employees-page__search"
+          />
+          <Select
+            value={queryState.roleId}
+            onChange={(v) => handleRoleFilter(v)}
+            options={roleOptions}
+            placeholder="Все роли"
+            className="employees-page__select-wrap"
+          />
+          <button type="button" className="employees-page__add filter-bar__action" onClick={() => setFormEmployee({})}>
             Добавить
           </button>
-        </div>
+        </FilterBar>
       )}
 
       {activeTab === TAB_EMPLOYEES && (
@@ -285,20 +283,18 @@ const EmployeesPage = () => {
 
       {activeTab === TAB_ROLES && (
         <>
-          <div className="employees-page__toolbar">
-            <div className="employees-page__filters">
-              <input
-                type="text"
-                placeholder="Поиск по названию роли"
-                value={roleSearch}
-                onChange={(e) => setRoleSearch(e.target.value)}
-                className="employees-page__search"
-              />
-            </div>
-          <button type="button" className="employees-page__add" onClick={() => setFormRole({})}>
-            Добавить роль
-          </button>
-          </div>
+          <FilterBar className="employees-page__filter-bar">
+            <input
+              type="text"
+              placeholder="Поиск по названию роли"
+              value={roleSearch}
+              onChange={(e) => setRoleSearch(e.target.value)}
+              className="employees-page__search"
+            />
+            <button type="button" className="employees-page__add filter-bar__action" onClick={() => setFormRole({})}>
+              Добавить роль
+            </button>
+          </FilterBar>
           <RolesList
             items={rolesList}
             loading={rolesLoading}

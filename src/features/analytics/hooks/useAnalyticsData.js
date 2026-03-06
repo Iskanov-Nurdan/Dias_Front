@@ -1,12 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  fetchSummary,
+  fetchAnalytics,
   fetchClientsBySport,
   fetchIncomeExpenseDaily,
   fetchTopTrainers,
   fetchWarehouseRestocks,
+  fetchWarehouseLowStock,
   fetchSalesByProduct,
   fetchSalesByCategory,
+  fetchSalesMargin,
+  fetchExpensesByCategory,
+  fetchNewClients,
+  fetchNewClientsForMonth,
+  fetchPeriodComparison,
   fetchLeadsAnalytics,
 } from '../api';
 
@@ -20,8 +26,14 @@ export function useAnalyticsData(queryState) {
   const [incomeExpenseDaily, setIncomeExpenseDaily] = useState(null);
   const [topTrainers, setTopTrainers] = useState(null);
   const [warehouseRestocks, setWarehouseRestocks] = useState(null);
+  const [warehouseLowStock, setWarehouseLowStock] = useState(null);
   const [salesByProduct, setSalesByProduct] = useState(null);
   const [salesByCategory, setSalesByCategory] = useState(null);
+  const [salesMargin, setSalesMargin] = useState(null);
+  const [expensesByCategory, setExpensesByCategory] = useState(null);
+  const [newClients, setNewClients] = useState(null);
+  const [newClientsByMonth, setNewClientsByMonth] = useState(null);
+  const [periodComparison, setPeriodComparison] = useState(null);
   const [leadsAnalytics, setLeadsAnalytics] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -33,27 +45,50 @@ export function useAnalyticsData(queryState) {
     const s = controllerRef.current.signal;
     const q = queryState;
     const hasMonth = q.month != null && q.month !== '';
+    const hasMonthNoDay = hasMonth && (q.day == null || q.day === '');
+    const hasYear = q.year != null && q.year !== '';
     setLoading(true);
     setError(null);
     try {
+      const monthPromises = hasYear ? Array.from({ length: 12 }, (_, i) =>
+        fetchNewClientsForMonth(q.year, i + 1, s).then((r) => ({ month: i + 1, count: (r?.data?.items ?? r?.items ?? []).length }))
+      ) : [];
       const promises = [
-        fetchSummary(q, s).then((r) => r?.data ?? r),
+        fetchAnalytics(q, s).then((r) => r?.data ?? r ?? {}),
         fetchClientsBySport(q, s).then((r) => r?.data ?? r),
         hasMonth ? fetchIncomeExpenseDaily(q, s).then((r) => r?.data ?? r) : Promise.resolve({ items: [] }),
         fetchTopTrainers(q, s).then((r) => r?.data ?? r),
         fetchWarehouseRestocks(q, s).then((r) => r?.data ?? r),
+        fetchWarehouseLowStock(s).then((r) => r?.data ?? r),
         fetchSalesByProduct(q, s).then((r) => r?.data ?? r),
         fetchSalesByCategory(q, s).then((r) => r?.data ?? r),
+        fetchSalesMargin(q, s).then((r) => r?.data ?? r),
+        fetchExpensesByCategory(q, s).then((r) => r?.data ?? r),
+        fetchNewClients(q, s).then((r) => r?.data ?? r),
+        hasMonthNoDay ? fetchPeriodComparison(q, s).then((r) => r?.data ?? r) : Promise.resolve(null),
         fetchLeadsAnalytics(q, s).then((r) => r?.data ?? r),
+        ...(monthPromises.length > 0 ? [Promise.all(monthPromises).then((arr) => arr.reduce((acc, { month, count }) => ({ ...acc, [month]: count }), {}))] : [Promise.resolve(null)]),
       ];
-      const [summaryRes, bySportRes, dailyRes, trainersRes, warehouseRes, salesProductRes, salesCategoryRes, leadsAnalyticsRes] = await Promise.all(promises);
-      setSummary(summaryRes ?? {});
+      const results = await Promise.all(promises);
+      const monthRes = monthPromises.length > 0 ? results.pop() : null;
+      const [
+        analyticsRes, bySportRes, dailyRes, trainersRes, warehouseRes, lowStockRes,
+        salesProductRes, salesCategoryRes, marginRes, expensesCatRes, newClientsRes,
+        periodCompRes, leadsAnalyticsRes,
+      ] = results;
+      setSummary(analyticsRes ?? {});
       setClientsBySport(bySportRes ?? {});
       setIncomeExpenseDaily(dailyRes ?? {});
       setTopTrainers(trainersRes ?? {});
       setWarehouseRestocks(warehouseRes ?? {});
+      setWarehouseLowStock(lowStockRes ?? {});
       setSalesByProduct(salesProductRes ?? {});
       setSalesByCategory(salesCategoryRes ?? {});
+      setSalesMargin(marginRes ?? {});
+      setExpensesByCategory(expensesCatRes ?? {});
+      setNewClients(newClientsRes ?? {});
+      setNewClientsByMonth(monthRes ?? null);
+      setPeriodComparison(periodCompRes ?? null);
       setLeadsAnalytics(leadsAnalyticsRes ?? {});
     } catch (err) {
       if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
@@ -74,8 +109,14 @@ export function useAnalyticsData(queryState) {
     incomeExpenseDaily,
     topTrainers,
     warehouseRestocks,
+    warehouseLowStock,
     salesByProduct,
     salesByCategory,
+    salesMargin,
+    expensesByCategory,
+    newClients,
+    newClientsByMonth,
+    periodComparison,
     leadsAnalytics,
     loading,
     error,

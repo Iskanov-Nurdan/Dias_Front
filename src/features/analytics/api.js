@@ -15,8 +15,32 @@ const get = (path, queryState, signal, extraParams) => {
   return apiClient.get(`/analytics/${path}/`, { params, ...withSignal({}, signal) }).then((res) => res.data);
 };
 
-/** GET /api/analytics/summary/ */
+/** GET /api/analytics/ — основной сводный endpoint (income, expense, profit, clientsCount, salesCount, ...) */
+export const fetchAnalytics = (queryState, signal) => {
+  const params = buildParams(queryState || {}, {});
+  return apiClient.get('/analytics/', { params, ...withSignal({}, signal) }).then((res) => res.data);
+};
+
+/** GET /api/analytics/summary/ — обратная совместимость */
 export const fetchSummary = (queryState, signal) => get('summary', queryState, signal);
+
+/** GET /api/analytics/period-comparison/ — MoM, YoY (только month, без day) */
+export const fetchPeriodComparison = (queryState, signal) => get('period-comparison', queryState, signal);
+
+/** GET /api/analytics/new-clients/ */
+export const fetchNewClients = (queryState, signal) => get('new-clients', queryState, signal, { limit: 10 });
+
+/** GET /api/analytics/new-clients/ — для подсчёта по месяцу (limit высокий для точного count) */
+export const fetchNewClientsForMonth = (year, month, signal) => get('new-clients', { year, month }, signal, { limit: 1000 });
+
+/** GET /api/analytics/warehouse-low-stock/ — без параметров периода */
+export const fetchWarehouseLowStock = (signal) => apiClient.get('/analytics/warehouse-low-stock/', { ...withSignal({}, signal) }).then((res) => res.data);
+
+/** GET /api/analytics/expenses-by-category/ */
+export const fetchExpensesByCategory = (queryState, signal) => get('expenses-by-category', queryState, signal);
+
+/** GET /api/analytics/sales-margin/ */
+export const fetchSalesMargin = (queryState, signal) => get('sales-margin', queryState, signal);
 
 /** GET /api/analytics/clients-by-sport/ */
 export const fetchClientsBySport = (queryState, signal) => get('clients-by-sport', queryState, signal);

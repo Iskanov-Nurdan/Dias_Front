@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { fetchIncomeDetail, fetchExpenseDetail, fetchProfitDetail } from './api';
-import { fetchSalary } from '../salary/api';
 import { ErrorState, Select, DonutChart, Sparkline, Skeleton, SkeletonTable, FilterBar } from '../../shared/ui';
-import { MONTHS, DONUT_COLORS, formatMoney } from '../../shared/constants/common';
+import { MONTHS, MONTHS_SHORT, DONUT_COLORS, formatMoney } from '../../shared/constants/common';
 import { useAnalyticsFilters } from './hooks/useAnalyticsFilters';
 import { useAnalyticsData } from './hooks/useAnalyticsData';
 import './AnalyticsPage.scss';
@@ -32,14 +31,22 @@ const AnalyticsPage = () => {
     incomeExpenseDaily,
     topTrainers,
     warehouseRestocks,
+    warehouseLowStock,
     salesByProduct,
     salesByCategory,
+    salesMargin,
+    expensesByCategory,
+    newClients,
+    newClientsByMonth,
+    periodComparison,
     leadsAnalytics,
     loading,
     error,
     loadAll,
   } = useAnalyticsData(queryState);
   const [salesTab, setSalesTab] = useState('product');
+  const [marginTab, setMarginTab] = useState('product');
+  const [chartHoveredDay, setChartHoveredDay] = useState(null);
   const [detailModal, setDetailModal] = useState(null);
   const [detailData, setDetailData] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -93,9 +100,20 @@ const AnalyticsPage = () => {
   const trainerItems = topTrainers?.items ?? [];
   const restocksPayload = warehouseRestocks ?? {};
   const restockItems = restocksPayload.items ?? [];
+  const lowStockItems = warehouseLowStock?.items ?? [];
+  const lowStockCount = warehouseLowStock?.count ?? 0;
   const productItems = salesByProduct?.items ?? [];
   const categoryItems = salesByCategory?.items ?? [];
   const salesTotalRevenue = salesTab === 'product' ? (salesByProduct?.totalRevenue ?? null) : (salesByCategory?.totalRevenue ?? null);
+  const newClientsItems = newClients?.items ?? [];
+  const expensesByCatItems = expensesByCategory?.items ?? [];
+  const expensesByCatTotal = expensesByCategory?.total ?? 0;
+  const marginByProduct = salesMargin?.byProduct ?? [];
+  const marginByCategory = salesMargin?.byCategory ?? [];
+  const pc = periodComparison ?? {};
+  const momChange = pc.momChange ?? {};
+  const yoyChange = pc.yoyChange ?? {};
+  const showPeriodComparison = queryState.month && !queryState.day;
 
   const donutSportsData = useMemo(() => sportItems.map((x, i) => ({
     label: x.sportName ?? '—',
@@ -138,6 +156,21 @@ const AnalyticsPage = () => {
   const sparklineIncome = hasDaily ? chartData.map((d) => d.income) : [];
   const sparklineExpense = hasDaily ? chartData.map((d) => d.expense) : [];
   const sparklineProfit = hasDaily ? chartData.map((d) => (d.income || 0) - (d.expense || 0)) : [];
+
+  const TrendBadge = ({ value, type }) => {
+    if (value == null || Number.isNaN(Number(value))) return null;
+    const v = Number(value);
+    if (v === 0) return <span className="analytics-page__trend analytics-page__trend--neutral">0%</span>;
+    const isGood = type === 'expense' ? v < 0 : v > 0;
+    const isBad = type === 'expense' ? v > 0 : v < 0;
+    const dir = v > 0 ? '↑' : '↓';
+    const cls = isGood ? 'analytics-page__trend--good' : isBad ? 'analytics-page__trend--bad' : 'analytics-page__trend--neutral';
+    return (
+      <span className={`analytics-page__trend ${cls}`}>
+        {dir}{Math.abs(v).toFixed(1)}%
+      </span>
+    );
+  };
 
   const IconTrendUp = () => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -224,6 +257,14 @@ const AnalyticsPage = () => {
                 <span className="analytics-page__card-icon" aria-hidden><IconTrendUp /></span>
                 <span className="analytics-page__card-label">Приход</span>
                 <span className="analytics-page__card-value">{formatMoney(income)}</span>
+                {showPeriodComparison && (
+                  <div className="analytics-page__card-trends">
+                    <span className="analytics-page__trend-label" title="К прошлому месяцу">к пр. мес.</span>
+                    <TrendBadge value={momChange.income} type="income" />
+                    <span className="analytics-page__trend-label" title="К тому же месяцу прошлого года">к пр. году</span>
+                    <TrendBadge value={yoyChange.income} type="income" />
+                  </div>
+                )}
                 {sparklineIncome.length >= 2 && (
                   <div className="analytics-page__card-chart">
                     <Sparkline values={sparklineIncome} width={140} height={48} color="#059669" />
@@ -235,6 +276,14 @@ const AnalyticsPage = () => {
                 <span className="analytics-page__card-icon" aria-hidden><IconTrendDown /></span>
                 <span className="analytics-page__card-label">Расход</span>
                 <span className="analytics-page__card-value">{formatMoney(expense)}</span>
+                {showPeriodComparison && (
+                  <div className="analytics-page__card-trends">
+                    <span className="analytics-page__trend-label" title="К прошлому месяцу">к пр. мес.</span>
+                    <TrendBadge value={momChange.expense} type="expense" />
+                    <span className="analytics-page__trend-label" title="К тому же месяцу прошлого года">к пр. году</span>
+                    <TrendBadge value={yoyChange.expense} type="expense" />
+                  </div>
+                )}
                 {sparklineExpense.length >= 2 && (
                   <div className="analytics-page__card-chart">
                     <Sparkline values={sparklineExpense} width={140} height={48} color="#c53030" />
@@ -246,6 +295,14 @@ const AnalyticsPage = () => {
                 <span className="analytics-page__card-icon" aria-hidden><IconPie /></span>
                 <span className="analytics-page__card-label">Прибыль</span>
                 <span className="analytics-page__card-value">{formatMoney(profit)}</span>
+                {showPeriodComparison && (
+                  <div className="analytics-page__card-trends">
+                    <span className="analytics-page__trend-label" title="К прошлому месяцу">к пр. мес.</span>
+                    <TrendBadge value={momChange.profit} type="income" />
+                    <span className="analytics-page__trend-label" title="К тому же месяцу прошлого года">к пр. году</span>
+                    <TrendBadge value={yoyChange.profit} type="income" />
+                  </div>
+                )}
                 {sparklineProfit.length >= 2 && (
                   <div className="analytics-page__card-chart">
                     <Sparkline values={sparklineProfit} width={140} height={48} color="#c53030" />
@@ -276,27 +333,191 @@ const AnalyticsPage = () => {
             </div>
           </section>
 
-          <div className="analytics-page__grid analytics-page__grid--two">
-            <section className="analytics-page__section analytics-page__section--card analytics-page__section--with-donut">
-              <h3 className="analytics-page__section-title">Клиенты по виду спорта</h3>
-              <div className="analytics-page__sports-wrap">
-                <div className="analytics-page__donut-wrap analytics-page__donut-wrap--sports">
-                  <DonutChart
-                    data={donutSportsData}
-                    size={180}
-                    strokeWidth={22}
-                    centerLabel={totalClientsSports > 0 ? String(totalClientsSports) : ''}
-                  />
-                </div>
-                <div className="analytics-page__list">
-                  {sportItems.map((x) => (
-                    <div key={x.sportId ?? x.sportName} className="analytics-page__list-item">
-                      {x.sportName ?? '—'}: {x.clientCount ?? 0} ({x.percent ?? 0}%)
+          <section className="analytics-page__section analytics-page__section--chart">
+            <h3 className="analytics-page__section-title">Динамика доходов и расходов по дням</h3>
+            <div className="analytics-page__chart-wrap">
+              {!queryState.month ? (
+                <p className="analytics-page__empty">Выберите месяц для графика по дням</p>
+              ) : chartData.length > 0 ? (
+                <>
+                  <div className="analytics-page__chart-legend">
+                    <span className="analytics-page__chart-legend-item analytics-page__chart-legend-item--income">Приход</span>
+                    <span className="analytics-page__chart-legend-item analytics-page__chart-legend-item--expense">Расход</span>
+                    <span className="analytics-page__chart-legend-hint">Наведите на день для точных сумм</span>
+                  </div>
+                  <div className="analytics-page__chart-container">
+                    <svg className="analytics-page__chart" viewBox="0 0 800 280" preserveAspectRatio="xMinYMid meet">
+                      <defs>
+                        <linearGradient id="chart-income-fill" x1="0" y1="1" x2="0" y2="0">
+                          <stop offset="0%" stopColor="#059669" stopOpacity="0.4" />
+                          <stop offset="100%" stopColor="#059669" stopOpacity="0.06" />
+                        </linearGradient>
+                        <linearGradient id="chart-expense-fill" x1="0" y1="1" x2="0" y2="0">
+                          <stop offset="0%" stopColor="#DC2626" stopOpacity="0.4" />
+                          <stop offset="100%" stopColor="#DC2626" stopOpacity="0.06" />
+                        </linearGradient>
+                      </defs>
+                      {[0, 1, 2, 3, 4, 5].map((i) => (
+                        <line key={i} className="analytics-page__chart-grid" x1={60} y1={40 + i * 40} x2={760} y2={40 + i * 40} />
+                      ))}
+                      {Array.from({ length: daysInMonth + 1 }, (_, i) => i).map((i) => (
+                        <line key={i} className="analytics-page__chart-grid" x1={60 + (700 * i) / daysInMonth} y1={40} x2={60 + (700 * i) / daysInMonth} y2={240} />
+                      ))}
+                      {[0, 1, 2, 3, 4, 5].map((i) => {
+                        const val = Math.round((yMax * i) / 5);
+                        const y = 240 - (val / yMax) * 200;
+                        return (
+                          <text key={i} className="analytics-page__chart-axis" x={52} y={y + 4} textAnchor="end">{val.toLocaleString('ru-RU')}</text>
+                        );
+                      })}
+                      {chartData.length >= 1 && (() => {
+                        const w = 700;
+                        const h = 200;
+                        const scaleX = (d) => 60 + (w * (d - 1)) / (daysInMonth - 1 || 1);
+                        const scaleYi = (v) => 240 - (v / yMax) * h;
+                        const scaleYe = (v) => 240 - (v / yMax) * h;
+                        const incomePath = chartData.map((p, i) => `${i === 0 ? 'M' : 'L'} ${scaleX(p.day)} ${scaleYi(p.income)}`).join(' ') + ` L ${scaleX(chartData[chartData.length - 1].day)} 240 L 60 240 Z`;
+                        const expensePath = chartData.map((p, i) => `${i === 0 ? 'M' : 'L'} ${scaleX(p.day)} ${scaleYe(p.expense)}`).join(' ') + ` L ${scaleX(chartData[chartData.length - 1].day)} 240 L 60 240 Z`;
+                        return (
+                          <g key="areas">
+                            <path d={incomePath} fill="url(#chart-income-fill)" stroke="#059669" strokeWidth="2" strokeLinejoin="round" />
+                            <path d={expensePath} fill="url(#chart-expense-fill)" stroke="#DC2626" strokeWidth="2" strokeLinejoin="round" />
+                          </g>
+                        );
+                      })()}
+                      {[1, Math.ceil(daysInMonth / 4), Math.ceil(daysInMonth / 2), Math.ceil((3 * daysInMonth) / 4), daysInMonth].filter((v, i, a) => a.indexOf(v) === i).map((d) => (
+                        <text key={d} className="analytics-page__chart-axis analytics-page__chart-axis--x" x={60 + (700 * (d - 1)) / (daysInMonth - 1 || 1)} y={258} textAnchor="middle">{d}</text>
+                      ))}
+                      {chartData.map((p) => {
+                        const w = 700;
+                        const scaleX = (d) => 60 + (w * (d - 1)) / (daysInMonth - 1 || 1);
+                        const x = scaleX(p.day);
+                        const dayWidth = Math.max(4, w / (daysInMonth - 1 || 1));
+                        return (
+                          <rect
+                            key={p.day}
+                            className="analytics-page__chart-hover-zone"
+                            x={x - dayWidth / 2}
+                            y={40}
+                            width={dayWidth}
+                            height={200}
+                            onMouseEnter={() => setChartHoveredDay(p)}
+                            onMouseLeave={() => setChartHoveredDay(null)}
+                          />
+                        );
+                      })}
+                    </svg>
+                    {chartHoveredDay && (
+                      <div className="analytics-page__chart-tooltip">
+                        <div className="analytics-page__chart-tooltip-title">День {chartHoveredDay.day}</div>
+                        <div className="analytics-page__chart-tooltip-row analytics-page__chart-tooltip-row--income">
+                          Приход: {formatMoney(chartHoveredDay.income)}
+                        </div>
+                        <div className="analytics-page__chart-tooltip-row analytics-page__chart-tooltip-row--expense">
+                          Расход: {formatMoney(chartHoveredDay.expense)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <p className="analytics-page__empty">Нет данных за период</p>
+              )}
+            </div>
+          </section>
+
+          {queryState.year && newClientsByMonth && (
+            <section className="analytics-page__section analytics-page__section--card analytics-page__section--vbar-chart">
+              <h3 className="analytics-page__section-title">Новые клиенты по месяцам</h3>
+              <p className="analytics-page__section-hint">За {queryState.year} год</p>
+              <div className="analytics-page__vbar-chart">
+                {(() => {
+                  const monthsData = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => ({ month: m, count: newClientsByMonth[m] ?? 0 }));
+                  const maxCount = Math.max(1, ...monthsData.map((d) => d.count));
+                  return (
+                    <div className="analytics-page__vbar-chart-inner">
+                      {monthsData.map((d) => (
+                        <div key={d.month} className="analytics-page__vbar-col">
+                          <div className="analytics-page__vbar-bar-wrap">
+                            <div
+                              className="analytics-page__vbar-bar"
+                              style={{ height: `${(d.count / maxCount) * 100}%` }}
+                            />
+                          </div>
+                          <span className="analytics-page__vbar-label">{MONTHS_SHORT[d.month]}</span>
+                          <span className="analytics-page__vbar-value">{d.count}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                  {sportItems.length === 0 && <p className="analytics-page__empty">Нет данных</p>}
-                </div>
+                  );
+                })()}
               </div>
+            </section>
+          )}
+
+          <div className="analytics-page__grid analytics-page__grid--two">
+            <section className="analytics-page__section analytics-page__section--card analytics-page__section--bar-chart">
+              <h3 className="analytics-page__section-title">Клиенты по виду спорта</h3>
+              <div className="analytics-page__hbar-chart">
+                {sportItems.length > 0 ? (() => {
+                  const maxCount = Math.max(1, ...sportItems.map((x) => x.clientCount ?? 0));
+                  return (
+                    <div className="analytics-page__hbar-chart-inner">
+                      {sportItems.map((x, i) => (
+                        <div key={x.sportId ?? x.sportName ?? i} className="analytics-page__hbar-row">
+                          <span className="analytics-page__hbar-label">{x.sportName ?? '—'}</span>
+                          <div className="analytics-page__hbar-track">
+                            <div
+                              className="analytics-page__hbar-bar"
+                              style={{
+                                width: `${((x.clientCount ?? 0) / maxCount) * 100}%`,
+                                backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length],
+                              }}
+                            />
+                          </div>
+                          <span className="analytics-page__hbar-value">{(x.clientCount ?? 0).toLocaleString('ru-RU')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })() : (
+                  <p className="analytics-page__empty">Нет данных</p>
+                )}
+              </div>
+            </section>
+
+            <section className="analytics-page__section analytics-page__section--card analytics-page__section--with-donut">
+              <h3 className="analytics-page__section-title">Расходы по категориям</h3>
+              <p className="analytics-page__section-hint">За выбранный период</p>
+              {expensesByCatTotal > 0 ? (
+                <div className="analytics-page__expenses-wrap">
+                  <div className="analytics-page__donut-wrap analytics-page__donut-wrap--expenses">
+                    <DonutChart
+                      data={expensesByCatItems.map((x, i) => ({
+                        label: x.categoryName ?? '—',
+                        value: x.amount ?? 0,
+                        color: DONUT_COLORS[i % DONUT_COLORS.length],
+                      })).filter((d) => d.value > 0)}
+                      size={180}
+                      strokeWidth={22}
+                      centerLabel={formatMoney(expensesByCatTotal)}
+                    />
+                  </div>
+                  <ul className="analytics-page__expenses-legend">
+                    {expensesByCatItems.map((x, i) => {
+                      const pct = expensesByCatTotal > 0 ? ((x.amount ?? 0) / expensesByCatTotal * 100).toFixed(1) : 0;
+                      return (
+                        <li key={x.categoryId ?? x.categoryName ?? i}>
+                          <span className="analytics-page__expenses-legend-dot" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} />
+                          {x.categoryName ?? '—'}: {formatMoney(x.amount)} ({pct}%)
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ) : (
+                <p className="analytics-page__empty">Нет расходов за период</p>
+              )}
             </section>
           </div>
 
@@ -458,138 +679,195 @@ const AnalyticsPage = () => {
             </div>
           </section>
 
-          <section className="analytics-page__section analytics-page__section--chart">
-            <h3 className="analytics-page__section-title">Динамика доходов и расходов по дням</h3>
-            <div className="analytics-page__chart-wrap">
-              {!queryState.month ? (
-                <p className="analytics-page__empty">Выберите месяц для графика по дням</p>
-              ) : chartData.length > 0 ? (
-                <>
-                  <div className="analytics-page__chart-legend">
-                    <span className="analytics-page__chart-legend-item analytics-page__chart-legend-item--income">Приход</span>
-                    <span className="analytics-page__chart-legend-item analytics-page__chart-legend-item--expense">Расход</span>
-                  </div>
-                  <svg className="analytics-page__chart" viewBox="0 0 800 260" preserveAspectRatio="xMidYMid meet">
-                    <defs>
-                      <linearGradient id="chart-income-fill" x1="0" y1="1" x2="0" y2="0">
-                        <stop offset="0%" stopColor="#ea580c" stopOpacity="0.35" />
-                        <stop offset="100%" stopColor="#ea580c" stopOpacity="0.05" />
-                      </linearGradient>
-                      <linearGradient id="chart-expense-fill" x1="0" y1="1" x2="0" y2="0">
-                        <stop offset="0%" stopColor="#c53030" stopOpacity="0.35" />
-                        <stop offset="100%" stopColor="#c53030" stopOpacity="0.05" />
-                      </linearGradient>
-                    </defs>
-                    {[0, 1, 2, 3, 4, 5].map((i) => (
-                      <line key={i} className="analytics-page__chart-grid" x1={80} y1={40 + i * 40} x2={780} y2={40 + i * 40} />
-                    ))}
-                    {Array.from({ length: daysInMonth + 1 }, (_, i) => i).map((i) => (
-                      <line key={i} className="analytics-page__chart-grid" x1={80 + (700 * i) / daysInMonth} y1={40} x2={80 + (700 * i) / daysInMonth} y2={240} />
-                    ))}
-                    {[0, 1, 2, 3, 4, 5].map((i) => {
-                      const val = Math.round((yMax * i) / 5);
-                      const y = 240 - (val / yMax) * 200;
-                      return (
-                        <text key={i} className="analytics-page__chart-axis" x={72} y={y + 4} textAnchor="end">{val.toLocaleString('ru-RU')}</text>
-                      );
-                    })}
-                    {chartData.length >= 1 && (() => {
-                      const w = 700;
-                      const h = 200;
-                      const scaleX = (d) => 80 + (w * (d - 1)) / (daysInMonth - 1 || 1);
-                      const scaleYi = (v) => 240 - (v / yMax) * h;
-                      const scaleYe = (v) => 240 - (v / yMax) * h;
-                      const incomePath = chartData.map((p, i) => `${i === 0 ? 'M' : 'L'} ${scaleX(p.day)} ${scaleYi(p.income)}`).join(' ') + ` L ${scaleX(chartData[chartData.length - 1].day)} 240 L 80 240 Z`;
-                      const expensePath = chartData.map((p, i) => `${i === 0 ? 'M' : 'L'} ${scaleX(p.day)} ${scaleYe(p.expense)}`).join(' ') + ` L ${scaleX(chartData[chartData.length - 1].day)} 240 L 80 240 Z`;
-                      return (
-                        <g key="areas">
-                          <path d={incomePath} fill="url(#chart-income-fill)" stroke="#ea580c" strokeWidth="1.5" strokeLinejoin="round" />
-                          <path d={expensePath} fill="url(#chart-expense-fill)" stroke="#c53030" strokeWidth="1.5" strokeLinejoin="round" />
-                        </g>
-                      );
-                    })()}
-                    {[1, Math.ceil(daysInMonth / 4), Math.ceil(daysInMonth / 2), Math.ceil((3 * daysInMonth) / 4), daysInMonth].filter((v, i, a) => a.indexOf(v) === i).map((d) => (
-                      <text key={d} className="analytics-page__chart-axis analytics-page__chart-axis--x" x={80 + (700 * (d - 1)) / (daysInMonth - 1 || 1)} y={254} textAnchor="middle">{d}</text>
-                    ))}
-                  </svg>
-                </>
-              ) : (
-                <p className="analytics-page__empty">Нет данных за период</p>
-              )}
-            </div>
-          </section>
-
           <div className="analytics-page__grid analytics-page__grid--two">
             <section className="analytics-page__section analytics-page__section--card">
               <h3 className="analytics-page__section-title">Топ тренеров</h3>
-            <ol className="analytics-page__top-list">
-              {trainerItems.map((x, i) => (
-                <li key={x.trainerId ?? i}>{x.trainerName ?? '—'}: {x.clientCount ?? 0} учеников</li>
-              ))}
-              {trainerItems.length === 0 && <li className="analytics-page__empty">Нет данных</li>}
-            </ol>
+              {topTrainers?.totalIncome != null && (
+                <p className="analytics-page__section-summary">
+                  Общий доход тренеров: <strong>{formatMoney(topTrainers.totalIncome)}</strong>
+                </p>
+              )}
+              <div className="analytics-page__table-wrap">
+                <table className="analytics-page__table">
+                  <thead>
+                    <tr>
+                      <th>Тренер</th>
+                      <th>Клиентов</th>
+                      <th>Доход</th>
+                      <th>Доля %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trainerItems.map((x, i) => (
+                      <tr key={x.trainerId ?? i}>
+                        <td>{x.trainerName ?? '—'}</td>
+                        <td>{x.clientCount ?? 0}</td>
+                        <td>{formatMoney(x.income)}</td>
+                        <td>{x.incomeSharePercent != null ? `${Number(x.incomeSharePercent).toFixed(1)}%` : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {trainerItems.length === 0 && <p className="analytics-page__empty">Нет данных</p>}
+              </div>
             </section>
 
             <section className="analytics-page__section analytics-page__section--card">
-              <h3 className="analytics-page__section-title">Пополнения склада</h3>
-            <p className="analytics-page__section-summary">
-              Всего пополнений: <strong>{restocksPayload.restockCount ?? 0}</strong> на сумму <strong>{formatMoney(restocksPayload.totalRestockSum)}</strong>.
-              {restocksPayload.totalUnitsAdded != null && ` ${restocksPayload.totalUnitsAdded} единиц добавлено.`}
-              {restocksPayload.currentWarehouseValue != null && ` Сумма склада сейчас: ${formatMoney(restocksPayload.currentWarehouseValue)}`}
-            </p>
-            <div className="analytics-page__table-wrap">
-              <table className="analytics-page__table">
-                <thead><tr><th>Дата</th><th>Товар</th><th>Кол-во</th><th>Сумма</th><th>Сотрудник</th></tr></thead>
-                <tbody>
-                  {restockItems.map((r, i) => (
-                    <tr key={r.id ?? `${r.date}-${r.productId}-${i}`}>
-                      <td>{r.date ?? '—'}</td>
-                      <td>{r.productName ?? '—'}</td>
-                      <td>{r.quantity ?? r.qty ?? 0}</td>
-                      <td>{formatMoney(r.amount)}</td>
-                      <td>{r.employeeName ?? '—'}</td>
+              <h3 className="analytics-page__section-title">Новые клиенты за период</h3>
+              <p className="analytics-page__section-hint">Клиенты, начавшие заниматься в выбранном периоде</p>
+              <div className="analytics-page__table-wrap">
+                <table className="analytics-page__table">
+                  <thead>
+                    <tr>
+                      <th>Клиент</th>
+                      <th>Дата начала</th>
+                      <th>Месяцев с нами</th>
+                      <th>Сумма</th>
+                      <th>Оплачено</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              {restockItems.length === 0 && <p className="analytics-page__empty">Нет пополнений за период</p>}
-            </div>
+                  </thead>
+                  <tbody>
+                    {newClientsItems.map((x) => (
+                      <tr key={x.clientId ?? x.clientName}>
+                        <td>{x.clientName ?? '—'}</td>
+                        <td>{x.dateStart ?? '—'}</td>
+                        <td>{x.monthsWithUs ?? 0}</td>
+                        <td>{formatMoney(x.amount)}</td>
+                        <td>
+                          <span className={`analytics-page__badge analytics-page__badge--${x.paid ? 'paid' : 'unpaid'}`}>
+                            {x.paid ? 'Да' : 'Нет'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {newClientsItems.length === 0 && <p className="analytics-page__empty">Нет новых клиентов за период</p>}
+              </div>
+            </section>
+
+            <section className="analytics-page__section analytics-page__section--card analytics-page__section--span-full">
+              <h3 className="analytics-page__section-title">Пополнения склада</h3>
+              <p className="analytics-page__section-summary">
+                Всего пополнений: <strong>{restocksPayload.restockCount ?? 0}</strong> на сумму <strong>{formatMoney(restocksPayload.totalRestockSum)}</strong>.
+                {restocksPayload.totalUnitsAdded != null && ` ${restocksPayload.totalUnitsAdded} единиц добавлено.`}
+                {restocksPayload.currentWarehouseValue != null && ` Сумма склада сейчас: ${formatMoney(restocksPayload.currentWarehouseValue)}`}
+              </p>
+              <div className="analytics-page__table-wrap">
+                <table className="analytics-page__table">
+                  <thead><tr><th>Дата</th><th>Товар</th><th>Кол-во</th><th>Сумма</th><th>Сотрудник</th></tr></thead>
+                  <tbody>
+                    {restockItems.map((r, i) => (
+                      <tr key={r.id ?? `${r.date}-${r.productId}-${i}`}>
+                        <td>{r.date ?? '—'}</td>
+                        <td>{r.productName ?? '—'}</td>
+                        <td>{r.quantity ?? r.qty ?? 0}</td>
+                        <td>{formatMoney(r.amount)}</td>
+                        <td>{r.employeeName ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {restockItems.length === 0 && <p className="analytics-page__empty">Нет пополнений за период</p>}
+              </div>
+
+              <h4 className="analytics-page__subsection-title">Товары с низким остатком</h4>
+              {lowStockCount === 0 ? (
+                <p className="analytics-page__low-stock-ok">Всё в порядке</p>
+              ) : (
+                <div className="analytics-page__low-stock-list">
+                  {lowStockItems.map((x) => {
+                    const ratio = x.minQty > 0 ? (x.qty ?? 0) / x.minQty : 0;
+                    const isCritical = ratio < 0.5;
+                    return (
+                      <div key={x.productId ?? x.productName} className={`analytics-page__low-stock-item ${isCritical ? 'analytics-page__low-stock-item--critical' : 'analytics-page__low-stock-item--warning'}`}>
+                        <span className="analytics-page__low-stock-name">{x.productName ?? '—'}</span>
+                        <span className="analytics-page__low-stock-cat">{x.categoryName ?? '—'}</span>
+                        <span className="analytics-page__low-stock-qty">Остаток: {x.qty ?? 0} / мин. {x.minQty ?? 0}</span>
+                        <span className="analytics-page__low-stock-deficit">Дефицит: {x.deficit ?? 0}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </section>
           </div>
 
-          <section className="analytics-page__section analytics-page__section--table">
-            <h3 className="analytics-page__section-title">Продажи за период</h3>
-            <div className="analytics-page__tabs">
-              <button type="button" className={`analytics-page__tab ${salesTab === 'product' ? 'analytics-page__tab--active' : ''}`} onClick={() => setSalesTab('product')}>Товары</button>
-              <button type="button" className={`analytics-page__tab ${salesTab === 'category' ? 'analytics-page__tab--active' : ''}`} onClick={() => setSalesTab('category')}>Категории</button>
-            </div>
-            <p className="analytics-page__section-summary">
-              Всего продаж на сумму: <strong>{formatMoney(salesTotalRevenue)}</strong>
-            </p>
-            <div className="analytics-page__table-wrap">
-              <table className="analytics-page__table">
-                <thead>
-                  <tr>
-                    <th>{salesTab === 'product' ? 'Товар' : 'Категория'}</th>
-                    <th>Кол-во</th>
-                    <th>Выручка</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(salesTab === 'product' ? productItems : categoryItems).map((x) => (
-                    <tr key={x.productId ?? x.categoryId ?? x.productName ?? x.categoryName}>
-                      <td>{salesTab === 'product' ? (x.productName ?? '—') : (x.categoryName ?? '—')}</td>
-                      <td>{x.quantitySold ?? 0}</td>
-                      <td>{formatMoney(x.revenue)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {(salesTab === 'product' ? productItems : categoryItems).length === 0 && (
-                <p className="analytics-page__empty">Нет продаж за период</p>
+          <div className="analytics-page__grid analytics-page__grid--two">
+            <section className="analytics-page__section analytics-page__section--table">
+              <h3 className="analytics-page__section-title">Маржинальность продаж</h3>
+              <div className="analytics-page__tabs">
+                <button type="button" className={`analytics-page__tab ${marginTab === 'product' ? 'analytics-page__tab--active' : ''}`} onClick={() => setMarginTab('product')}>По товарам</button>
+                <button type="button" className={`analytics-page__tab ${marginTab === 'category' ? 'analytics-page__tab--active' : ''}`} onClick={() => setMarginTab('category')}>По категориям</button>
+              </div>
+              {(salesMargin?.totalRevenue != null || salesMargin?.totalMargin != null) && (
+                <p className="analytics-page__section-summary">
+                  Выручка: <strong>{formatMoney(salesMargin?.totalRevenue)}</strong> · Себестоимость: <strong>{formatMoney(salesMargin?.totalCost)}</strong> · Маржа: <strong>{formatMoney(salesMargin?.totalMargin)}</strong> ({salesMargin?.totalMarginPercent != null ? `${Number(salesMargin.totalMarginPercent).toFixed(1)}%` : '—'})
+                </p>
               )}
-            </div>
-          </section>
+              <div className="analytics-page__table-wrap">
+                <table className="analytics-page__table">
+                  <thead>
+                    <tr>
+                      <th>{marginTab === 'product' ? 'Товар' : 'Категория'}</th>
+                      <th>Выручка</th>
+                      <th>Себестоимость</th>
+                      <th>Маржа (₽)</th>
+                      <th>Маржа %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(marginTab === 'product' ? marginByProduct : marginByCategory).map((x) => (
+                      <tr key={x.productId ?? x.categoryId ?? x.productName ?? x.categoryName}>
+                        <td>{marginTab === 'product' ? (x.productName ?? '—') : (x.categoryName ?? '—')}</td>
+                        <td>{formatMoney(x.revenue)}</td>
+                        <td>{formatMoney(x.cost)}</td>
+                        <td>{formatMoney(x.margin)}</td>
+                        <td>{x.marginPercent != null ? `${Number(x.marginPercent).toFixed(1)}%` : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {(marginTab === 'product' ? marginByProduct : marginByCategory).length === 0 && (
+                  <p className="analytics-page__empty">Нет данных за период</p>
+                )}
+              </div>
+            </section>
+
+            <section className="analytics-page__section analytics-page__section--table">
+              <h3 className="analytics-page__section-title">Продажи за период</h3>
+              <div className="analytics-page__tabs">
+                <button type="button" className={`analytics-page__tab ${salesTab === 'product' ? 'analytics-page__tab--active' : ''}`} onClick={() => setSalesTab('product')}>Товары</button>
+                <button type="button" className={`analytics-page__tab ${salesTab === 'category' ? 'analytics-page__tab--active' : ''}`} onClick={() => setSalesTab('category')}>Категории</button>
+              </div>
+              <p className="analytics-page__section-summary">
+                Всего продаж на сумму: <strong>{formatMoney(salesTotalRevenue)}</strong>
+              </p>
+              <div className="analytics-page__table-wrap">
+                <table className="analytics-page__table">
+                  <thead>
+                    <tr>
+                      <th>{salesTab === 'product' ? 'Товар' : 'Категория'}</th>
+                      <th>Кол-во</th>
+                      <th>Выручка</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(salesTab === 'product' ? productItems : categoryItems).map((x) => (
+                      <tr key={x.productId ?? x.categoryId ?? x.productName ?? x.categoryName}>
+                        <td>{salesTab === 'product' ? (x.productName ?? '—') : (x.categoryName ?? '—')}</td>
+                        <td>{x.quantitySold ?? 0}</td>
+                        <td>{formatMoney(x.revenue)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {(salesTab === 'product' ? productItems : categoryItems).length === 0 && (
+                  <p className="analytics-page__empty">Нет продаж за период</p>
+                )}
+              </div>
+            </section>
+          </div>
         </>
       )}
 

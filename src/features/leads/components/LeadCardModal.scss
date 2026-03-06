@@ -1,11 +1,7 @@
+@use '../../../shared/styles/mixins';
+
 .lead-card-modal__backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+  @include mixins.modal-backdrop;
   padding: 16px;
 }
 

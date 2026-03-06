@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 import { ConfirmModal } from '../../../shared/ui';
+import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './RestockModal.scss';
 
 const RestockModal = ({ product, onSave, onClose, error, saving }) => {
   const [qty, setQty] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
+
+  useModalEffect(!!product, onClose);
 
   useEffect(() => {
     setQty('');
@@ -27,9 +31,12 @@ const RestockModal = ({ product, onSave, onClose, error, saving }) => {
   if (!product) return null;
 
   const content = (
-    <div className="warehouse-form-modal__backdrop" onClick={onClose}>
+    <div className="warehouse-form-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="restock-modal-title">
       <div className="warehouse-form-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="warehouse-form-modal__title">Пополнить: {product.name}</h2>
+        <div className="warehouse-form-modal__header">
+          <h2 id="restock-modal-title" className="warehouse-form-modal__title">Пополнить: {product.name}</h2>
+          <button type="button" className="warehouse-form-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
+        </div>
         {error && <p className="warehouse-form-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="warehouse-form-modal__form">
           <label className="warehouse-form-modal__label">

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { PAGE_IDS, PAGE_LABELS } from '../../../shared/constants/pages';
+import { X } from 'lucide-react';
+import { PAGE_IDS, PAGE_LABELS, PAGE_ICONS } from '../../../shared/constants/pages';
+import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './AccessModal.scss';
 
 /** Нормализует ответ бэка (data.access, data.data.access, массив id) в объект { pageId: boolean } */
@@ -16,6 +18,8 @@ const normalizeAccess = (raw) => {
 
 const AccessModal = ({ employee, currentAccess, onSave, onClose, error, saving }) => {
   const [access, setAccess] = useState({});
+
+  useModalEffect(!!employee, onClose);
 
   useEffect(() => {
     setAccess(normalizeAccess(currentAccess));
@@ -36,22 +40,29 @@ const AccessModal = ({ employee, currentAccess, onSave, onClose, error, saving }
   };
 
   const content = (
-    <div className="access-modal__backdrop" onClick={onClose}>
+    <div className="access-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="access-modal-title">
       <div className="access-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="access-modal__title">Доступы: {employee?.fio || employee?.login || ''}</h2>
+        <div className="access-modal__header">
+          <h2 id="access-modal-title" className="access-modal__title">Доступы: {employee?.fio || employee?.login || ''}</h2>
+          <button type="button" className="access-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
+        </div>
         {error && <p className="access-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="access-modal__form">
           <div className="access-modal__list">
-            {PAGE_IDS.map((pageId) => (
-              <label key={pageId} className="access-modal__item">
-                <input
-                  type="checkbox"
-                  checked={access[pageId] === true}
-                  onChange={() => toggle(pageId)}
-                />
-                <span>{PAGE_LABELS[pageId] || pageId}</span>
-              </label>
-            ))}
+            {PAGE_IDS.map((pageId) => {
+              const Icon = PAGE_ICONS[pageId];
+              return (
+                <label key={pageId} className="access-modal__item">
+                  <input
+                    type="checkbox"
+                    checked={access[pageId] === true}
+                    onChange={() => toggle(pageId)}
+                  />
+                  {Icon && <Icon className="access-modal__item-icon" size={18} />}
+                  <span>{PAGE_LABELS[pageId] || pageId}</span>
+                </label>
+              );
+            })}
           </div>
           <div className="access-modal__actions">
             <button type="button" className="access-modal__btn access-modal__btn--cancel" onClick={onClose} disabled={saving}>

@@ -4,6 +4,34 @@
   justify-content: center;
 }
 
+@mixin modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.48);
+  @include flex-center;
+  z-index: var(--z-modal);
+}
+
+@mixin modal-close-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 18px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+
+  &:hover {
+    background: var(--color-surface-secondary);
+    color: var(--color-text);
+  }
+}
+
 @mixin text-ellipsis {
   overflow: hidden;
   text-overflow: ellipsis;

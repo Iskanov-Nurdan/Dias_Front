@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 import { Select } from '../../../shared/ui';
+import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './SaleFormModal.scss';
 
 const SaleFormModal = ({ products = [], onSave, onClose, error, saving }) => {
@@ -9,6 +11,8 @@ const SaleFormModal = ({ products = [], onSave, onClose, error, saving }) => {
   const [pricePerUnit, setPricePerUnit] = useState('');
   const [discount, setDiscount] = useState('');
   const [date, setDate] = useState('');
+
+  useModalEffect(true, onClose);
 
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -45,9 +49,12 @@ const SaleFormModal = ({ products = [], onSave, onClose, error, saving }) => {
   };
 
   const content = (
-    <div className="sale-form-modal__backdrop" onClick={onClose}>
+    <div className="sale-form-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="sale-form-modal-title">
       <div className="sale-form-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="sale-form-modal__title">Новая продажа</h2>
+        <div className="sale-form-modal__header">
+          <h2 id="sale-form-modal-title" className="sale-form-modal__title">Новая продажа</h2>
+          <button type="button" className="sale-form-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
+        </div>
         {error && <p className="sale-form-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="sale-form-modal__form">
           <label className="sale-form-modal__label">

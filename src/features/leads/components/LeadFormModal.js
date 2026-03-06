@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 import { Select } from '../../../shared/ui';
+import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './LeadFormModal.scss';
 
 const CHANNEL_OPTIONS = [
@@ -17,6 +19,8 @@ const LeadFormModal = ({ lead, onSave, onClose, error, saving }) => {
   const [channel, setChannel] = useState('');
 
   const isEdit = !!lead?.id;
+
+  useModalEffect(true, onClose);
 
   useEffect(() => {
     if (lead) {
@@ -36,11 +40,11 @@ const LeadFormModal = ({ lead, onSave, onClose, error, saving }) => {
   };
 
   const content = (
-    <div className="lead-form-modal__backdrop" onClick={onClose}>
+    <div className="lead-form-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="lead-form-modal-title">
       <div className="lead-form-modal" onClick={(e) => e.stopPropagation()}>
         <div className="lead-form-modal__head">
-          <h2 className="lead-form-modal__title">{isEdit ? 'Редактировать заявку' : 'Новая заявка'}</h2>
-          <button type="button" className="lead-form-modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+          <h2 id="lead-form-modal-title" className="lead-form-modal__title">{isEdit ? 'Редактировать заявку' : 'Новая заявка'}</h2>
+          <button type="button" className="lead-form-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
         </div>
         {error && <p className="lead-form-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="lead-form-modal__form">

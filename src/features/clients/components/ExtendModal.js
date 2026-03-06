@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 import { ConfirmModal } from '../../../shared/ui';
+import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './ExtendModal.scss';
 
 const ExtendModal = ({ client, onSave, onClose, error, saving }) => {
   const [months, setMonths] = useState(1);
+
+  useModalEffect(true, onClose);
   const [showConfirm, setShowConfirm] = useState(false);
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -15,9 +19,12 @@ const ExtendModal = ({ client, onSave, onClose, error, saving }) => {
     onSave({ months });
   };
   const content = (
-    <div className="extend-modal__backdrop" onClick={onClose}>
+    <div className="extend-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="extend-modal-title">
       <div className="extend-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="extend-modal__title">Продлить подписку</h2>
+        <div className="extend-modal__header">
+          <h2 id="extend-modal-title" className="extend-modal__title">Продлить подписку</h2>
+          <button type="button" className="extend-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
+        </div>
         {client && <p className="extend-modal__client">{client.fio}</p>}
         {error && <p className="extend-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="extend-modal__form">

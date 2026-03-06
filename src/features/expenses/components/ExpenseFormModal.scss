@@ -1,6 +1,10 @@
-.expense-form-modal__backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.expense-form-modal { background: var(--color-bg-card); border-radius: 12px; padding: 24px; max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15); }
-.expense-form-modal__title { margin: 0 0 20px; font-size: 18px; }
+@use '../../../shared/styles/mixins';
+
+.expense-form-modal__backdrop { @include mixins.modal-backdrop; }
+.expense-form-modal { background: var(--color-bg-card); border-radius: var(--radius-xl); padding: var(--space-6); max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-xl); }
+.expense-form-modal__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-5); }
+.expense-form-modal__title { margin: 0; font-size: var(--font-section-title); font-weight: var(--font-weight-section-title); }
+.expense-form-modal__close { @include mixins.modal-close-btn; flex-shrink: 0; }
 .expense-form-modal__error { margin: 0 0 16px; padding: 10px 12px; background: rgba(220, 38, 38, 0.1); border: 1px solid #dc2626; border-radius: 8px; color: #b91c1c; font-size: 14px; }
 .expense-form-modal__form { display: flex; flex-direction: column; gap: 12px; }
 .expense-form-modal__label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 import { Select } from '../../../shared/ui';
+import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './ExpenseFormModal.scss';
 
 const ExpenseFormModal = ({ expense, categories = [], onSave, onClose, error, saving }) => {
@@ -9,6 +11,8 @@ const ExpenseFormModal = ({ expense, categories = [], onSave, onClose, error, sa
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState('');
   const [comment, setComment] = useState('');
+
+  useModalEffect(true, onClose);
 
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -39,9 +43,12 @@ const ExpenseFormModal = ({ expense, categories = [], onSave, onClose, error, sa
   };
 
   const content = (
-    <div className="expense-form-modal__backdrop" onClick={onClose}>
+    <div className="expense-form-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="expense-form-modal-title">
       <div className="expense-form-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="expense-form-modal__title">{expense?.id ? 'Редактировать расход' : 'Добавить расход'}</h2>
+        <div className="expense-form-modal__header">
+          <h2 id="expense-form-modal-title" className="expense-form-modal__title">{expense?.id ? 'Редактировать расход' : 'Добавить расход'}</h2>
+          <button type="button" className="expense-form-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
+        </div>
         {error && <p className="expense-form-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="expense-form-modal__form">
           <label className="expense-form-modal__label">

@@ -1,11 +1,7 @@
 @use '../styles/mixins';
 
 .confirm-modal__backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.48);
-  @include mixins.flex-center;
-  z-index: var(--z-modal);
+  @include mixins.modal-backdrop;
 }
 
 .confirm-modal {

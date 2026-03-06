@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 import { Select } from '../../../shared/ui';
+import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './ProductFormModal.scss';
 
 const ProductFormModal = ({ product, categories = [], onSave, onClose, error, saving }) => {
@@ -10,6 +12,8 @@ const ProductFormModal = ({ product, categories = [], onSave, onClose, error, sa
   const [sellingPrice, setSellingPrice] = useState('');
   const [minQty, setMinQty] = useState('');
   const [qty, setQty] = useState('');
+
+  useModalEffect(true, onClose);
 
   useEffect(() => {
     if (product) {
@@ -45,9 +49,12 @@ const ProductFormModal = ({ product, categories = [], onSave, onClose, error, sa
   };
 
   const content = (
-    <div className="warehouse-form-modal__backdrop" onClick={onClose}>
+    <div className="warehouse-form-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="warehouse-form-modal-title">
       <div className="warehouse-form-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="warehouse-form-modal__title">{product?.id ? 'Редактировать товар' : 'Добавить товар'}</h2>
+        <div className="warehouse-form-modal__header">
+          <h2 id="warehouse-form-modal-title" className="warehouse-form-modal__title">{product?.id ? 'Редактировать товар' : 'Добавить товар'}</h2>
+          <button type="button" className="warehouse-form-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
+        </div>
         {error && <p className="warehouse-form-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="warehouse-form-modal__form">
           <label className="warehouse-form-modal__label">

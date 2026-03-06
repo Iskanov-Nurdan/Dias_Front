@@ -1,8 +1,10 @@
 @use '../../../shared/styles/mixins';
 
-.sport-form-modal__backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.sport-form-modal { background: var(--color-bg-card); border-radius: 12px; padding: 24px; max-width: 400px; width: 100%; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15); }
-.sport-form-modal__title { margin: 0 0 20px; font-size: 18px; }
+.sport-form-modal__backdrop { @include mixins.modal-backdrop; }
+.sport-form-modal { background: var(--color-bg-card); border-radius: var(--radius-xl); padding: var(--space-6); max-width: 400px; width: 100%; box-shadow: var(--shadow-xl); }
+.sport-form-modal__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-5); }
+.sport-form-modal__title { margin: 0; font-size: var(--font-section-title); font-weight: var(--font-weight-section-title); }
+.sport-form-modal__close { @include mixins.modal-close-btn; flex-shrink: 0; }
 .sport-form-modal__error { margin: 0 0 16px; padding: 10px 12px; background: rgba(220, 38, 38, 0.1); border: 1px solid #dc2626; border-radius: 8px; color: #b91c1c; font-size: 14px; }
 .sport-form-modal__form { display: flex; flex-direction: column; gap: 16px; }
 .sport-form-modal__label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }

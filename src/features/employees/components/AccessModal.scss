@@ -1,72 +1,152 @@
 @use '../../../shared/styles/mixins';
 
 .access-modal__backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  @include mixins.flex-center;
-  z-index: 1000;
+  @include mixins.modal-backdrop;
+  animation: access-modal-fade-in 0.2s ease;
 }
 
 .access-modal {
-  background: var(--color-bg-card);
-  border-radius: 12px;
-  padding: 24px;
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-xl);
+  animation: access-modal-scale-in 0.2s ease;
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+  }
 
   &__title {
-    margin: 0 0 20px;
-    font-size: 18px;
+    margin: 0;
+    font-size: var(--font-section-title);
+    font-weight: var(--font-weight-section-title);
+    color: var(--color-text);
+    letter-spacing: -0.02em;
+  }
+
+  &__close {
+    @include mixins.modal-close-btn;
+    flex-shrink: 0;
   }
 
   &__error {
-    margin: 0 0 16px;
-    padding: 10px 12px;
-    background: rgba(220, 38, 38, 0.1);
-    border: 1px solid #dc2626;
-    border-radius: 8px;
-    color: #b91c1c;
-    font-size: 14px;
+    margin: 0 0 var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-danger-soft);
+    border: 1px solid var(--color-danger);
+    border-radius: var(--radius-md);
+    color: var(--color-danger);
+    font-size: var(--font-text);
+    line-height: 1.5;
   }
 
   &__list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    margin-bottom: 20px;
+    gap: var(--space-1);
+    margin-bottom: var(--space-6);
   }
 
   &__item {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--space-3);
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--font-text);
+    line-height: 1.55;
+    color: var(--color-text);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    transition: background var(--transition-fast);
+
+    &:hover {
+      background: var(--color-surface-secondary);
+    }
+
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      accent-color: var(--color-primary);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .access-modal__item-icon {
+      flex-shrink: 0;
+      color: var(--color-text-muted);
+      opacity: 0.9;
+    }
+
+    span {
+      user-select: none;
+    }
   }
 
   &__actions {
     display: flex;
-    gap: 12px;
+    gap: var(--space-3);
     justify-content: flex-end;
+    padding-top: var(--space-2);
   }
 
   &__btn {
-    padding: 8px 16px;
-    border-radius: 6px;
+    height: 40px;
+    padding: 0 var(--space-4);
+    border-radius: var(--radius-md);
     font-size: 14px;
+    font-weight: 600;
+    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+
     &--cancel {
-      background: var(--color-bg);
-      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border-strong);
       color: var(--color-text);
+
+      &:hover:not(:disabled) {
+        background: var(--color-surface-secondary);
+        border-color: var(--color-primary);
+        color: var(--color-primary);
+      }
     }
+
     &--submit {
       background: var(--color-primary);
       color: #fff;
-      border: none;
+      border: 1px solid var(--color-primary);
+
+      &:hover:not(:disabled) {
+        background: var(--color-primary-hover);
+      }
     }
+
+    &:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+  }
+}
+
+@keyframes access-modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes access-modal-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }

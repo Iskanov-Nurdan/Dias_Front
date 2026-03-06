@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 import { useToast } from '../../../app/providers/ToastProvider';
 import { Select } from '../../../shared/ui';
+import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { isClientPaid } from '../../../shared/constants/common';
 import './ClientFormModal.scss';
 
@@ -28,6 +30,14 @@ const parseComment = (raw) => {
 
 const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave, onClose, error, saving }) => {
   const toast = useToast();
+  const firstInputRef = useRef(null);
+
+  useModalEffect(true, onClose);
+
+  useEffect(() => {
+    const t = setTimeout(() => firstInputRef.current?.focus(), 50);
+    return () => clearTimeout(t);
+  }, []);
   const [fio, setFio] = useState('');
   const [phone, setPhone] = useState('');
   const [sportId, setSportId] = useState('');
@@ -109,15 +119,18 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   };
 
   const content = (
-    <div className="client-form-modal__backdrop" onClick={onClose}>
+    <div className="client-form-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="client-form-modal-title">
       <div className="client-form-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="client-form-modal__title">{client?.id ? 'Редактировать клиента' : 'Добавить клиента'}</h2>
+        <div className="client-form-modal__header">
+          <h2 id="client-form-modal-title" className="client-form-modal__title">{client?.id ? 'Редактировать клиента' : 'Добавить клиента'}</h2>
+          <button type="button" className="client-form-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
+        </div>
         {error && <p className="client-form-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="client-form-modal__form">
           <div className="client-form-modal__row">
             <label className="client-form-modal__label">
               <span className="client-form-modal__label-text">ФИО <span className="form-label-required" aria-hidden="true">*</span></span>
-              <input type="text" value={fio} onChange={(e) => setFio(capitalizeWords(e.target.value))} required className="client-form-modal__input" />
+              <input ref={firstInputRef} type="text" value={fio} onChange={(e) => setFio(capitalizeWords(e.target.value))} required className="client-form-modal__input" />
             </label>
             <label className="client-form-modal__label">
               <span className="client-form-modal__label-text">Телефон</span>

@@ -1,26 +1,36 @@
 @use '../../../shared/styles/mixins';
 
 .employee-form-modal__backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  @include mixins.flex-center;
-  z-index: 1000;
+  @include mixins.modal-backdrop;
 }
 
 .employee-form-modal {
   background: var(--color-bg-card);
-  border-radius: 12px;
-  padding: 24px;
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
   width: 100%;
   max-width: 440px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-xl);
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+  }
 
   &__title {
-    margin: 0 0 20px;
-    font-size: 18px;
+    margin: 0;
+    font-size: var(--font-section-title);
+    font-weight: var(--font-weight-section-title);
+  }
+
+  &__close {
+    @include mixins.modal-close-btn;
+    flex-shrink: 0;
   }
 
   &__error {

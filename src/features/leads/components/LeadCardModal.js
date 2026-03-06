@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 import { useToast } from '../../../app/providers/ToastProvider';
+import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { Select } from '../../../shared/ui';
 import './LeadCardModal.scss';
 
@@ -46,6 +48,8 @@ const STAGE_OPTIONS_PREFIX = [{ value: '', label: 'Не выбрано' }];
 
 const LeadCardModal = ({ lead, stages = [], sports = [], trainers = [], onSave, onClose, error, saving, onLoadTrainers }) => {
   const toast = useToast();
+
+  useModalEffect(!!lead, onClose);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [channel, setChannel] = useState('');
@@ -139,14 +143,14 @@ const LeadCardModal = ({ lead, stages = [], sports = [], trainers = [], onSave, 
   const createdAt = lead?.createdAt ?? lead?.created_at;
 
   const content = (
-    <div className="lead-card-modal__backdrop" onClick={onClose}>
+    <div className="lead-card-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="lead-card-modal-title">
       <div className="lead-card-modal" onClick={(e) => e.stopPropagation()}>
         <div className="lead-card-modal__head">
           <div>
-            <h2 className="lead-card-modal__title">Карточка лида</h2>
+            <h2 id="lead-card-modal-title" className="lead-card-modal__title">Карточка лида</h2>
             <p className="lead-card-modal__subtitle">Проверь данные клиента и обнови статусы после общения</p>
           </div>
-          <button type="button" className="lead-card-modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+          <button type="button" className="lead-card-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
         </div>
 
         {error && <p className="lead-card-modal__error" role="alert">{error}</p>}

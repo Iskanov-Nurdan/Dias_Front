@@ -283,7 +283,7 @@ const WarehousePage = () => {
                 ) : productsItems.map((p) => {
                     const qty = Number(p.qty ?? p.quantity ?? 0);
                     const minQtyVal = Number(p.minQty ?? p.min_quantity);
-                    const isAtMin = !Number.isNaN(minQtyVal) && qty === minQtyVal;
+                    const isAtMin = !Number.isNaN(minQtyVal) && qty <= minQtyVal;
                     return (
                     <tr key={p.id} className={`warehouse-page__product-row${isAtMin ? ' warehouse-page__product-row--at-min' : ''}`}>
                       <td data-label="Название">{p.name}</td>

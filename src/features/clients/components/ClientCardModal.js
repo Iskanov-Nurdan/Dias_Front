@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 import { formatMoney, isClientPaid } from '../../../shared/constants/common';
+import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { fetchClientOneTimePayments, deleteOneTimePayment } from '../api';
 import { useToast } from '../../../app/providers/ToastProvider';
 import { isPeriodClosedError } from '../../../shared/lib/apiError';
@@ -9,6 +11,8 @@ import './ClientCardModal.scss';
 
 const ClientCardModal = ({ client, onEdit, onDelete, onRefresh, onClose }) => {
   const toast = useToast();
+
+  useModalEffect(!!client, onClose);
   const [oneTimePayments, setOneTimePayments] = useState([]);
   const [oneTimeLoading, setOneTimeLoading] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
@@ -52,9 +56,12 @@ const ClientCardModal = ({ client, onEdit, onDelete, onRefresh, onClose }) => {
   const discountPct = Number(client.discount ?? client.discount_percent) || 0;
   const priceFinal = priceDisplay != null ? Number(priceDisplay) : (discountPct > 0 ? priceBase * (1 - discountPct / 100) : priceBase);
   const content = (
-    <div className="client-card-modal__backdrop" onClick={onClose}>
+    <div className="client-card-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="client-card-modal-title">
       <div className="client-card-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="client-card-modal__title">Карточка клиента</h2>
+        <div className="client-card-modal__header">
+          <h2 id="client-card-modal-title" className="client-card-modal__title">Карточка клиента</h2>
+          <button type="button" className="client-card-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
+        </div>
         <dl className="client-card-modal__dl">
           <dt>ФИО</dt><dd>{client.fio || '—'}</dd>
           <dt>Телефон</dt><dd>{client.phone || '—'}</dd>

@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
+import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './RoleFormModal.scss';
 
 const RoleFormModal = ({ role, onSave, onClose, error, saving }) => {
   const [name, setName] = useState('');
   const isEdit = !!role?.id;
+
+  useModalEffect(true, onClose);
 
   useEffect(() => {
     if (role) setName(role.name || '');
@@ -16,9 +20,12 @@ const RoleFormModal = ({ role, onSave, onClose, error, saving }) => {
   };
 
   const content = (
-    <div className="role-form-modal__backdrop" onClick={onClose}>
+    <div className="role-form-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="role-form-modal-title">
       <div className="role-form-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="role-form-modal__title">{isEdit ? 'Редактировать роль' : 'Добавить роль'}</h2>
+        <div className="role-form-modal__header">
+          <h2 id="role-form-modal-title" className="role-form-modal__title">{isEdit ? 'Редактировать роль' : 'Добавить роль'}</h2>
+          <button type="button" className="role-form-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
+        </div>
         {error && <p className="role-form-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="role-form-modal__form">
           <label className="role-form-modal__label">

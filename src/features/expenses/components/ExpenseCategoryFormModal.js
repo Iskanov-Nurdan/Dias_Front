@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
+import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './ExpenseCategoryFormModal.scss';
 
 const ExpenseCategoryFormModal = ({ category, onSave, onClose, error, saving }) => {
   const [name, setName] = useState('');
+
+  useModalEffect(true, onClose);
 
   useEffect(() => {
     setName(category?.name ?? '');
@@ -15,9 +19,12 @@ const ExpenseCategoryFormModal = ({ category, onSave, onClose, error, saving }) 
   };
 
   const content = (
-    <div className="expense-form-modal__backdrop" onClick={onClose}>
+    <div className="expense-form-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="expense-category-form-modal-title">
       <div className="expense-form-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="expense-form-modal__title">{category?.id ? 'Редактировать категорию' : 'Добавить категорию'}</h2>
+        <div className="expense-form-modal__header">
+          <h2 id="expense-category-form-modal-title" className="expense-form-modal__title">{category?.id ? 'Редактировать категорию' : 'Добавить категорию'}</h2>
+          <button type="button" className="expense-form-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
+        </div>
         {error && <p className="expense-form-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="expense-form-modal__form">
           <label className="expense-form-modal__label">

@@ -1,13 +1,7 @@
 @use '../../../shared/styles/mixins';
 
 .client-form-modal__backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: var(--z-modal);
+  @include mixins.modal-backdrop;
   padding: 0;
 
   @include mixins.mobile {
@@ -39,11 +33,24 @@
   }
 }
 
+.client-form-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
 .client-form-modal__title {
-  margin: 0 0 16px;
+  margin: 0;
   font-size: var(--font-section-title);
   font-weight: var(--font-weight-section-title);
   color: var(--color-text);
+}
+
+.client-form-modal__close {
+  @include mixins.modal-close-btn;
+  flex-shrink: 0;
 }
 
 .client-form-modal__error {

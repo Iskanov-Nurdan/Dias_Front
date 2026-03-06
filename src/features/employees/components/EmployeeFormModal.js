@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 import { Select } from '../../../shared/ui';
+import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './EmployeeFormModal.scss';
 
 const EmployeeFormModal = ({ employee, roles, onSave, onClose, error, saving }) => {
@@ -10,6 +12,8 @@ const EmployeeFormModal = ({ employee, roles, onSave, onClose, error, saving }) 
   const [roleId, setRoleId] = useState('');
   const [password, setPassword] = useState('');
   const isEdit = !!employee?.id;
+
+  useModalEffect(true, onClose);
 
   useEffect(() => {
     if (employee) {
@@ -35,9 +39,12 @@ const EmployeeFormModal = ({ employee, roles, onSave, onClose, error, saving }) 
   };
 
   const content = (
-    <div className="employee-form-modal__backdrop" onClick={onClose}>
+    <div className="employee-form-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="employee-form-modal-title">
       <div className="employee-form-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="employee-form-modal__title">{isEdit ? 'Редактировать сотрудника' : 'Добавить сотрудника'}</h2>
+        <div className="employee-form-modal__header">
+          <h2 id="employee-form-modal-title" className="employee-form-modal__title">{isEdit ? 'Редактировать сотрудника' : 'Добавить сотрудника'}</h2>
+          <button type="button" className="employee-form-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
+        </div>
         {error && <p className="employee-form-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="employee-form-modal__form">
           <label className="employee-form-modal__label">

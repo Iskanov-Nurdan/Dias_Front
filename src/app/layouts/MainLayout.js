@@ -2,29 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Menu, ChevronLeft, ChevronRight, X,
-  BarChart3, Users, Trophy, UsersRound, Package, ShoppingCart, Receipt, Wallet, Inbox,
   User, LogOut,
 } from 'lucide-react';
 import { useAuth } from '../providers/AuthProvider';
-import { PAGE_IDS, PAGE_LABELS, PAGE_ROUTES, PAGE_GROUPS } from '../../shared/constants/pages';
+import { PAGE_IDS, PAGE_LABELS, PAGE_ROUTES, PAGE_GROUPS, PAGE_ICONS } from '../../shared/constants/pages';
 import './MainLayout.scss';
 
 const SIDEBAR_STORAGE_KEY = 'mainLayout_sidebarCollapsed';
 
 const ICON_SIZE = 20;
 const ICON_SIZE_SM = 18;
-
-const PAGE_ICONS = {
-  analytics: BarChart3,
-  employees: Users,
-  'sports-trainers': Trophy,
-  clients: UsersRound,
-  leads: Inbox,
-  warehouse: Package,
-  sales: ShoppingCart,
-  expenses: Receipt,
-  salary: Wallet,
-};
 
 const getStoredSidebarCollapsed = () => {
   try {

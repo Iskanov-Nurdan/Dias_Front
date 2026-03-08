@@ -3,7 +3,7 @@ import axios from 'axios';
 // --- Выбор API: меняй когда нужно ---
 // true  = запросы на локальный бэкенд (127.0.0.1:8000)
 // false = запросы на бэкенд по домену (rahmanata.tw1.su)
-const USE_LOCAL_API = true;
+const USE_LOCAL_API = false;
 
 // В dev (npm start) используем прокси — запросы идут на localhost, CRA проксирует на сервер (обход CORS)
 const isDev = process.env.NODE_ENV === 'development';
@@ -11,7 +11,7 @@ const API_BASE = USE_LOCAL_API
   ? 'http://127.0.0.1:8000/api'
   : isDev
     ? '/api'
-    : 'https://rahmanata.tw1.su/api';
+    : 'https://rahmanata.kg/api';
 
 export const apiClient = axios.create({
   baseURL: API_BASE,

@@ -8,7 +8,7 @@ import { useDebounce } from '../../shared/hooks/useDebounce';
 import { SEARCH_DEBOUNCE_MS, isClientPaid, formatMoney } from '../../shared/constants/common';
 import { isPeriodClosedError } from '../../shared/lib/apiError';
 import { Select, ConfirmModal, Pagination, FiltersModal, FilterBar } from '../../shared/ui';
-import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal } from './components';
+import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal, TrainerDetailsModal } from './components';
 import './ClientsPage.scss';
 
 const TAB_LIST = 'list';
@@ -162,6 +162,7 @@ const ClientsPage = () => {
   const [extendFormSaving, setExtendFormSaving] = useState(false);
   const [filtersModalOpen, setFiltersModalOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [trainerDetails, setTrainerDetails] = useState(null);
 
   const fetchSafe = useCallback(async () => {
     controllerRef.current?.abort();
@@ -602,7 +603,14 @@ const ClientsPage = () => {
                       <tr><td colSpan={4} className="clients-page__stats-empty">Нет данных</td></tr>
                     ) : (
                       statsData.byTrainer.map((r) => (
-                        <tr key={r.trainerId ?? r.trainerName ?? 'no-trainer'}>
+                        <tr
+                          key={r.trainerId ?? r.trainerName ?? 'no-trainer'}
+                          className={r.trainerId ? 'clients-page__stats-row--clickable' : ''}
+                          onClick={r.trainerId ? () => setTrainerDetails({ trainerId: r.trainerId, trainerName: r.trainerName }) : undefined}
+                          role={r.trainerId ? 'button' : undefined}
+                          tabIndex={r.trainerId ? 0 : undefined}
+                          onKeyDown={r.trainerId ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTrainerDetails({ trainerId: r.trainerId, trainerName: r.trainerName }); } } : undefined}
+                        >
                           <td>{r.trainerName}</td>
                           <td>{r.total}</td>
                           <td>{r.paid}</td>
@@ -760,6 +768,16 @@ const ClientsPage = () => {
           confirmText="Добавить"
           onConfirm={() => handleAddOneTimeAmount(confirmAddOneTime.client, confirmAddOneTime.amount)}
           onCancel={() => setConfirmAddOneTime(null)}
+        />
+      )}
+      {trainerDetails && (
+        <TrainerDetailsModal
+          trainerId={trainerDetails.trainerId}
+          trainerName={trainerDetails.trainerName}
+          year={statsYear}
+          month={statsMonth}
+          onDetails={(c) => { setTrainerDetails(null); handleOpenCard(c); }}
+          onClose={() => setTrainerDetails(null)}
         />
       )}
     </div>

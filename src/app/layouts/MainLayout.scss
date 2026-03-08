@@ -254,7 +254,7 @@
     margin-bottom: 0;
 
     img {
-      height: 120px;
+      height: 140px;
       width: auto;
       max-width: 100%;
       object-fit: contain;
@@ -262,7 +262,7 @@
     }
 
     .main-layout--sidebar-collapsed & img {
-      height: 80px;
+      height: 90px;
     }
 
     .main-layout--sidebar-collapsed & {
@@ -273,7 +273,7 @@
       margin-bottom: 0;
 
       img {
-        height: 100px;
+        height: 115px;
       }
     }
 
@@ -281,7 +281,7 @@
       padding: var(--space-2) var(--space-3) var(--space-1);
 
       img {
-        height: 80px;
+        height: 95px;
       }
     }
   }

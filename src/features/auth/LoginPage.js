@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { login } from './api';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
@@ -8,6 +9,7 @@ import './LoginPage.scss';
 const LoginPage = () => {
   const [loginValue, setLoginValue] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
@@ -76,7 +78,7 @@ const LoginPage = () => {
   return (
     <div className="login-page">
       <div className="login-page__card">
-        <h1 className="login-page__title">Рахман Ата</h1>
+        <img src={`${process.env.PUBLIC_URL || ''}/rahman.png`} alt="Рахман Ата" className="login-page__logo" />
         <form className="login-page__form" onSubmit={handleSubmit}>
           {error && (
             <div className="login-page__error">{error}</div>
@@ -88,20 +90,34 @@ const LoginPage = () => {
               className="login-page__input"
               value={loginValue}
               onChange={(e) => setLoginValue(e.target.value)}
+              placeholder="Введите логин"
               required
               autoComplete="username"
             />
           </label>
           <label className="login-page__label">
             Пароль
-            <input
-              type="password"
-              className="login-page__input"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
+            <div className="login-page__password-wrap">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                className="login-page__input login-page__input--password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Введите пароль"
+                required
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                className="login-page__password-toggle"
+                onClick={() => setShowPassword((v) => !v)}
+                title={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </label>
           <button type="submit" className="login-page__submit" disabled={loading || rateLimitBlocked}>
             {loading ? (

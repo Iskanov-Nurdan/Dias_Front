@@ -124,7 +124,7 @@ const MainLayout = () => {
       </header>
       <aside className="main-layout__sidebar">
         <div className="main-layout__sidebar-logo">
-          <img src={`${process.env.PUBLIC_URL || ''}/logo.png`} alt="Рахман Ата" />
+          <img src={`${process.env.PUBLIC_URL || ''}/rahman.png`} alt="Рахман Ата" />
         </div>
         <nav className="main-layout__nav">
           {navGroups.map((group) => (

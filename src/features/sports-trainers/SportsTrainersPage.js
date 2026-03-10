@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   fetchSports,
   fetchTrainers,
@@ -10,6 +10,8 @@ import {
   deleteTrainer,
 } from './api';
 import { useAuth } from '../../app/providers/AuthProvider';
+import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
+import { getApiErrorMessage } from '../../shared/lib/apiError';
 import { Select, Pagination, FilterBar } from '../../shared/ui';
 import { SportsList, TrainersList, SportFormModal, TrainerFormModal } from './components';
 import './SportsTrainersPage.scss';
@@ -37,54 +39,43 @@ const SportsTrainersPage = () => {
   const [trainerFormSaving, setTrainerFormSaving] = useState(false);
   const [confirmDeleteSport, setConfirmDeleteSport] = useState(null);
   const [confirmDeleteTrainer, setConfirmDeleteTrainer] = useState(null);
-  const controllerRef = useRef(null);
-  const lastSportsRequestId = useRef(0);
-  const lastTrainersRequestId = useRef(0);
+  const { run: runSports } = useAbortSafeFetch();
+  const { run: runTrainers } = useAbortSafeFetch();
 
   const fetchSportsSafe = useCallback(async () => {
-    controllerRef.current?.abort();
-    controllerRef.current = new AbortController();
-    const rid = ++lastSportsRequestId.current;
     setSportsLoading(true);
     setSportsError(null);
     try {
-      const data = await fetchSports({ search: sportSearch || undefined }, controllerRef.current.signal);
-      if (rid !== lastSportsRequestId.current) return;
+      const data = await runSports((signal) => fetchSports({ search: sportSearch || undefined }, signal));
+      if (data === null) return;
       setSportsData(Array.isArray(data) ? data : data?.results ?? data?.items ?? []);
     } catch (err) {
-      if (rid !== lastSportsRequestId.current || err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
-      setSportsError(err.response?.data?.message || err.response?.data?.detail || 'Ошибка загрузки');
+      setSportsError(getApiErrorMessage(err));
     } finally {
-      if (rid === lastSportsRequestId.current) setSportsLoading(false);
+      setSportsLoading(false);
     }
-  }, [sportSearch]);
+  }, [runSports, sportSearch]);
 
   const fetchTrainersSafe = useCallback(async () => {
-    controllerRef.current?.abort();
-    controllerRef.current = new AbortController();
-    const rid = ++lastTrainersRequestId.current;
     setTrainersLoading(true);
     setTrainersError(null);
     try {
-      const data = await fetchTrainers({ ...queryState, search: trainerSearch || undefined }, controllerRef.current.signal);
-      if (rid !== lastTrainersRequestId.current) return;
+      const data = await runTrainers((signal) => fetchTrainers({ ...queryState, search: trainerSearch || undefined }, signal));
+      if (data === null) return;
       setTrainersData(data);
     } catch (err) {
-      if (rid !== lastTrainersRequestId.current || err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
-      setTrainersError(err.response?.data?.message || err.response?.data?.detail || 'Ошибка загрузки');
+      setTrainersError(getApiErrorMessage(err));
     } finally {
-      if (rid === lastTrainersRequestId.current) setTrainersLoading(false);
+      setTrainersLoading(false);
     }
-  }, [queryState, trainerSearch]);
+  }, [runTrainers, queryState, trainerSearch]);
 
   useEffect(() => {
     if (activeTab === TAB_SPORTS || activeTab === TAB_TRAINERS) fetchSportsSafe();
-    return () => controllerRef.current?.abort();
   }, [activeTab, fetchSportsSafe]);
 
   useEffect(() => {
     if (activeTab === TAB_TRAINERS) fetchTrainersSafe();
-    return () => controllerRef.current?.abort();
   }, [activeTab, fetchTrainersSafe]);
 
   const trainersItems = trainersData?.items ?? trainersData?.results ?? trainersData ?? [];
@@ -130,8 +121,7 @@ const SportsTrainersPage = () => {
         fetchSportsSafe();
       })
       .catch((e) => {
-        const msg = e.response?.data?.error?.message || e.response?.data?.message || e.response?.data?.detail || e.message || 'Ошибка удаления';
-        setSportsError(msg);
+        setSportsError(getApiErrorMessage(e));
         setConfirmDeleteSport(null);
       });
   };
@@ -145,8 +135,7 @@ const SportsTrainersPage = () => {
         fetchTrainersSafe();
       })
       .catch((e) => {
-        const msg = e.response?.data?.error?.message || e.response?.data?.message || e.response?.data?.detail || e.message || 'Ошибка удаления';
-        setTrainersError(msg);
+        setTrainersError(getApiErrorMessage(e));
         setConfirmDeleteTrainer(null);
       });
   };

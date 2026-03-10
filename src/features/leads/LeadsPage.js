@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { fetchLeads, createLead, updateLead, deleteLead, fetchFunnelStages } from './api';
 import { fetchSports, fetchTrainers } from '../sports-trainers/api';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
 import { useDebounce } from '../../shared/hooks/useDebounce';
+import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { SEARCH_DEBOUNCE_MS } from '../../shared/constants/common';
+import { getApiErrorMessage } from '../../shared/lib/apiError';
 import { LeadFormModal, LeadCardModal, FunnelBoard } from './components';
 import { ErrorState, EmptyState, ConfirmModal, Pagination, FilterBar } from '../../shared/ui';
 import './LeadsPage.scss';
@@ -40,8 +42,7 @@ const LeadsPage = () => {
   const [formSaving, setFormSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [statusSaving, setStatusSaving] = useState(null);
-  const controllerRef = useRef(null);
-  const lastRequestId = useRef(0);
+  const { run: runLeads } = useAbortSafeFetch();
 
   // ── Воронка ────────────────────────────────────────────────────────────────
   const [funnelSearch, setFunnelSearch] = useState('');
@@ -58,27 +59,22 @@ const LeadsPage = () => {
 
   // ── Загрузка заявок ────────────────────────────────────────────────────────
   const fetchSafe = useCallback(async () => {
-    controllerRef.current?.abort();
-    controllerRef.current = new AbortController();
-    const rid = ++lastRequestId.current;
     setLoading(true);
     setError(null);
     try {
       const q = { ...queryState, search: debouncedSearch.trim() || undefined };
-      const res = await fetchLeads(q, controllerRef.current.signal);
-      if (rid !== lastRequestId.current) return;
+      const res = await runLeads((signal) => fetchLeads(q, signal));
+      if (res === null) return;
       setData(res);
     } catch (err) {
-      if (rid !== lastRequestId.current || err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
-      setError(err.response?.data?.message || err.response?.data?.detail || 'Ошибка загрузки');
+      setError(getApiErrorMessage(err));
     } finally {
-      if (rid === lastRequestId.current) setLoading(false);
+      setLoading(false);
     }
-  }, [queryState, debouncedSearch]);
+  }, [runLeads, queryState, debouncedSearch]);
 
   useEffect(() => {
     fetchSafe();
-    return () => controllerRef.current?.abort();
   }, [fetchSafe]);
 
   // ── Загрузка этапов воронки ─────────────────────────────────────────────

@@ -5,6 +5,7 @@ import SaleFormModal from './components/SaleFormModal';
 import { useToast } from '../../app/providers/ToastProvider';
 import { ErrorState, EmptyState, Pagination, Badge, Skeleton, FilterBar, ConfirmModal } from '../../shared/ui';
 import { formatMoney } from '../../shared/constants/common';
+import { getApiErrorMessage, isCanceledError } from '../../shared/lib/apiError';
 import './SalesPage.scss';
 
 const SalesPage = () => {
@@ -22,23 +23,23 @@ const SalesPage = () => {
   const [cancellingId, setCancellingId] = useState(null);
   const [confirmCancelSale, setConfirmCancelSale] = useState(null);
   const [products, setProducts] = useState([]);
-  const controllerRef = useRef(null);
+  const summaryControllerRef = useRef(null);
+  const salesControllerRef = useRef(null);
   const lastSummaryRequestId = useRef(0);
   const lastSalesRequestId = useRef(0);
 
   const fetchSummarySafe = useCallback(async () => {
-    controllerRef.current?.abort();
-    controllerRef.current = new AbortController();
+    summaryControllerRef.current?.abort();
+    summaryControllerRef.current = new AbortController();
     const rid = ++lastSummaryRequestId.current;
     setSummaryLoading(true);
     setSummaryError(null);
     try {
-      const data = await fetchSalesSummary(queryState, controllerRef.current.signal);
+      const data = await fetchSalesSummary(queryState, summaryControllerRef.current.signal);
       if (rid !== lastSummaryRequestId.current) return;
       setSummary(data);
     } catch (err) {
       if (rid !== lastSummaryRequestId.current) return;
-      const { getApiErrorMessage, isCanceledError } = await import('../../shared/lib/apiError');
       if (isCanceledError(err)) return;
       setSummaryError(getApiErrorMessage(err));
     } finally {
@@ -47,18 +48,17 @@ const SalesPage = () => {
   }, [queryState.dateFrom, queryState.dateTo]);
 
   const fetchSalesSafe = useCallback(async () => {
-    controllerRef.current?.abort();
-    controllerRef.current = new AbortController();
+    salesControllerRef.current?.abort();
+    salesControllerRef.current = new AbortController();
     const rid = ++lastSalesRequestId.current;
     setSalesLoading(true);
     setSalesError(null);
     try {
-      const data = await fetchSales(queryState, controllerRef.current.signal);
+      const data = await fetchSales(queryState, salesControllerRef.current.signal);
       if (rid !== lastSalesRequestId.current) return;
       setSalesData(data);
     } catch (err) {
       if (rid !== lastSalesRequestId.current) return;
-      const { getApiErrorMessage, isCanceledError } = await import('../../shared/lib/apiError');
       if (isCanceledError(err)) return;
       setSalesError(getApiErrorMessage(err));
     } finally {
@@ -68,12 +68,12 @@ const SalesPage = () => {
 
   useEffect(() => {
     fetchSummarySafe();
-    return () => controllerRef.current?.abort();
+    return () => summaryControllerRef.current?.abort();
   }, [fetchSummarySafe]);
 
   useEffect(() => {
     fetchSalesSafe();
-    return () => controllerRef.current?.abort();
+    return () => salesControllerRef.current?.abort();
   }, [fetchSalesSafe]);
 
   useEffect(() => {
@@ -94,8 +94,7 @@ const SalesPage = () => {
       fetchSummarySafe();
       fetchSalesSafe();
     } catch (e) {
-      const d = e.response?.data;
-      setSaleFormError(d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка');
+      setSaleFormError(getApiErrorMessage(e));
     } finally {
       setSaleFormSaving(false);
     }
@@ -111,8 +110,7 @@ const SalesPage = () => {
       fetchSalesSafe();
       toast.success('Продажа отменена');
     } catch (e) {
-      const d = e.response?.data;
-      toast.error(d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка отмены');
+      toast.error(getApiErrorMessage(e));
     } finally {
       setCancellingId(null);
     }

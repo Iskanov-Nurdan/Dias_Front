@@ -4,6 +4,7 @@ import { ErrorState, Select, DonutChart, Sparkline, Skeleton, SkeletonTable, Fil
 import { MONTHS, MONTHS_SHORT, DONUT_COLORS, formatMoney } from '../../shared/constants/common';
 import { useAnalyticsFilters } from './hooks/useAnalyticsFilters';
 import { useAnalyticsData } from './hooks/useAnalyticsData';
+import AnalyticsSalesSection from './components/AnalyticsSalesSection';
 import './AnalyticsPage.scss';
 
 // expense-detail: для складских строк бэк передаёт type "add" | "restock"; у остальных type нет
@@ -793,81 +794,18 @@ const AnalyticsPage = () => {
             </section>
           </div>
 
-          <div className="analytics-page__grid analytics-page__grid--two">
-            <section className="analytics-page__section analytics-page__section--table">
-              <h3 className="analytics-page__section-title">Маржинальность продаж</h3>
-              <div className="analytics-page__tabs">
-                <button type="button" className={`analytics-page__tab ${marginTab === 'product' ? 'analytics-page__tab--active' : ''}`} onClick={() => setMarginTab('product')}>По товарам</button>
-                <button type="button" className={`analytics-page__tab ${marginTab === 'category' ? 'analytics-page__tab--active' : ''}`} onClick={() => setMarginTab('category')}>По категориям</button>
-              </div>
-              {(salesMargin?.totalRevenue != null || salesMargin?.totalMargin != null) && (
-                <p className="analytics-page__section-summary">
-                  Выручка: <strong>{formatMoney(salesMargin?.totalRevenue)}</strong> · Себестоимость: <strong>{formatMoney(salesMargin?.totalCost)}</strong> · Маржа: <strong>{formatMoney(salesMargin?.totalMargin)}</strong> ({salesMargin?.totalMarginPercent != null ? `${Number(salesMargin.totalMarginPercent).toFixed(1)}%` : '—'})
-                </p>
-              )}
-              <div className="analytics-page__table-wrap">
-                <table className="analytics-page__table">
-                  <thead>
-                    <tr>
-                      <th>{marginTab === 'product' ? 'Товар' : 'Категория'}</th>
-                      <th>Выручка</th>
-                      <th>Себестоимость</th>
-                      <th>Маржа (₽)</th>
-                      <th>Маржа %</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(marginTab === 'product' ? marginByProduct : marginByCategory).map((x) => (
-                      <tr key={x.productId ?? x.categoryId ?? x.productName ?? x.categoryName}>
-                        <td>{marginTab === 'product' ? (x.productName ?? '—') : (x.categoryName ?? '—')}</td>
-                        <td>{formatMoney(x.revenue)}</td>
-                        <td>{formatMoney(x.cost)}</td>
-                        <td>{formatMoney(x.margin)}</td>
-                        <td>{x.marginPercent != null ? `${Number(x.marginPercent).toFixed(1)}%` : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {(marginTab === 'product' ? marginByProduct : marginByCategory).length === 0 && (
-                  <p className="analytics-page__empty">Нет данных за период</p>
-                )}
-              </div>
-            </section>
-
-            <section className="analytics-page__section analytics-page__section--table">
-              <h3 className="analytics-page__section-title">Продажи за период</h3>
-              <div className="analytics-page__tabs">
-                <button type="button" className={`analytics-page__tab ${salesTab === 'product' ? 'analytics-page__tab--active' : ''}`} onClick={() => setSalesTab('product')}>Товары</button>
-                <button type="button" className={`analytics-page__tab ${salesTab === 'category' ? 'analytics-page__tab--active' : ''}`} onClick={() => setSalesTab('category')}>Категории</button>
-              </div>
-              <p className="analytics-page__section-summary">
-                Всего продаж на сумму: <strong>{formatMoney(salesTotalRevenue)}</strong>
-              </p>
-              <div className="analytics-page__table-wrap">
-                <table className="analytics-page__table">
-                  <thead>
-                    <tr>
-                      <th>{salesTab === 'product' ? 'Товар' : 'Категория'}</th>
-                      <th>Кол-во</th>
-                      <th>Выручка</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(salesTab === 'product' ? productItems : categoryItems).map((x) => (
-                      <tr key={x.productId ?? x.categoryId ?? x.productName ?? x.categoryName}>
-                        <td>{salesTab === 'product' ? (x.productName ?? '—') : (x.categoryName ?? '—')}</td>
-                        <td>{x.quantitySold ?? 0}</td>
-                        <td>{formatMoney(x.revenue)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {(salesTab === 'product' ? productItems : categoryItems).length === 0 && (
-                  <p className="analytics-page__empty">Нет продаж за период</p>
-                )}
-              </div>
-            </section>
-          </div>
+          <AnalyticsSalesSection
+            marginTab={marginTab}
+            setMarginTab={setMarginTab}
+            salesTab={salesTab}
+            setSalesTab={setSalesTab}
+            salesMargin={salesMargin}
+            marginByProduct={marginByProduct}
+            marginByCategory={marginByCategory}
+            salesTotalRevenue={salesTotalRevenue}
+            productItems={productItems}
+            categoryItems={categoryItems}
+          />
         </>
       )}
 

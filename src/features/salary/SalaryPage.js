@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { fetchSalary, saveSalary } from './api';
+import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
+import { getApiErrorMessage } from '../../shared/lib/apiError';
+import { MONTHS } from '../../shared/constants/common';
 import { ErrorState, EmptyState, Select, Skeleton, FilterBar } from '../../shared/ui';
 import './SalaryPage.scss';
-
-const MONTHS = ['', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 
 const SalaryPage = () => {
   const [queryState, setQueryState] = useState({ year: new Date().getFullYear(), month: new Date().getMonth() + 1, day: '' });
@@ -13,31 +14,25 @@ const SalaryPage = () => {
   const [percentByTrainer, setPercentByTrainer] = useState({});
   const [savingTrainerId, setSavingTrainerId] = useState(null);
   const [saveError, setSaveError] = useState(null);
-  const controllerRef = useRef(null);
-  const lastRequestId = useRef(0);
+  const { run: runSalary } = useAbortSafeFetch();
 
   const fetchSafe = useCallback(async () => {
-    controllerRef.current?.abort();
-    controllerRef.current = new AbortController();
-    const rid = ++lastRequestId.current;
     setLoading(true);
     setError(null);
     setSaveError(null);
     try {
-      const res = await fetchSalary(queryState, controllerRef.current.signal);
-      if (rid !== lastRequestId.current) return;
+      const res = await runSalary((signal) => fetchSalary(queryState, signal));
+      if (res === null) return;
       setData(res);
     } catch (err) {
-      if (rid !== lastRequestId.current || err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
-      setError(err.response?.data?.message || err.response?.data?.detail || 'Ошибка загрузки');
+      setError(getApiErrorMessage(err));
     } finally {
-      if (rid === lastRequestId.current) setLoading(false);
+      setLoading(false);
     }
-  }, [queryState.year, queryState.month, queryState.day]);
+  }, [runSalary, queryState.year, queryState.month, queryState.day]);
 
   useEffect(() => {
     fetchSafe();
-    return () => controllerRef.current?.abort();
   }, [fetchSafe]);
 
   const now = new Date();
@@ -77,7 +72,7 @@ const SalaryPage = () => {
         return fetchSafe();
       })
       .catch((err) => {
-        setSaveError(err.response?.data?.error?.message || err.response?.data?.message || err.response?.data?.detail || 'Ошибка сохранения');
+        setSaveError(getApiErrorMessage(err));
       })
       .finally(() => setSavingTrainerId(null));
   };

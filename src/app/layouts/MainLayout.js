@@ -108,19 +108,6 @@ const MainLayout = () => {
           </button>
           <span className="main-layout__brand">Рахман Ата</span>
         </div>
-        <div className="main-layout__user">
-          <span className="main-layout__user-icon" aria-hidden>
-            <User size={ICON_SIZE_SM} />
-          </span>
-          <div className="main-layout__user-info">
-            <span className="main-layout__user-name">{user?.fio || user?.login || ''}</span>
-            <span className="main-layout__user-role">{user?.roleName || ''}</span>
-          </div>
-          <button type="button" className="main-layout__logout" onClick={handleLogout} title="Выйти">
-            <LogOut size={ICON_SIZE_SM} />
-            <span className="main-layout__logout-text">Выйти</span>
-          </button>
-        </div>
       </header>
       <aside className="main-layout__sidebar">
         <div className="main-layout__sidebar-logo">
@@ -151,6 +138,28 @@ const MainLayout = () => {
             </div>
           ))}
         </nav>
+        <div className="main-layout__sidebar-footer">
+          <div className="main-layout__sidebar-user-card">
+            <span className="main-layout__sidebar-user-avatar" aria-hidden>
+              <User size={ICON_SIZE_SM} />
+            </span>
+            {!sidebarCollapsed && (
+              <div className="main-layout__sidebar-user-info">
+                <span className="main-layout__sidebar-user-name">{user?.fio || user?.login || ''}</span>
+                <span className="main-layout__sidebar-user-role">{user?.roleName || ''}</span>
+              </div>
+            )}
+            <button
+              type="button"
+              className="main-layout__sidebar-logout"
+              onClick={handleLogout}
+              title="Выйти"
+              aria-label="Выйти"
+            >
+              <LogOut size={ICON_SIZE_SM} />
+            </button>
+          </div>
+        </div>
       </aside>
       <main className="main-layout__content">
         <Outlet />

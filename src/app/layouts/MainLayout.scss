@@ -113,78 +113,6 @@
     }
   }
 
-  // Компактный user block без карточки
-  &__user {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    flex-shrink: 0;
-  }
-
-  &__user-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: var(--color-primary-soft);
-    color: var(--color-primary);
-    flex-shrink: 0;
-  }
-
-  &__user-info {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0;
-    min-width: 0;
-
-    @include mixins.mobile {
-      display: none;
-    }
-  }
-
-  &__user-name {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-text);
-    line-height: 1.2;
-    @include mixins.text-ellipsis;
-  }
-
-  &__user-role {
-    font-size: 12px;
-    font-weight: 400;
-    color: var(--color-text-muted);
-    line-height: 1.2;
-  }
-
-  &__logout {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: 6px 10px;
-    font-size: 13px;
-    font-weight: 500;
-    background: transparent;
-    border: none;
-    border-radius: var(--radius-md);
-    color: var(--color-text-muted);
-    transition: background var(--transition-fast), color var(--transition-fast);
-
-    &:hover {
-      background: var(--color-surface-secondary);
-      color: var(--color-primary);
-    }
-  }
-
-  &__logout-text {
-    @include mixins.mobile {
-      display: none;
-    }
-  }
-
   &__mobile-overlay {
     position: fixed;
     inset: 0;
@@ -201,9 +129,11 @@
     position: sticky;
     top: 0;
     height: 100vh;
+    display: flex;
+    flex-direction: column;
     overflow-x: hidden;
-    overflow-y: auto;
-    @include mixins.scrollbar;
+    overflow-y: hidden;
+    @include mixins.scrollbar-sidebar;
     transition: transform var(--transition-smooth);
 
     @include mixins.mobile {
@@ -244,6 +174,7 @@
   }
 
   &__sidebar-logo {
+    flex-shrink: 0;
     @include mixins.mobile {
       padding: var(--space-4) var(--space-3) var(--space-3);
     }
@@ -292,6 +223,10 @@
     padding: var(--space-3) var(--space-3);
     gap: var(--space-1);
     min-width: 0;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    @include mixins.scrollbar-sidebar;
 
     @include mixins.mobile {
       flex-direction: column;
@@ -301,6 +236,105 @@
 
     @include mixins.xs {
       padding: var(--space-3) var(--space-3);
+    }
+  }
+
+  &__sidebar-footer {
+    flex-shrink: 0;
+    padding: var(--space-3);
+    border-top: 1px solid var(--color-sidebar-border);
+
+    @include mixins.mobile {
+      padding: var(--space-4);
+    }
+  }
+
+  &__sidebar-user-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-lg);
+    min-height: 56px;
+
+    .main-layout--sidebar-collapsed & {
+      justify-content: center;
+      gap: var(--space-2);
+      padding: var(--space-2);
+    }
+
+    @include mixins.mobile {
+      padding: var(--space-3);
+    }
+  }
+
+  &__sidebar-user-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    flex-shrink: 0;
+
+    .main-layout--sidebar-collapsed & {
+      width: 32px;
+      height: 32px;
+    }
+  }
+
+  &__sidebar-user-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    .main-layout--sidebar-collapsed & {
+      display: none;
+    }
+  }
+
+  &__sidebar-user-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-sidebar-text);
+    line-height: 1.2;
+    @include mixins.text-ellipsis;
+  }
+
+  &__sidebar-user-role {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--color-sidebar-muted);
+    line-height: 1.2;
+  }
+
+  &__sidebar-logout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--color-sidebar-muted);
+    flex-shrink: 0;
+    transition: background var(--transition-fast), color var(--transition-fast);
+
+    .main-layout--sidebar-collapsed & {
+      width: 32px;
+      height: 32px;
+    }
+
+    &:hover {
+      background: var(--color-sidebar-hover);
+      color: var(--color-sidebar-text);
     }
   }
 

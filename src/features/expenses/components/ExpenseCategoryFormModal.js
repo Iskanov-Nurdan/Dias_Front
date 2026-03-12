@@ -29,7 +29,7 @@ const ExpenseCategoryFormModal = ({ category, onSave, onClose, error, saving }) 
         <form onSubmit={handleSubmit} className="expense-form-modal__form">
           <label className="expense-form-modal__label">
             <span className="expense-form-modal__label-caption">Название <span className="form-label-required" aria-hidden="true">*</span></span>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="expense-form-modal__input" placeholder="Название категории" />
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="expense-form-modal__input" placeholder="Название" />
           </label>
           <div className="expense-form-modal__actions">
             <button type="button" className="expense-form-modal__btn expense-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>

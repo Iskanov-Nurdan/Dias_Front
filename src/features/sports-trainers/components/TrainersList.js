@@ -46,7 +46,7 @@ const TrainersList = ({ items, sports = [], loading, error, onRetry, onEdit, onD
                   <td>{t.fio || '—'}</td>
                   <td>{getSportsLabel(t)}</td>
                   <td className="trainers-list__actions">
-                    <button type="button" className="trainers-list__btn" onClick={() => onEdit(t)}>Изменить</button>
+                    <button type="button" className="trainers-list__btn trainers-list__btn--primary" onClick={() => onEdit(t)}>Изменить</button>
                     <button type="button" className="trainers-list__btn trainers-list__btn--danger" onClick={() => onDelete(t)}>Удалить</button>
                   </td>
                 </tr>

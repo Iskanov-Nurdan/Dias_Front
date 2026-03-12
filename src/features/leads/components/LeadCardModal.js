@@ -158,7 +158,7 @@ const LeadCardModal = ({ lead, stages = [], sports = [], trainers = [], onSave, 
         <form onSubmit={handleSubmit} className="lead-card-modal__form">
 
           {/* ── Основное ── */}
-          <section className="lead-card-modal__section">
+          <section className="lead-card-modal__section lead-card-modal__section--main">
             <h3 className="lead-card-modal__section-title">Основное</h3>
             <div className="lead-card-modal__grid">
               {createdAt && (
@@ -179,7 +179,7 @@ const LeadCardModal = ({ lead, stages = [], sports = [], trainers = [], onSave, 
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="lead-card-modal__input"
-                  placeholder="Имя клиента"
+                  placeholder="Имя"
                 />
               </label>
               <label className="lead-card-modal__label">
@@ -194,52 +194,52 @@ const LeadCardModal = ({ lead, stages = [], sports = [], trainers = [], onSave, 
               </label>
               <label className="lead-card-modal__label">
                 <span className="lead-card-modal__label-text">Канал</span>
-                <Select value={channel} onChange={setChannel} options={CHANNEL_OPTIONS} placeholder="Не выбрано" className="lead-card-modal__select" />
+                <Select value={channel} onChange={setChannel} options={CHANNEL_OPTIONS} placeholder="—" className="lead-card-modal__select" />
               </label>
               <label className="lead-card-modal__label">
                 <span className="lead-card-modal__label-text">Источник лида</span>
-                <Select value={source} onChange={setSource} options={SOURCE_OPTIONS} placeholder="Не выбрано" className="lead-card-modal__select" />
+                <Select value={source} onChange={setSource} options={SOURCE_OPTIONS} placeholder="—" className="lead-card-modal__select" />
               </label>
               <label className="lead-card-modal__label">
                 <span className="lead-card-modal__label-text">Для себя или для детей</span>
-                <Select value={targetType} onChange={setTargetType} options={TARGET_TYPE_OPTIONS} placeholder="Не выбрано" className="lead-card-modal__select" />
+                <Select value={targetType} onChange={setTargetType} options={TARGET_TYPE_OPTIONS} placeholder="—" className="lead-card-modal__select" />
               </label>
               <label className="lead-card-modal__label">
                 <span className="lead-card-modal__label-text">Вид спорта</span>
-                <Select value={sportId} onChange={setSportId} options={sportOptions} placeholder="Не выбрано" className="lead-card-modal__select" />
+                <Select value={sportId} onChange={setSportId} options={sportOptions} placeholder="—" className="lead-card-modal__select" />
               </label>
               <label className="lead-card-modal__label">
                 <span className="lead-card-modal__label-text">Тренер</span>
-                <Select value={trainerId} onChange={setTrainerId} options={trainerOptions} placeholder="Не выбрано" className="lead-card-modal__select" disabled={!sportId} />
+                <Select value={trainerId} onChange={setTrainerId} options={trainerOptions} placeholder="—" className="lead-card-modal__select" disabled={!sportId} />
               </label>
             </div>
           </section>
 
           {/* ── Этап воронки ── */}
           {stages.length > 0 && (
-            <section className="lead-card-modal__section">
+            <section className="lead-card-modal__section lead-card-modal__section--stage">
               <h3 className="lead-card-modal__section-title">Этап воронки</h3>
-              <Select value={stageId} onChange={setStageId} options={stageOptions} placeholder="Не выбрано" className="lead-card-modal__select lead-card-modal__select--wide" />
+              <Select value={stageId} onChange={setStageId} options={stageOptions} placeholder="—" className="lead-card-modal__select lead-card-modal__select--wide" />
             </section>
           )}
 
           {/* ── Статусы ── */}
-          <section className="lead-card-modal__section">
+          <section className="lead-card-modal__section lead-card-modal__section--statuses">
             <h3 className="lead-card-modal__section-title">Статусы</h3>
             <div className="lead-card-modal__grid lead-card-modal__grid--2">
               <label className="lead-card-modal__label">
                 <span className="lead-card-modal__label-text">Пробная тренировка</span>
-                <Select value={trialStatus} onChange={setTrialStatus} options={TRIAL_OPTIONS} placeholder="Выбери статус" className="lead-card-modal__select" />
+                <Select value={trialStatus} onChange={setTrialStatus} options={TRIAL_OPTIONS} placeholder="Статус" className="lead-card-modal__select" />
               </label>
               <label className="lead-card-modal__label">
                 <span className="lead-card-modal__label-text">Результат</span>
-                <Select value={resultStatus} onChange={setResultStatus} options={RESULT_OPTIONS} placeholder="Выбери результат" className="lead-card-modal__select" />
+                <Select value={resultStatus} onChange={setResultStatus} options={RESULT_OPTIONS} placeholder="Результат" className="lead-card-modal__select" />
               </label>
             </div>
           </section>
 
           {/* ── Финансы и комментарии ── */}
-          <section className="lead-card-modal__section">
+          <section className="lead-card-modal__section lead-card-modal__section--finance">
             <h3 className="lead-card-modal__section-title">Финансы и комментарии</h3>
             <label className="lead-card-modal__label">
               <span className="lead-card-modal__label-text">Сумма</span>
@@ -259,7 +259,7 @@ const LeadCardModal = ({ lead, stages = [], sports = [], trainers = [], onSave, 
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 className="lead-card-modal__textarea"
-                placeholder="Что говорил клиент, страхи, почему сомневается или купил..."
+                placeholder="Комментарий"
                 rows={3}
               />
             </label>

@@ -30,6 +30,19 @@ const Select = ({ value, onChange, options = [], placeholder = 'Выберите
     });
   }, [open]);
 
+  const handleTriggerClick = () => {
+    if (disabled) return;
+    if (!open && rootRef.current) {
+      const rect = rootRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+    setOpen((v) => !v);
+  };
+
   useEffect(() => {
     if (!open) return;
     const handleClickOutside = (e) => {
@@ -70,7 +83,7 @@ const Select = ({ value, onChange, options = [], placeholder = 'Выберите
       <button
         type="button"
         className="select__trigger"
-        onClick={() => !disabled && setOpen((v) => !v)}
+        onClick={handleTriggerClick}
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -104,6 +117,8 @@ const Select = ({ value, onChange, options = [], placeholder = 'Выберите
               type="button"
               role="option"
               aria-selected={String(opt.value) === String(value)}
+              data-value={String(opt.value)}
+              data-label={opt.label}
               className={`select__option ${String(opt.value) === String(value) ? 'select__option--selected' : ''}`}
               onMouseDown={(e) => {
                 e.preventDefault();

@@ -28,7 +28,9 @@ const ExtendModal = ({ client, onSave, onClose, error, saving }) => {
         {client && <p className="extend-modal__client">{client.fio}</p>}
         {error && <p className="extend-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="extend-modal__form">
-          <label className="extend-modal__label">Месяцев <input type="number" min={1} value={months} onChange={(e) => setMonths(Number(e.target.value))} className="extend-modal__input" /></label>
+          <div className="extend-modal__form-body">
+            <label className="extend-modal__label">Месяцев <input type="number" min={1} value={months} onChange={(e) => setMonths(Number(e.target.value))} className="extend-modal__input" /></label>
+          </div>
           <div className="extend-modal__actions">
             <button type="button" className="extend-modal__btn extend-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
             <button type="submit" className="extend-modal__btn extend-modal__btn--submit" disabled={saving}>{saving ? 'Продление…' : 'Продлить'}</button>

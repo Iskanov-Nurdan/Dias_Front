@@ -46,7 +46,7 @@ const SalaryPage = () => {
     const trainerId = row.trainerId ?? row.trainer_id ?? row.id;
     if (trainerId != null && percentByTrainer[trainerId] !== undefined) return percentByTrainer[trainerId];
     const p = row.trainerPercent ?? row.trainer_percent ?? row.percent;
-    return typeof p === 'number' && !Number.isNaN(p) ? p : (p != null ? Number(p) : 60);
+    return typeof p === 'number' && !Number.isNaN(p) ? p : (p != null ? Number(p) : 0);
   };
 
   const setTrainerPercent = (row, value) => {
@@ -102,7 +102,13 @@ const SalaryPage = () => {
       {!isMonthEnded && !error && (
         <p className="salary-page__hint">Сохранять зарплату можно только за прошедший месяц (после его окончания).</p>
       )}
-      <h2 className="salary-page__section-title">Расчёт по тренерам</h2>
+      <div className="salary-page__section-head">
+          <h2 className="salary-page__section-title">Расчёт по тренерам</h2>
+          <span className="salary-page__legend">
+            <span><span className="salary-page__legend-dot salary-page__legend-dot--saved" /> Сохранено</span>
+            <span><span className="salary-page__legend-dot salary-page__legend-dot--pending" /> На расчёте</span>
+          </span>
+        </div>
       <div className="salary-page__table-wrap">
         <table className="salary-page__table">
           <thead>
@@ -134,7 +140,7 @@ const SalaryPage = () => {
                 const trainerId = row.trainerId ?? row.trainer_id ?? row.id ?? index;
                 const income = row.income ?? row.revenue ?? row.clientIncome ?? 0;
                 const percent = getTrainerPercent(row);
-                const numPercent = typeof percent === 'number' && !Number.isNaN(percent) ? percent : 60;
+                const numPercent = typeof percent === 'number' && !Number.isNaN(percent) ? percent : 0;
                 const trainerShare = income * (numPercent / 100);
                 const clubShare = income - trainerShare;
                 const total = trainerShare;
@@ -160,7 +166,7 @@ const SalaryPage = () => {
                         value={percent === '' ? '' : percent}
                         onChange={(e) => setTrainerPercent(row, e.target.value)}
                         className="salary-page__percent-input"
-                        placeholder="60"
+                        placeholder="0"
                         aria-label="Процент тренеру"
                       />
                     </td>

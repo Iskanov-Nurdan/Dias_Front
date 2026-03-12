@@ -1,35 +1,36 @@
 @use '../../shared/styles/mixins';
 
 .employees-page {
+  width: 100%;
+  max-width: 100%;
+
   &__title {
-    margin: 0 0 8px;
-    font-size: 26px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
+    margin: 0 0 20px;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
     color: var(--color-text);
-    line-height: 1.25;
+    line-height: 1.2;
   }
 
   &__tabs {
     display: flex;
     gap: 4px;
-    margin-bottom: 24px;
-    padding-bottom: 0;
-    border-bottom: 1px solid var(--color-border);
+    margin: 0 0 20px;
+    border-bottom: 2px solid var(--color-border);
   }
 
   &__tab {
-    position: relative;
-    padding: 12px 20px;
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
     font-size: 14px;
     font-weight: 500;
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
     color: var(--color-text-muted);
     cursor: pointer;
-    transition: color var(--transition-fast);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.15s, border-color 0.15s;
 
     &:hover {
       color: var(--color-text);
@@ -37,17 +38,8 @@
 
     &--active {
       color: var(--color-primary);
-
-      &::after {
-        content: '';
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: -1px;
-        height: 2px;
-        background: var(--color-primary);
-        border-radius: 2px 2px 0 0;
-      }
+      border-bottom-color: var(--color-primary);
+      font-weight: 600;
     }
   }
 

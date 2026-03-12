@@ -37,7 +37,7 @@ const SportsList = ({ items, loading, error, onRetry, onEdit, onDelete, confirmD
                 <tr key={s.id}>
                   <td>{s.name || '—'}</td>
                   <td className="sports-list__actions">
-                    <button type="button" className="sports-list__btn" onClick={() => onEdit(s)}>Изменить</button>
+                    <button type="button" className="sports-list__btn sports-list__btn--primary" onClick={() => onEdit(s)}>Изменить</button>
                     <button type="button" className="sports-list__btn sports-list__btn--danger" onClick={() => onDelete(s)}>Удалить</button>
                   </td>
                 </tr>

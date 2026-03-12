@@ -279,7 +279,7 @@ const LeadsPage = () => {
           <FilterBar className="leads-page__filter-bar">
             <input
               type="text"
-              placeholder="Поиск по имени, телефону, каналу…"
+              placeholder="Поиск"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="leads-page__search"
@@ -315,49 +315,76 @@ const LeadsPage = () => {
                   </tr>
                 ) : (
                   items.map((lead) => (
-                    <tr key={lead.id}>
-                      <td>{lead.name ?? '—'}</td>
-                      <td>{lead.phone ?? '—'}</td>
-                      <td>{CHANNEL_LABELS[(lead.channel ?? '').toLowerCase()] ?? lead.channel ?? '—'}</td>
-                      <td>{getStatusLabel(lead.status)}</td>
-                      <td className="leads-page__actions">
+                    <tr key={lead.id} role="row" aria-label={`Заявка: ${lead.name ?? '—'}, ${lead.phone ?? '—'}`}>
+                      <td role="cell">{lead.name ?? '—'}</td>
+                      <td role="cell">{lead.phone ?? '—'}</td>
+                      <td role="cell">{CHANNEL_LABELS[(lead.channel ?? '').toLowerCase()] ?? lead.channel ?? '—'}</td>
+                      <td role="cell">
+                        {hasFinalStatus(lead) ? (
+                          <span className={`leads-page__status-badge leads-page__status-badge--${lead.status}`}>
+                            {getStatusLabel(lead.status)}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td role="cell" className="leads-page__actions">
                         {!hasFinalStatus(lead) ? (
-                          <>
+                          <div className="leads-page__action-group">
                             <button
                               type="button"
-                              className="leads-page__action leads-page__action--accept"
+                              className="leads-page__action leads-page__action--primary"
                               disabled={statusSaving === lead.id}
                               onClick={() => (isAdmin ? handleSetStatus(lead, 'accepted') : showAccessDenied())}
+                              aria-label={`Принять заявку ${lead.name ?? ''}`}
                             >
                               Принять
                             </button>
                             <button
                               type="button"
-                              className="leads-page__action leads-page__action--reject"
+                              className="leads-page__action leads-page__action--secondary"
                               disabled={statusSaving === lead.id}
                               onClick={() => (isAdmin ? handleSetStatus(lead, 'rejected') : showAccessDenied())}
+                              aria-label={`Отказать в заявке ${lead.name ?? ''}`}
                             >
                               Отказать
                             </button>
                             <button
                               type="button"
-                              className="leads-page__action leads-page__action--edit"
+                              className="leads-page__action leads-page__action--tertiary"
                               onClick={() => (isAdmin ? setFormLead(lead) : showAccessDenied())}
+                              aria-label={`Изменить заявку ${lead.name ?? ''}`}
                             >
                               Изменить
                             </button>
                             <button
                               type="button"
-                              className="leads-page__action leads-page__action--delete"
+                              className="leads-page__action leads-page__action--ghost"
                               onClick={() => (isAdmin ? setConfirmDelete(lead) : showAccessDenied())}
+                              aria-label={`Удалить заявку ${lead.name ?? ''}`}
                             >
                               Удалить
                             </button>
-                          </>
+                          </div>
                         ) : (
-                          <span className={`leads-page__status-badge leads-page__status-badge--${lead.status}`}>
-                            {getStatusLabel(lead.status)}
-                          </span>
+                          <div className="leads-page__action-group">
+                            <button
+                              type="button"
+                              className="leads-page__action leads-page__action--tertiary"
+                              onClick={() => (isAdmin ? setFormLead(lead) : showAccessDenied())}
+                              aria-label={`Изменить заявку ${lead.name ?? ''}`}
+                            >
+                              Изменить
+                            </button>
+                            <button
+                              type="button"
+                              className="leads-page__action leads-page__action--ghost"
+                              onClick={() => (isAdmin ? setConfirmDelete(lead) : showAccessDenied())}
+                              aria-label={`Удалить заявку ${lead.name ?? ''}`}
+                            >
+                              Удалить
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -381,9 +408,12 @@ const LeadsPage = () => {
         <>
           <FilterBar className="leads-page__funnel-toolbar">
             <p className="leads-page__funnel-hint">Следите за движением клиентов от первого контакта до покупки</p>
+            {stagesForBoard.length > 4 && (
+              <span className="leads-page__scroll-hint">Прокрутите вправо →</span>
+            )}
             <input
               type="text"
-              placeholder="Поиск по имени, телефону, каналу…"
+              placeholder="Поиск"
               value={funnelSearch}
               onChange={(e) => setFunnelSearch(e.target.value)}
               className="leads-page__search leads-page__search--funnel"

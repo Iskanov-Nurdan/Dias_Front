@@ -35,7 +35,7 @@ const EmployeesList = ({
           <div className="employees-list__virtual-cell">{emp.roleName ?? emp.role?.name ?? '—'}</div>
           <div className="employees-list__virtual-cell employees-list__actions">
             <button type="button" className="employees-list__btn" onClick={() => onAccess(emp)}>Доступы</button>
-            <button type="button" className="employees-list__btn" onClick={() => onEdit(emp)}>Изменить</button>
+            <button type="button" className="employees-list__btn employees-list__btn--primary" onClick={() => onEdit(emp)}>Изменить</button>
             <button type="button" className="employees-list__btn employees-list__btn--danger" onClick={() => onDelete(emp)}>Удалить</button>
           </div>
         </div>
@@ -97,9 +97,9 @@ const EmployeesList = ({
                   <td>{emp.login || '—'}</td>
                   <td>{emp.phone || '—'}</td>
                   <td>{emp.roleName ?? emp.role?.name ?? '—'}</td>
-                  <td className="employees-list__actions">
+                    <td className="employees-list__actions">
                     <button type="button" className="employees-list__btn" onClick={() => onAccess(emp)}>Доступы</button>
-                    <button type="button" className="employees-list__btn" onClick={() => onEdit(emp)}>Изменить</button>
+                    <button type="button" className="employees-list__btn employees-list__btn--primary" onClick={() => onEdit(emp)}>Изменить</button>
                     <button type="button" className="employees-list__btn employees-list__btn--danger" onClick={() => onDelete(emp)}>Удалить</button>
                   </td>
                 </tr>

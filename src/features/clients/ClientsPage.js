@@ -309,16 +309,22 @@ const ClientsPage = () => {
         <>
           <FilterBar className="clients-page__filter-bar">
             <div className="clients-page__filters clients-page__filters--desktop">
-              <input type="text" placeholder="Поиск (ФИО, телефон)" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="clients-page__search" />
-              <Select value={queryState.sportId} onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))} options={[{ value: '', label: 'Все виды спорта' }, ...sports.map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="Все виды спорта" className="clients-page__select-wrap" />
-              <Select value={queryState.trainerId} onChange={(v) => setQueryState((q) => ({ ...q, trainerId: v, page: 1 }))} options={[{ value: '', label: 'Тренер — все' }, ...trainers.map((t) => ({ value: String(t.id), label: t.fio || '' }))]} placeholder="Тренер — все" className="clients-page__select-wrap" />
-              <Select value={queryState.paid} onChange={(v) => setQueryState((q) => ({ ...q, paid: v, page: 1 }))} options={[{ value: '', label: 'Оплата — все' }, { value: 'true', label: 'Оплачено' }, { value: 'false', label: 'Не оплачено' }]} placeholder="Оплата — все" className="clients-page__select-wrap" />
-              <Select value={queryState.clientType} onChange={(v) => setQueryState((q) => ({ ...q, clientType: v, page: 1 }))} options={[{ value: '', label: 'Тип — все' }, { value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }, { value: 'one-time', label: 'Разовый' }]} placeholder="Тип — все" className="clients-page__select-wrap" />
-              <Select
+              <div className="clients-page__filters-row clients-page__filters-row--main">
+                <input type="text" placeholder="Поиск" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="clients-page__search" />
+                <div className="clients-page__filters-group">
+                  <Select value={queryState.sportId} onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))} options={[{ value: '', label: 'Все виды спорта' }, ...sports.map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="Спорт" className="clients-page__select-wrap" />
+                  <Select value={queryState.trainerId} onChange={(v) => setQueryState((q) => ({ ...q, trainerId: v, page: 1 }))} options={[{ value: '', label: 'Тренер — все' }, ...trainers.map((t) => ({ value: String(t.id), label: t.fio || '' }))]} placeholder="Тренер" className="clients-page__select-wrap" />
+                  <Select value={queryState.paid} onChange={(v) => setQueryState((q) => ({ ...q, paid: v, page: 1 }))} options={[{ value: '', label: 'Оплата — все' }, { value: 'true', label: 'Оплачено' }, { value: 'false', label: 'Не оплачено' }]} placeholder="Оплата" className="clients-page__select-wrap" />
+                  <Select value={queryState.clientType} onChange={(v) => setQueryState((q) => ({ ...q, clientType: v, page: 1 }))} options={[{ value: '', label: 'Тип — все' }, { value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }, { value: 'one-time', label: 'Разовый' }]} placeholder="Тип" className="clients-page__select-wrap" />
+                </div>
+                <button type="button" className="clients-page__add clients-page__add--desktop filter-bar__action" onClick={() => setFormClient({})}>Добавить клиента</button>
+              </div>
+              <div className="clients-page__filters-row clients-page__filters-row--date">
+                <Select
                 value={queryState.year}
                 onChange={(v) => setQueryState((q) => ({ ...q, year: v, month: v ? q.month : '', day: v ? q.day : '', page: 1 }))}
                 options={[{ value: '', label: 'Год — все' }, { value: '2026', label: '2026' }, { value: '2027', label: '2027' }]}
-                placeholder="Год — все"
+                placeholder="Год"
                 className="clients-page__select-wrap clients-page__select-year"
               />
               {queryState.year && (
@@ -326,7 +332,7 @@ const ClientsPage = () => {
                   value={queryState.month}
                   onChange={(v) => setQueryState((q) => ({ ...q, month: v, day: v ? q.day : '', page: 1 }))}
                   options={[{ value: '', label: 'Месяц — все' }, { value: '1', label: 'Январь' }, { value: '2', label: 'Февраль' }, { value: '3', label: 'Март' }, { value: '4', label: 'Апрель' }, { value: '5', label: 'Май' }, { value: '6', label: 'Июнь' }, { value: '7', label: 'Июль' }, { value: '8', label: 'Август' }, { value: '9', label: 'Сентябрь' }, { value: '10', label: 'Октябрь' }, { value: '11', label: 'Ноябрь' }, { value: '12', label: 'Декабрь' }]}
-                  placeholder="Месяц — все"
+                  placeholder="Месяц"
                   className="clients-page__select-wrap"
                 />
               )}
@@ -335,14 +341,14 @@ const ClientsPage = () => {
                   value={queryState.day}
                   onChange={(v) => setQueryState((q) => ({ ...q, day: v, page: 1 }))}
                   options={[{ value: '', label: 'День — все' }, ...Array.from({ length: 31 }, (_, i) => i + 1).map((d) => ({ value: String(d), label: String(d) }))]}
-                  placeholder="День — все"
+                  placeholder="День"
                   className="clients-page__select-wrap clients-page__select-day"
                 />
               )}
-              {(queryState.year || queryState.month || queryState.day) && (
+                {(queryState.year || queryState.month || queryState.day) && (
                 <button type="button" className="clients-page__date-clear" onClick={() => setQueryState((q) => ({ ...q, year: '', month: '', day: '', page: 1 }))} title="Сбросить дату">✕</button>
-              )}
-              <button type="button" className="clients-page__add clients-page__add--desktop filter-bar__action" onClick={() => setFormClient({})}>Добавить клиента</button>
+                )}
+              </div>
             </div>
             <div className="clients-page__toolbar-mobile clients-page__toolbar-mobile--filter-bar">
               <input type="text" placeholder="Поиск" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="clients-page__search clients-page__search--mobile" />
@@ -460,10 +466,22 @@ const ClientsPage = () => {
               <p className="clients-page__stats-info">
                 Период: <strong>{statsYear || 'все годы'}</strong>
                 {statsMonth ? ` · ${MONTHS[Number(statsMonth)]}` : ''}
-                {' · '}Учеников: <strong>{statsData.summary?.total ?? 0}</strong>
-                {' · '}Оплатили: <strong>{statsData.summary?.paid ?? 0}</strong>
-                {' · '}Не оплатили: <strong>{statsData.summary?.unpaid ?? 0}</strong>
               </p>
+
+              <div className="clients-page__stats-cards">
+                <div className="clients-page__stats-card">
+                  <div className="clients-page__stats-card-value">{statsData.summary?.total ?? 0}</div>
+                  <div className="clients-page__stats-card-label">Учеников</div>
+                </div>
+                <div className="clients-page__stats-card">
+                  <div className="clients-page__stats-card-value">{statsData.summary?.paid ?? 0}</div>
+                  <div className="clients-page__stats-card-label">Оплатили</div>
+                </div>
+                <div className="clients-page__stats-card">
+                  <div className="clients-page__stats-card-value">{statsData.summary?.unpaid ?? 0}</div>
+                  <div className="clients-page__stats-card-label">Не оплатили</div>
+                </div>
+              </div>
 
               <div className="clients-page__stats-block">
                 <h3 className="clients-page__stats-block-title">По тренерам</h3>
@@ -502,6 +520,9 @@ const ClientsPage = () => {
       {/* ── Разовый ── */}
       {activeTab === TAB_ONETIME && (
         <div className="clients-page__onetime-section">
+          <p className="clients-page__onetime-desc">
+            Разовые доплаты к абонементам по месяцам. Введите сумму и нажмите «Добавить доплату», чтобы зафиксировать доплату за выбранный период.
+          </p>
           <FilterBar className="clients-page__onetime-toolbar">
             <div className="clients-page__onetime-search-wrap">
               <input
@@ -512,6 +533,7 @@ const ClientsPage = () => {
                 className="clients-page__onetime-search"
               />
             </div>
+            <span className="clients-page__onetime-filter-label">Период:</span>
             <Select
               value={oneTimeYear}
               onChange={setOneTimeYear}
@@ -541,7 +563,7 @@ const ClientsPage = () => {
               <div className="clients-page__onetime-block">
                 <table className="clients-page__onetime-table">
                   <thead>
-                    <tr><th>Имя</th><th>Месяц</th><th>Год</th><th>Оплата</th><th>Действие</th></tr>
+                    <tr><th>Имя</th><th>Месяц</th><th>Год</th><th>Текущая сумма</th><th>Доплата</th></tr>
                   </thead>
                   <tbody>
                     {!(oneTimeData?.items ?? oneTimeData?.results ?? []).length ? (
@@ -573,15 +595,18 @@ const ClientsPage = () => {
                             <td>{amountStr}</td>
                             <td>
                               <div className="clients-page__onetime-actions">
-                                <input
-                                  type="number"
-                                  min="1"
-                                  placeholder="Добавить сум"
-                                  value={inputVal}
-                                  onChange={(e) => setOneTimeAddInputs((prev) => ({ ...prev, [c.id]: e.target.value }))}
-                                  className="clients-page__onetime-input"
-                                  disabled={isLoading}
-                                />
+                                <label className="clients-page__onetime-add-label">
+                                  <span className="clients-page__onetime-add-label-text">Сумма, сом</span>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    placeholder="0"
+                                    value={inputVal}
+                                    onChange={(e) => setOneTimeAddInputs((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                                    className="clients-page__onetime-input"
+                                    disabled={isLoading}
+                                  />
+                                </label>
                                 <button
                                   type="button"
                                   className="clients-page__onetime-add-btn"
@@ -596,7 +621,7 @@ const ClientsPage = () => {
                                   }}
                                   disabled={isLoading}
                                 >
-                                  {isLoading ? '…' : '+'} Добавить
+                                  {isLoading ? '…' : 'Добавить доплату'}
                                 </button>
                               </div>
                             </td>

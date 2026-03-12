@@ -72,17 +72,38 @@
 
 .lead-card-modal__section {
   padding: 18px;
-  border: 1px solid var(--color-border);
   border-radius: 10px;
-  background: var(--color-bg);
   margin-bottom: 12px;
+
+  &--main {
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+  }
+
+  &--stage {
+    border-left: 3px solid var(--color-primary);
+    background: var(--color-surface-secondary);
+    padding-left: 20px;
+  }
+
+  &--statuses {
+    border: 1px dashed var(--color-border-strong);
+    background: var(--color-surface);
+  }
+
+  &--finance {
+    border: 1px solid var(--color-border);
+    background: linear-gradient(to bottom, var(--color-surface-secondary) 0%, var(--color-surface) 100%);
+  }
 }
 
 .lead-card-modal__section-title {
   margin: 0 0 14px;
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
 }
 
 .lead-card-modal__grid {
@@ -147,9 +168,11 @@
   display: flex;
   gap: 12px;
   justify-content: flex-end;
-  margin-top: 8px;
-  padding-top: 16px;
+  margin: 20px -32px -32px;
+  padding: 16px 32px;
   border-top: 1px solid var(--color-border);
+  background: var(--color-surface-secondary);
+  border-radius: 0 0 14px 14px;
 }
 
 .lead-card-modal__btn {

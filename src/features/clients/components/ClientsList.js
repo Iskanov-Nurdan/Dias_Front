@@ -55,7 +55,7 @@ const ClientsList = ({ items, loading, error, onRetry, onEdit, onDelete, onDetai
                 <td data-label="Оплачено">{isClientPaid(c) ? 'Да' : 'Нет'}</td>
                 <td data-label="Тип" className={c.clientType === 'individual' ? 'clients-list__type-cell clients-list__type-cell--individual' : c.clientType === 'one-time' ? 'clients-list__type-cell clients-list__type-cell--one-time' : ''}>{c.clientType === 'individual' ? 'Индивид.' : c.clientType === 'regular' ? 'Регуляр' : c.clientType === 'one-time' ? 'Разовый' : c.clientType || '—'}</td>
                 <td className="clients-list__actions" data-label="">
-                  <button type="button" className="clients-list__btn" onClick={() => onDetails(c)}>Подробнее</button>
+                  <button type="button" className="clients-list__btn clients-list__btn--primary" onClick={() => onDetails(c)}>Подробнее</button>
                   <button type="button" className="clients-list__btn" onClick={() => onExtend(c)}>Продлить</button>
                 </td>
               </tr>

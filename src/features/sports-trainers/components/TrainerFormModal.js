@@ -36,6 +36,7 @@ const TrainerFormModal = ({ trainer, sports, onSave, onClose, error, saving }) =
         </div>
         {error && <p className="trainer-form-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="trainer-form-modal__form">
+          <div className="trainer-form-modal__form-body">
           <label className="trainer-form-modal__label">
             <span className="trainer-form-modal__label-caption">ФИО <span className="form-label-required" aria-hidden="true">*</span></span>
             <input type="text" value={fio} onChange={(e) => setFio(e.target.value)} required className="trainer-form-modal__input" />
@@ -50,6 +51,7 @@ const TrainerFormModal = ({ trainer, sports, onSave, onClose, error, saving }) =
                 </label>
               ))}
             </div>
+          </div>
           </div>
           <div className="trainer-form-modal__actions">
             <button type="button" className="trainer-form-modal__btn trainer-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>

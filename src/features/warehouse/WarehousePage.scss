@@ -244,12 +244,18 @@
     }
 
     th {
-      background: var(--color-bg);
+      background: var(--color-surface-secondary);
       font-weight: 600;
-      font-size: 12px;
+      font-size: 11px;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--color-text-muted);
+      letter-spacing: 0.05em;
+      color: var(--color-text-secondary);
+      border-bottom: 2px solid var(--color-border-strong);
+    }
+
+    th.warehouse-page__th--group-start {
+      border-left: 1px solid var(--color-border);
+      padding-left: 20px;
     }
 
     tbody tr {
@@ -262,13 +268,14 @@
       background: var(--color-primary-light);
     }
     tbody tr.warehouse-page__product-row--at-min {
-      background: rgba(197, 48, 48, 0.14);
+      background: rgba(217, 119, 6, 0.06);
+      border-left: 3px solid var(--color-warning);
     }
     tbody tr.warehouse-page__product-row--at-min:nth-child(even) {
-      background: rgba(197, 48, 48, 0.2);
+      background: rgba(217, 119, 6, 0.08);
     }
     tbody tr.warehouse-page__product-row--at-min:hover {
-      background: rgba(197, 48, 48, 0.22);
+      background: rgba(217, 119, 6, 0.1);
     }
     tbody tr:last-child td {
       border-bottom: none;
@@ -297,8 +304,8 @@
         box-shadow: var(--shadow-card);
       }
       tr.warehouse-page__product-row--at-min {
-        background: rgba(197, 48, 48, 0.14);
-        border-color: rgba(197, 48, 48, 0.3);
+        background: rgba(217, 119, 6, 0.08);
+        border-left: 3px solid var(--color-warning);
       }
 
       td {
@@ -362,31 +369,68 @@
     font-size: 13px;
     font-weight: 500;
     border-radius: var(--radius-sm);
-    border: 1px solid var(--color-border);
-    background: transparent;
-    color: var(--color-text);
+    border: 1px solid transparent;
     cursor: pointer;
     white-space: nowrap;
     transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
-    &:hover {
-      background: var(--color-bg);
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+    &--primary {
+      background: var(--color-primary);
+      color: #fff;
       border-color: var(--color-primary);
-      color: var(--color-primary);
-    }
-    &--edit,
-    &--restock {
-      border-color: var(--color-primary);
-      color: var(--color-primary);
-      &:hover {
-        background: var(--color-primary-light);
+      &:hover:not(:disabled) {
+        background: var(--color-primary-hover);
+        border-color: var(--color-primary-hover);
       }
     }
-    &--delete {
-      border-color: var(--color-error);
-      color: var(--color-error);
-      &:hover {
-        background: var(--color-error-light);
+    &--secondary {
+      background: transparent;
+      border-color: var(--color-border);
+      color: var(--color-text-secondary);
+      &:hover:not(:disabled) {
+        border-color: var(--color-primary);
+        color: var(--color-primary);
+      }
+    }
+    &--ghost {
+      background: transparent;
+      border: none;
+      color: var(--color-text-muted);
+      padding: 6px 8px;
+      font-size: 12px;
+      &:hover:not(:disabled) {
+        color: var(--color-danger);
       }
     }
   }
+
+  &__history-header {
+    margin-bottom: 16px;
+  }
+
+  &__history-hint {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: var(--color-text-muted);
+  }
+
+  &__categories-hint-row {
+    background: var(--color-surface-secondary) !important;
+  }
+
+  &__categories-hint {
+    padding: 16px 18px !important;
+    font-size: 13px;
+    color: var(--color-text-muted);
+    text-align: left;
+    border-bottom: 1px dashed var(--color-border);
+  }
+}
+
+.warehouse-page__table-wrap--history .warehouse-page__table {
+  th { background: var(--color-surface-secondary); }
+  tbody tr.warehouse-page__product-row { border-left: 3px solid var(--color-border); }
+  tbody tr:nth-child(odd).warehouse-page__product-row { background: var(--color-surface); }
+  tbody tr:nth-child(even).warehouse-page__product-row { background: var(--color-bg); }
+  tbody tr.warehouse-page__product-row:hover { background: var(--color-primary-light); }
 }

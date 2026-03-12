@@ -123,23 +123,32 @@ const SalesPage = () => {
     <div className="sales-page">
       <h1 className="sales-page__title">Продажи</h1>
       <FilterBar className="sales-page__filter-bar">
-        <input type="date" placeholder="Дата с" value={queryState.dateFrom} onChange={(e) => setQueryState((q) => ({ ...q, dateFrom: e.target.value }))} className="sales-page__input" />
-        <input type="date" placeholder="Дата по" value={queryState.dateTo} onChange={(e) => setQueryState((q) => ({ ...q, dateTo: e.target.value }))} className="sales-page__input" />
+        <div className="sales-page__date-range">
+          <label className="sales-page__date-label">
+            <span className="sales-page__date-label-text">от</span>
+            <input type="date" value={queryState.dateFrom} onChange={(e) => setQueryState((q) => ({ ...q, dateFrom: e.target.value }))} className="sales-page__input" />
+          </label>
+          <label className="sales-page__date-label">
+            <span className="sales-page__date-label-text">до</span>
+            <input type="date" value={queryState.dateTo} onChange={(e) => setQueryState((q) => ({ ...q, dateTo: e.target.value }))} className="sales-page__input" />
+          </label>
+        </div>
         <button type="button" className="sales-page__add filter-bar__action" onClick={() => setFormSaleOpen(true)}>Новая продажа</button>
       </FilterBar>
       {summaryError && <ErrorState message={summaryError} onRetry={fetchSummarySafe} />}
-      <div className="sales-page__summary">
+      <div className="sales-page__stats-row">
+        <div className="sales-page__summary">
         {summaryLoading ? (
           <span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span>
         ) : summaryData ? (
         <>
           <div className="sales-page__card"><span className="sales-page__card-label">Всего продаж</span><span className="sales-page__card-value">{summaryData.count ?? 0}</span></div>
           <div className="sales-page__card"><span className="sales-page__card-label">Выручка</span><span className="sales-page__card-value">{summaryData.revenue ?? 0}</span></div>
-          <div className="sales-page__card"><span className="sales-page__card-label">Средний чек</span><span className="sales-page__card-value">{summaryData.avgCheck ?? '—'}</span></div>
         </>
         ) : null}
+        </div>
+        <h3 className="sales-page__section">Список продаж</h3>
       </div>
-      <h3 className="sales-page__section">Список продаж</h3>
       {salesError && <ErrorState message={salesError} onRetry={fetchSalesSafe} />}
       <div className="sales-page__table-wrap">
         <table className="sales-page__table">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { PAGE_IDS, PAGE_LABELS, PAGE_ICONS } from '../../../shared/constants/pages';
+import { PAGE_IDS, PAGE_LABELS, PAGE_ICONS, PAGE_GROUPS } from '../../../shared/constants/pages';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './AccessModal.scss';
 
@@ -48,21 +48,28 @@ const AccessModal = ({ employee, currentAccess, onSave, onClose, error, saving }
         </div>
         {error && <p className="access-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="access-modal__form">
-          <div className="access-modal__list">
-            {PAGE_IDS.map((pageId) => {
-              const Icon = PAGE_ICONS[pageId];
-              return (
-                <label key={pageId} className="access-modal__item">
-                  <input
-                    type="checkbox"
-                    checked={access[pageId] === true}
-                    onChange={() => toggle(pageId)}
-                  />
-                  {Icon && <Icon className="access-modal__item-icon" size={18} />}
-                  <span>{PAGE_LABELS[pageId] || pageId}</span>
-                </label>
-              );
-            })}
+          <div className="access-modal__body">
+            {Object.entries(PAGE_GROUPS).map(([groupLabel, pageIds]) => (
+              <div key={groupLabel} className="access-modal__group">
+                <div className="access-modal__group-title">{groupLabel}</div>
+                <div className="access-modal__list">
+                  {pageIds.map((pageId) => {
+                    const Icon = PAGE_ICONS[pageId];
+                    return (
+                      <label key={pageId} className="access-modal__item">
+                        <input
+                          type="checkbox"
+                          checked={access[pageId] === true}
+                          onChange={() => toggle(pageId)}
+                        />
+                        {Icon && <Icon className="access-modal__item-icon" size={18} />}
+                        <span className="access-modal__item-label">{PAGE_LABELS[pageId] || pageId}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
           <div className="access-modal__actions">
             <button type="button" className="access-modal__btn access-modal__btn--cancel" onClick={onClose} disabled={saving}>

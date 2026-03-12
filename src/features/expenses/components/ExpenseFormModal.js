@@ -53,7 +53,7 @@ const ExpenseFormModal = ({ expense, categories = [], onSave, onClose, error, sa
         <form onSubmit={handleSubmit} className="expense-form-modal__form">
           <label className="expense-form-modal__label">
             <span className="expense-form-modal__label-caption">Название <span className="form-label-required" aria-hidden="true">*</span></span>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="expense-form-modal__input" placeholder="Например: Аренда зала" />
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="expense-form-modal__input" placeholder="Название" />
           </label>
           <label className="expense-form-modal__label">
             <span className="expense-form-modal__label-caption">Категория</span>
@@ -75,7 +75,7 @@ const ExpenseFormModal = ({ expense, categories = [], onSave, onClose, error, sa
           </label>
           <label className="expense-form-modal__label">
             <span className="expense-form-modal__label-caption">Комментарий</span>
-            <textarea value={comment} onChange={(e) => setComment(e.target.value)} className="expense-form-modal__input" rows={2} placeholder="Необязательно" />
+            <textarea value={comment} onChange={(e) => setComment(e.target.value)} className="expense-form-modal__textarea" rows={2} placeholder="—" />
           </label>
           <div className="expense-form-modal__actions">
             <button type="button" className="expense-form-modal__btn expense-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>

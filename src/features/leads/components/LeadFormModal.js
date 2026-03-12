@@ -50,7 +50,7 @@ const LeadFormModal = ({ lead, onSave, onClose, error, saving }) => {
         <form onSubmit={handleSubmit} className="lead-form-modal__form">
           <label className="lead-form-modal__label">
             <span className="lead-form-modal__label-text">Имя</span>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="lead-form-modal__input" placeholder="Имя клиента" />
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="lead-form-modal__input" placeholder="Имя" />
           </label>
           <label className="lead-form-modal__label">
             <span className="lead-form-modal__label-text">Телефон</span>
@@ -62,7 +62,7 @@ const LeadFormModal = ({ lead, onSave, onClose, error, saving }) => {
               value={channel}
               onChange={setChannel}
               options={CHANNEL_OPTIONS}
-              placeholder="Не выбрано"
+              placeholder="—"
               className="lead-form-modal__select"
             />
           </label>

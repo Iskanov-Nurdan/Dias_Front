@@ -170,15 +170,31 @@ const ExpensesPage = () => {
                   <tr><td colSpan={2} className="expenses-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
                 ) : categoriesList.length === 0 ? (
                   <tr><td colSpan={2} className="expenses-page__empty-cell"><EmptyState message="Нет категорий" /></td></tr>
-                ) : categoriesList.map((c) => (
-                  <tr key={c.id} className="expenses-page__category-row" onClick={() => setSelectedCategoryId(c.id)}>
-                    <td>{c.name}</td>
-                    <td className="expenses-page__actions" onClick={(e) => e.stopPropagation()}>
+                ) : (
+                  <>
+                    {categoriesList.length < 4 && (
+                      <tr className="expenses-page__categories-hint-row"><td colSpan={2}>Категории помогают группировать расходы</td></tr>
+                    )}
+                    {categoriesList.map((c) => (
+                  <tr key={c.id} className="expenses-page__category-row">
+                    <td>
+                      <button
+                        type="button"
+                        className="expenses-page__category-link"
+                        onClick={() => setSelectedCategoryId(c.id)}
+                        aria-label={`Открыть расходы по категории ${c.name}`}
+                      >
+                        {c.name}
+                      </button>
+                    </td>
+                    <td className="expenses-page__actions">
                       <button type="button" className="expenses-page__action expenses-page__action--edit" onClick={() => (isAdmin ? setFormCategory(c) : showAccessDenied())}>Изменить</button>
                       <button type="button" className="expenses-page__action expenses-page__action--delete" onClick={() => (isAdmin ? setConfirmDeleteCategory(c) : showAccessDenied())}>Удалить</button>
                     </td>
                   </tr>
-                ))}
+                    ))}
+                  </>
+                )}
               </tbody>
             </table>
           </div>
@@ -212,12 +228,12 @@ const ExpensesPage = () => {
                       <td>{e.categoryName ?? e.category?.name ?? '—'}</td>
                       <td>{formatMoney(e.amount)}</td>
                       <td>{e.date ? new Date(e.date).toLocaleDateString() : '—'}</td>
-                      <td><Badge variant={e.saved ? 'success' : 'neutral'}>{e.saved ? 'Сохранён' : 'Черновик'}</Badge></td>
+                      <td><Badge variant={e.saved ? 'success' : 'warning'}>{e.saved ? 'Сохранён' : 'Черновик'}</Badge></td>
                       <td className="expenses-page__actions">
-                        {!e.saved && <button type="button" className="expenses-page__save-btn" onClick={() => handleSaveExpense(e.id)}>Сохранить</button>}
                         {!e.saved && (
                           <>
-                            <button type="button" className="expenses-page__action expenses-page__action--edit" onClick={() => (isAdmin ? setFormExpense(e) : showAccessDenied())}>Изменить</button>
+                            <button type="button" className="expenses-page__save-btn" onClick={() => handleSaveExpense(e.id)}>Сохранить</button>
+                            <button type="button" className="expenses-page__action expenses-page__action--secondary" onClick={() => (isAdmin ? setFormExpense(e) : showAccessDenied())}>Изменить</button>
                             <button type="button" className="expenses-page__action expenses-page__action--delete" onClick={() => (isAdmin ? setConfirmDeleteExpense(e) : showAccessDenied())}>Удалить</button>
                           </>
                         )}

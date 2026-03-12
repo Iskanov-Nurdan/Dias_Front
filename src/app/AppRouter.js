@@ -34,6 +34,11 @@ const ProtectedRoute = ({ children, pageId }) => {
   return children;
 };
 
+const IndexRedirect = () => {
+  const { getFirstAvailableRoute } = useAuth();
+  return <Navigate to={getFirstAvailableRoute()} replace />;
+};
+
 const AppRouter = () => (
   <BrowserRouter>
     <Routes>
@@ -46,7 +51,7 @@ const AppRouter = () => (
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/employees" replace />} />
+        <Route index element={<IndexRedirect />} />
         <Route
           path="employees"
           element={

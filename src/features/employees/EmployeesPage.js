@@ -237,7 +237,7 @@ const EmployeesPage = () => {
         <FilterBar className="employees-page__filter-bar">
           <input
             type="text"
-            placeholder="Поиск (ФИО, логин, телефон)"
+            placeholder="Поиск"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             className="employees-page__search"
@@ -246,7 +246,7 @@ const EmployeesPage = () => {
             value={queryState.roleId}
             onChange={(v) => handleRoleFilter(v)}
             options={roleOptions}
-            placeholder="Все роли"
+            placeholder="Роли"
             className="employees-page__select-wrap"
           />
           <button type="button" className="employees-page__add filter-bar__action" onClick={() => setFormEmployee({})}>
@@ -286,7 +286,7 @@ const EmployeesPage = () => {
           <FilterBar className="employees-page__filter-bar">
             <input
               type="text"
-              placeholder="Поиск по названию роли"
+              placeholder="Поиск"
               value={roleSearch}
               onChange={(e) => setRoleSearch(e.target.value)}
               className="employees-page__search"

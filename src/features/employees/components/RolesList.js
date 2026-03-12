@@ -64,7 +64,7 @@ const RolesList = ({
                     <td className="roles-list__actions">
                       {!systemRole && (
                         <>
-                          <button type="button" className="roles-list__btn" onClick={() => handleEdit(role)}>
+                          <button type="button" className="roles-list__btn roles-list__btn--primary" onClick={() => handleEdit(role)}>
                             Изменить
                           </button>
                           <button type="button" className="roles-list__btn roles-list__btn--danger" onClick={() => handleDelete(role)}>

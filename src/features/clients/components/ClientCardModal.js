@@ -62,18 +62,36 @@ const ClientCardModal = ({ client, onEdit, onDelete, onRefresh, onClose }) => {
           <h2 id="client-card-modal-title" className="client-card-modal__title">Карточка клиента</h2>
           <button type="button" className="client-card-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
         </div>
-        <dl className="client-card-modal__dl">
-          <dt>ФИО</dt><dd>{client.fio || '—'}</dd>
-          <dt>Телефон</dt><dd>{client.phone || '—'}</dd>
-          <dt>Вид спорта</dt><dd>{client.sportName ?? client.sport?.name ?? '—'}</dd>
-          <dt>Тренер</dt><dd>{client.trainerName ?? client.trainer?.fio ?? '—'}</dd>
-          <dt>Дата начала</dt><dd>{client.dateStart ? new Date(client.dateStart).toLocaleDateString() : '—'}</dd>
-          {discountPct > 0 && <><dt>Скидка</dt><dd>{discountPct}%</dd></>}
-          <dt>Цена</dt><dd>{formatMoney(priceFinal)}</dd>
-          <dt>Оплачено</dt><dd>{isClientPaid(client) ? 'Да' : 'Нет'}</dd>
-          <dt>Тип</dt><dd className={client.clientType === 'individual' ? 'client-card-modal__type-cell client-card-modal__type-cell--individual' : client.clientType === 'one-time' ? 'client-card-modal__type-cell client-card-modal__type-cell--one-time' : ''}>{client.clientType === 'individual' ? 'Индивидуальный' : client.clientType === 'regular' ? 'Регулярный' : client.clientType === 'one-time' ? 'Разовый' : client.clientType || '—'}</dd>
-          <dt>Комментарий</dt><dd>{client.comment || '—'}</dd>
-        </dl>
+        <div className="client-card-modal__sections">
+          <section className="client-card-modal__section">
+            <h3 className="client-card-modal__section-title">Личные данные</h3>
+            <dl className="client-card-modal__dl">
+              <dt>ФИО</dt><dd>{client.fio || '—'}</dd>
+              <dt>Телефон</dt><dd>{client.phone || '—'}</dd>
+            </dl>
+          </section>
+          <section className="client-card-modal__section">
+            <h3 className="client-card-modal__section-title">Абонемент</h3>
+            <dl className="client-card-modal__dl">
+              <dt>Вид спорта</dt><dd>{client.sportName ?? client.sport?.name ?? '—'}</dd>
+              <dt>Тренер</dt><dd>{client.trainerName ?? client.trainer?.fio ?? '—'}</dd>
+              <dt>Дата начала</dt><dd>{client.dateStart ? new Date(client.dateStart).toLocaleDateString() : '—'}</dd>
+              <dt>Тип</dt><dd className={client.clientType === 'individual' ? 'client-card-modal__type-cell client-card-modal__type-cell--individual' : client.clientType === 'one-time' ? 'client-card-modal__type-cell client-card-modal__type-cell--one-time' : ''}>{client.clientType === 'individual' ? 'Индивидуальный' : client.clientType === 'regular' ? 'Регулярный' : client.clientType === 'one-time' ? 'Разовый' : client.clientType || '—'}</dd>
+            </dl>
+          </section>
+          <section className="client-card-modal__section">
+            <h3 className="client-card-modal__section-title">Оплата</h3>
+            <dl className="client-card-modal__dl">
+              {discountPct > 0 && <><dt>Скидка</dt><dd>{discountPct}%</dd></>}
+              <dt>Цена</dt><dd>{formatMoney(priceFinal)}</dd>
+              <dt>Оплачено</dt><dd>{isClientPaid(client) ? 'Да' : 'Нет'}</dd>
+            </dl>
+          </section>
+          <section className="client-card-modal__section">
+            <h3 className="client-card-modal__section-title">Комментарий</h3>
+            <p className="client-card-modal__comment">{client.comment || '—'}</p>
+          </section>
+        </div>
         {oneTimePayments.length > 0 && (
           <div className="client-card-modal__onetime">
             <button
@@ -118,9 +136,9 @@ const ClientCardModal = ({ client, onEdit, onDelete, onRefresh, onClose }) => {
           />
         )}
         <div className="client-card-modal__actions">
-          <button type="button" className="client-card-modal__btn" onClick={() => { onEdit(client); onClose(); }}>Редактировать</button>
+          <button type="button" className="client-card-modal__btn client-card-modal__btn--primary" onClick={() => { onEdit(client); onClose(); }}>Редактировать</button>
+          <button type="button" className="client-card-modal__btn" onClick={onClose}>Закрыть</button>
           <button type="button" className="client-card-modal__btn client-card-modal__btn--danger" onClick={() => { onDelete(client); onClose(); }}>Удалить</button>
-          <button type="button" className="client-card-modal__btn client-card-modal__btn--cancel" onClick={onClose}>Закрыть</button>
         </div>
       </div>
     </div>

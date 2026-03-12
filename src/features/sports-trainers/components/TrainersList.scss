@@ -17,25 +17,26 @@
 
     th,
     td {
-      padding: 14px 18px;
+      padding: 12px 20px;
       text-align: left;
       border-bottom: 1px solid var(--color-border);
     }
 
     th {
-      background: var(--color-bg);
+      background: var(--color-surface-secondary);
       font-weight: 600;
-      font-size: 12px;
+      font-size: 11px;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--color-text-muted);
+      letter-spacing: 0.06em;
+      color: var(--color-text-secondary);
+      border-bottom: 2px solid var(--color-border-strong);
     }
 
     tbody tr {
       transition: background var(--transition-fast);
     }
     tbody tr:nth-child(even) {
-      background: rgba(0, 0, 0, 0.02);
+      background: rgba(0, 0, 0, 0.015);
     }
     tbody tr:hover {
       background: var(--color-primary-light);
@@ -67,21 +68,36 @@
     padding: 6px 12px;
     font-size: 13px;
     font-weight: 500;
-    background: transparent;
-    border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
-    color: var(--color-text);
     transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
-    &:hover {
-      background: var(--color-bg);
-      border-color: var(--color-primary);
-      color: var(--color-primary);
-    }
-    &--danger {
-      border-color: var(--color-error);
-      color: var(--color-error);
+
+    &--primary {
+      background: var(--color-primary);
+      border: 1px solid var(--color-primary);
+      color: #fff;
       &:hover {
-        background: var(--color-error-light);
+        background: var(--color-primary-hover);
+        border-color: var(--color-primary-hover);
+      }
+    }
+
+    &:not(&--primary):not(&--danger) {
+      background: transparent;
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+      &:hover {
+        background: var(--color-bg);
+        border-color: var(--color-border-strong);
+        color: var(--color-text);
+      }
+    }
+
+    &--danger {
+      background: transparent;
+      border: 1px solid var(--color-danger);
+      color: var(--color-danger);
+      &:hover {
+        background: var(--color-danger-soft);
       }
     }
   }

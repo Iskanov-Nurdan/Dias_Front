@@ -477,10 +477,12 @@
 
   &__content {
     grid-area: content;
-    padding: var(--space-8);
+    padding: var(--space-6) var(--space-8);
     overflow: auto;
     @include mixins.scrollbar;
     min-width: 0;
+    width: 100%;
+    max-width: 100%;
 
     @include mixins.mobile {
       padding: var(--space-5);

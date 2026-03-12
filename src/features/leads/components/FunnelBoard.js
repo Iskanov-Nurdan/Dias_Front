@@ -50,7 +50,7 @@ const LeadMiniCard = ({ lead, onClick, onDragStart, onDragEnd }) => (
 
 const FunnelBoard = ({ stages, leadsByStage, onCardClick, onMoveLead, loading }) => {
   const [dragOverStageId, setDragOverStageId] = useState(null);
-  const [isDragging, setIsDragging] = useState(false);
+  const [, setIsDragging] = useState(false);
 
   const handleDragOver = (e, stageId) => {
     e.preventDefault();

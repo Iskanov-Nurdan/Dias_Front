@@ -38,11 +38,13 @@ const RestockModal = ({ product, onSave, onClose, error, saving }) => {
           <button type="button" className="warehouse-form-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
         </div>
         {error && <p className="warehouse-form-modal__error" role="alert">{error}</p>}
-        <form onSubmit={handleSubmit} className="warehouse-form-modal__form">
-          <label className="warehouse-form-modal__label">
-            Количество
-            <input type="number" min="1" step="1" value={qty} onChange={(e) => setQty(e.target.value)} required className="warehouse-form-modal__input" placeholder="0" />
-          </label>
+        <form onSubmit={handleSubmit} className="warehouse-form-modal__form restock-modal__form">
+          <section className="restock-modal__body">
+            <label className="warehouse-form-modal__label">
+              <span className="warehouse-form-modal__label-caption">Количество</span>
+              <input type="number" min="1" step="1" value={qty} onChange={(e) => setQty(e.target.value)} required className="warehouse-form-modal__input" placeholder="0" />
+            </label>
+          </section>
           <div className="warehouse-form-modal__actions">
             <button type="button" className="warehouse-form-modal__btn warehouse-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
             <button type="submit" className="warehouse-form-modal__btn warehouse-form-modal__btn--submit" disabled={saving}>{saving ? 'Пополнение…' : 'Пополнить'}</button>

@@ -116,13 +116,6 @@ const AnalyticsPage = () => {
   const yoyChange = pc.yoyChange ?? {};
   const showPeriodComparison = queryState.month && !queryState.day;
 
-  const donutSportsData = useMemo(() => sportItems.map((x, i) => ({
-    label: x.sportName ?? '—',
-    value: x.clientCount ?? 0,
-    color: DONUT_COLORS[i % DONUT_COLORS.length],
-  })).filter((d) => d.value > 0), [sportItems]);
-  const totalClientsSports = useMemo(() => donutSportsData.reduce((s, d) => s + d.value, 0), [donutSportsData]);
-
   // ── Лиды: данные с бэкенда GET /api/analytics/leads/ ──────────────────────
   const la = leadsAnalytics ?? {};
   const leadsByStatus = la.byStatus ?? { total: 0, accepted: 0, rejected: 0, pending: 0 };
@@ -225,7 +218,7 @@ const AnalyticsPage = () => {
           День
           <input
             type="number"
-            placeholder="Весь месяц"
+            placeholder="—"
             value={queryState.day}
             onChange={(e) => setQueryState((q) => ({ ...q, day: e.target.value }))}
             className="analytics-page__input"

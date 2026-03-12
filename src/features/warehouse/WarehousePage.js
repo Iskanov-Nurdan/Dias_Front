@@ -237,7 +237,7 @@ const WarehousePage = () => {
                 value={queryState.categoryId}
                 onChange={(v) => setQueryState((q) => ({ ...q, categoryId: v, page: 1 }))}
                 options={[{ value: '', label: 'Все категории' }, ...categoriesList.map((c) => ({ value: String(c.id), label: c.name || '' }))]}
-                placeholder="Все категории"
+                placeholder="Категории"
                 className="warehouse-page__select-wrap"
               />
               <button type="button" className="warehouse-page__add filter-bar__action" onClick={() => setFormProduct({})}>Добавить товар</button>
@@ -268,7 +268,12 @@ const WarehousePage = () => {
           {productsError && <ErrorState message={productsError} onRetry={fetchProductsSafe} />}
           <div className="warehouse-page__table-wrap">
             <table className="warehouse-page__table">
-              <thead><tr><th>Название</th><th>Категория</th><th>Кол-во</th><th>Закупка</th><th>Продажа</th><th>Мин. остаток</th><th>Добавлено</th><th>Действия</th></tr></thead>
+              <thead><tr>
+                  <th className="warehouse-page__th--group-start">Название</th><th>Категория</th>
+                  <th className="warehouse-page__th--group-start">Кол-во</th><th>Закупка</th><th>Продажа</th><th>Мин. остаток</th>
+                  <th className="warehouse-page__th--group-start">Добавлено</th>
+                  <th className="warehouse-page__th--group-start">Действия</th>
+                </tr></thead>
               <tbody>
                 {productsLoading ? (
                   Array.from({ length: 5 }, (_, i) => (
@@ -294,9 +299,9 @@ const WarehousePage = () => {
                       <td data-label="Мин. остаток">{p.minQty ?? p.min_quantity ?? '—'}</td>
                       <td data-label="Добавлено">{(p.createdAt ?? p.created_at) ? new Date(p.createdAt ?? p.created_at).toLocaleDateString('ru-RU') : '—'}</td>
                       <td className="warehouse-page__actions" data-label="">
-                        <button type="button" className="warehouse-page__action warehouse-page__action--edit" onClick={() => (isAdmin ? setFormProduct(p) : showAccessDenied())} title="Редактировать">Редактировать</button>
-                        <button type="button" className="warehouse-page__action warehouse-page__action--restock" onClick={() => setRestockProductItem(p)} title="Пополнить">Пополнить</button>
-                        <button type="button" className="warehouse-page__action warehouse-page__action--delete" onClick={() => (isAdmin ? setConfirmDeleteProduct(p) : showAccessDenied())} title="Удалить">Удалить</button>
+                        <button type="button" className="warehouse-page__action warehouse-page__action--primary" onClick={() => (isAdmin ? setFormProduct(p) : showAccessDenied())} title="Редактировать">Редактировать</button>
+                        <button type="button" className="warehouse-page__action warehouse-page__action--secondary" onClick={() => setRestockProductItem(p)} title="Пополнить">Пополнить</button>
+                        <button type="button" className="warehouse-page__action warehouse-page__action--ghost" onClick={() => (isAdmin ? setConfirmDeleteProduct(p) : showAccessDenied())} title="Удалить">Удалить</button>
                       </td>
                     </tr>
                 ); })}
@@ -339,15 +344,22 @@ const WarehousePage = () => {
                   ))
                 ) : categoriesList.length === 0 ? (
                   <tr><td colSpan={2} className="warehouse-page__empty-cell"><EmptyState message="Нет категорий" /></td></tr>
-                ) : categoriesList.map((c) => (
-                  <tr key={c.id} className="warehouse-page__product-row">
-                    <td data-label="Название">{c.name}</td>
-                    <td className="warehouse-page__actions" data-label="">
-                      <button type="button" className="warehouse-page__action warehouse-page__action--edit" onClick={() => (isAdmin ? setFormCategory(c) : showAccessDenied())} title="Редактировать">Редактировать</button>
-                      <button type="button" className="warehouse-page__action warehouse-page__action--delete" onClick={() => (isAdmin ? setConfirmDeleteCategory(c) : showAccessDenied())} title="Удалить">Удалить</button>
-                    </td>
-                  </tr>
-                ))}
+                ) : (
+                  <>
+                    {categoriesList.length < 4 && (
+                      <tr className="warehouse-page__categories-hint-row"><td colSpan={2} className="warehouse-page__categories-hint">Категории помогают группировать товары на складе</td></tr>
+                    )}
+                    {categoriesList.map((c) => (
+                      <tr key={c.id} className="warehouse-page__product-row">
+                        <td data-label="Название">{c.name}</td>
+                        <td className="warehouse-page__actions" data-label="">
+                          <button type="button" className="warehouse-page__action warehouse-page__action--primary" onClick={() => (isAdmin ? setFormCategory(c) : showAccessDenied())} title="Редактировать">Редактировать</button>
+                          <button type="button" className="warehouse-page__action warehouse-page__action--ghost" onClick={() => (isAdmin ? setConfirmDeleteCategory(c) : showAccessDenied())} title="Удалить">Удалить</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </>
+                )}
               </tbody>
             </table>
           </div>
@@ -411,11 +423,14 @@ const WarehousePage = () => {
               <input type="text" placeholder="Поиск" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} className="warehouse-page__search warehouse-page__search--mobile" />
             </div>
           </FilterBar>
-          <h3 className="warehouse-page__section">История пополнений</h3>
+          <header className="warehouse-page__history-header">
+            <h3 className="warehouse-page__section">История пополнений</h3>
+            <p className="warehouse-page__history-hint">Журнал операций пополнения склада</p>
+          </header>
           {restocksError && <ErrorState message={restocksError} onRetry={fetchRestocksSafe} />}
-          <div className="warehouse-page__table-wrap">
+          <div className="warehouse-page__table-wrap warehouse-page__table-wrap--history">
             <table className="warehouse-page__table">
-              <thead><tr><th>Товар</th><th>Кол-во</th><th>Дата</th></tr></thead>
+              <thead><tr><th className="warehouse-page__th--group-start">Товар</th><th>Кол-во</th><th>Дата</th></tr></thead>
               <tbody>
                 {restocksLoading ? (
                   Array.from({ length: 5 }, (_, i) => (

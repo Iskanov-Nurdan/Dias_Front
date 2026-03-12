@@ -96,7 +96,7 @@ const LoginPage = () => {
               className="login-page__input"
               value={loginValue}
               onChange={(e) => setLoginValue(e.target.value)}
-              placeholder="Введите логин"
+              placeholder="Логин"
               required
               autoComplete="username"
             />
@@ -109,7 +109,7 @@ const LoginPage = () => {
                 className="login-page__input login-page__input--password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Введите пароль"
+                placeholder="Пароль"
                 required
                 autoComplete="current-password"
               />

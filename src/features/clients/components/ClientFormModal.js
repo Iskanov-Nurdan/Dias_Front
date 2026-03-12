@@ -129,39 +129,54 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
         </div>
         {error && <p className="client-form-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="client-form-modal__form">
-          <div className="client-form-modal__row">
-            <label className="client-form-modal__label">
-              <span className="client-form-modal__label-text">ФИО <span className="form-label-required" aria-hidden="true">*</span></span>
-              <input ref={firstInputRef} type="text" value={fio} onChange={(e) => setFio(capitalizeWords(e.target.value))} required className="client-form-modal__input" />
-            </label>
-            <label className="client-form-modal__label">
-              <span className="client-form-modal__label-text">Телефон</span>
-              <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="client-form-modal__input" />
-            </label>
+          <div className="client-form-modal__section">
+            <h3 className="client-form-modal__section-title">Личные данные</h3>
+            <div className="client-form-modal__row">
+              <label className="client-form-modal__label">
+                <span className="client-form-modal__label-text">ФИО <span className="form-label-required" aria-hidden="true">*</span></span>
+                <input ref={firstInputRef} type="text" value={fio} onChange={(e) => setFio(capitalizeWords(e.target.value))} required className="client-form-modal__input" />
+              </label>
+              <label className="client-form-modal__label">
+                <span className="client-form-modal__label-text">Телефон</span>
+                <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="client-form-modal__input" />
+              </label>
+            </div>
+            <div className="client-form-modal__row">
+              <label className="client-form-modal__label">
+                <span className="client-form-modal__label-text">Пол</span>
+                <Select value={gender} onChange={setGender} options={[{ value: '', label: '—' }, { value: 'male', label: 'М' }, { value: 'female', label: 'Ж' }]} placeholder="—" className="client-form-modal__select" />
+              </label>
+              <div />
+            </div>
           </div>
-          <div className="client-form-modal__row">
-            <label className="client-form-modal__label">
-              <span className="client-form-modal__label-text">Вид спорта</span>
+          <div className="client-form-modal__section">
+            <h3 className="client-form-modal__section-title">Абонемент</h3>
+            <div className="client-form-modal__row">
+              <label className="client-form-modal__label">
+                <span className="client-form-modal__label-text">Вид спорта</span>
               <Select value={String(sportId)} onChange={(v) => { setSportId(v); setTrainerId(''); }} options={[{ value: '', label: '—' }, ...(sports || []).map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="—" className="client-form-modal__select" />
             </label>
             <label className="client-form-modal__label">
               <span className="client-form-modal__label-text">Тренер</span>
               <Select value={String(trainerId)} onChange={(v) => setTrainerId(v)} options={[{ value: '', label: '—' }, ...(trainersList || []).map((t) => ({ value: String(t.id), label: t.fio || '' }))]} placeholder="—" className="client-form-modal__select" />
             </label>
-          </div>
-          <div className="client-form-modal__row">
-            <label className="client-form-modal__label">
-              <span className="client-form-modal__label-text">Дата начала</span>
+            </div>
+            <div className="client-form-modal__row">
+              <label className="client-form-modal__label">
+                <span className="client-form-modal__label-text">Дата начала</span>
               <input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} className="client-form-modal__input" />
             </label>
             <label className="client-form-modal__label">
               <span className="client-form-modal__label-text">Цена</span>
               <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="client-form-modal__input" placeholder="0" />
             </label>
+            </div>
           </div>
-          <div className="client-form-modal__row">
-            <label className="client-form-modal__label">
-              <span className="client-form-modal__label-text">Скидка, %</span>
+          <div className="client-form-modal__section">
+            <h3 className="client-form-modal__section-title">Оплата</h3>
+            <div className="client-form-modal__row">
+              <label className="client-form-modal__label">
+                <span className="client-form-modal__label-text">Скидка, %</span>
               <input type="number" min="0" max="100" value={discount} onChange={(e) => setDiscount(e.target.value)} className="client-form-modal__input" placeholder="0" />
             </label>
             <div className="client-form-modal__label client-form-modal__label--toggle">
@@ -171,8 +186,8 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                 <button type="button" className={`client-form-modal__paid-option ${!paid ? 'client-form-modal__paid-option--active' : ''}`} onClick={() => setPaid(false)}>Нет</button>
               </div>
             </div>
-          </div>
-          {priceBase > 0 && (
+            </div>
+            {priceBase > 0 && (
             <div className="client-form-modal__price-summary">
               <div className="client-form-modal__price-row">
                 <span>До скидки</span>
@@ -185,17 +200,17 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                 </div>
               )}
             </div>
-          )}
-          <div className="client-form-modal__row">
-            <label className="client-form-modal__label">
-              <span className="client-form-modal__label-text">Тип</span>
-              <Select value={clientType} onChange={setClientType} options={[{ value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }, { value: 'one-time', label: 'Разовый' }]} className="client-form-modal__select" />
-            </label>
-            <label className="client-form-modal__label">
-              <span className="client-form-modal__label-text">Пол</span>
-              <Select value={gender} onChange={setGender} options={[{ value: '', label: '—' }, { value: 'male', label: 'М' }, { value: 'female', label: 'Ж' }]} placeholder="—" className="client-form-modal__select" />
-            </label>
+            )}
+            <div className="client-form-modal__row">
+              <label className="client-form-modal__label">
+                <span className="client-form-modal__label-text">Тип</span>
+                <Select value={clientType} onChange={setClientType} options={[{ value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }, { value: 'one-time', label: 'Разовый' }]} className="client-form-modal__select" />
+              </label>
+              <div />
+            </div>
           </div>
+          <div className="client-form-modal__section">
+            <h3 className="client-form-modal__section-title">Комментарий</h3>
           <div className="client-form-modal__label client-form-modal__label--full">
             <div className="client-form-modal__comment-header">
               <span className="client-form-modal__label-text">Комментарий</span>
@@ -210,7 +225,8 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                 ))}
               </div>
             )}
-            <textarea value={commentManual} onChange={(e) => setCommentManual(e.target.value)} className="client-form-modal__input" rows={2} placeholder="Дополнительный комментарий (необязательно)" />
+            <textarea value={commentManual} onChange={(e) => setCommentManual(e.target.value)} className="client-form-modal__input" rows={2} placeholder="Комментарий" />
+          </div>
           </div>
           <div className="client-form-modal__actions">
             <button type="button" className="client-form-modal__btn client-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>

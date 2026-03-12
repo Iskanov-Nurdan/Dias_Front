@@ -28,10 +28,12 @@ const RoleFormModal = ({ role, onSave, onClose, error, saving }) => {
         </div>
         {error && <p className="role-form-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="role-form-modal__form">
+          <div className="role-form-modal__form-body">
           <label className="role-form-modal__label">
             <span className="role-form-modal__label-caption">Название <span className="form-label-required" aria-hidden="true">*</span></span>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="role-form-modal__input" />
           </label>
+          </div>
           <div className="role-form-modal__actions">
             <button type="button" className="role-form-modal__btn role-form-modal__btn--cancel" onClick={onClose} disabled={saving}>
               Отмена

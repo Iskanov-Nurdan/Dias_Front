@@ -148,24 +148,28 @@ const SportsTrainersPage = () => {
         <button type="button" className={`sports-trainers-page__tab ${activeTab === TAB_TRAINERS ? 'sports-trainers-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_TRAINERS)}>Тренеры</button>
       </div>
       {activeTab === TAB_SPORTS && (
-        <FilterBar className="sports-trainers-page__filter-bar">
-          <input
-            type="text"
-            placeholder="Поиск по названию"
-            value={sportSearch}
-            onChange={(e) => setSportSearch(e.target.value)}
-            className="sports-trainers-page__search"
-          />
-          <button type="button" className="sports-trainers-page__add filter-bar__action" onClick={() => setFormSport({})}>
-            Добавить
-          </button>
-        </FilterBar>
+        <div className="sports-trainers-page__content">
+          <FilterBar className="sports-trainers-page__filter-bar">
+            <input
+              type="text"
+              placeholder="Поиск"
+              value={sportSearch}
+              onChange={(e) => setSportSearch(e.target.value)}
+              className="sports-trainers-page__search"
+            />
+            <button type="button" className="sports-trainers-page__add filter-bar__action" onClick={() => setFormSport({})}>
+              Добавить
+            </button>
+          </FilterBar>
+          <SportsList items={sportsData} loading={sportsLoading} error={sportsError} onRetry={fetchSportsSafe} onEdit={(s) => (isAdmin ? setFormSport(s) : showAccessDenied())} onDelete={(s) => (isAdmin ? setConfirmDeleteSport(s) : showAccessDenied())} confirmDelete={confirmDeleteSport} onConfirmDelete={handleDeleteSport} onCancelDelete={() => setConfirmDeleteSport(null)} />
+        </div>
       )}
       {activeTab === TAB_TRAINERS && (
-        <FilterBar className="sports-trainers-page__filter-bar">
+        <div className="sports-trainers-page__content">
+          <FilterBar className="sports-trainers-page__filter-bar">
           <input
             type="text"
-            placeholder="Поиск (ФИО тренера)"
+            placeholder="Поиск"
             value={trainerSearch}
             onChange={(e) => setTrainerSearch(e.target.value)}
             className="sports-trainers-page__search"
@@ -174,19 +178,13 @@ const SportsTrainersPage = () => {
             value={queryState.sportId}
             onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))}
             options={[{ value: '', label: 'Все виды спорта' }, ...sportsData.map((s) => ({ value: String(s.id), label: s.name || '' }))]}
-            placeholder="Все виды спорта"
+            placeholder="Спорт"
             className="sports-trainers-page__select-wrap"
           />
           <button type="button" className="sports-trainers-page__add filter-bar__action" onClick={() => setFormTrainer({})}>
             Добавить
           </button>
         </FilterBar>
-      )}
-      {activeTab === TAB_SPORTS && (
-        <SportsList items={sportsData} loading={sportsLoading} error={sportsError} onRetry={fetchSportsSafe} onEdit={(s) => (isAdmin ? setFormSport(s) : showAccessDenied())} onDelete={(s) => (isAdmin ? setConfirmDeleteSport(s) : showAccessDenied())} confirmDelete={confirmDeleteSport} onConfirmDelete={handleDeleteSport} onCancelDelete={() => setConfirmDeleteSport(null)} />
-      )}
-      {activeTab === TAB_TRAINERS && (
-        <>
           <TrainersList items={trainersItems} sports={sportsData} loading={trainersLoading} error={trainersError} onRetry={fetchTrainersSafe} onEdit={(t) => (isAdmin ? setFormTrainer(t) : showAccessDenied())} onDelete={(t) => (isAdmin ? setConfirmDeleteTrainer(t) : showAccessDenied())} confirmDelete={confirmDeleteTrainer} onConfirmDelete={handleDeleteTrainer} onCancelDelete={() => setConfirmDeleteTrainer(null)} />
           <Pagination
             meta={trainersData?.meta}
@@ -195,7 +193,7 @@ const SportsTrainersPage = () => {
             loading={trainersLoading}
             entityLabel="тренеров"
           />
-        </>
+        </div>
       )}
       {formSport && (
         <SportFormModal

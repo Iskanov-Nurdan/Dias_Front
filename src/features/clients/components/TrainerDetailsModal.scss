@@ -82,7 +82,8 @@
 }
 
 .trainer-details-modal__row--unpaid {
-  background: rgba(239, 68, 68, 0.06);
+  background: rgba(197, 48, 48, 0.06);
+  border-left: 3px solid rgba(197, 48, 48, 0.4);
 }
 
 .trainer-details-modal__row--individual .trainer-details-modal__type-cell--individual,

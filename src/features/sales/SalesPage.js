@@ -147,7 +147,6 @@ const SalesPage = () => {
         </>
         ) : null}
         </div>
-        <h3 className="sales-page__section">Список продаж</h3>
       </div>
       {salesError && <ErrorState message={salesError} onRetry={fetchSalesSafe} />}
       <div className="sales-page__table-wrap">

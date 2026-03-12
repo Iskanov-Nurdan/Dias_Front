@@ -139,6 +139,31 @@ textarea.client-form-modal__input {
   padding: 10px 14px;
 }
 
+.client-form-modal__comment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.client-form-modal__comment-clear {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+
+  &:hover {
+    color: var(--color-danger);
+    background: var(--color-danger-soft);
+  }
+}
+
 .client-form-modal__comment-auto {
   padding: 10px 12px;
   background: var(--color-bg);

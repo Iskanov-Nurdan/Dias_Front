@@ -3,7 +3,7 @@
 .login-page {
   min-height: 100vh;
   @include mixins.flex-center;
-  background: #FFFFFF;
+  background-color: #0d0f1a;
   padding: var(--space-6);
   position: relative;
   overflow: hidden;
@@ -18,13 +18,15 @@
 }
 
 .login-page__card {
-  background: linear-gradient(145deg, #1f2d59 0%, #24425F 50%, #1e3a5f 100%);
+  background: linear-gradient(145deg, rgba(31, 45, 89, 0.88) 0%, rgba(36, 66, 95, 0.88) 50%, rgba(30, 58, 95, 0.88) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: var(--radius-2xl);
   padding: var(--space-8) 40px var(--space-8);
   width: 100%;
   max-width: 460px;
-  box-shadow: var(--shadow-xl);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 32px 64px -12px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   position: relative;
   z-index: 1;
   transition: box-shadow var(--transition-smooth);
@@ -39,7 +41,7 @@
   }
 
   &:hover {
-    box-shadow: 0 24px 60px rgba(31, 45, 89, 0.25);
+    box-shadow: 0 40px 80px -16px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
   }
 
   &--success {

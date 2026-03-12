@@ -58,9 +58,15 @@ const LoginPage = () => {
     if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
   }, []);
 
+  const bgStyle = {
+    backgroundImage: `url(${process.env.PUBLIC_URL || ''}/login-bg.png)`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+  };
   if (success) {
     return (
-      <div className="login-page">
+      <div className="login-page" style={bgStyle}>
         <div className="login-page__card login-page__card--success">
           <div className="login-page__success-icon" aria-hidden>
             <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -76,7 +82,7 @@ const LoginPage = () => {
   }
 
   return (
-    <div className="login-page">
+    <div className="login-page" style={bgStyle}>
       <div className="login-page__card">
         <img src={`${process.env.PUBLIC_URL || ''}/rahman.png`} alt="Рахман Ата" className="login-page__logo" />
         <form className="login-page__form" onSubmit={handleSubmit}>

@@ -103,6 +103,8 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
     if (discountLine) autoWithoutDiscount.push(discountLine);
     const manualPart = (commentManual || '').trim();
     const finalComment = [...autoWithoutDiscount, manualPart].filter(Boolean).join('\n').trim() || undefined;
+    // При очистке комментария явно отправляем "" — иначе PATCH без поля не обновляет его на бэкенде
+    const commentValue = finalComment ?? (client?.id ? '' : undefined);
     onSave({
       fio,
       phone,
@@ -114,7 +116,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       paid,
       clientType,
       gender: gender || undefined,
-      comment: finalComment || undefined,
+      comment: commentValue,
     });
   };
 
@@ -195,7 +197,12 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
             </label>
           </div>
           <div className="client-form-modal__label client-form-modal__label--full">
-            <span className="client-form-modal__label-text">Комментарий</span>
+            <div className="client-form-modal__comment-header">
+              <span className="client-form-modal__label-text">Комментарий</span>
+              {(commentAuto.length > 0 || commentManual.trim()) && (
+                <button type="button" className="client-form-modal__comment-clear" onClick={() => { setCommentManual(''); setCommentAuto([]); }}>Очистить всё</button>
+              )}
+            </div>
             {commentAuto.length > 0 && (
               <div className="client-form-modal__comment-auto" aria-readonly="true">
                 {commentAuto.map((line, i) => (

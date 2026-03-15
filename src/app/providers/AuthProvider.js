@@ -64,16 +64,15 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   }, []);
 
-  /** ТЗ: доступ при явном true; is_system/Admin — полный доступ. access уже нормализован в login/getStoredUser. */
+  /** Доступ по access[pageId] === true. Вкладки в сайдбаре показываем только при наличии доступа. */
   const hasAccess = useCallback(
     (pageId) => {
       if (!user) return false;
-      if (isAdmin) return true;
       const access = user.access;
       if (!access || typeof access !== 'object') return false;
       return access[pageId] === true;
     },
-    [user, isAdmin]
+    [user]
   );
 
   const getFirstAvailableRoute = useCallback(() => {

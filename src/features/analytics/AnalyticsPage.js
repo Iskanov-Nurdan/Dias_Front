@@ -80,9 +80,14 @@ const AnalyticsPage = () => {
   }, [detailModal, queryState.year, queryState.month, queryState.day]);
 
   const s = summary ?? {};
-  const income = s.income ?? 0;
+  const rawIncome = s.income ?? 0;
   const expense = s.expense ?? 0;
-  const profit = s.profit;
+  const rawProfit = s.profit;
+  // Временно: минус 60 000 сом за февраль 2026 (только отображение)
+  const isFeb2026 = Number(queryState.year) === 2026 && Number(queryState.month) === 2;
+  const FEB_2026_ADJUSTMENT = 60000;
+  const income = isFeb2026 ? Math.max(0, rawIncome - FEB_2026_ADJUSTMENT) : rawIncome;
+  const profit = isFeb2026 && rawProfit != null ? Math.max(0, (rawProfit ?? 0) - FEB_2026_ADJUSTMENT) : rawProfit;
   const paidCount = s.paidCount ?? null;
   const sportItems = clientsBySport?.items ?? [];
   const dailyItems = incomeExpenseDaily?.items ?? [];
@@ -828,7 +833,7 @@ const AnalyticsPage = () => {
                         ))}
                       </tbody>
                     </table>
-                    <p className="analytics-page__modal-total">Итого приход: {formatMoney(totalFromApi)}</p>
+                    <p className="analytics-page__modal-total">Итого приход: {formatMoney(isFeb2026 ? Math.max(0, (totalFromApi ?? 0) - FEB_2026_ADJUSTMENT) : totalFromApi)}</p>
                   </>
                 );
               }
@@ -885,7 +890,7 @@ const AnalyticsPage = () => {
                     ))}
                   </tbody>
                 </table>
-                <p className="analytics-page__modal-total">Приходы: {formatMoney(detailData.incomeTotal)} · Расходы: {formatMoney(detailData.expenseTotal)} · Прибыль: {formatMoney(detailData.profit)}</p>
+                <p className="analytics-page__modal-total">Приходы: {formatMoney(isFeb2026 ? Math.max(0, (detailData.incomeTotal ?? 0) - FEB_2026_ADJUSTMENT) : detailData.incomeTotal)} · Расходы: {formatMoney(detailData.expenseTotal)} · Прибыль: {formatMoney(isFeb2026 ? Math.max(0, (detailData.profit ?? 0) - FEB_2026_ADJUSTMENT) : detailData.profit)}</p>
               </>
             )}
             {!detailLoading && detailModal === 'profit' && !detailData?.items?.length && <p>Нет записей за период</p>}

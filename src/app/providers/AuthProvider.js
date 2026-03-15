@@ -14,14 +14,15 @@ export const useAuth = () => {
   return ctx;
 };
 
-/** Нормализует user.access (на случай вложенного data.access с бэка) */
+/** Нормализует user.access в объект { pageId: boolean }. Поддержка data.access, массива id, объекта. */
 const normalizeUserAccess = (u) => {
   if (!u || typeof u !== 'object') return u;
-  const access = u.access ?? u.data?.access;
-  if (access && typeof access === 'object') {
-    return { ...u, access };
-  }
-  return u;
+  const raw = u.access ?? u.data?.access;
+  if (!raw || typeof raw !== 'object') return { ...u, access: {} };
+  const access = Array.isArray(raw)
+    ? PAGE_IDS.reduce((o, id) => ({ ...o, [id]: raw.includes(id) }), {})
+    : PAGE_IDS.reduce((o, id) => ({ ...o, [id]: raw[id] === true }), {});
+  return { ...u, access };
 };
 
 const getStoredUser = () => {
@@ -63,12 +64,12 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   }, []);
 
-  /** ТЗ: доступ при явном true; is_system/Admin — полный доступ */
+  /** ТЗ: доступ при явном true; is_system/Admin — полный доступ. access уже нормализован в login/getStoredUser. */
   const hasAccess = useCallback(
     (pageId) => {
       if (!user) return false;
       if (isAdmin) return true;
-      const access = user.access ?? user.data?.access;
+      const access = user.access;
       if (!access || typeof access !== 'object') return false;
       return access[pageId] === true;
     },

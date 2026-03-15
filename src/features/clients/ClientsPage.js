@@ -264,7 +264,9 @@ const ClientsPage = () => {
         toast.success('Клиент удалён');
       })
       .catch((e) => {
-        const msg = e.response?.data?.message ?? e.response?.data?.detail ?? e.message ?? 'Ошибка удаления';
+        const msg = isPeriodClosedError(e)
+          ? 'Период закрыт. Изменение финансовых данных запрещено.'
+          : (e.response?.data?.error?.message ?? e.response?.data?.message ?? e.response?.data?.detail ?? e.message ?? 'Ошибка удаления');
         toast.error(msg);
       });
   };

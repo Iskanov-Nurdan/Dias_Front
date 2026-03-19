@@ -1,0 +1,704 @@
+@use '../../../../shared/styles/variables' as *;
+@use '../../../../shared/styles/mixins' as *;
+
+.my-shift-page {
+  width: 100%;
+}
+
+// ── Tabs ──────────────────────────────────────────────────────
+
+.my-shift__tabs {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-6);
+  background: var(--bg);
+  border-radius: var(--radius-lg);
+  padding: var(--space-1);
+  border: 1px solid var(--border-subtle);
+}
+
+.my-shift__tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  font-size: var(--font-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  min-height: unset;
+
+  svg { flex-shrink: 0; }
+
+  &:hover {
+    background: var(--bg-hover);
+    color: var(--text);
+  }
+
+  &--active {
+    background: var(--card);
+    color: var(--accent);
+    box-shadow: var(--shadow-sm);
+    font-weight: var(--weight-semibold);
+  }
+}
+
+// ── Section title ─────────────────────────────────────────────
+
+.my-shift__section-title {
+  margin: 0;
+  font-size: var(--font-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+// ── History top row ───────────────────────────────────────────
+
+.my-shift__history-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+// ── Empty state ───────────────────────────────────────────────
+
+.my-shift__empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-16) var(--space-8);
+  color: var(--text-muted);
+  text-align: center;
+
+  svg { width: 32px; height: 32px; opacity: 0.4; }
+
+  p {
+    margin: 0;
+    font-size: var(--font-base);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+  }
+
+  span { font-size: var(--font-sm); }
+}
+
+// ── History list ──────────────────────────────────────────────
+
+.my-shift__history-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.my-shift__history-item {
+  background: var(--card);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--card-border);
+  overflow: hidden;
+  transition: box-shadow var(--transition-fast);
+
+  &:hover { box-shadow: var(--shadow-md); }
+  &--expanded { box-shadow: var(--shadow-md); }
+}
+
+.my-shift__history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  min-height: unset;
+  color: var(--text);
+
+  &:hover { background: var(--bg-hover); }
+}
+
+.my-shift__history-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+}
+
+.my-shift__history-date {
+  font-size: var(--font-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+  text-transform: capitalize;
+}
+
+.my-shift__history-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.my-shift__history-time {
+  font-size: var(--font-xs);
+  color: var(--text-secondary);
+}
+
+.my-shift__history-duration {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  font-weight: var(--weight-medium);
+}
+
+.my-shift__history-notes-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-xs);
+  color: var(--accent);
+  background: var(--accent-muted);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+}
+
+.my-shift__history-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.my-shift__history-status {
+  font-size: var(--font-xs);
+  font-weight: var(--weight-semibold);
+  padding: 3px var(--space-3);
+  border-radius: var(--radius-full);
+
+  &--open {
+    background: var(--success-muted);
+    color: var(--success);
+  }
+
+  &--closed {
+    background: var(--bg-hover);
+    color: var(--text-muted);
+  }
+}
+
+.my-shift__history-details {
+  padding: var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.my-shift__history-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+
+  strong { color: var(--text); font-weight: var(--weight-semibold); }
+}
+
+.my-shift__history-closing-note {
+  margin-top: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--card);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--accent-muted);
+  font-size: var(--font-sm);
+
+  span { color: var(--text-muted); display: block; margin-bottom: var(--space-1); }
+  p { margin: 0; color: var(--text); line-height: 1.6; }
+}
+
+.my-shift__history-notes-section {
+  margin-top: var(--space-3);
+}
+
+.my-shift__history-notes-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.my-shift__history-no-notes {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  padding: var(--space-3);
+  text-align: center;
+}
+
+// ── Activity log ──────────────────────────────────────────────
+
+.my-shift__activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--card);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--card-border);
+  overflow: hidden;
+}
+
+.my-shift__activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background var(--transition-fast);
+
+  &:last-child { border-bottom: none; }
+  &:hover { background: var(--bg-hover); }
+}
+
+.my-shift__activity-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.my-shift__activity-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+}
+
+.my-shift__activity-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.my-shift__activity-label {
+  font-size: var(--font-xs);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.my-shift__activity-section {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  background: var(--bg);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.my-shift__activity-desc {
+  font-size: var(--font-sm);
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.my-shift__activity-time {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+}
+
+.my-shift__activity-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+
+.my-shift__activity-page-info {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+}
+
+// ── Header ───────────────────────────────────────────────────
+
+.my-shift__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.my-shift__greeting {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--text);
+}
+
+.my-shift__role {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  font-weight: var(--weight-medium);
+}
+
+.my-shift__date {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.my-shift__status-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  font-size: var(--font-sm);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+
+  &--open {
+    background: var(--success-muted);
+    color: var(--success);
+    border: 1px solid rgba(22, 163, 74, 0.2);
+  }
+
+  &--closed {
+    background: var(--bg-hover);
+    color: var(--text-muted);
+    border: 1px solid var(--border-subtle);
+  }
+}
+
+.my-shift__status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+
+  .my-shift__status-badge--open & {
+    background: var(--success);
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.25);
+    animation: pulse-green 2s infinite;
+  }
+
+  .my-shift__status-badge--closed & {
+    background: var(--text-muted);
+  }
+}
+
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.25); }
+  50% { box-shadow: 0 0 0 5px rgba(22, 163, 74, 0.1); }
+}
+
+// ── Start card (no active shift) ─────────────────────────────
+
+.my-shift__start-card {
+  background: var(--card);
+  border-radius: var(--radius-xl);
+  padding: var(--space-12) var(--space-8);
+  text-align: center;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--card-border);
+}
+
+.my-shift__start-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--accent-muted);
+  color: var(--accent);
+  margin: 0 auto var(--space-4);
+
+  svg {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+.my-shift__start-title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.my-shift__start-desc {
+  margin: 0 0 var(--space-8);
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  line-height: 1.7;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.my-shift__open-btn {
+  margin: 0 auto var(--space-4);
+}
+
+.my-shift__last-shift {
+  margin: var(--space-4) 0 0;
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+}
+
+// ── Active shift card ────────────────────────────────────────
+
+.my-shift__active-card {
+  background: var(--card);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--card-border);
+  border-top: 3px solid var(--success);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-6);
+}
+
+.my-shift__active-info {
+  display: flex;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+}
+
+.my-shift__timer-block {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--success);
+}
+
+.my-shift__timer-label,
+.my-shift__start-time-label,
+.my-shift__notes-count-label {
+  display: block;
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.my-shift__timer-value {
+  display: block;
+  font-size: var(--font-xl);
+  font-weight: var(--weight-bold);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.my-shift__start-time-value,
+.my-shift__notes-count-value {
+  display: block;
+  font-size: var(--font-xl);
+  font-weight: var(--weight-bold);
+  color: var(--text);
+}
+
+.my-shift__close-btn {
+  white-space: nowrap;
+}
+
+// ── Notes card ───────────────────────────────────────────────
+
+.my-shift__notes-card {
+  background: var(--card);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--card-border);
+}
+
+.my-shift__notes-title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.my-shift__note-form {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.my-shift__note-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.my-shift__notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.my-shift__notes-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-6);
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  background: var(--bg);
+  border-radius: var(--radius-md);
+}
+
+.my-shift__note-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--accent-muted);
+  transition: background var(--transition-fast);
+
+  svg {
+    flex-shrink: 0;
+    color: var(--accent);
+    margin-top: 2px;
+  }
+
+  &:hover {
+    background: var(--bg-hover);
+  }
+}
+
+.my-shift__note-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+}
+
+.my-shift__note-text {
+  font-size: var(--font-sm);
+  color: var(--text);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.my-shift__note-time {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+}
+
+// ── Close modal ──────────────────────────────────────────────
+
+.my-shift__close-modal {
+  min-width: 360px !important;
+  max-width: 40vw !important;
+  width: 100%;
+}
+
+.my-shift__close-stats {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.my-shift__close-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-3) var(--space-2);
+  text-align: center;
+  border-right: 1px solid var(--border-subtle);
+
+  &:last-child { border-right: none; }
+
+  span {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: var(--space-1);
+  }
+
+  strong {
+    font-size: var(--font-base);
+    font-weight: var(--weight-semibold);
+    color: var(--text);
+  }
+}
+
+// ── Activity button row inside shift ─────────────────────────
+
+.my-shift__history-actions-row {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+// ── Activity modal ────────────────────────────────────────────
+
+.my-shift__activity-modal {
+  min-width: 360px !important;
+  max-width: 540px !important;
+  width: 100%;
+
+  .modal__body {
+    max-height: 460px;
+  }
+}
+
+// ── Loading ───────────────────────────────────────────────────
+
+.my-shift__loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-muted);
+  padding: var(--space-8);
+}
+
+.my-shift__spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+

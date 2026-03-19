@@ -1,0 +1,66 @@
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+
+  &__info {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+  }
+
+  &__pages {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  &__btn {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card);
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    @include flex-center;
+
+    &:hover:not(:disabled) {
+      background: var(--accent-muted);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    &--active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      font-weight: var(--weight-semibold);
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    &:focus-visible {
+      @include focus-ring;
+    }
+  }
+
+  &__ellipsis {
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    padding: 0 var(--space-1);
+    user-select: none;
+  }
+}

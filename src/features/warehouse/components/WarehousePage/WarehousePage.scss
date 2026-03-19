@@ -1,0 +1,60 @@
+@use '../../../../shared/styles/variables' as *;
+@use '../../../../shared/styles/mixins' as *;
+
+.page--warehouse {
+  .page__filters {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+
+    input,
+    select {
+      height: var(--input-height);
+      padding: 0 var(--space-3);
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: var(--radius-md);
+      color: var(--text);
+      font-size: var(--font-base);
+      font-family: inherit;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+
+      &::placeholder { color: var(--text-muted); }
+      &:focus { @include focus-ring; }
+    }
+
+    .dias-select {
+      min-width: 180px;
+      width: 180px;
+    }
+  }
+
+  .page__filters-search {
+    flex: 1;
+    max-width: 340px;
+  }
+
+  .badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-full);
+    font-size: var(--font-xs);
+    font-weight: var(--weight-semibold);
+
+    &--available {
+      background: var(--success-muted);
+      color: var(--success);
+    }
+
+    &--reserved {
+      background: var(--warning-muted);
+      color: var(--warning);
+    }
+
+    &--shipped {
+      background: var(--info-muted);
+      color: var(--info);
+    }
+  }
+}
+

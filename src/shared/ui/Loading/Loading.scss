@@ -1,0 +1,28 @@
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading {
+  @include flex-center;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-12);
+  color: var(--text-muted);
+
+  &__spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  &__text {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+  }
+}

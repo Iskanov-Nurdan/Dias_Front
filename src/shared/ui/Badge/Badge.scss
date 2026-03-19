@@ -1,0 +1,65 @@
+@use '../../styles/variables' as *;
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: var(--weight-medium);
+  border-radius: var(--radius-full);
+  line-height: 1;
+  white-space: nowrap;
+
+  &--sm {
+    font-size: var(--font-xs);
+    padding: 2px 8px;
+  }
+
+  &--md {
+    font-size: var(--font-xs);
+    padding: 4px 10px;
+  }
+
+  &--lg {
+    font-size: var(--font-sm);
+    padding: 5px 12px;
+  }
+
+  // Variants
+  &--default {
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+  }
+
+  &--primary {
+    background: var(--accent-muted);
+    color: var(--accent);
+  }
+
+  &--success {
+    background: var(--success-muted);
+    color: var(--success);
+  }
+
+  &--warning {
+    background: var(--warning-muted);
+    color: var(--warning);
+  }
+
+  &--danger {
+    background: var(--danger-muted);
+    color: var(--danger);
+  }
+
+  &--info {
+    background: var(--info-muted);
+    color: var(--info);
+  }
+
+  &__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+}

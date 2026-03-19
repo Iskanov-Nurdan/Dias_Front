@@ -1,0 +1,54 @@
+@use '../../../../shared/styles/variables' as *;
+@use '../../../../shared/styles/mixins' as *;
+
+.page--shipments {
+  .shipments-toolbar {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-3);
+
+    .filter-bar {
+      flex: 1;
+      margin-bottom: 0;
+    }
+
+    &__create {
+      flex-shrink: 0;
+      height: var(--input-height);
+      white-space: nowrap;
+    }
+  }
+
+  .badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+
+    &--pending {
+      background: var(--warning-muted);
+      color: var(--warning);
+    }
+
+    &--shipped {
+      background: var(--info-muted);
+      color: var(--info);
+    }
+
+    &--delivered {
+      background: var(--success-muted);
+      color: var(--success);
+    }
+  }
+
+  .data-table {
+    td:last-child {
+      white-space: nowrap;
+
+      .btn {
+        margin-right: 0.5rem;
+      }
+    }
+  }
+}

@@ -1,0 +1,163 @@
+@use 'variables' as *;
+
+// ── Layout ────────────────────────────────────────────────────
+
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+// ── Typography ────────────────────────────────────────────────
+
+@mixin text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ── Scrollbar ─────────────────────────────────────────────────
+
+@mixin scrollbar {
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: var(--radius-full);
+    &:hover {
+      background: rgba(0, 0, 0, 0.25);
+    }
+  }
+}
+
+// ── Card ──────────────────────────────────────────────────────
+
+@mixin card-soft {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  transition: box-shadow var(--transition-base), border-color var(--transition-base);
+}
+
+@mixin card-soft-accent($color: var(--accent)) {
+  @include card-soft;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: $color;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+}
+
+@mixin card-soft-hover {
+  &:hover {
+    box-shadow: var(--shadow-lg);
+    border-color: rgba(230, 57, 70, 0.25);
+  }
+}
+
+// ── Focus ring ────────────────────────────────────────────────
+
+@mixin focus-ring {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--input-focus-ring);
+}
+
+// ── Modal ─────────────────────────────────────────────────────
+
+@mixin modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 22, 36, 0.55);
+  backdrop-filter: blur(4px);
+  z-index: var(--z-modal);
+  @include flex-center;
+}
+
+@mixin modal-close-btn {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  @include flex-center;
+  transition: all var(--transition-fast);
+
+  &:hover {
+    background: var(--danger-muted);
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+// ── Breakpoints ───────────────────────────────────────────────
+
+@mixin mobile {
+  @media (max-width: 768px) {
+    @content;
+  }
+}
+
+@mixin xs {
+  @media (max-width: 374px) {
+    @content;
+  }
+}
+
+@mixin sm {
+  @media (max-width: 479px) {
+    @content;
+  }
+}
+
+@mixin lg {
+  @media (max-width: 1023px) {
+    @content;
+  }
+}
+
+@mixin desktop-only {
+  @media (min-width: 769px) {
+    @content;
+  }
+}
+
+@mixin from-sm {
+  @media (min-width: 480px) {
+    @content;
+  }
+}
+
+@mixin from-md {
+  @media (min-width: 769px) {
+    @content;
+  }
+}

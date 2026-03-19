@@ -1,0 +1,191 @@
+@use '../../../../shared/styles/variables' as *;
+@use '../../../../shared/styles/mixins' as *;
+
+.page--production {
+  .page__title {
+    margin-bottom: var(--space-2);
+  }
+}
+
+.production-banner {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--accent-muted);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  color: var(--accent);
+  font-size: 0.95rem;
+}
+
+.production-tabs-bar {
+  display: flex;
+  gap: 0;
+  margin-bottom: var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+
+  &__tab {
+    padding: var(--space-2) var(--space-6);
+    border: none;
+    border-bottom: 3px solid transparent;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+    margin-bottom: -1px;
+    transition: all var(--transition-fast);
+    min-height: 40px;
+
+    &:hover {
+      color: var(--text);
+    }
+
+    &--active {
+      color: var(--text);
+      font-weight: var(--weight-semibold);
+      border-bottom-color: var(--accent);
+    }
+  }
+}
+
+.production-card {
+  @include card-soft;
+  padding: var(--space-6);
+  margin-bottom: var(--space-6);
+
+  &__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+
+    .filter-bar {
+      flex: 1;
+      min-width: 0;
+      margin-bottom: 0;
+    }
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+}
+
+.production-table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+
+  &__header {
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-2) 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  &--orders &__header {
+    grid-template-columns: 1fr 140px 100px 1fr 200px;
+  }
+
+  &--batches &__header {
+    grid-template-columns: 120px 1fr 100px 120px 100px;
+  }
+
+  &__row {
+    display: grid;
+    gap: var(--space-4);
+    align-items: center;
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-elevated);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    transition: all var(--transition-fast);
+
+    &:hover {
+      background: var(--accent-muted);
+    }
+  }
+
+  &--orders &__row {
+    grid-template-columns: 1fr 140px 100px 1fr 200px;
+  }
+
+  &--batches &__row {
+    grid-template-columns: 120px 1fr 100px 120px 100px;
+  }
+
+  &__th--actions {
+    text-align: right;
+  }
+
+  &__actions {
+    display: flex;
+    gap: var(--space-2);
+    justify-content: flex-end;
+  }
+}
+
+.production-modal-banner {
+  margin-bottom: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  background: var(--accent-muted);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-size: 0.9rem;
+
+  &--small {
+    margin-bottom: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    font-size: 0.85rem;
+  }
+}
+
+.production-modal-warning {
+  margin-bottom: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  background: var(--warning-muted);
+  border-left: 4px solid var(--warning);
+  border-radius: var(--radius-sm);
+  color: var(--warning);
+  font-size: 0.9rem;
+}
+
+.production-writeoff-table {
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+
+  &__header {
+    display: grid;
+    grid-template-columns: 1fr 80px 80px 80px 80px 80px;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--bg-elevated);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: 1fr 80px 80px 80px 80px 80px;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-3);
+    border-top: 1px solid var(--border-subtle);
+    font-size: 0.85rem;
+  }
+}
+

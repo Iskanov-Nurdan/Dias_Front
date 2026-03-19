@@ -1,0 +1,291 @@
+@use '../shared/styles/variables' as *;
+@use '../shared/styles/mixins' as *;
+@use '../shared/styles/modal';
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  background-image: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--text);
+  font-size: var(--font-base);
+  line-height: 1.6;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+// ── Page layout ───────────────────────────────────────────────
+
+.page {
+  &__title {
+    margin: 0 0 var(--space-4);
+    font-size: var(--font-xl);
+    font-weight: var(--weight-semibold);
+    color: var(--text);
+  }
+
+  &__actions {
+    margin-bottom: var(--space-6);
+  }
+
+  &__greeting {
+    margin: 0 0 var(--space-2);
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+  }
+
+  &__hint {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+  }
+}
+
+// ── Data table (global) ──────────────────────────────────────
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  @include card-soft;
+  overflow: hidden;
+
+  th,
+  td {
+    padding: var(--space-3) var(--space-5);
+    text-align: left;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  th {
+    background: #f8fafc;
+    font-weight: var(--weight-semibold);
+    font-size: var(--font-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+
+  td:last-child,
+  th:last-child {
+    text-align: right;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  tbody tr {
+    transition: background var(--transition-fast);
+
+    &:hover {
+      background: var(--accent-muted);
+    }
+  }
+}
+
+// ── Base button ───────────────────────────────────────────────
+
+button {
+  font-family: inherit;
+  padding: var(--space-2) var(--space-4);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  cursor: pointer;
+  font-size: var(--font-sm);
+  font-weight: var(--weight-medium);
+  transition: all var(--transition-base);
+  min-height: 36px;
+
+  &:hover {
+    background: var(--bg-hover);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+// ── Button variants ───────────────────────────────────────────
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all var(--transition-base);
+  min-height: 38px;
+  white-space: nowrap;
+
+  &--primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+
+    &:hover:not(:disabled) {
+      background: var(--accent-hover);
+      box-shadow: var(--shadow-accent);
+    }
+  }
+
+  &--secondary {
+    background: var(--card);
+    border-color: var(--border);
+    color: var(--text);
+
+    &:hover:not(:disabled) {
+      background: var(--bg-hover);
+      border-color: var(--text-muted);
+    }
+  }
+
+  &--danger {
+    background: transparent;
+    color: var(--danger);
+    border-color: var(--danger);
+
+    &:hover:not(:disabled) {
+      background: var(--danger);
+      color: #fff;
+    }
+  }
+
+  &--ghost {
+    background: transparent;
+    border-color: transparent;
+    color: var(--text-secondary);
+
+    &:hover:not(:disabled) {
+      background: var(--bg-hover);
+      color: var(--text);
+    }
+  }
+
+  &--sm {
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--font-xs);
+    border-radius: var(--radius-sm);
+    min-height: 30px;
+  }
+
+  &--lg {
+    padding: var(--space-3) var(--space-6);
+    font-size: var(--font-md);
+    min-height: 44px;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+// ── Base inputs ───────────────────────────────────────────────
+
+input,
+textarea {
+  font-family: inherit;
+  font-size: var(--font-base);
+  padding: var(--space-2) var(--space-3);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  height: var(--input-height);
+
+  @include mobile {
+    font-size: 16px;
+  }
+
+  &::placeholder {
+    color: var(--text-muted);
+  }
+
+  &:focus {
+    @include focus-ring;
+  }
+}
+
+// Native select — custom arrow, no browser chrome
+select {
+  font-family: inherit;
+  font-size: var(--font-base);
+  height: var(--input-height);
+  padding: 0 2.5rem 0 var(--space-3);
+  background-color: var(--card);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--text);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  width: 100%;
+
+  &:hover {
+    border-color: var(--accent);
+  }
+
+  &:focus {
+    @include focus-ring;
+    border-color: var(--accent);
+    outline: none;
+  }
+
+  option {
+    background: #fff;
+    color: var(--text);
+  }
+}
+
+textarea {
+  height: auto;
+  resize: vertical;
+}
+
+// Lock right padding on all native selects so the custom arrow never overlaps text
+// (modal SCSS files override `padding` shorthand — this restores the arrow space)
+select {
+  padding-right: 2.5rem !important;
+}
+
+// ── Focus visible (global) ────────────────────────────────────
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+

@@ -120,6 +120,12 @@
     tbody tr.clients-list__row--unpaid:nth-child(even) {
       background: rgba(197, 48, 48, 0.08);
     }
+    tbody tr.clients-list__row--subscription-expired,
+    tbody tr.clients-list__row--subscription-expired:nth-child(even) {
+      background: #fcd34d;
+      border-left: 4px solid #b45309;
+      box-shadow: inset 0 0 0 1px rgba(180, 83, 9, 0.4);
+    }
     tbody tr.clients-list__row--one-time {
       background: rgba(37, 99, 235, 0.14);
     }
@@ -137,6 +143,9 @@
     }
     tbody tr.clients-list__row--unpaid:hover {
       background: rgba(197, 48, 48, 0.1);
+    }
+    tbody tr.clients-list__row--subscription-expired:hover {
+      background: #fbbf24;
     }
     tbody tr.clients-list__row--one-time:hover {
       background: rgba(37, 99, 235, 0.22);

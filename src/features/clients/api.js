@@ -2,12 +2,12 @@ import { apiClient } from '../../shared/api/client';
 
 const withSignal = (config, signal) => (signal ? { ...config, signal } : config);
 
-/** ТЗ: GET /api/clients/ — query: search, sportId, trainerId, paid, clientType, page, perPage (camelCase) */
+/** ТЗ: GET /api/clients/ — query: search, sportId, trainerId, paid, clientType, year/month/day, page, perPage (camelCase) */
 const getLastDay = (year, month) => new Date(year, month, 0).getDate();
 
 const pad = (n) => String(n).padStart(2, '0');
 
-export const fetchClients = async (queryState, signal) => {
+const buildClientsListParams = (queryState) => {
   const params = {};
   if (queryState?.search) params.search = queryState.search;
   if (queryState?.sportId) params.sportId = queryState.sportId;
@@ -32,7 +32,35 @@ export const fetchClients = async (queryState, signal) => {
 
   if (queryState?.page) params.page = queryState.page;
   if (queryState?.perPage) params.perPage = queryState.perPage;
+  return params;
+};
+
+export const fetchClients = async (queryState, signal) => {
+  const params = buildClientsListParams(queryState);
   const { data } = await apiClient.get('/clients/', { params, ...withSignal({}, signal) });
+  return data;
+};
+
+/**
+ * GET /api/clients/not-renewed/ — только год + месяц (весь месяц) + пагинация.
+ * Бэкенд отдаёт items, meta и объект summary со счётчиками.
+ */
+export const buildNotRenewedRequestParams = ({ year, month, page = 1, perPage = 20 }) => {
+  const params = { page, perPage };
+  if (!year || !month) return params;
+  const y = String(year);
+  const m = pad(Number(month));
+  const last = getLastDay(Number(y), Number(month));
+  params.year = y;
+  params.month = String(Number(month));
+  params.dateFrom = `${y}-${m}-01`;
+  params.dateTo = `${y}-${m}-${pad(last)}`;
+  return params;
+};
+
+export const fetchClientsNotRenewed = async ({ year, month, page, perPage }, signal) => {
+  const params = buildNotRenewedRequestParams({ year, month, page, perPage });
+  const { data } = await apiClient.get('/clients/not-renewed/', { params, ...withSignal({}, signal) });
   return data;
 };
 
@@ -55,6 +83,7 @@ export const deleteClient = async (id, signal) => {
   await apiClient.delete(`/clients/${id}/`, withSignal({}, signal));
 };
 
+/** POST /api/clients/{id}/extend/ — тело: { months }. Бэкенд: новые месяцы — paid=true; строка {id} (текущий период) — поле оплаты не трогать. */
 export const extendClient = async (id, body, signal) => {
   const { data } = await apiClient.post(`/clients/${id}/extend/`, body, withSignal({}, signal));
   return data;

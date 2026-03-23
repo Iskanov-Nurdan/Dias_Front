@@ -70,6 +70,85 @@
     }
   }
 
+  &__not-renewed-toolbar {
+    margin-bottom: var(--space-4);
+  }
+
+  &__not-renewed-toolbar-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+  }
+
+  &__not-renewed-toolbar-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  &__not-renewed-select {
+    min-width: 148px;
+
+    &--year {
+      min-width: 88px;
+    }
+  }
+
+  &__not-renewed-add {
+    margin-left: auto;
+
+    @include mixins.mobile {
+      margin-left: 0;
+      width: 100%;
+    }
+  }
+
+  &__not-renewed-period {
+    margin: 0 0 var(--space-4);
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--color-text-muted);
+
+    strong {
+      color: var(--color-text);
+      font-weight: 600;
+    }
+  }
+
+  &__not-renewed-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+
+    @include mixins.mobile {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  &__not-renewed-card {
+    padding: var(--space-4);
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+    background: #fff;
+  }
+
+  &__not-renewed-card-value {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--color-text);
+  }
+
+  &__not-renewed-card-label {
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--color-text-muted);
+  }
+
   &__dup-section {
     margin-top: 4px;
   }

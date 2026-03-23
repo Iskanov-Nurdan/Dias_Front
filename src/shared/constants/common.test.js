@@ -1,4 +1,4 @@
-import { formatMoney, isClientPaid, MONTHS, STATS_YEARS } from './common';
+import { formatMoney, isClientPaid, isClientSubscriptionExpired, MONTHS, STATS_YEARS } from './common';
 
 describe('common', () => {
   describe('formatMoney', () => {
@@ -15,6 +15,40 @@ describe('common', () => {
 
     it('rounds to integer', () => {
       expect(formatMoney(99.9)).toBe('100 сом');
+    });
+  });
+
+  describe('isClientSubscriptionExpired', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2026-03-23T12:00:00'));
+    });
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('returns true when dateEnd is before today', () => {
+      expect(isClientSubscriptionExpired({ dateEnd: '2026-03-22' })).toBe(true);
+    });
+
+    it('returns false when dateEnd is today', () => {
+      expect(isClientSubscriptionExpired({ dateEnd: '2026-03-23' })).toBe(false);
+    });
+
+    it('returns false when dateEnd is in the future', () => {
+      expect(isClientSubscriptionExpired({ dateEnd: '2026-03-24' })).toBe(false);
+    });
+
+    it('returns true when subscriptionExpired flag is true', () => {
+      expect(isClientSubscriptionExpired({ subscriptionExpired: true })).toBe(true);
+    });
+
+    it('returns false when subscriptionExpired is false even if date would be past', () => {
+      expect(isClientSubscriptionExpired({ subscriptionExpired: false, dateEnd: '2026-01-01' })).toBe(false);
+    });
+
+    it('returns false when no end date and no flag', () => {
+      expect(isClientSubscriptionExpired({ dateStart: '2026-01-01' })).toBe(false);
     });
   });
 

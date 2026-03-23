@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { fetchClients, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchAllClientsPaginated, fetchClientsStats, createOneTimePayment } from './api';
+import { fetchClients, fetchClientsNotRenewed, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchAllClientsPaginated, fetchClientsStats, createOneTimePayment } from './api';
 import { fetchSports } from '../sports-trainers/api';
 import { fetchTrainers } from '../sports-trainers/api';
 import { useAuth } from '../../app/providers/AuthProvider';
@@ -14,6 +14,7 @@ import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal, TrainerDeta
 import './ClientsPage.scss';
 
 const TAB_LIST = 'list';
+const TAB_NOT_RENEWED = 'not_renewed';
 const TAB_DUPS = 'dups';
 const TAB_STATS = 'stats';
 const TAB_ONETIME = 'onetime';
@@ -48,7 +49,17 @@ const ClientsPage = () => {
   const [trainers, setTrainers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [notRenewedData, setNotRenewedData] = useState(null);
+  const [notRenewedLoading, setNotRenewedLoading] = useState(false);
+  const [notRenewedError, setNotRenewedError] = useState(null);
+  const [nrYear, setNrYear] = useState(() => {
+    const y = new Date().getFullYear();
+    return y === 2026 || y === 2027 ? String(y) : '2026';
+  });
+  const [nrMonth, setNrMonth] = useState(String(new Date().getMonth() + 1));
+  const [nrPage, setNrPage] = useState(1);
   const { run: runMain } = useAbortSafeFetch();
+  const { run: runNotRenewed } = useAbortSafeFetch();
 
   // ── Все клиенты для дубликатов ──
   const [allClients, setAllClients] = useState([]);
@@ -100,6 +111,28 @@ const ClientsPage = () => {
     }
   }, [runMain, queryState, debouncedSearch]);
 
+  const fetchNotRenewedSafe = useCallback(async () => {
+    if (!nrYear || !nrMonth) return;
+    setNotRenewedLoading(true);
+    setNotRenewedError(null);
+    try {
+      const res = await runNotRenewed((signal) =>
+        fetchClientsNotRenewed({ year: nrYear, month: nrMonth, page: nrPage, perPage: 20 }, signal)
+      );
+      if (res === null) return;
+      setNotRenewedData(res);
+    } catch (err) {
+      setNotRenewedError(getApiErrorMessage(err));
+    } finally {
+      setNotRenewedLoading(false);
+    }
+  }, [runNotRenewed, nrYear, nrMonth, nrPage]);
+
+  const refreshClientTabsData = useCallback(() => {
+    fetchSafe();
+    fetchNotRenewedSafe();
+  }, [fetchSafe, fetchNotRenewedSafe]);
+
   const fetchAllClients = useCallback(async () => {
     allControllerRef.current?.abort();
     allControllerRef.current = new AbortController();
@@ -119,10 +152,17 @@ const ClientsPage = () => {
   }, [debouncedSearch]);
 
   useEffect(() => {
+    setNrPage(1);
+  }, [nrYear, nrMonth]);
+
+  useEffect(() => {
     if (activeTab === TAB_LIST) {
       fetchSafe();
     }
-  }, [activeTab, fetchSafe]);
+    if (activeTab === TAB_NOT_RENEWED) {
+      fetchNotRenewedSafe();
+    }
+  }, [activeTab, fetchSafe, fetchNotRenewedSafe]);
 
   useEffect(() => {
     if (activeTab === TAB_DUPS) {
@@ -224,6 +264,37 @@ const ClientsPage = () => {
   }, []);
 
   const items = data?.items ?? data?.results ?? (Array.isArray(data) ? data : []) ?? [];
+  const notRenewedItems = notRenewedData?.items ?? notRenewedData?.results ?? (Array.isArray(notRenewedData) ? notRenewedData : []) ?? [];
+
+  const nrNextPeriod = useMemo(() => {
+    if (!nrYear || !nrMonth) return null;
+    const y = Number(nrYear);
+    const m = Number(nrMonth);
+    if (!Number.isFinite(y) || m < 1 || m > 12) return null;
+    return m === 12 ? { year: y + 1, month: 1 } : { year: y, month: m + 1 };
+  }, [nrYear, nrMonth]);
+
+  const notRenewedSummary = useMemo(() => {
+    const r = notRenewedData;
+    if (!r) return null;
+    const meta = r.meta ?? {};
+    const totalFromMeta = meta.total ?? meta.totalCount ?? meta.count;
+    const s = r.summary ?? r.data?.summary;
+    const base = s?.baseMonthCount ?? s?.base_month_count ?? s?.inBaseMonthCount ?? s?.in_base_month_count;
+    const next = s?.nextMonthCount ?? s?.next_month_count ?? s?.inNextMonthCount ?? s?.in_next_month_count;
+    let notRen = s?.notRenewedCount ?? s?.not_renewed_count;
+    if (notRen == null && totalFromMeta != null) notRen = totalFromMeta;
+    let pct = s?.notRenewedPercent ?? s?.not_renewed_percent;
+    if ((pct === undefined || pct === null) && base != null && notRen != null && Number(base) > 0) {
+      pct = Math.round((Number(notRen) / Number(base)) * 1000) / 10;
+    }
+    return {
+      base: base != null ? Number(base) : null,
+      next: next != null ? Number(next) : null,
+      notRen: notRen != null ? Number(notRen) : null,
+      pct: pct != null && pct !== '' ? Number(pct) : null,
+    };
+  }, [notRenewedData]);
 
   // Дубликаты только среди клиентов выбранного месяца (по dateStart)
   const dupFilteredClients = useMemo(
@@ -241,7 +312,7 @@ const ClientsPage = () => {
       if (formClient?.id) await updateClient(formClient.id, payload, null);
       else await createClient(payload, null);
       setFormClient(null);
-      fetchSafe();
+      refreshClientTabsData();
       toast.success(formClient?.id ? 'Клиент сохранён' : 'Клиент добавлен');
     } catch (e) {
       const d = e.response?.data;
@@ -260,7 +331,7 @@ const ClientsPage = () => {
     deleteClient(confirmDelete.id, null)
       .then(() => {
         setConfirmDelete(null);
-        fetchSafe();
+        refreshClientTabsData();
         toast.success('Клиент удалён');
       })
       .catch((e) => {
@@ -283,7 +354,7 @@ const ClientsPage = () => {
     try {
       await extendClient(extendClientObj.id, payload, null);
       setExtendClientObj(null);
-      fetchSafe();
+      refreshClientTabsData();
       toast.success('Абонемент продлён');
     } catch (e) {
       const msg = getApiErrorMessage(e);
@@ -301,12 +372,13 @@ const ClientsPage = () => {
       {/* Главные табы */}
       <div className="clients-page__tabs">
         <button type="button" className={`clients-page__tab${activeTab === TAB_LIST ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_LIST)}>Клиенты</button>
+        <button type="button" className={`clients-page__tab${activeTab === TAB_NOT_RENEWED ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_NOT_RENEWED)}>Не продлили</button>
         <button type="button" className={`clients-page__tab${activeTab === TAB_DUPS ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_DUPS)}>Дубликаты</button>
         <button type="button" className={`clients-page__tab${activeTab === TAB_STATS ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_STATS)}>Статистика</button>
         <button type="button" className={`clients-page__tab${activeTab === TAB_ONETIME ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_ONETIME)}>Разовый</button>
       </div>
 
-      {/* ── Список ── */}
+      {/* ── Список клиентов ── */}
       {activeTab === TAB_LIST && (
         <>
           <FilterBar className="clients-page__filter-bar">
@@ -372,8 +444,83 @@ const ClientsPage = () => {
               <button type="button" className="clients-page__filter-apply" onClick={() => setFiltersModalOpen(false)}>Применить</button>
             </div>
           </FiltersModal>
-          <ClientsList items={items} loading={loading} error={error} onRetry={fetchSafe} onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())} onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())} onDetails={handleOpenCard} onExtend={setExtendClientObj} />
+          <ClientsList
+            items={items}
+            loading={loading}
+            error={error}
+            onRetry={fetchSafe}
+            onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())}
+            onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())}
+            onDetails={handleOpenCard}
+            onExtend={setExtendClientObj}
+          />
           <Pagination meta={data?.meta} currentPage={queryState.page} onPage={(p) => setQueryState((q) => ({ ...q, page: p }))} loading={loading} entityLabel="клиентов" />
+        </>
+      )}
+
+      {/* ── Не продлили (только год + месяц, сводка с бэка) ── */}
+      {activeTab === TAB_NOT_RENEWED && (
+        <>
+          <FilterBar className="clients-page__not-renewed-toolbar">
+            <div className="clients-page__not-renewed-toolbar-inner">
+              <span className="clients-page__not-renewed-toolbar-label">Месяц</span>
+              <Select
+                value={nrYear}
+                onChange={setNrYear}
+                options={STATS_YEARS.map((y) => ({ value: y, label: y }))}
+                placeholder="Год"
+                className="clients-page__not-renewed-select clients-page__not-renewed-select--year"
+              />
+              <Select
+                value={nrMonth}
+                onChange={setNrMonth}
+                options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: MONTHS[i + 1] }))}
+                placeholder="Месяц"
+                className="clients-page__not-renewed-select"
+              />
+              <button type="button" className="clients-page__add clients-page__add--desktop filter-bar__action clients-page__not-renewed-add" onClick={() => setFormClient({})}>Добавить клиента</button>
+            </div>
+          </FilterBar>
+          {nrNextPeriod && (
+            <p className="clients-page__not-renewed-period">
+              Учитываются записи за <strong>{MONTHS[Number(nrMonth)]} {nrYear}</strong>
+              {' — '}без продления на <strong>{MONTHS[nrNextPeriod.month]} {nrNextPeriod.year}</strong>
+            </p>
+          )}
+          {!notRenewedLoading && notRenewedSummary && (
+            <div className="clients-page__not-renewed-cards">
+              <div className="clients-page__not-renewed-card">
+                <div className="clients-page__not-renewed-card-value">{notRenewedSummary.base != null ? notRenewedSummary.base.toLocaleString('ru-RU') : '—'}</div>
+                <div className="clients-page__not-renewed-card-label">Учеников в базовом месяце</div>
+              </div>
+              <div className="clients-page__not-renewed-card">
+                <div className="clients-page__not-renewed-card-value">{notRenewedSummary.next != null ? notRenewedSummary.next.toLocaleString('ru-RU') : '—'}</div>
+                <div className="clients-page__not-renewed-card-label">Учеников в следующем месяце</div>
+              </div>
+              <div className="clients-page__not-renewed-card">
+                <div className="clients-page__not-renewed-card-value">{notRenewedSummary.notRen != null ? notRenewedSummary.notRen.toLocaleString('ru-RU') : '—'}</div>
+                <div className="clients-page__not-renewed-card-label">Не продлили</div>
+              </div>
+              <div className="clients-page__not-renewed-card">
+                <div className="clients-page__not-renewed-card-value">
+                  {notRenewedSummary.pct != null && !Number.isNaN(notRenewedSummary.pct) ? `${String(notRenewedSummary.pct).replace('.', ',')}%` : '—'}
+                </div>
+                <div className="clients-page__not-renewed-card-label">Доля не продливших</div>
+              </div>
+            </div>
+          )}
+          <ClientsList
+            items={notRenewedItems}
+            loading={notRenewedLoading}
+            error={notRenewedError}
+            onRetry={fetchNotRenewedSafe}
+            onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())}
+            onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())}
+            onDetails={handleOpenCard}
+            onExtend={setExtendClientObj}
+            emptyMessage="Нет клиентов без продления на следующий месяц"
+          />
+          <Pagination meta={notRenewedData?.meta} currentPage={nrPage} onPage={setNrPage} loading={notRenewedLoading} entityLabel="клиентов" />
         </>
       )}
 

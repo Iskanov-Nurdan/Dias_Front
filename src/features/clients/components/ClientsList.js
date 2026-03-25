@@ -14,10 +14,9 @@ const ClientsList = ({ items, loading, error, onRetry, onEdit, onDelete, onDetai
           <thead>
             <tr>
               <th>ФИО</th>
-              <th>Телефон</th>
+              <th>Дата начала</th>
               <th>Вид спорта</th>
               <th>Оплачено</th>
-              <th>Тип</th>
               <th></th>
             </tr>
           </thead>
@@ -25,20 +24,21 @@ const ClientsList = ({ items, loading, error, onRetry, onEdit, onDelete, onDetai
             {loading ? (
               Array.from({ length: 8 }, (_, i) => (
                 <tr key={`sk-${i}`}>
-                  {Array.from({ length: 6 }, (_, j) => (
+                  {Array.from({ length: 5 }, (_, j) => (
                     <td key={j}><Skeleton variant="text" /></td>
                   ))}
                 </tr>
               ))
             ) : !list.length ? (
               <tr>
-                <td colSpan={6} className="clients-list__empty-cell">
+                <td colSpan={5} className="clients-list__empty-cell">
                   <EmptyState message={emptyMessage || 'Нет клиентов'} />
                 </td>
               </tr>
             ) : list.map((c) => {
               const expired = isClientSubscriptionExpired(c);
               const paid = isClientPaid(c);
+              const dateStart = c.dateStart ?? c.date_start;
               let rowClass = 'clients-list__row';
               if (expired) rowClass += ' clients-list__row--subscription-expired';
               else if (!paid) rowClass += ' clients-list__row--unpaid';
@@ -47,10 +47,9 @@ const ClientsList = ({ items, loading, error, onRetry, onEdit, onDelete, onDetai
               return (
                 <tr key={c.id} className={rowClass}>
                   <td data-label="ФИО">{c.fio || '—'}</td>
-                  <td data-label="Телефон">{c.phone || '—'}</td>
+                  <td data-label="Дата начала">{dateStart ? new Date(dateStart).toLocaleDateString() : '—'}</td>
                   <td data-label="Вид спорта">{c.sportName ?? c.sport?.name ?? '—'}</td>
                   <td data-label="Оплачено">{paid ? 'Да' : 'Нет'}</td>
-                  <td data-label="Тип" className={c.clientType === 'individual' ? 'clients-list__type-cell clients-list__type-cell--individual' : c.clientType === 'one-time' ? 'clients-list__type-cell clients-list__type-cell--one-time' : ''}>{c.clientType === 'individual' ? 'Индивид.' : c.clientType === 'regular' ? 'Регуляр' : c.clientType === 'one-time' ? 'Разовый' : c.clientType || '—'}</td>
                   <td className="clients-list__actions" data-label="">
                     <button type="button" className="clients-list__btn clients-list__btn--primary" onClick={() => onDetails(c)}>Подробнее</button>
                     <button type="button" className="clients-list__btn" onClick={() => onExtend(c)}>Продлить</button>

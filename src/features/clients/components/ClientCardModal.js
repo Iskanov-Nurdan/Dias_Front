@@ -68,6 +68,7 @@ const ClientCardModal = ({ client, onEdit, onDelete, onRefresh, onClose }) => {
             <h3 className="client-card-modal__section-title">Личные данные</h3>
             <dl className="client-card-modal__dl">
               <dt>ФИО</dt><dd>{client.fio || '—'}</dd>
+              <dt>Телефон</dt><dd>{client.phone || '—'}</dd>
             </dl>
           </section>
           <section className="client-card-modal__section">
@@ -76,6 +77,7 @@ const ClientCardModal = ({ client, onEdit, onDelete, onRefresh, onClose }) => {
               <dt>Вид спорта</dt><dd>{client.sportName ?? client.sport?.name ?? '—'}</dd>
               <dt>Тренер</dt><dd>{client.trainerName ?? client.trainer?.fio ?? '—'}</dd>
               <dt>Дата начала</dt><dd>{dateStartRaw ? new Date(dateStartRaw).toLocaleDateString() : '—'}</dd>
+              <dt>Тип</dt><dd className={client.clientType === 'individual' ? 'client-card-modal__type-cell client-card-modal__type-cell--individual' : client.clientType === 'one-time' ? 'client-card-modal__type-cell client-card-modal__type-cell--one-time' : ''}>{client.clientType === 'individual' ? 'Индивидуальный' : client.clientType === 'regular' ? 'Регулярный' : client.clientType === 'one-time' ? 'Разовый' : client.clientType || '—'}</dd>
             </dl>
           </section>
           <section className="client-card-modal__section">

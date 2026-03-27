@@ -12,7 +12,7 @@
 .sale-form-modal__label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; margin-bottom: 12px; }
 .sale-form-modal__section .sale-form-modal__label:last-child { margin-bottom: 0; }
 .sale-form-modal__label-caption { display: block; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); }
-.sale-form-modal__input { padding: 0 12px; height: 40px; border: 1px solid var(--input-border); border-radius: var(--input-radius); background: #FFFFFF; font-size: 14px; &:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--input-shadow-focus); } }
+.sale-form-modal__input { padding: 0 12px; height: 40px; border: 1px solid var(--input-border); border-radius: var(--input-radius); background: var(--input-bg); color: var(--color-text); font-size: 14px; &:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--input-shadow-focus); } }
 .sale-form-modal__input--readonly { background: var(--color-surface-secondary); color: var(--color-text); cursor: default; }
 .sale-form-modal__select { width: 100%; }
 .sale-form-modal__row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 16px; }

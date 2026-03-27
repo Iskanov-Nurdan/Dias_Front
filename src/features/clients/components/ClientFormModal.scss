@@ -10,7 +10,7 @@
 }
 
 .client-form-modal {
-  background: #FFFFFF;
+  background: var(--color-surface);
   border-radius: 18px;
   padding: 20px 24px;
   max-width: 560px;
@@ -125,10 +125,10 @@
   padding: 0 12px;
   border: 1px solid var(--input-border);
   border-radius: var(--input-radius);
-  background: #FFFFFF;
+  background: var(--input-bg);
   font-size: 14px;
   font-weight: 400;
-  color: #0F172A;
+  color: var(--color-text);
   transition: all 0.15s ease;
 
   @include mixins.mobile {

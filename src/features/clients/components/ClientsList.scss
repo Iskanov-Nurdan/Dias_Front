@@ -5,7 +5,7 @@
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     border-radius: var(--block-radius);
-    border: 1px solid rgba(226, 232, 240, 0.6);
+    border: 1px solid var(--color-border);
     box-shadow: var(--shadow-sm);
     background: var(--color-bg-card);
     @include mixins.scrollbar;
@@ -27,7 +27,7 @@
     td {
       padding: var(--table-cell-padding);
       text-align: left;
-      border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+      border-bottom: 1px solid var(--color-border);
     }
 
     @include mixins.mobile {

@@ -19,7 +19,7 @@
 .extend-modal__form { display: flex; flex-direction: column; flex: 1; }
 .extend-modal__form-body { padding: 0 var(--space-6) var(--space-4); }
 .extend-modal__label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
-.extend-modal__input { padding: 0 12px; height: 40px; border: 1px solid var(--input-border); border-radius: var(--input-radius); background: #FFFFFF; font-size: 14px; &:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--input-shadow-focus); } }
+.extend-modal__input { padding: 0 12px; height: 40px; border: 1px solid var(--input-border); border-radius: var(--input-radius); background: var(--input-bg); color: var(--color-text); font-size: 14px; &:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--input-shadow-focus); } }
 .extend-modal__actions {
   display: flex;
   gap: 12px;

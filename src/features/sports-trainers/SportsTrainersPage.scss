@@ -68,7 +68,7 @@
     padding: 0 14px;
     border: 1px solid var(--input-border);
     border-radius: var(--input-radius);
-    background: #FFFFFF;
+    background: var(--color-surface);
     font-size: 14px;
     min-width: 240px;
     &:focus {

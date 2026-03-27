@@ -17,7 +17,7 @@
 .warehouse-form-modal__section .warehouse-form-modal__label:last-child { margin-bottom: 0; }
 .warehouse-form-modal__section .warehouse-form-modal__grid .warehouse-form-modal__label { margin-bottom: 0; }
 .warehouse-form-modal__label-caption { display: block; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); }
-.warehouse-form-modal__input { padding: 0 12px; height: 40px; border: 1px solid var(--input-border); border-radius: var(--input-radius); background: #FFFFFF; font-size: 14px; &:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--input-shadow-focus); } }
+.warehouse-form-modal__input { padding: 0 12px; height: 40px; border: 1px solid var(--input-border); border-radius: var(--input-radius); background: var(--input-bg); color: var(--color-text); font-size: 14px; &:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--input-shadow-focus); } }
 .warehouse-form-modal__select { width: 100%; }
 .warehouse-form-modal__actions { display: flex; gap: 12px; justify-content: flex-end; margin: 24px calc(-1 * var(--space-6)) calc(-1 * var(--space-6)); padding: 16px var(--space-6); border-top: 1px solid var(--color-border); background: transparent; border-radius: 0 0 var(--radius-xl) var(--radius-xl); }
 .warehouse-form-modal__btn { padding: 8px 16px; border-radius: 6px; font-size: 14px; }

@@ -25,12 +25,12 @@
   height: 40px;
   min-height: 40px;
   padding: 0 12px;
-  background: #FFFFFF;
+  background: var(--input-bg);
   border: 1px solid var(--input-border);
   border-radius: var(--input-radius);
   font-size: 14px;
   font-weight: 400;
-  color: #0F172A;
+  color: var(--color-text);
   cursor: pointer;
   transition: all 0.15s ease;
   box-sizing: border-box;
@@ -43,7 +43,7 @@
 
   &:hover:not(:disabled) {
     border-color: var(--input-border-hover);
-    background: #FAFAFA;
+    background: var(--color-surface-secondary);
   }
 
   &:focus {
@@ -80,7 +80,7 @@
 .select__dropdown {
   max-height: 280px;
   overflow-y: auto;
-  background: #FFFFFF;
+  background: var(--color-surface);
   border: 1px solid var(--input-border);
   border-radius: var(--input-radius);
   box-shadow: var(--dropdown-shadow);
@@ -98,7 +98,7 @@
   background: none;
   border: none;
   border-radius: 8px;
-  color: #0F172A;
+  color: var(--color-text);
   cursor: pointer;
   transition: background 0.1s ease;
 

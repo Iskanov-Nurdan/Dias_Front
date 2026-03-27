@@ -6,7 +6,7 @@
 }
 
 .lead-card-modal {
-  background: #FFFFFF;
+  background: var(--color-surface);
   border-radius: 14px;
   padding: 28px 32px;
   width: 100%;
@@ -31,6 +31,7 @@
   margin: 0 0 4px;
   font-size: 20px;
   font-weight: 400;
+  color: var(--color-text);
 }
 
 .lead-card-modal__subtitle {
@@ -139,7 +140,7 @@
   border: 1px solid var(--input-border);
   border-radius: var(--input-radius);
   font-size: 14px;
-  background: #FFFFFF;
+  background: var(--input-bg);
   color: var(--color-text);
   &:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--input-shadow-focus); }
   &--readonly { background: var(--color-bg); color: var(--color-text-muted); cursor: default; }
@@ -158,7 +159,7 @@
   font-size: 14px;
   resize: vertical;
   min-height: 80px;
-  background: #FFFFFF;
+  background: var(--input-bg);
   color: var(--color-text);
   font-family: inherit;
   &:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--input-shadow-focus); }

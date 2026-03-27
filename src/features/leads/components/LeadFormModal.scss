@@ -5,7 +5,7 @@
 }
 
 .lead-form-modal {
-  background: #FFFFFF;
+  background: var(--color-surface);
   border-radius: 12px;
   padding: 24px;
   max-width: 480px;
@@ -26,6 +26,7 @@
   margin: 0;
   font-size: 18px;
   font-weight: 400;
+  color: var(--color-text);
 }
 
 .lead-form-modal__close {
@@ -66,7 +67,8 @@
   height: 40px;
   border: 1px solid var(--input-border);
   border-radius: var(--input-radius);
-  background: #FFFFFF;
+  background: var(--input-bg);
+  color: var(--color-text);
   font-size: 14px;
   transition: all 0.15s ease;
   &:focus {

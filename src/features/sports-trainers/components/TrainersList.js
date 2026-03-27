@@ -50,6 +50,7 @@ const TrainersList = ({
                   <td colSpan={3} className="trainers-list__empty-cell">
                     <EmptyState
                       compact
+                      tableCell
                       message="Нет тренеров"
                       actionLabel={emptyStateActionLabel}
                       onAction={emptyStateOnAction}

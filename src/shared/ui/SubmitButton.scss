@@ -1,0 +1,31 @@
+.submit-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  &__spinner {
+    flex-shrink: 0;
+    animation: submit-button-spin 0.7s linear infinite;
+  }
+
+  &__text {
+    line-height: 1.2;
+  }
+
+  &:disabled .submit-button__spinner {
+    opacity: 0.95;
+  }
+}
+
+@keyframes submit-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .submit-button__spinner {
+    animation: none;
+  }
+}

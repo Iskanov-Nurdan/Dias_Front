@@ -12,3 +12,4 @@ export { default as Sparkline } from './Sparkline';
 export { default as Skeleton } from './Skeleton';
 export { SkeletonTable } from './Skeleton';
 export { default as Pagination } from './Pagination';
+export { default as SubmitButton } from './SubmitButton';

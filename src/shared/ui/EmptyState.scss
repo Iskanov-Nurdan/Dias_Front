@@ -61,4 +61,26 @@
       max-width: 360px;
     }
   }
+
+  /* Внутри ячейки таблицы: без лишней «коробки», один визуальный блок */
+  &--table-cell {
+    min-height: 0;
+    padding: 20px 12px;
+    gap: var(--space-3);
+
+    &.empty-state--compact {
+      min-height: 0;
+      padding: 20px 12px;
+    }
+
+    .empty-state__illustration {
+      max-width: min(220px, 100%);
+      max-height: 120px;
+    }
+
+    .empty-state__message {
+      font-size: 14px;
+      max-width: none;
+    }
+  }
 }

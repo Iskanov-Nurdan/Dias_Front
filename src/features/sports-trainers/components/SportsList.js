@@ -41,6 +41,7 @@ const SportsList = ({
                   <td colSpan={2} className="sports-list__empty-cell">
                     <EmptyState
                       compact
+                      tableCell
                       message="Нет видов спорта"
                       actionLabel={emptyStateActionLabel}
                       onAction={emptyStateOnAction}

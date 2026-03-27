@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { Select } from '../../../shared/ui';
+import { Select, SubmitButton } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './SaleFormModal.scss';
 
@@ -116,7 +116,9 @@ const SaleFormModal = ({ products = [], onSave, onClose, error, saving }) => {
           </section>
           <div className="sale-form-modal__actions">
             <button type="button" className="sale-form-modal__btn sale-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
-            <button type="submit" className="sale-form-modal__btn sale-form-modal__btn--submit" disabled={saving}>{saving ? 'Оформление…' : 'Оформить'}</button>
+            <SubmitButton loading={saving} loadingLabel="Оформление…" className="sale-form-modal__btn sale-form-modal__btn--submit">
+              Оформить
+            </SubmitButton>
           </div>
         </form>
       </div>

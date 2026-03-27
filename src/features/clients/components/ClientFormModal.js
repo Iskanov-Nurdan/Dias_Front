@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useToast } from '../../../app/providers/ToastProvider';
-import { Select } from '../../../shared/ui';
+import { Select, SubmitButton } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { isClientPaid } from '../../../shared/constants/common';
 import './ClientFormModal.scss';
@@ -230,7 +230,9 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
           </div>
           <div className="client-form-modal__actions">
             <button type="button" className="client-form-modal__btn client-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
-            <button type="submit" className="client-form-modal__btn client-form-modal__btn--submit" disabled={saving}>{saving ? 'Сохранение…' : 'Сохранить'}</button>
+            <SubmitButton loading={saving} className="client-form-modal__btn client-form-modal__btn--submit">
+              Сохранить
+            </SubmitButton>
           </div>
         </form>
       </div>

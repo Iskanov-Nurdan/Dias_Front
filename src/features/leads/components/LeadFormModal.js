@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { Select } from '../../../shared/ui';
+import { Select, SubmitButton } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './LeadFormModal.scss';
 
@@ -68,7 +68,9 @@ const LeadFormModal = ({ lead, onSave, onClose, error, saving }) => {
           </label>
           <div className="lead-form-modal__actions">
             <button type="button" className="lead-form-modal__btn lead-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
-            <button type="submit" className="lead-form-modal__btn lead-form-modal__btn--submit" disabled={saving}>{saving ? 'Сохранение…' : 'Сохранить'}</button>
+            <SubmitButton loading={saving} className="lead-form-modal__btn lead-form-modal__btn--submit">
+              Сохранить
+            </SubmitButton>
           </div>
         </form>
       </div>

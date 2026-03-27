@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { ConfirmModal } from '../../../shared/ui';
+import { ConfirmModal, SubmitButton } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './RestockModal.scss';
 
@@ -47,7 +47,9 @@ const RestockModal = ({ product, onSave, onClose, error, saving }) => {
           </section>
           <div className="warehouse-form-modal__actions">
             <button type="button" className="warehouse-form-modal__btn warehouse-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
-            <button type="submit" className="warehouse-form-modal__btn warehouse-form-modal__btn--submit" disabled={saving}>{saving ? 'Пополнение…' : 'Пополнить'}</button>
+            <SubmitButton loading={saving} loadingLabel="Пополнение…" className="warehouse-form-modal__btn warehouse-form-modal__btn--submit">
+              Пополнить
+            </SubmitButton>
           </div>
         </form>
         {showConfirm && (

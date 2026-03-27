@@ -44,6 +44,7 @@ const ClientsList = ({
                 <td colSpan={5} className="clients-list__empty-cell">
                   <EmptyState
                     compact
+                    tableCell
                     message={emptyMessage || 'Нет клиентов'}
                     actionLabel={emptyStateActionLabel}
                     onAction={emptyStateOnAction}

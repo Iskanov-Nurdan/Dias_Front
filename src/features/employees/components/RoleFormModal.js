@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
+import { SubmitButton } from '../../../shared/ui';
 import './RoleFormModal.scss';
 
 const RoleFormModal = ({ role, onSave, onClose, error, saving }) => {
@@ -38,9 +39,9 @@ const RoleFormModal = ({ role, onSave, onClose, error, saving }) => {
             <button type="button" className="role-form-modal__btn role-form-modal__btn--cancel" onClick={onClose} disabled={saving}>
               Отмена
             </button>
-            <button type="submit" className="role-form-modal__btn role-form-modal__btn--submit" disabled={saving}>
-              {saving ? 'Сохранение…' : 'Сохранить'}
-            </button>
+            <SubmitButton loading={saving} className="role-form-modal__btn role-form-modal__btn--submit">
+              Сохранить
+            </SubmitButton>
           </div>
         </form>
       </div>

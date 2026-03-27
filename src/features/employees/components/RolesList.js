@@ -1,5 +1,5 @@
 import React from 'react';
-import { ErrorState, EmptyState, ConfirmModal } from '../../../shared/ui';
+import { ErrorState, EmptyState, ConfirmModal, SkeletonTable } from '../../../shared/ui';
 import './RolesList.scss';
 
 const isSystemRole = (role) => role?.is_system === true || role?.isSystem === true;
@@ -43,17 +43,14 @@ const RolesList = ({
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={2} className="roles-list__loading-cell">
-                    <span className="loading-inline">
-                      <span className="loading-inline__spinner" aria-hidden />
-                      Загрузка…
-                    </span>
+                  <td colSpan={2} className="roles-list__skeleton-cell">
+                    <SkeletonTable rows={6} cols={2} />
                   </td>
                 </tr>
               ) : !list.length ? (
                 <tr>
                   <td colSpan={2} className="roles-list__empty-cell">
-                    <EmptyState compact message="Нет ролей" />
+                    <EmptyState compact tableCell message="Нет ролей" />
                   </td>
                 </tr>
               ) : list.map((role) => {

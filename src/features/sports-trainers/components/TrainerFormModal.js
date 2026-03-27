@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
+import { SubmitButton } from '../../../shared/ui';
 import './TrainerFormModal.scss';
 
 const TrainerFormModal = ({ trainer, sports, onSave, onClose, error, saving }) => {
@@ -55,7 +56,9 @@ const TrainerFormModal = ({ trainer, sports, onSave, onClose, error, saving }) =
           </div>
           <div className="trainer-form-modal__actions">
             <button type="button" className="trainer-form-modal__btn trainer-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
-            <button type="submit" className="trainer-form-modal__btn trainer-form-modal__btn--submit" disabled={saving}>{saving ? 'Сохранение…' : 'Сохранить'}</button>
+            <SubmitButton loading={saving} className="trainer-form-modal__btn trainer-form-modal__btn--submit">
+              Сохранить
+            </SubmitButton>
           </div>
         </form>
       </div>

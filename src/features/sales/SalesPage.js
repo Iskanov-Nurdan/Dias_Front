@@ -3,7 +3,7 @@ import { fetchSalesSummary, fetchSales, createSale, cancelSale } from './api';
 import { fetchProducts } from '../warehouse/api';
 import SaleFormModal from './components/SaleFormModal';
 import { useToast } from '../../app/providers/ToastProvider';
-import { ErrorState, EmptyState, Pagination, Badge, Skeleton, FilterBar, ConfirmModal } from '../../shared/ui';
+import { ErrorState, EmptyState, Pagination, Badge, SkeletonTable, FilterBar, ConfirmModal } from '../../shared/ui';
 import { formatMoney } from '../../shared/constants/common';
 import { getApiErrorMessage, isCanceledError } from '../../shared/lib/apiError';
 import './SalesPage.scss';
@@ -154,15 +154,13 @@ const SalesPage = () => {
           <thead><tr><th>Товар</th><th>Кол-во</th><th>Сумма</th><th>Скидка</th><th>Дата</th><th>Статус</th><th></th></tr></thead>
           <tbody>
             {salesLoading ? (
-              Array.from({ length: 5 }, (_, i) => (
-                <tr key={`sk-${i}`}>
-                  {Array.from({ length: 7 }, (_, j) => (
-                    <td key={j}><Skeleton variant="text" /></td>
-                  ))}
-                </tr>
-              ))
+              <tr>
+                <td colSpan={7} className="sales-page__skeleton-cell">
+                  <SkeletonTable rows={6} cols={7} />
+                </td>
+              </tr>
             ) : salesItems.length === 0 ? (
-              <tr><td colSpan={7} className="sales-page__empty-cell"><EmptyState compact message="Нет продаж" /></td></tr>
+              <tr><td colSpan={7} className="sales-page__empty-cell"><EmptyState compact tableCell message="Нет продаж" /></td></tr>
             ) : salesItems.map((s) => {
                 const isCancelled = s.status === 'cancelled';
                 return (

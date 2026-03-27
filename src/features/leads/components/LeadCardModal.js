@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useToast } from '../../../app/providers/ToastProvider';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
-import { Select } from '../../../shared/ui';
+import { Select, SubmitButton } from '../../../shared/ui';
 import './LeadCardModal.scss';
 
 const CHANNEL_OPTIONS = [
@@ -267,7 +267,9 @@ const LeadCardModal = ({ lead, stages = [], sports = [], trainers = [], onSave, 
 
           <div className="lead-card-modal__actions">
             <button type="button" className="lead-card-modal__btn lead-card-modal__btn--cancel" onClick={onClose} disabled={saving}>Закрыть</button>
-            <button type="submit" className="lead-card-modal__btn lead-card-modal__btn--submit" disabled={saving}>{saving ? 'Сохранение…' : 'Сохранить'}</button>
+            <SubmitButton loading={saving} className="lead-card-modal__btn lead-card-modal__btn--submit">
+              Сохранить
+            </SubmitButton>
           </div>
         </form>
       </div>

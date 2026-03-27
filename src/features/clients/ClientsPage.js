@@ -668,7 +668,7 @@ const ClientsPage = () => {
                     {!statsData.byTrainer?.length ? (
                       <tr>
                         <td colSpan={4} className="clients-page__stats-empty">
-                          <EmptyState compact message="Нет данных" />
+                          <EmptyState compact tableCell message="Нет данных" />
                         </td>
                       </tr>
                     ) : (
@@ -750,6 +750,7 @@ const ClientsPage = () => {
                         <td colSpan={5} className="clients-page__stats-empty">
                           <EmptyState
                             compact
+                            tableCell
                             message={
                               <>
                                 Нет данных

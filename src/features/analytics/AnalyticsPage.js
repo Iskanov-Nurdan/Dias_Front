@@ -717,9 +717,15 @@ const AnalyticsPage = () => {
                         <td>{x.incomeSharePercent != null ? `${Number(x.incomeSharePercent).toFixed(1)}%` : '—'}</td>
                       </tr>
                     ))}
+                    {trainerItems.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="analytics-page__table-empty-cell">
+                          <EmptyState compact tableCell message="Нет данных" />
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
-                {trainerItems.length === 0 && <EmptyState compact message="Нет данных" />}
               </div>
             </section>
 
@@ -751,9 +757,15 @@ const AnalyticsPage = () => {
                         </td>
                       </tr>
                     ))}
+                    {newClientsItems.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="analytics-page__table-empty-cell">
+                          <EmptyState compact tableCell message="Нет новых клиентов за период" />
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
-                {newClientsItems.length === 0 && <EmptyState compact message="Нет новых клиентов за период" />}
               </div>
             </section>
 
@@ -777,9 +789,15 @@ const AnalyticsPage = () => {
                         <td>{r.employeeName ?? '—'}</td>
                       </tr>
                     ))}
+                    {restockItems.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="analytics-page__table-empty-cell">
+                          <EmptyState compact tableCell message="Нет пополнений за период" />
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
-                {restockItems.length === 0 && <EmptyState compact message="Нет пополнений за период" />}
               </div>
 
               <h4 className="analytics-page__subsection-title">Товары с низким остатком</h4>

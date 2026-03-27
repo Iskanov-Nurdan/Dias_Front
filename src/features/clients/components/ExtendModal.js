@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { ConfirmModal } from '../../../shared/ui';
+import { ConfirmModal, SubmitButton } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './ExtendModal.scss';
 
@@ -33,7 +33,9 @@ const ExtendModal = ({ client, onSave, onClose, error, saving }) => {
           </div>
           <div className="extend-modal__actions">
             <button type="button" className="extend-modal__btn extend-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
-            <button type="submit" className="extend-modal__btn extend-modal__btn--submit" disabled={saving}>{saving ? 'Продление…' : 'Продлить'}</button>
+            <SubmitButton loading={saving} loadingLabel="Продление…" className="extend-modal__btn extend-modal__btn--submit">
+              Продлить
+            </SubmitButton>
           </div>
         </form>
         {showConfirm && (

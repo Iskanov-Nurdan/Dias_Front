@@ -135,7 +135,7 @@ const SalaryPage = () => {
                 </tr>
               ))
             ) : items.length === 0 ? (
-              <tr><td colSpan={10} className="salary-page__empty-cell"><EmptyState compact message="Нет данных за период" /></td></tr>
+              <tr><td colSpan={10} className="salary-page__empty-cell"><EmptyState compact tableCell message="Нет данных за период" /></td></tr>
             ) : items.map((row, index) => {
                 const trainerId = row.trainerId ?? row.trainer_id ?? row.id ?? index;
                 const income = row.income ?? row.revenue ?? row.clientIncome ?? 0;

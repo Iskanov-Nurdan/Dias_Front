@@ -3,7 +3,7 @@ import { fetchExpenseCategories, fetchExpenses, saveExpense, createExpenseCatego
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
 import { ExpenseCategoryFormModal, ExpenseFormModal } from './components';
-import { ErrorState, EmptyState, ConfirmModal, Pagination, Badge, Skeleton, FilterBar } from '../../shared/ui';
+import { ErrorState, EmptyState, ConfirmModal, Pagination, Badge, SkeletonTable, FilterBar } from '../../shared/ui';
 import { formatMoney } from '../../shared/constants/common';
 import './ExpensesPage.scss';
 
@@ -167,9 +167,13 @@ const ExpensesPage = () => {
               <thead><tr><th>Название</th><th>Действия</th></tr></thead>
               <tbody>
                 {categoriesLoading ? (
-                  <tr><td colSpan={2} className="expenses-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
+                  <tr>
+                    <td colSpan={2} className="expenses-page__skeleton-cell">
+                      <SkeletonTable rows={6} cols={2} />
+                    </td>
+                  </tr>
                 ) : categoriesList.length === 0 ? (
-                  <tr><td colSpan={2} className="expenses-page__empty-cell"><EmptyState compact message="Нет категорий" /></td></tr>
+                  <tr><td colSpan={2} className="expenses-page__empty-cell"><EmptyState compact tableCell message="Нет категорий" /></td></tr>
                 ) : (
                   <>
                     {categoriesList.length < 4 && (
@@ -213,15 +217,13 @@ const ExpensesPage = () => {
               <thead><tr><th>Название</th><th>Категория</th><th>Сумма</th><th>Дата</th><th>Сохранён</th><th>Действия</th></tr></thead>
               <tbody>
                 {expensesLoading ? (
-                  Array.from({ length: 5 }, (_, i) => (
-                    <tr key={`sk-${i}`}>
-                      {Array.from({ length: 6 }, (_, j) => (
-                        <td key={j}><Skeleton variant="text" /></td>
-                      ))}
-                    </tr>
-                  ))
+                  <tr>
+                    <td colSpan={6} className="expenses-page__skeleton-cell">
+                      <SkeletonTable rows={6} cols={6} />
+                    </td>
+                  </tr>
                 ) : expensesItems.length === 0 ? (
-                  <tr><td colSpan={6} className="expenses-page__empty-cell"><EmptyState compact message="Нет расходов" /></td></tr>
+                  <tr><td colSpan={6} className="expenses-page__empty-cell"><EmptyState compact tableCell message="Нет расходов" /></td></tr>
                 ) : expensesItems.map((e) => (
                     <tr key={e.id}>
                       <td>{e.name ?? '—'}</td>

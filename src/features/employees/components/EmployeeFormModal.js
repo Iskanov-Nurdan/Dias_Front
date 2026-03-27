@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { Select } from '../../../shared/ui';
+import { Select, SubmitButton } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './EmployeeFormModal.scss';
 
@@ -79,9 +79,9 @@ const EmployeeFormModal = ({ employee, roles, onSave, onClose, error, saving }) 
             <button type="button" className="employee-form-modal__btn employee-form-modal__btn--cancel" onClick={onClose} disabled={saving}>
               Отмена
             </button>
-            <button type="submit" className="employee-form-modal__btn employee-form-modal__btn--submit" disabled={saving}>
-              {saving ? 'Сохранение…' : 'Сохранить'}
-            </button>
+            <SubmitButton loading={saving} className="employee-form-modal__btn employee-form-modal__btn--submit">
+              Сохранить
+            </SubmitButton>
           </div>
         </form>
       </div>

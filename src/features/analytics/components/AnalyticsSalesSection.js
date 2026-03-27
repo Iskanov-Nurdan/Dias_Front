@@ -35,11 +35,15 @@ const AnalyticsMarginTable = ({ marginTab, setMarginTab, salesMargin, marginByPr
               <td>{x.marginPercent != null ? `${Number(x.marginPercent).toFixed(1)}%` : '—'}</td>
             </tr>
           ))}
+          {(marginTab === 'product' ? marginByProduct : marginByCategory).length === 0 && (
+            <tr>
+              <td colSpan={5} className="analytics-page__table-empty-cell">
+                <EmptyState compact tableCell message="Нет данных за период" />
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
-      {(marginTab === 'product' ? marginByProduct : marginByCategory).length === 0 && (
-        <EmptyState compact message="Нет данных за период" />
-      )}
     </div>
   </section>
 );
@@ -71,11 +75,15 @@ const AnalyticsSalesTable = ({ salesTab, setSalesTab, salesTotalRevenue, product
               <td>{formatMoney(x.revenue)}</td>
             </tr>
           ))}
+          {(salesTab === 'product' ? productItems : categoryItems).length === 0 && (
+            <tr>
+              <td colSpan={3} className="analytics-page__table-empty-cell">
+                <EmptyState compact tableCell message="Нет продаж за период" />
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
-      {(salesTab === 'product' ? productItems : categoryItems).length === 0 && (
-        <EmptyState compact message="Нет продаж за период" />
-      )}
     </div>
   </section>
 );

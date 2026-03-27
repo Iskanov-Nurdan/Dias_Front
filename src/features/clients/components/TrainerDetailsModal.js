@@ -67,7 +67,7 @@ const TrainerDetailsModal = ({ trainerId, trainerName, year, month, onDetails, o
                 {students.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="trainer-details-modal__empty">
-                      <EmptyState compact message="Нет учеников" />
+                      <EmptyState compact tableCell message="Нет учеников" />
                     </td>
                   </tr>
                 ) : (

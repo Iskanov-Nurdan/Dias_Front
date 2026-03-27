@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { Select } from '../../../shared/ui';
+import { Select, SubmitButton } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './ExpenseFormModal.scss';
 
@@ -79,7 +79,9 @@ const ExpenseFormModal = ({ expense, categories = [], onSave, onClose, error, sa
           </label>
           <div className="expense-form-modal__actions">
             <button type="button" className="expense-form-modal__btn expense-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
-            <button type="submit" className="expense-form-modal__btn expense-form-modal__btn--submit" disabled={saving}>{saving ? 'Сохранение…' : 'Сохранить'}</button>
+            <SubmitButton loading={saving} className="expense-form-modal__btn expense-form-modal__btn--submit">
+              Сохранить
+            </SubmitButton>
           </div>
         </form>
       </div>

@@ -8,7 +8,7 @@ import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { SEARCH_DEBOUNCE_MS } from '../../shared/constants/common';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
 import { LeadFormModal, LeadCardModal, FunnelBoard } from './components';
-import { ErrorState, EmptyState, ConfirmModal, Pagination, FilterBar } from '../../shared/ui';
+import { ErrorState, EmptyState, ConfirmModal, Pagination, FilterBar, SkeletonTable } from '../../shared/ui';
 import './LeadsPage.scss';
 
 const CHANNEL_LABELS = { instagram: 'Instagram', whatsapp: 'WhatsApp', tiktok: 'TikTok', other: 'Другое' };
@@ -303,14 +303,14 @@ const LeadsPage = () => {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="leads-page__loading-cell">
-                      <span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span>
+                    <td colSpan={5} className="leads-page__skeleton-cell">
+                      <SkeletonTable rows={6} cols={5} />
                     </td>
                   </tr>
                 ) : items.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="leads-page__empty-cell">
-                      <EmptyState compact message="Нет заявок" />
+                      <EmptyState compact tableCell message="Нет заявок" />
                     </td>
                   </tr>
                 ) : (

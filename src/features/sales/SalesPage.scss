@@ -205,4 +205,14 @@
     padding: var(--space-8) var(--space-4);
     vertical-align: middle;
   }
+
+  &__skeleton-cell {
+    padding: 0 !important;
+    border-bottom: none;
+    vertical-align: top;
+
+    .skeleton-table {
+      width: 100%;
+    }
+  }
 }

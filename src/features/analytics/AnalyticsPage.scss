@@ -1091,6 +1091,13 @@
   border-bottom: none;
 }
 
+.analytics-page__table-empty-cell {
+  padding: 0 !important;
+  vertical-align: middle;
+  text-align: center;
+  border-bottom: none !important;
+}
+
 // ——— Badge (оплачено/не оплачено) ———
 .analytics-page__badge {
   display: inline-block;

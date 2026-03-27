@@ -1,8 +1,20 @@
 import React from 'react';
-import { ErrorState, EmptyState, ConfirmModal } from '../../../shared/ui';
+import { ErrorState, EmptyState, ConfirmModal, SkeletonTable } from '../../../shared/ui';
 import './SportsList.scss';
 
-const SportsList = ({ items, loading, error, onRetry, onEdit, onDelete, confirmDelete, onConfirmDelete, onCancelDelete }) => {
+const SportsList = ({
+  items,
+  loading,
+  error,
+  onRetry,
+  onEdit,
+  onDelete,
+  confirmDelete,
+  onConfirmDelete,
+  onCancelDelete,
+  emptyStateActionLabel,
+  emptyStateOnAction,
+}) => {
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
   const list = Array.isArray(items) ? items : items?.items ?? items?.results ?? [];
 
@@ -20,17 +32,19 @@ const SportsList = ({ items, loading, error, onRetry, onEdit, onDelete, confirmD
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={2} className="sports-list__loading-cell">
-                    <span className="loading-inline">
-                      <span className="loading-inline__spinner" aria-hidden />
-                      Загрузка…
-                    </span>
+                  <td colSpan={2} className="sports-list__skeleton-cell">
+                    <SkeletonTable rows={8} cols={2} />
                   </td>
                 </tr>
               ) : !list.length ? (
                 <tr>
                   <td colSpan={2} className="sports-list__empty-cell">
-                    <EmptyState compact message="Нет видов спорта" />
+                    <EmptyState
+                      compact
+                      message="Нет видов спорта"
+                      actionLabel={emptyStateActionLabel}
+                      onAction={emptyStateOnAction}
+                    />
                   </td>
                 </tr>
               ) : list.map((s) => (

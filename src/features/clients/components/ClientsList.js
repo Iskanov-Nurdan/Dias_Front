@@ -1,9 +1,21 @@
 import React from 'react';
-import { ErrorState, EmptyState, Skeleton } from '../../../shared/ui';
+import { ErrorState, EmptyState, SkeletonTable } from '../../../shared/ui';
 import { isClientPaid, isClientSubscriptionExpired } from '../../../shared/constants/common';
 import './ClientsList.scss';
 
-const ClientsList = ({ items, loading, error, onRetry, onEdit, onDelete, onDetails, onExtend, emptyMessage }) => {
+const ClientsList = ({
+  items,
+  loading,
+  error,
+  onRetry,
+  onEdit,
+  onDelete,
+  onDetails,
+  onExtend,
+  emptyMessage,
+  emptyStateActionLabel,
+  emptyStateOnAction,
+}) => {
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
   const list = items?.items ?? items?.results ?? items ?? [];
 
@@ -22,17 +34,20 @@ const ClientsList = ({ items, loading, error, onRetry, onEdit, onDelete, onDetai
           </thead>
           <tbody>
             {loading ? (
-              Array.from({ length: 8 }, (_, i) => (
-                <tr key={`sk-${i}`}>
-                  {Array.from({ length: 5 }, (_, j) => (
-                    <td key={j}><Skeleton variant="text" /></td>
-                  ))}
-                </tr>
-              ))
+              <tr>
+                <td colSpan={5} className="clients-list__skeleton-cell">
+                  <SkeletonTable rows={8} cols={5} />
+                </td>
+              </tr>
             ) : !list.length ? (
               <tr>
                 <td colSpan={5} className="clients-list__empty-cell">
-                  <EmptyState compact message={emptyMessage || 'Нет клиентов'} />
+                  <EmptyState
+                    compact
+                    message={emptyMessage || 'Нет клиентов'}
+                    actionLabel={emptyStateActionLabel}
+                    onAction={emptyStateOnAction}
+                  />
                 </td>
               </tr>
             ) : list.map((c) => {

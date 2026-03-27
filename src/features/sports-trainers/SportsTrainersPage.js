@@ -161,7 +161,19 @@ const SportsTrainersPage = () => {
               Добавить
             </button>
           </FilterBar>
-          <SportsList items={sportsData} loading={sportsLoading} error={sportsError} onRetry={fetchSportsSafe} onEdit={(s) => (isAdmin ? setFormSport(s) : showAccessDenied())} onDelete={(s) => (isAdmin ? setConfirmDeleteSport(s) : showAccessDenied())} confirmDelete={confirmDeleteSport} onConfirmDelete={handleDeleteSport} onCancelDelete={() => setConfirmDeleteSport(null)} />
+          <SportsList
+            items={sportsData}
+            loading={sportsLoading}
+            error={sportsError}
+            onRetry={fetchSportsSafe}
+            onEdit={(s) => (isAdmin ? setFormSport(s) : showAccessDenied())}
+            onDelete={(s) => (isAdmin ? setConfirmDeleteSport(s) : showAccessDenied())}
+            confirmDelete={confirmDeleteSport}
+            onConfirmDelete={handleDeleteSport}
+            onCancelDelete={() => setConfirmDeleteSport(null)}
+            emptyStateActionLabel={isAdmin ? 'Добавить вид спорта' : undefined}
+            emptyStateOnAction={isAdmin ? () => setFormSport({}) : undefined}
+          />
         </div>
       )}
       {activeTab === TAB_TRAINERS && (
@@ -185,7 +197,20 @@ const SportsTrainersPage = () => {
             Добавить
           </button>
         </FilterBar>
-          <TrainersList items={trainersItems} sports={sportsData} loading={trainersLoading} error={trainersError} onRetry={fetchTrainersSafe} onEdit={(t) => (isAdmin ? setFormTrainer(t) : showAccessDenied())} onDelete={(t) => (isAdmin ? setConfirmDeleteTrainer(t) : showAccessDenied())} confirmDelete={confirmDeleteTrainer} onConfirmDelete={handleDeleteTrainer} onCancelDelete={() => setConfirmDeleteTrainer(null)} />
+          <TrainersList
+            items={trainersItems}
+            sports={sportsData}
+            loading={trainersLoading}
+            error={trainersError}
+            onRetry={fetchTrainersSafe}
+            onEdit={(t) => (isAdmin ? setFormTrainer(t) : showAccessDenied())}
+            onDelete={(t) => (isAdmin ? setConfirmDeleteTrainer(t) : showAccessDenied())}
+            confirmDelete={confirmDeleteTrainer}
+            onConfirmDelete={handleDeleteTrainer}
+            onCancelDelete={() => setConfirmDeleteTrainer(null)}
+            emptyStateActionLabel={isAdmin ? 'Добавить тренера' : undefined}
+            emptyStateOnAction={isAdmin ? () => setFormTrainer({}) : undefined}
+          />
           <Pagination
             meta={trainersData?.meta}
             currentPage={queryState.page}

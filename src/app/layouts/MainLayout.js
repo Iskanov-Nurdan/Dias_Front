@@ -2,16 +2,29 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Menu, ChevronLeft, ChevronRight, X,
-  User, LogOut,
+  User, LogOut, Moon, Sun,
 } from 'lucide-react';
 import { useAuth } from '../providers/AuthProvider';
 import { PAGE_IDS, PAGE_LABELS, PAGE_ROUTES, PAGE_GROUPS, PAGE_ICONS } from '../../shared/constants/pages';
 import './MainLayout.scss';
 
 const SIDEBAR_STORAGE_KEY = 'mainLayout_sidebarCollapsed';
+const THEME_STORAGE_KEY = 'rahman-theme';
 
+/** Синхронно с --icon-size-md / --icon-size-sm в _variables.scss */
 const ICON_SIZE = 20;
 const ICON_SIZE_SM = 18;
+
+const getInitialTheme = () => {
+  try {
+    const s = localStorage.getItem(THEME_STORAGE_KEY);
+    if (s === 'dark' || s === 'light') return s;
+  } catch {
+    /* ignore */
+  }
+  if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+  return 'light';
+};
 
 const getStoredSidebarCollapsed = () => {
   try {
@@ -31,6 +44,7 @@ const MainLayout = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(getStoredSidebarCollapsed);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [theme, setTheme] = useState(getInitialTheme);
 
   useEffect(() => {
     const mq = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`);
@@ -64,6 +78,17 @@ const MainLayout = () => {
   useEffect(() => {
     localStorage.setItem(SIDEBAR_STORAGE_KEY, sidebarCollapsed ? '1' : '0');
   }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      /* ignore */
+    }
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
 
   const handleLogout = async () => {
     await logout();
@@ -107,6 +132,17 @@ const MainLayout = () => {
             {mobileMenuOpen ? <X size={ICON_SIZE} /> : <Menu size={ICON_SIZE} />}
           </button>
           <span className="main-layout__brand">Рахман Ата</span>
+        </div>
+        <div className="main-layout__header-right">
+          <button
+            type="button"
+            className="main-layout__theme-toggle"
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+            aria-label={theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'}
+          >
+            {theme === 'dark' ? <Sun size={ICON_SIZE_SM} strokeWidth={1.75} /> : <Moon size={ICON_SIZE_SM} strokeWidth={1.75} />}
+          </button>
         </div>
       </header>
       <aside className="main-layout__sidebar">

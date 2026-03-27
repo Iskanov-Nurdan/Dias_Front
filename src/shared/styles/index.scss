@@ -59,8 +59,8 @@ textarea {
   font-family: inherit;
   font-size: var(--font-text);
   font-weight: 400;
-  color: #0F172A;
-  background: #FFFFFF;
+  color: var(--color-text);
+  background: var(--input-bg);
 
   &::placeholder {
     color: var(--input-placeholder);
@@ -90,7 +90,7 @@ textarea {
 
   &:hover:not(:focus):not(:disabled) {
     border-color: var(--input-border-hover);
-    background: #FAFAFA;
+    background: var(--color-surface-secondary);
   }
 
   &:focus {
@@ -182,5 +182,32 @@ textarea {
   transition: background var(--transition-fast);
   &:hover {
     background: var(--color-primary-hover);
+  }
+}
+
+/* Иерархия заголовков (подключайте класс на h1/h2 страниц) */
+.ui-page-title {
+  margin: 0 0 var(--space-5);
+  font-size: var(--font-page-title);
+  font-weight: var(--font-weight-page-title);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--color-text);
+}
+
+.ui-section-title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-section-title);
+  font-weight: var(--font-weight-section-title);
+  line-height: 1.3;
+  color: var(--color-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confirm-modal__backdrop,
+  .confirm-modal,
+  .filters-modal__backdrop,
+  .filters-modal {
+    animation: none !important;
   }
 }

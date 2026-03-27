@@ -1,7 +1,28 @@
 @use '../styles/mixins';
 
+@keyframes confirm-modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes confirm-modal-panel-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confirm-modal__backdrop,
+  .confirm-modal {
+    animation: none !important;
+  }
+}
+
 .confirm-modal__backdrop {
   @include mixins.modal-backdrop;
+  animation: confirm-modal-backdrop-in 0.2s ease;
 }
 
 .confirm-modal {
@@ -12,6 +33,7 @@
   max-width: calc(100vw - 24px);
   margin: 12px;
   box-shadow: var(--shadow-xl);
+  animation: confirm-modal-panel-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 
   @media (max-width: 374px) {
     padding: 20px;

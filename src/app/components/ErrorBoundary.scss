@@ -17,6 +17,12 @@
   border: 1px solid var(--color-border);
 }
 
+.error-boundary__visual {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-4);
+}
+
 .error-boundary__title {
   margin: 0 0 12px;
   font-size: 22px;

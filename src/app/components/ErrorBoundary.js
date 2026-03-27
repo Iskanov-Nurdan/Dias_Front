@@ -1,4 +1,5 @@
 import React from 'react';
+import { FeedbackVisual } from '../../shared/ui';
 import './ErrorBoundary.scss';
 
 class ErrorBoundary extends React.Component {
@@ -17,6 +18,9 @@ class ErrorBoundary extends React.Component {
       return (
         <div className="error-boundary">
           <div className="error-boundary__card">
+            <div className="error-boundary__visual">
+              <FeedbackVisual variant="error" />
+            </div>
             <h1 className="error-boundary__title">Что-то пошло не так</h1>
             <p className="error-boundary__text">Произошла ошибка. Попробуйте обновить страницу.</p>
             <button

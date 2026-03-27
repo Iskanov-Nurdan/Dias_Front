@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './providers/AuthProvider';
 import MainLayout from './layouts/MainLayout';
+import NoAccessPage from './components/NoAccessPage';
 import { PAGE_IDS } from '../shared/constants/pages';
 
 const LoginPage = React.lazy(() => import('../features/auth/LoginPage'));
@@ -15,13 +16,6 @@ const SalaryPage = React.lazy(() => import('../features/salary/SalaryPage'));
 const LeadsPage = React.lazy(() => import('../features/leads/LeadsPage'));
 const AnalyticsPage = React.lazy(() => import('../features/analytics/AnalyticsPage'));
 const NotFoundPage = React.lazy(() => import('../features/not-found/NotFoundPage'));
-
-const NoAccessPage = () => (
-  <div style={{ padding: 48, textAlign: 'center' }}>
-    <h2>Нет доступа</h2>
-    <p>У вас нет прав для просмотра этого раздела.</p>
-  </div>
-);
 
 const ProtectedRoute = ({ children, pageId }) => {
   const { user, hasAccess, getFirstAvailableRoute } = useAuth();

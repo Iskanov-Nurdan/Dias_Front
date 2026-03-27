@@ -27,13 +27,13 @@
     }
   }
 
-  // —— Header (64px, белый, компактный user block) ——
+  // —— Header (64px; фон из темы) ——
   &__header {
     grid-area: header;
     height: 64px;
     min-height: 64px;
-    background: #FFFFFF;
-    border-bottom: 1px solid #E2E8F0;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -92,6 +92,32 @@
       @include mixins.mobile {
         display: flex;
       }
+    }
+  }
+
+  &__header-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-shrink: 0;
+  }
+
+  &__theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-lg);
+    background: transparent;
+    color: var(--color-text-muted);
+    transition: color var(--transition-fast), background var(--transition-fast);
+
+    &:hover {
+      color: var(--color-primary);
+      background: var(--color-primary-soft);
     }
   }
 
@@ -483,6 +509,10 @@
     min-width: 0;
     width: 100%;
     max-width: 100%;
+
+    tbody tr {
+      transition: background-color var(--transition-fast);
+    }
 
     @include mixins.mobile {
       padding: var(--space-5);

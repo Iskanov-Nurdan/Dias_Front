@@ -44,14 +44,16 @@
 }
 
 .skeleton-table td {
-  padding: 14px 16px;
+  padding: var(--table-cell-padding);
   border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
 }
 
 .skeleton-table .skeleton {
   height: 16px;
-  width: 80%;
-  max-width: 120px;
+  width: 85%;
+  max-width: 200px;
+  border-radius: var(--radius-md);
 }
 
 .skeleton-table tr:last-child td {

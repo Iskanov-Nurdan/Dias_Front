@@ -58,6 +58,16 @@
     vertical-align: middle;
   }
 
+  &__skeleton-cell {
+    padding: 0 !important;
+    border-bottom: none;
+    vertical-align: top;
+
+    .skeleton-table {
+      width: 100%;
+    }
+  }
+
   &__actions {
     display: flex;
     gap: 8px;

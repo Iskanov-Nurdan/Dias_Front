@@ -84,6 +84,7 @@
         }
 
         &.clients-list__loading-cell,
+        &.clients-list__skeleton-cell,
         &.clients-list__empty-cell {
           display: flex;
           justify-content: center;
@@ -163,6 +164,16 @@
     text-align: center;
     padding: 32px 16px;
     vertical-align: middle;
+  }
+
+  &__skeleton-cell {
+    padding: 0 !important;
+    border-bottom: none;
+    vertical-align: top;
+
+    .skeleton-table {
+      width: 100%;
+    }
   }
 
   &__actions {

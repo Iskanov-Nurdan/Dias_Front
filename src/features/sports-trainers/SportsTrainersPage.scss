@@ -6,9 +6,9 @@
 
   &__title {
     margin: 0 0 20px;
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: -0.03em;
+    font-size: var(--font-page-title);
+    font-weight: var(--font-weight-page-title);
+    letter-spacing: -0.02em;
     color: var(--color-text);
     line-height: 1.2;
   }

@@ -473,6 +473,8 @@ const ClientsPage = () => {
             onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())}
             onDetails={handleOpenCard}
             onExtend={setExtendClientObj}
+            emptyStateActionLabel="Добавить клиента"
+            emptyStateOnAction={() => (isAdmin ? setFormClient({}) : showAccessDenied())}
           />
           <Pagination meta={data?.meta} currentPage={queryState.page} onPage={(p) => setQueryState((q) => ({ ...q, page: p }))} loading={loading} entityLabel="клиентов" />
         </>

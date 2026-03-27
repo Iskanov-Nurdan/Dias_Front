@@ -1,8 +1,21 @@
 import React from 'react';
-import { ErrorState, EmptyState, ConfirmModal } from '../../../shared/ui';
+import { ErrorState, EmptyState, ConfirmModal, SkeletonTable } from '../../../shared/ui';
 import './TrainersList.scss';
 
-const TrainersList = ({ items, sports = [], loading, error, onRetry, onEdit, onDelete, confirmDelete, onConfirmDelete, onCancelDelete }) => {
+const TrainersList = ({
+  items,
+  sports = [],
+  loading,
+  error,
+  onRetry,
+  onEdit,
+  onDelete,
+  confirmDelete,
+  onConfirmDelete,
+  onCancelDelete,
+  emptyStateActionLabel,
+  emptyStateOnAction,
+}) => {
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
   const list = items?.items ?? items?.results ?? (Array.isArray(items) ? items : []);
   const sportsMap = (Array.isArray(sports) ? sports : []).reduce((acc, s) => { acc[s.id] = s.name || ''; return acc; }, {});
@@ -28,17 +41,19 @@ const TrainersList = ({ items, sports = [], loading, error, onRetry, onEdit, onD
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={3} className="trainers-list__loading-cell">
-                    <span className="loading-inline">
-                      <span className="loading-inline__spinner" aria-hidden />
-                      Загрузка…
-                    </span>
+                  <td colSpan={3} className="trainers-list__skeleton-cell">
+                    <SkeletonTable rows={8} cols={3} />
                   </td>
                 </tr>
               ) : !list.length ? (
                 <tr>
                   <td colSpan={3} className="trainers-list__empty-cell">
-                    <EmptyState compact message="Нет тренеров" />
+                    <EmptyState
+                      compact
+                      message="Нет тренеров"
+                      actionLabel={emptyStateActionLabel}
+                      onAction={emptyStateOnAction}
+                    />
                   </td>
                 </tr>
               ) : list.map((t) => (

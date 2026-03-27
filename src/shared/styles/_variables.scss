@@ -115,4 +115,45 @@
   --color-error: var(--color-danger);
   --color-error-light: var(--color-danger-soft);
   --shadow-card: var(--shadow-sm);
+
+  // —— UI icons (lucide) — единый масштаб ——
+  --icon-size-md: 20px;
+  --icon-size-sm: 18px;
+}
+
+/* Мягкая тёмная тема (контент + шапка; сайдбар остаётся тёмным блоком) */
+[data-theme='dark'] {
+  --color-bg: #0d1117;
+  --color-surface: #161b22;
+  --color-surface-secondary: #21262d;
+  --color-border: #30363d;
+  --color-border-strong: #484f58;
+
+  --color-text: #e6edf3;
+  --color-text-secondary: #8b949e;
+  --color-text-muted: #6e7681;
+
+  --color-primary-soft: rgba(248, 113, 113, 0.12);
+  --color-success-soft: rgba(46, 160, 67, 0.15);
+  --color-danger-soft: rgba(248, 81, 73, 0.15);
+  --color-warning-soft: rgba(210, 153, 34, 0.15);
+  --color-info-soft: rgba(56, 139, 253, 0.15);
+
+  --input-bg: #161b22;
+  --input-border: #30363d;
+  --input-border-hover: #484f58;
+  --input-placeholder: #6e7681;
+  --input-shadow-focus: 0 0 0 3px rgba(248, 113, 113, 0.2);
+  --dropdown-item-hover: #21262d;
+  --block-border: #30363d;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.45);
+  --shadow-xl: 0 24px 60px rgba(0, 0, 0, 0.5);
+  --dropdown-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+
+  --color-sidebar-bg: #0a0e14;
+  --color-sidebar-border: #21262d;
 }

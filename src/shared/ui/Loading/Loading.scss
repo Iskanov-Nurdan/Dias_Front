@@ -1,28 +1,31 @@
-@use '../../styles/variables' as *;
+﻿@use '../../styles/variables' as *;
 @use '../../styles/mixins' as *;
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading {
   @include flex-center;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-12);
+  padding: var(--space-10);
   color: var(--text-muted);
 
   &__spinner {
-    width: 36px;
-    height: 36px;
-    border: 3px solid var(--border);
-    border-top-color: var(--accent);
+    width: 32px;
+    height: 32px;
+    border: 2px solid var(--border);
+    border-top-color: var(--primary);
     border-radius: 50%;
-    animation: spin 0.7s linear infinite;
+    animation: spin 0.65s linear infinite;
   }
 
   &__text {
-    font-size: var(--font-sm);
+    font-size: var(--font-caption);
     color: var(--text-muted);
   }
 }
+

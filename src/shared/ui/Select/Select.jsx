@@ -6,9 +6,11 @@ const Select = ({
   value,
   onChange,
   options = [],
-  placeholder = 'Выберите...',
+  placeholder = 'Выберите',
   disabled = false,
+  invalid = false,
   className = '',
+  ...rest
 }) => {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
@@ -23,7 +25,7 @@ const Select = ({
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
-    const dropH = Math.min(options.length * 40 + 8, 280);
+    const dropH = Math.min(options.length * 44 + 16, 300);
     const openUp = spaceBelow < dropH + 8 && rect.top > dropH + 8;
     setPos({
       left: rect.left + window.scrollX,
@@ -34,10 +36,13 @@ const Select = ({
     });
   }, [options.length]);
 
-  const handleOpen = () => {
+  const handleTriggerClick = () => {
     if (disabled) return;
-    updatePos();
-    setOpen(true);
+    setOpen((prev) => {
+      if (prev) return false;
+      updatePos();
+      return true;
+    });
   };
 
   const handleSelect = (opt) => {
@@ -55,12 +60,16 @@ const Select = ({
         setOpen(false);
       }
     };
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
     document.addEventListener('mousedown', close);
-    document.addEventListener('keydown', (e) => e.key === 'Escape' && setOpen(false));
+    document.addEventListener('keydown', onKeyDown);
     window.addEventListener('scroll', updatePos, true);
     window.addEventListener('resize', updatePos);
     return () => {
       document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('scroll', updatePos, true);
       window.removeEventListener('resize', updatePos);
     };
@@ -71,12 +80,14 @@ const Select = ({
       <button
         ref={triggerRef}
         type="button"
-        className={`dias-select ${open ? 'dias-select--open' : ''} ${disabled ? 'dias-select--disabled' : ''} ${className}`}
-        onClick={handleOpen}
+        className={`dias-select ${open ? 'dias-select--open' : ''} ${disabled ? 'dias-select--disabled' : ''} ${invalid ? 'dias-select--invalid' : ''} ${className}`.trim()}
+        onClick={handleTriggerClick}
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-invalid={invalid || undefined}
         aria-controls={open ? listboxId : undefined}
+        {...rest}
       >
         <span className={`dias-select__value ${!selected ? 'dias-select__value--placeholder' : ''}`}>
           {selected ? selected.label : placeholder}
@@ -98,7 +109,7 @@ const Select = ({
         >
           {options.map((opt) => (
             <li
-              key={opt.value}
+              key={String(opt.value)}
               role="option"
               aria-selected={opt.value === value}
               className={`dias-select__option ${opt.value === value ? 'dias-select__option--selected' : ''}`}

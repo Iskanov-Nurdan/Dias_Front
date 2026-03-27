@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, LabelList } from 'recharts';
 import './AnalyticsPage.scss';
 import { apiClient } from '../../../../shared/api';
-import { getRevenueDetails, getExpenseDetails } from '../../api';
-import { Loading, ErrorState } from '../../../../shared/ui';
+import { getRevenueDetails, getExpenseDetails, getWriteoffDetails } from '../../api';
+import { Loading, ErrorState, Select } from '../../../../shared/ui';
 
 const formatNumber = (num) => Number(num || 0).toLocaleString('ru-RU');
 const formatMoney = (num) => `${formatNumber(num)} сом`;
@@ -102,7 +102,6 @@ const AnalyticsPage = () => {
   const sales = data?.sales || {};
   const production = data?.production || {};
   const warehouse = data?.warehouse || {};
-  const shipments = data?.shipments || {};
   const stocks = data?.stock_balances || {};
 
   const months = [
@@ -168,18 +167,30 @@ const AnalyticsPage = () => {
         </div>
         <div className="analytics-filters__group">
           <label>Месяц</label>
-          <select value={month} onChange={(e) => setMonth(e.target.value)}>
-            {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-          </select>
+          <Select
+            value={month === '' || month == null ? '' : String(month)}
+            onChange={setMonth}
+            placeholder="Весь год"
+            options={months.map((m) => ({
+              value: m.value === '' || m.value == null ? '' : String(m.value),
+              label: m.label,
+            }))}
+          />
         </div>
         <div className="analytics-filters__group">
           <label>День</label>
-          <select value={day} onChange={(e) => setDay(e.target.value)}>
-            <option value="">Весь месяц</option>
-            {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-              <option key={d} value={d}>{d}</option>
-            ))}
-          </select>
+          <Select
+            value={day === '' || day == null ? '' : String(day)}
+            onChange={setDay}
+            placeholder="Весь месяц"
+            options={[
+              { value: '', label: 'Весь месяц' },
+              ...Array.from({ length: 31 }, (_, i) => i + 1).map((d) => ({
+                value: String(d),
+                label: String(d),
+              })),
+            ]}
+          />
         </div>
         <button type="button" className="btn btn--secondary" onClick={() => { setMonth(''); setDay(''); }}>Сброс</button>
       </div>
@@ -213,6 +224,23 @@ const AnalyticsPage = () => {
             <div className="analytics-card__label">Прибыль</div>
             <div className="analytics-card__value">{formatMoney(finances.profit)}</div>
             <div className="analytics-card__hint">за период - нажмите для детализации</div>
+          </div>
+          <div
+            className="analytics-card analytics-card--writeoff analytics-card--clickable"
+            onClick={() => setDetailModal({ type: 'writeoff', data: finances })}
+          >
+            <div className="analytics-card__icon">📦</div>
+            <div className="analytics-card__label">Списания сырья</div>
+            <div className="analytics-card__value">
+              {formatMoney(
+                finances.writeoff_total ??
+                  finances.writeoffs ??
+                  finances.write_offs ??
+                  finances.material_writeoffs ??
+                  0,
+              )}
+            </div>
+            <div className="analytics-card__hint">за период — детализация с бэка</div>
           </div>
         </div>
       </div>
@@ -404,48 +432,22 @@ const AnalyticsPage = () => {
         </div>
       </div>
 
-      {/* СКЛАД ГП + ОТГРУЗКИ */}
+      {/* СКЛАД ГП */}
       <div className="analytics-section">
-        <div className="analytics-grid analytics-grid--2col">
-          {/* СКЛАД ГП */}
-          <div className="analytics-block">
-            <h3>Склад ГП</h3>
-            <div className="analytics-cards analytics-cards--mini">
-              <div className="analytics-card analytics-card--success">
-                <div className="analytics-card__label">Доступно</div>
-                <div className="analytics-card__value">{formatNumber(warehouse.total_available)}</div>
-              </div>
-              <div className="analytics-card analytics-card--warning">
-                <div className="analytics-card__label">Резерв</div>
-                <div className="analytics-card__value">{formatNumber(warehouse.total_reserved)}</div>
-              </div>
-              <div className="analytics-card analytics-card--info">
-                <div className="analytics-card__label">Отгружено</div>
-                <div className="analytics-card__value">{formatNumber(warehouse.total_shipped)}</div>
-              </div>
+        <div className="analytics-block">
+          <h3>Склад ГП</h3>
+          <div className="analytics-cards analytics-cards--mini">
+            <div className="analytics-card analytics-card--success">
+              <div className="analytics-card__label">Доступно</div>
+              <div className="analytics-card__value">{formatNumber(warehouse.total_available)}</div>
             </div>
-          </div>
-
-          {/* ОТГРУЗКИ */}
-          <div className="analytics-block">
-            <h3>Отгрузки</h3>
-            <div className="analytics-cards analytics-cards--mini">
-              <div className="analytics-card">
-                <div className="analytics-card__label">Всего</div>
-                <div className="analytics-card__value">{shipments.total_count || 0}</div>
-              </div>
-              <div className="analytics-card analytics-card--warning">
-                <div className="analytics-card__label">Ожидает</div>
-                <div className="analytics-card__value">{shipments.pending || 0}</div>
-              </div>
-              <div className="analytics-card analytics-card--info">
-                <div className="analytics-card__label">В пути</div>
-                <div className="analytics-card__value">{shipments.shipped || 0}</div>
-              </div>
-              <div className="analytics-card analytics-card--success">
-                <div className="analytics-card__label">Доставлено</div>
-                <div className="analytics-card__value">{shipments.delivered || 0}</div>
-              </div>
+            <div className="analytics-card analytics-card--warning">
+              <div className="analytics-card__label">Резерв</div>
+              <div className="analytics-card__value">{formatNumber(warehouse.total_reserved)}</div>
+            </div>
+            <div className="analytics-card analytics-card--info">
+              <div className="analytics-card__label">Отгружено</div>
+              <div className="analytics-card__value">{formatNumber(warehouse.total_shipped)}</div>
             </div>
           </div>
         </div>
@@ -512,10 +514,11 @@ const DetailModal = ({ type, data, fullData, onClose }) => {
     revenue: 'Детализация прихода',
     expense: 'Детализация расхода',
     profit: 'Детализация прибыли',
+    writeoff: 'Детализация списаний сырья',
   };
 
   useEffect(() => {
-    if (type === 'revenue' || type === 'expense') {
+    if (type === 'revenue' || type === 'expense' || type === 'writeoff') {
       setLoading(true);
       setError(false);
       const params = {
@@ -524,9 +527,12 @@ const DetailModal = ({ type, data, fullData, onClose }) => {
         day: fullData.period?.day,
       };
       const ctrl = new AbortController();
-      const fetchDetails = type === 'revenue'
-        ? getRevenueDetails({ ...params, signal: ctrl.signal })
-        : getExpenseDetails({ ...params, signal: ctrl.signal });
+      const fetchDetails =
+        type === 'revenue'
+          ? getRevenueDetails({ ...params, signal: ctrl.signal })
+          : type === 'expense'
+            ? getExpenseDetails({ ...params, signal: ctrl.signal })
+            : getWriteoffDetails({ ...params, signal: ctrl.signal });
 
       fetchDetails
         .then((res) => setDetails(res.data))
@@ -543,7 +549,7 @@ const DetailModal = ({ type, data, fullData, onClose }) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
-          <h3>{titles[type]}</h3>
+          <h3>{titles[type] || 'Детализация'}</h3>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <div className="detail-content">
@@ -609,6 +615,51 @@ const DetailModal = ({ type, data, fullData, onClose }) => {
                       <div className="detail-table-cell detail-table-cell--strong">{formatMoney(item.total)}</div>
                     </div>
                   ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {type === 'writeoff' && details && !loading && !error && (
+            <>
+              <div className="detail-row detail-row--big">
+                <span className="detail-row__label">Итого списано (оценка)</span>
+                <span className="detail-row__value">
+                  {formatMoney(details.total ?? details.total_estimated_value ?? 0)}
+                </span>
+              </div>
+              <div className="detail-section">
+                <h4>Строки ({details.items?.length || 0})</h4>
+                <div className="detail-table-header">
+                  <div className="detail-table-cell">Дата</div>
+                  <div className="detail-table-cell">Материал / причина</div>
+                  <div className="detail-table-cell">Кол-во</div>
+                  <div className="detail-table-cell">Сумма</div>
+                </div>
+                <div className="detail-table">
+                  {(details.items || []).map((item, i) => {
+                    const label =
+                      item.material_name ||
+                      item.raw_material_name ||
+                      item.name ||
+                      item.reason ||
+                      item.recipe_run_label ||
+                      '—';
+                    const qty = item.quantity ?? item.qty;
+                    const unit = item.unit ? ` ${item.unit}` : '';
+                    const money = item.total ?? item.amount ?? item.cost ?? item.value ?? 0;
+                    const dt = item.date || item.created_at || item.at || '—';
+                    return (
+                      <div key={item.id ?? `${dt}-${label}-${i}`} className="detail-table-row">
+                        <div className="detail-table-cell">{typeof dt === 'string' ? dt.slice(0, 10) : dt}</div>
+                        <div className="detail-table-cell">{label}</div>
+                        <div className="detail-table-cell">
+                          {qty != null && qty !== '' ? `${qty}${unit}` : '—'}
+                        </div>
+                        <div className="detail-table-cell detail-table-cell--strong">{formatMoney(money)}</div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </>

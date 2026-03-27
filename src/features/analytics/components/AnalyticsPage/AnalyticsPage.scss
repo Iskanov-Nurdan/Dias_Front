@@ -19,22 +19,24 @@
     gap: 0.4rem;
 
     label {
-      font-size: var(--font-xs);
-      font-weight: var(--weight-medium);
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      font-size: var(--font-label);
+      font-weight: var(--weight-normal);
+      color: var(--text-secondary);
+      text-align: left;
     }
 
     input,
     select {
-      padding: 0.6rem 1rem;
+      min-width: 120px;
+    }
+
+    input {
+      padding: 0 var(--space-3);
       background: var(--input-bg);
       border: 1px solid var(--input-border);
       border-radius: var(--radius-md);
       color: var(--text);
-      font-size: var(--font-sm);
-      min-width: 120px;
+      font-size: var(--font-body);
       height: var(--input-height);
 
       &:focus {
@@ -66,7 +68,11 @@
   gap: 1.5rem;
 
   &--main {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
+
+    @include lg {
+      grid-template-columns: repeat(2, 1fr);
+    }
 
     @include mobile {
       grid-template-columns: 1fr;
@@ -139,6 +145,10 @@
     background: linear-gradient(90deg, var(--info), #38bdf8);
   }
 
+  &--writeoff::before {
+    background: linear-gradient(90deg, #a855f7, #7c3aed);
+  }
+
   &--success::before {
     background: var(--success);
   }
@@ -158,7 +168,7 @@
 
   &__label {
     font-size: var(--font-xs);
-    text-transform: uppercase;
+    text-transform: none;
     letter-spacing: 0.05em;
     color: var(--text-muted);
     font-weight: var(--weight-semibold);
@@ -203,7 +213,7 @@
     font-size: var(--font-sm);
     font-weight: var(--weight-semibold);
     color: var(--text);
-    text-transform: uppercase;
+    text-transform: none;
     letter-spacing: 0.05em;
   }
 
@@ -236,7 +246,7 @@
   &__label {
     font-size: var(--font-xs);
     color: var(--text-muted);
-    text-transform: uppercase;
+    text-transform: none;
     letter-spacing: 0.05em;
   }
 }
@@ -401,7 +411,7 @@
     font-size: var(--font-sm);
     font-weight: var(--weight-semibold);
     color: var(--text-muted);
-    text-transform: uppercase;
+    text-transform: none;
   }
 }
 
@@ -423,7 +433,7 @@
   border-radius: var(--radius-sm);
   font-weight: var(--weight-semibold);
   font-size: var(--font-xs);
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 0.05em;
   color: var(--accent);
   margin-bottom: 0.5rem;
@@ -460,4 +470,5 @@
     font-size: var(--font-md);
   }
 }
+
 

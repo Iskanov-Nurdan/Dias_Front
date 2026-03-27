@@ -6,15 +6,21 @@
   flex-direction: column;
 
   &__filters {
-    margin-bottom: var(--space-5);
+    margin-bottom: var(--layout-gap);
+
+    &--tight {
+      margin-bottom: var(--space-4);
+    }
   }
 
   &__content {
     flex: 1;
+    min-width: 0;
   }
 
   &__pagination {
     margin-top: var(--space-4);
+    padding-top: var(--space-2);
   }
 
   &__items {
@@ -26,3 +32,4 @@
     gap: var(--space-2);
   }
 }
+

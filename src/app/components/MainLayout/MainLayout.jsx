@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, memo, useMemo } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../features/auth';
 import { ACCESS_LABELS } from '../../../shared/config/constants';
+import { getNavSections } from '../../../shared/config/navigation';
 import './MainLayout.scss';
 
 const SIDEBAR_COLLAPSED_KEY = 'dias_sidebar_collapsed';
@@ -38,11 +39,6 @@ const Icons = {
       <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
     </svg>
   ),
-  ClipboardList: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="15" y2="16"/>
-    </svg>
-  ),
   Cog: () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -68,11 +64,6 @@ const Icons = {
       <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
     </svg>
   ),
-  Truck: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
-    </svg>
-  ),
   Clock: () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
@@ -81,16 +72,6 @@ const Icons = {
   CalendarCheck: () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9 16 11 18 15 14"/>
-    </svg>
-  ),
-  Layers: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>
-    </svg>
-  ),
-  Hammer: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M15 12l-8.5 8.5a2.12 2.12 0 0 1-3-3L12 9"/><path d="M17.64 15L22 10.64"/><path d="M20.91 11.7l-1.25-1.25c-.6-.6-.93-1.4-.93-2.25v-.86L16.01 4.6a5.56 5.56 0 0 0-3.94-1.64H9l.92.82A6.18 6.18 0 0 1 12 8.4v1.56l2 2h2.47l2.26 1.91"/>
     </svg>
   ),
   ClipboardCheck: () => (
@@ -121,47 +102,21 @@ const Icons = {
 };
 
 const PAGE_ICONS = {
-  my_shift:   Icons.Clock,           // Моя смена   — часы
-  analytics:  Icons.BarChart2,       // Аналитика   — график
-  clients:    Icons.Building2,       // Клиенты     — здание
-  orders:     Icons.ClipboardList,   // Заказы      — список с буфером
-  sales:      Icons.TrendingUp,      // Продажи     — рост
-  shipments:  Icons.Truck,           // Отгрузки    — грузовик
-  lines:      Icons.Factory,         // Линии       — завод
-  materials:  Icons.Package,         // Сырьё       — коробка
-  chemistry:  Icons.Flask,           // Химия       — колба
-  recipes:    Icons.BookOpen,        // Рецепты     — книга
-  production: Icons.Layers,          // Производство — слои процесса
-  otk:        Icons.ClipboardCheck,  // ОТК         — чеклист с галочкой
-  warehouse:  Icons.Warehouse,       // Склад ГП    — склад
-  users:      Icons.Users,           // Сотрудники  — люди
-  shifts:     Icons.CalendarCheck,   // Смены       — календарь
+  my_shift: Icons.Clock,
+  analytics: Icons.BarChart2,
+  clients: Icons.Building2,
+  sales: Icons.TrendingUp,
+  lines: Icons.Factory,
+  materials: Icons.Package,
+  chemistry: Icons.Flask,
+  recipes: Icons.BookOpen,
+  otk: Icons.ClipboardCheck,
+  warehouse: Icons.Warehouse,
+  users: Icons.Users,
+  shifts: Icons.CalendarCheck,
 };
 
-// Порядок по этапам: личное → клиент → производство → склад → отгрузка → управление
-const ALL_NAV_ITEMS = [
-  { path: '/my-shift',  accessKey: 'my_shift'  },
-  { path: '/analytics', accessKey: 'analytics' },
-  { path: '/clients',   accessKey: 'clients'   },
-  { path: '/orders',    accessKey: 'orders'    },
-  { path: '/materials', accessKey: 'materials' },
-  { path: '/lines',     accessKey: 'lines'     },
-  { path: '/chemistry', accessKey: 'chemistry' },
-  { path: '/recipes',   accessKey: 'recipes'   },
-  { path: '/production',accessKey: 'production'},
-  { path: '/otk',       accessKey: 'otk'       },
-  { path: '/warehouse', accessKey: 'warehouse' },
-  { path: '/sales',     accessKey: 'sales'     },
-  { path: '/shipments', accessKey: 'shipments' },
-  { path: '/users',     accessKey: 'users'     },
-  { path: '/shifts',    accessKey: 'shifts'    },
-].map((item) => ({
-  ...item,
-  label: ACCESS_LABELS[item.accessKey] || item.accessKey,
-  Icon: PAGE_ICONS[item.accessKey] || null,
-}));
-
-const SidebarContent = memo(({ collapsed, inDrawer, filteredNav, currentPath, displayName, roleName, toggleCollapsed, handleLogout }) => (
+const SidebarContent = memo(({ collapsed, inDrawer, navRows, currentPath, displayName, roleName, toggleCollapsed, handleLogout }) => (
   <div className={`main-layout__sidebar-inner${inDrawer ? ' main-layout__sidebar-inner--drawer' : ''}`}>
     <div className="main-layout__logo-row">
       <div className="main-layout__logo">
@@ -182,8 +137,17 @@ const SidebarContent = memo(({ collapsed, inDrawer, filteredNav, currentPath, di
 
     <div className="main-layout__nav-wrap">
       <nav className="main-layout__nav" aria-label="Главное меню">
-        {filteredNav.map((item) => {
-          const isActive = currentPath === item.path;
+        {navRows.map((row, idx) => {
+          if (row.type === 'section') {
+            if (collapsed && !inDrawer) return null;
+            return (
+              <div key={`sec-${row.label}-${idx}`} className="main-layout__nav-section">
+                {row.label}
+              </div>
+            );
+          }
+          const item = row;
+          const isActive = currentPath === item.path || currentPath.startsWith(`${item.path}/`);
           const IconComp = item.Icon;
           return (
             <Link
@@ -270,9 +234,26 @@ const MainLayout = () => {
     return () => { document.body.style.overflow = ''; };
   }, [mobileOpen]);
 
-  const filteredNav = ALL_NAV_ITEMS.filter(
-    (item) => item.accessKey && Array.isArray(user?.accesses) && user.accesses.includes(item.accessKey)
-  );
+  const accesses = Array.isArray(user?.accesses) ? user.accesses : [];
+
+  const navRows = useMemo(() => {
+    const rows = [];
+    for (const section of getNavSections()) {
+      const links = section.links.filter((l) => accesses.includes(l.accessKey));
+      if (links.length === 0) continue;
+      rows.push({ type: 'section', label: section.label });
+      for (const l of links) {
+        rows.push({
+          type: 'link',
+          path: l.path,
+          accessKey: l.accessKey,
+          label: ACCESS_LABELS[l.accessKey] || l.accessKey,
+          Icon: PAGE_ICONS[l.accessKey] || null,
+        });
+      }
+    }
+    return rows;
+  }, [accesses]);
 
   const handleLogout = async () => {
     await logout();
@@ -282,7 +263,11 @@ const MainLayout = () => {
   const displayName = user?.name || user?.email || 'Пользователь';
   const roleName = user?.role_name || user?.role?.name || 'Администратор';
 
-  const currentPage = ALL_NAV_ITEMS.find((item) => location.pathname === item.path || location.pathname.startsWith(item.path + '/'));
+  const currentPage = navRows.find(
+    (row) =>
+      row.type === 'link' &&
+      (location.pathname === row.path || location.pathname.startsWith(`${row.path}/`)),
+  );
   const pageTitle = currentPage?.label || 'DIAS LINE';
 
   return (
@@ -292,7 +277,7 @@ const MainLayout = () => {
         <SidebarContent
           collapsed={collapsed}
           inDrawer={false}
-          filteredNav={filteredNav}
+          navRows={navRows}
           currentPath={location.pathname}
           displayName={displayName}
           roleName={roleName}
@@ -313,7 +298,7 @@ const MainLayout = () => {
         <SidebarContent
           collapsed={collapsed}
           inDrawer
-          filteredNav={filteredNav}
+          navRows={navRows}
           currentPath={location.pathname}
           displayName={displayName}
           roleName={roleName}
@@ -336,7 +321,9 @@ const MainLayout = () => {
           <h1 className="main-layout__page-title">{pageTitle}</h1>
         </header>
         <main className="main-layout__main" ref={mainRef}>
-          <Outlet />
+          <div className="main-layout__viewport">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

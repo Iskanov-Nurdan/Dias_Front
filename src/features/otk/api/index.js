@@ -1,1 +1,1 @@
-export { getBatchesAwaitingOtk, getOtkHistory, acceptBatch } from './otkApi';
+export { getBatchesAwaitingOtk, getOtkHistory, acceptBatch, fetchBatchesByIds } from './otkApi';

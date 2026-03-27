@@ -2,8 +2,8 @@ import React from 'react';
 import Select from '../Select/Select';
 import './FilterBar.scss';
 
-const FilterBar = ({ filters, queryState, onChange }) => (
-  <div className="filter-bar">
+const FilterBar = ({ filters, queryState, onChange, variant }) => (
+  <div className={`filter-bar${variant === 'row' ? ' filter-bar--row' : ''}`.trim()}>
     {filters.map((f) => (
       <div key={f.key} className="filter-bar__item">
         {f.type === 'search' && (
@@ -18,7 +18,7 @@ const FilterBar = ({ filters, queryState, onChange }) => (
         {(f.type === 'select' || f.type === 'ordering') && (
           <Select
             value={queryState[f.key] ?? ''}
-            placeholder={f.placeholder ?? 'Выберите...'}
+            placeholder={f.placeholder ?? 'Выберите'}
             options={
               (f.options ?? []).some((o) => String(o.value) === '')
                 ? f.options

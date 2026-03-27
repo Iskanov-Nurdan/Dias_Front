@@ -1,7 +1,5 @@
 @use 'variables' as *;
 
-// ── Layout ────────────────────────────────────────────────────
-
 @mixin flex-center {
   display: flex;
   align-items: center;
@@ -14,15 +12,11 @@
   justify-content: space-between;
 }
 
-// ── Typography ────────────────────────────────────────────────
-
 @mixin text-ellipsis {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-// ── Scrollbar ─────────────────────────────────────────────────
 
 @mixin scrollbar {
   &::-webkit-scrollbar {
@@ -33,25 +27,26 @@
     background: transparent;
   }
   &::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.15);
+    background: rgba(15, 23, 42, 0.12);
     border-radius: var(--radius-full);
     &:hover {
-      background: rgba(0, 0, 0, 0.25);
+      background: rgba(15, 23, 42, 0.2);
     }
   }
 }
 
-// ── Card ──────────────────────────────────────────────────────
-
 @mixin card-soft {
   background: var(--card);
-  border: 1px solid var(--card-border);
+  border: none;
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-  transition: box-shadow var(--transition-base), border-color var(--transition-base);
+  box-shadow:
+    var(--shadow-sm),
+    0 0 0 1px rgba(17, 24, 39, 0.04);
+  transition:
+    box-shadow var(--transition-base);
 }
 
-@mixin card-soft-accent($color: var(--accent)) {
+@mixin card-soft-accent($color: var(--primary)) {
   @include card-soft;
   position: relative;
   overflow: hidden;
@@ -62,7 +57,7 @@
     top: 0;
     left: 0;
     right: 0;
-    height: 3px;
+    height: 2px;
     background: $color;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
@@ -70,25 +65,33 @@
 
 @mixin card-soft-hover {
   &:hover {
-    box-shadow: var(--shadow-lg);
-    border-color: rgba(230, 57, 70, 0.25);
+    box-shadow: var(--shadow-md);
+    border-color: rgba(15, 23, 42, 0.1);
   }
 }
 
-// ── Focus ring ────────────────────────────────────────────────
-
 @mixin focus-ring {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--input-focus-border);
   box-shadow: 0 0 0 3px var(--input-focus-ring);
 }
 
-// ── Modal ─────────────────────────────────────────────────────
+@mixin select-focus-ring {
+  outline: none;
+  border-color: var(--select-focus-border);
+  box-shadow: 0 0 0 3px var(--select-focus-ring);
+}
+
+@mixin select-invalid-ring {
+  outline: none;
+  border-color: var(--select-invalid-border);
+  box-shadow: 0 0 0 2px var(--select-invalid-ring);
+}
 
 @mixin modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 22, 36, 0.55);
+  background: rgba(15, 23, 42, 0.45);
   backdrop-filter: blur(4px);
   z-index: var(--z-modal);
   @include flex-center;
@@ -101,7 +104,7 @@
   padding: 0;
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   color: var(--text-muted);
   cursor: pointer;
   @include flex-center;
@@ -117,8 +120,6 @@
     @include focus-ring;
   }
 }
-
-// ── Breakpoints ───────────────────────────────────────────────
 
 @mixin mobile {
   @media (max-width: 768px) {
@@ -161,3 +162,4 @@
     @content;
   }
 }
+

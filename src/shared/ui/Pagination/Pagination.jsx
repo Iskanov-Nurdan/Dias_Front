@@ -4,7 +4,9 @@ import './Pagination.scss';
 const Pagination = ({ meta, onPageChange }) => {
   if (!meta) return null;
 
-  const { page, pages, total } = meta;
+  const page = meta.page ?? 1;
+  const pages = meta.pages ?? meta.totalPages ?? meta.total_pages ?? 1;
+  const total = meta.total ?? meta.count;
   if (!pages || pages <= 1) return null;
 
   const getPages = () => {

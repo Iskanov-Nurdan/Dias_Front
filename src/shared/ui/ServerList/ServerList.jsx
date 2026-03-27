@@ -15,6 +15,7 @@ const ServerList = ({
   renderPagination,
   renderTable,
   className = '',
+  filtersClassName = '',
 }) => {
   if (loading) return <Loading />;
   if (error) return <ErrorState error={error} onRetry={onRetry} />;
@@ -33,7 +34,11 @@ const ServerList = ({
 
   return (
     <div className={`server-list ${className}`}>
-      {renderFilters && <div className="server-list__filters">{renderFilters()}</div>}
+      {renderFilters && (
+        <div className={['server-list__filters', filtersClassName].filter(Boolean).join(' ')}>
+          {renderFilters()}
+        </div>
+      )}
       <div className="server-list__content">{content}</div>
       {meta && renderPagination && (
         <div className="server-list__pagination">{renderPagination(meta)}</div>

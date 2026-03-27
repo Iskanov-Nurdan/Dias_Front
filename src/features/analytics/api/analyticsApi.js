@@ -11,3 +11,8 @@ export const getExpenseDetails = (opts) => {
   const { signal, ...params } = opts || {};
   return apiClient.get('analytics/expense-details/', { params, signal });
 };
+
+export const getWriteoffDetails = (opts) => {
+  const { signal, ...params } = opts || {};
+  return apiClient.get('analytics/writeoff-details/', { params, signal });
+};

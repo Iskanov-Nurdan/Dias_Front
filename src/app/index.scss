@@ -1,5 +1,6 @@
 @use '../shared/styles/variables' as *;
 @use '../shared/styles/mixins' as *;
+@use '../shared/styles/ds';
 @use '../shared/styles/modal';
 
 * {
@@ -13,13 +14,46 @@ html {
 
 body {
   margin: 0;
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   background: var(--bg);
-  background-image: var(--bg-gradient);
-  background-attachment: fixed;
   color: var(--text);
-  font-size: var(--font-base);
-  line-height: 1.6;
+  font-size: var(--font-body);
+  font-weight: var(--weight-normal);
+  line-height: var(--leading-normal);
+  text-align: left;
+}
+
+h1,
+.h1 {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--font-h1);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-h);
+  color: var(--text);
+  text-align: left;
+}
+
+h2,
+.h2 {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--font-h2);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-h);
+  color: var(--text);
+  text-align: left;
+}
+
+h3,
+.h3 {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--font-h3);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-h);
+  color: var(--text);
+  text-align: left;
 }
 
 #root {
@@ -27,60 +61,76 @@ body {
   z-index: 1;
 }
 
-// ── Page layout ───────────────────────────────────────────────
-
 .page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+
   &__title {
-    margin: 0 0 var(--space-4);
-    font-size: var(--font-xl);
-    font-weight: var(--weight-semibold);
+    margin: 0 0 var(--space-2);
+    font-size: var(--font-h2);
+    font-weight: var(--weight-medium);
     color: var(--text);
+    line-height: var(--leading-h);
+    text-align: left;
   }
 
   &__actions {
-    margin-bottom: var(--space-6);
-  }
-
-  &__greeting {
-    margin: 0 0 var(--space-2);
-    color: var(--text-secondary);
-    font-size: var(--font-sm);
-  }
-
-  &__hint {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: var(--font-sm);
+    margin-bottom: var(--layout-gap);
   }
 }
 
-// ── Data table (global) ──────────────────────────────────────
-
 .data-table {
   width: 100%;
-  border-collapse: collapse;
-  @include card-soft;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--card);
+  border: none;
+  border-radius: var(--radius-lg);
+  box-shadow:
+    var(--shadow-sm),
+    0 0 0 1px rgba(17, 24, 39, 0.04);
   overflow: hidden;
+  table-layout: auto;
 
   th,
   td {
-    padding: var(--space-3) var(--space-5);
+    padding: 10px var(--space-3);
     text-align: left;
+    vertical-align: middle;
     border-bottom: 1px solid var(--border-subtle);
+    font-size: var(--font-label);
+    font-weight: var(--weight-normal);
+    color: var(--text-secondary);
+  }
+
+  td {
+    color: var(--text);
   }
 
   th {
-    background: #f8fafc;
-    font-weight: var(--weight-semibold);
-    font-size: var(--font-xs);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-muted);
+    background: rgba(17, 24, 39, 0.02);
+    font-weight: var(--weight-medium);
+    font-size: var(--font-caption);
+    letter-spacing: 0.02em;
+    color: var(--text-secondary);
   }
 
-  td:last-child,
-  th:last-child {
-    text-align: right;
+  &__cell--lead {
+    font-size: var(--font-body);
+    font-weight: var(--weight-medium);
+    color: var(--text);
+  }
+
+  &__cell--muted {
+    font-size: var(--font-caption);
+    color: var(--text-secondary);
+  }
+
+  &__cell--num {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
   tr:last-child td {
@@ -89,34 +139,60 @@ body {
 
   tbody tr {
     transition: background var(--transition-fast);
-
-    &:hover {
-      background: var(--accent-muted);
-    }
   }
-}
 
-// ── Base button ───────────────────────────────────────────────
-
-button {
-  font-family: inherit;
-  padding: var(--space-2) var(--space-4);
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  cursor: pointer;
-  font-size: var(--font-sm);
-  font-weight: var(--weight-medium);
-  transition: all var(--transition-base);
-  min-height: 36px;
-
-  &:hover {
+  tbody tr:hover {
     background: var(--bg-hover);
   }
 
-  &:active {
+  &--clickable tbody tr {
+    cursor: pointer;
+  }
+
+  &--row-actions {
+    th:last-child,
+    td:last-child {
+      text-align: right;
+      width: 52px;
+      padding-left: var(--space-2);
+      white-space: nowrap;
+    }
+  }
+
+  &--fixed {
+    table-layout: fixed;
+  }
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  padding: 0 var(--space-4);
+  min-height: var(--control-height);
+  font-size: var(--font-button);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform 0.08s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--bg-hover);
+  }
+
+  &:active:not(:disabled) {
     transform: scale(0.98);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   &:focus-visible {
@@ -124,30 +200,51 @@ button {
   }
 }
 
-// ── Button variants ───────────────────────────────────────────
-
 .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
+  padding: 0 var(--space-4);
+  min-height: var(--input-height);
   border-radius: var(--radius-md);
-  font-size: var(--font-sm);
+  font-size: var(--font-button);
   font-weight: var(--weight-medium);
   cursor: pointer;
   border: 1px solid transparent;
-  transition: all var(--transition-base);
-  min-height: 38px;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform 0.08s ease;
   white-space: nowrap;
+  background: var(--secondary-action-bg);
+  color: var(--secondary-action-text);
+  border-color: var(--secondary-action-border);
+
+  &:hover:not(:disabled) {
+    background: var(--bg-hover);
+    border-color: var(--border);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
 
   &--primary {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--primary);
+    border-color: var(--primary);
     color: #fff;
 
     &:hover:not(:disabled) {
-      background: var(--accent-hover);
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
       box-shadow: var(--shadow-accent);
+    }
+
+    &:active:not(:disabled) {
+      box-shadow: none;
     }
   }
 
@@ -165,10 +262,11 @@ button {
   &--danger {
     background: transparent;
     color: var(--danger);
-    border-color: var(--danger);
+    border-color: rgba(220, 38, 38, 0.35);
 
     &:hover:not(:disabled) {
       background: var(--danger);
+      border-color: var(--danger);
       color: #fff;
     }
   }
@@ -185,20 +283,20 @@ button {
   }
 
   &--sm {
-    padding: var(--space-1) var(--space-3);
-    font-size: var(--font-xs);
+    padding: 0 var(--space-3);
+    min-height: 32px;
+    font-size: var(--font-label);
     border-radius: var(--radius-sm);
-    min-height: 30px;
   }
 
   &--lg {
-    padding: var(--space-3) var(--space-6);
-    font-size: var(--font-md);
+    padding: 0 var(--space-6);
     min-height: 44px;
+    font-size: var(--font-body);
   }
 
   &:disabled {
-    opacity: 0.5;
+    opacity: 0.45;
     cursor: not-allowed;
   }
 
@@ -207,85 +305,114 @@ button {
   }
 }
 
-// ── Base inputs ───────────────────────────────────────────────
-
-input,
+input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']),
 textarea {
   font-family: inherit;
-  font-size: var(--font-base);
-  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-body);
+  font-weight: var(--weight-normal);
+  line-height: var(--leading-normal);
+  padding: 0 var(--space-3);
   background: var(--input-bg);
   border: 1px solid var(--input-border);
   border-radius: var(--radius-md);
   color: var(--text);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-  height: var(--input-height);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  min-height: var(--input-height);
 
   @include mobile {
     font-size: 16px;
   }
 
   &::placeholder {
-    color: var(--text-muted);
+    color: var(--placeholder);
   }
 
   &:focus {
     @include focus-ring;
   }
+
+  &:focus-visible {
+    outline: none;
+  }
 }
 
-// Native select — custom arrow, no browser chrome
 select {
   font-family: inherit;
-  font-size: var(--font-base);
-  height: var(--input-height);
-  padding: 0 2.5rem 0 var(--space-3);
-  background-color: var(--card);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  font-size: var(--select-font-size);
+  line-height: calc(var(--input-height) - 2px);
+  font-weight: var(--weight-normal);
+  min-height: var(--input-height);
+  padding: 0 36px 0 var(--space-3);
+  background-color: var(--select-bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right var(--space-3) center;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-lg);
-  color: var(--text);
+  background-position: right 10px center;
+  border: 1px solid var(--select-border);
+  border-radius: var(--select-radius);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  color: var(--select-text);
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
   width: 100%;
 
   &:hover {
-    border-color: var(--accent);
+    border-color: var(--select-border-hover);
+    background-color: #f9fafb;
   }
 
   &:focus {
-    @include focus-ring;
-    border-color: var(--accent);
+    @include select-focus-ring;
     outline: none;
+    background-color: #fafbfc;
+  }
+
+  &:disabled {
+    opacity: 0.48;
+    cursor: not-allowed;
+  }
+
+  &:required:invalid:not(:focus) {
+    border-color: var(--select-border);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+
+  option[value=''] {
+    color: var(--select-placeholder);
   }
 
   option {
-    background: #fff;
-    color: var(--text);
+    background: var(--select-dropdown-bg);
+    color: var(--select-text);
+    font-weight: var(--weight-normal);
+    padding: 10px 12px;
   }
 }
 
+select {
+  padding-right: 36px !important;
+}
+
 textarea {
+  min-height: 88px;
   height: auto;
+  padding: var(--space-3);
   resize: vertical;
 }
 
-// Lock right padding on all native selects so the custom arrow never overlaps text
-// (modal SCSS files override `padding` shorthand — this restores the arrow space)
-select {
-  padding-right: 2.5rem !important;
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
-// ── Focus visible (global) ────────────────────────────────────
-
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+.btn:focus-visible {
+  outline: none;
 }
 

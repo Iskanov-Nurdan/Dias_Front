@@ -7,69 +7,92 @@
   justify-content: space-between;
   gap: var(--space-2);
   width: 100%;
-  height: var(--input-height);
+  min-height: var(--input-height);
   padding: 0 var(--space-3);
-  background: var(--card);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-lg);
-  color: var(--text);
-  font-size: var(--font-base);
+  padding-right: 36px;
+  background: var(--select-bg);
+  border: 1px solid var(--select-border);
+  border-radius: var(--select-radius);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  color: var(--select-text);
+  font-size: var(--select-font-size);
+  line-height: var(--select-line-height);
+  font-weight: var(--weight-normal);
   font-family: inherit;
   cursor: pointer;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
   text-align: left;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  position: relative;
 
-  &:hover:not(&--disabled) {
-    border-color: var(--accent);
+  &:hover:not(.dias-select--disabled):not(.dias-select--invalid) {
+    border-color: var(--select-border-hover);
+    background: #f9fafb;
   }
 
-  &--open {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--input-focus-ring);
+  &--open:not(.dias-select--invalid) {
+    @include select-focus-ring;
+    background: #fafbfc;
+  }
+
+  &--invalid {
+    @include select-invalid-ring;
+  }
+
+  &--invalid.dias-select--open {
+    border-color: var(--select-invalid-border);
+    box-shadow: 0 0 0 3px var(--select-invalid-ring);
   }
 
   &--disabled {
-    opacity: 0.5;
+    opacity: 0.48;
     cursor: not-allowed;
   }
 
-  &:focus-visible {
-    @include focus-ring;
+  &:focus-visible:not(.dias-select--invalid) {
+    @include select-focus-ring;
   }
 
   &__value {
     flex: 1;
+    min-width: 0;
     @include text-ellipsis;
-    font-weight: var(--weight-medium);
+    font-weight: var(--weight-normal);
 
     &--placeholder {
-      color: var(--text-muted);
-      font-weight: var(--weight-normal);
+      color: var(--placeholder);
     }
   }
 
   &__arrow {
-    flex-shrink: 0;
-    width: 16px;
-    height: 16px;
-    color: var(--text-muted);
-    transition: transform var(--transition-fast), color var(--transition-fast);
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    color: #94a3b8;
+    transition: transform 0.22s cubic-bezier(0.32, 0.72, 0, 1), color 0.18s ease;
     display: flex;
     align-items: center;
     justify-content: center;
+    pointer-events: none;
 
     svg {
-      width: 14px;
-      height: 14px;
+      width: 16px;
+      height: 16px;
       stroke: currentColor;
-      stroke-width: 2.5;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
       fill: none;
     }
 
     &--up {
-      transform: rotate(180deg);
-      color: var(--accent);
+      transform: translateY(-50%) rotate(180deg);
+      color: var(--text-secondary);
     }
   }
 }
@@ -77,26 +100,24 @@
 .dias-select__dropdown {
   position: fixed;
   z-index: var(--z-dropdown);
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: var(--radius-lg);
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.07),
-    0 10px 24px -4px rgba(0, 0, 0, 0.10);
-  padding: var(--space-1) 0;
+  background: var(--select-dropdown-bg);
+  border-radius: var(--select-dropdown-radius);
+  box-shadow: var(--select-dropdown-shadow);
+  padding: var(--space-2);
   list-style: none;
   margin: 0;
-  max-height: 280px;
+  max-height: min(288px, 70vh);
   overflow-y: auto;
   @include scrollbar;
-  animation: selectFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: diasSelectDropdownIn 0.22s cubic-bezier(0.32, 0.72, 0, 1);
   min-width: 160px;
+  border: none;
 }
 
-@keyframes selectFadeIn {
+@keyframes diasSelectDropdownIn {
   from {
     opacity: 0;
-    transform: translateY(-6px) scale(0.98);
+    transform: translateY(-8px) scale(0.98);
   }
   to {
     opacity: 1;
@@ -105,24 +126,24 @@
 }
 
 .dias-select__option {
-  padding: var(--space-2) var(--space-4);
-  font-size: var(--font-base);
-  color: var(--text);
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: var(--select-font-size);
+  line-height: var(--select-line-height);
+  font-weight: var(--weight-normal);
+  color: var(--select-text);
   cursor: pointer;
-  transition: background var(--transition-fast);
-  border-radius: 0;
-  line-height: 1.4;
+  transition: background 0.14s ease, color 0.14s ease;
 
-  &:first-child { border-radius: var(--radius-md) var(--radius-md) 0 0; }
-  &:last-child  { border-radius: 0 0 var(--radius-md) var(--radius-md); }
-
-  &:hover:not(&--selected) {
-    background: var(--bg-hover);
+  &:hover:not(.dias-select__option--selected) {
+    background: var(--select-option-hover);
   }
 
   &--selected {
-    background: var(--accent-muted);
-    color: var(--accent);
-    font-weight: var(--weight-semibold);
+    background: var(--select-option-selected-bg);
+    color: var(--select-option-selected-text);
+    font-weight: var(--weight-normal);
   }
 }
+

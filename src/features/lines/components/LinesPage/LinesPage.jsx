@@ -1,15 +1,268 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { useServerQuery } from '../../../../shared/lib';
-import { Loading, EmptyState, ErrorState, ConfirmModal, useToast } from '../../../../shared/ui';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
+import { useServerQuery, formatNumberForInput, parseLocaleNumber, getApiErrorMessage } from '../../../../shared/lib';
+import {
+  Loading,
+  EmptyState,
+  ErrorState,
+  ConfirmModal,
+  useToast,
+  DecimalInput,
+  Select,
+  Pagination,
+} from '../../../../shared/ui';
 import {
   createLine,
   updateLine,
   deleteLine,
   openShift,
   closeShift,
+  updateShiftParams,
+  pauseLineShift,
+  resumeLineShift,
+  getLineHistory,
+  fetchLinesHistoryPage,
+  getLineHistorySessionDetail,
 } from '../../api/linesApi';
 import { apiClient } from '../../../../shared/api';
+import { useOperationalRefetch } from '../../../../shared/realtime';
 import './LinesPage.scss';
+
+const emptyParams = () => ({
+  comment: '',
+  height: '',
+  width: '',
+  angle_deg: '',
+});
+
+const eventToForm = (ev) => ({
+  comment: ev?.comment ?? '',
+  height: ev?.height != null && ev?.height !== '' ? formatNumberForInput(ev.height) : '',
+  width: ev?.width != null && ev?.width !== '' ? formatNumberForInput(ev.width) : '',
+  angle_deg: ev?.angle_deg != null && ev?.angle_deg !== '' ? formatNumberForInput(ev.angle_deg) : '',
+});
+
+const buildPayload = (form) => {
+  const height = parseLocaleNumber(form.height);
+  const width = parseLocaleNumber(form.width);
+  const angle_deg = parseLocaleNumber(form.angle_deg);
+  if (!Number.isFinite(height) || !Number.isFinite(width) || !Number.isFinite(angle_deg)) return null;
+  return {
+    height,
+    width,
+    angle_deg,
+    comment: form.comment.trim() || undefined,
+  };
+};
+
+/**
+ * После PATCH shift-params бэкенд иногда отдаёт в GET /lines/ старый shift_snapshot.
+ * Подмешиваем фактически сохранённые значения, чтобы таблица «Открытие» совпадала с формой.
+ */
+const applyShiftParamPatchToOpeningRow = (row, payload) => {
+  if (!row?.isOpen || !payload) return row;
+  const patch = {
+    height: payload.height,
+    width: payload.width,
+    angle_deg: payload.angle_deg,
+    comment: payload.comment,
+  };
+  const nextLastOpenEv = row.lastOpenEv ? { ...row.lastOpenEv, ...patch } : row.lastOpenEv;
+  const nextShiftSnapshot = row.shiftSnapshot ? { ...row.shiftSnapshot, ...patch } : { ...patch };
+  const nextShift_snapshot = row.shift_snapshot
+    ? { ...row.shift_snapshot, ...patch }
+    : row.shift_snapshot;
+
+  return {
+    ...row,
+    shift_snapshot: nextShift_snapshot,
+    lastOpenEv: nextLastOpenEv,
+    shiftSnapshot: nextShiftSnapshot,
+  };
+};
+
+const mergeOpeningRowsAfterShiftParamsSave = (rows, lineId, payload) => {
+  if (lineId == null || !payload || !Array.isArray(rows)) return rows;
+  const idKey = String(lineId);
+  return rows.map((row) =>
+    String(row.id) === idKey ? applyShiftParamPatchToOpeningRow(row, payload) : row
+  );
+};
+
+/** Контракт API: shift_pause / shift_resume; старые значения — на случай миграций. */
+const PAUSE_HISTORY_ACTIONS = new Set(['shift_pause', 'pause', 'paused']);
+const RESUME_HISTORY_ACTIONS = new Set(['shift_resume', 'resume', 'resumed']);
+
+const readShiftPausedFromApi = (line, snap) => {
+  if (line?.shift_is_paused === true) return true;
+  if (snap && (snap.is_paused === true || snap.paused === true)) return true;
+  return false;
+};
+
+const readPauseReasonFromApi = (line, snap) => {
+  const r = line?.shift_pause_reason ?? snap?.pause_reason ?? '';
+  return String(r).trim();
+};
+
+const actionLabel = (action) => {
+  if (action === 'open') return 'Открытие';
+  if (action === 'close') return 'Закрытие';
+  if (action === 'params_update') return 'Параметры';
+  if (action === 'shift_pause') return 'Остановка';
+  if (action === 'shift_resume') return 'Возобновление';
+  if (PAUSE_HISTORY_ACTIONS.has(action)) return 'Остановка';
+  if (RESUME_HISTORY_ACTIONS.has(action)) return 'Возобновление';
+  return action || '—';
+};
+
+const historyEventSortKey = (h) => {
+  const d = String(h?.date || '').trim();
+  const timeRaw = String(h?.time ?? '00:00:00').trim();
+  if (!d) return 0;
+  const padded = timeRaw.length === 5 ? `${timeRaw}:00` : timeRaw;
+  let ms = Date.parse(`${d}T${padded}`);
+  if (!Number.isFinite(ms)) ms = Date.parse(`${d} ${timeRaw}`);
+  return Number.isFinite(ms) ? ms : 0;
+};
+
+const lineHistoryGroupKey = (ev) =>
+  String(ev.line_id ?? ev.line_name ?? ev.line ?? '').trim() || '_';
+
+const sessionRowSortKey = (row) => {
+  if (row.kind === 'single') return historyEventSortKey(row.event);
+  const tClose = row.close ? historyEventSortKey(row.close) : 0;
+  const tOpen = row.open ? historyEventSortKey(row.open) : 0;
+  return Math.max(tClose, tOpen);
+};
+
+/**
+ * Сшивает open → (params_update*) → close по каждой линии; прочие события — отдельными строками.
+ */
+const buildLineHistorySessionRows = (items) => {
+  if (!items?.length) return [];
+  const byLine = new Map();
+  for (const ev of items) {
+    const k = lineHistoryGroupKey(ev);
+    if (!byLine.has(k)) byLine.set(k, []);
+    byLine.get(k).push(ev);
+  }
+
+  const out = [];
+  for (const [lineKey, list] of byLine) {
+    const sorted = [...list].sort((a, b) => {
+      const ka = historyEventSortKey(a);
+      const kb = historyEventSortKey(b);
+      if (ka !== kb) return ka - kb;
+      return (Number(a.id) || 0) - (Number(b.id) || 0);
+    });
+
+    let pendingOpen = null;
+    let pendingParams = [];
+
+    const flushOpenOnly = () => {
+      if (pendingOpen) {
+        out.push({
+          kind: 'session',
+          lineKey,
+          open: pendingOpen,
+          close: null,
+          paramUpdates: pendingParams,
+        });
+        pendingOpen = null;
+        pendingParams = [];
+      }
+    };
+
+    for (const ev of sorted) {
+      const a = ev.action;
+      if (a === 'open') {
+        flushOpenOnly();
+        pendingOpen = ev;
+        pendingParams = [];
+      } else if (a === 'params_update') {
+        if (pendingOpen) pendingParams.push(ev);
+        else out.push({ kind: 'single', lineKey, event: ev });
+      } else if (a === 'close') {
+        if (pendingOpen) {
+          out.push({
+            kind: 'session',
+            lineKey,
+            open: pendingOpen,
+            close: ev,
+            paramUpdates: pendingParams,
+          });
+          pendingOpen = null;
+          pendingParams = [];
+        } else {
+          out.push({ kind: 'single', lineKey, event: ev });
+        }
+      } else {
+        out.push({ kind: 'single', lineKey, event: ev });
+      }
+    }
+    flushOpenOnly();
+  }
+
+  out.sort((a, b) => sessionRowSortKey(b) - sessionRowSortKey(a));
+  return out;
+};
+
+const formatEvComment = (ev) => {
+  const c = ev?.comment != null && String(ev.comment).trim();
+  if (c) return c;
+  const r = ev?.pause_reason ?? ev?.reason;
+  if (r != null && String(r).trim()) return String(r).trim();
+  return '';
+};
+
+const sessionLineName = (openEv, closeEv) =>
+  openEv?.line_name || closeEv?.line_name || openEv?.line || closeEv?.line || '—';
+
+const sessionParams = (openEv, closeEv) => {
+  const o = openEv || closeEv;
+  const c = closeEv || openEv;
+  return {
+    height: o?.height != null && o?.height !== '' ? o.height : c?.height,
+    width: o?.width != null && o?.width !== '' ? o.width : c?.width,
+    angle_deg: o?.angle_deg != null && o?.angle_deg !== '' ? o.angle_deg : c?.angle_deg,
+  };
+};
+
+const resolveHistoryLineId = (ev, linesList, filterLineId) => {
+  if (ev?.line_id != null && ev.line_id !== '') return Number(ev.line_id);
+  if (filterLineId != null) return filterLineId;
+  const name = (ev?.line_name || ev?.line || '').trim();
+  if (!name) return null;
+  const hit = linesList.find((l) => l.name === name);
+  return hit?.id ?? null;
+};
+
+const formatParamsTriple = (ev) => {
+  if (!ev) return '—';
+  const h = ev.height;
+  const w = ev.width;
+  const a = ev.angle_deg;
+  if (
+    (h == null || h === '')
+    && (w == null || w === '')
+    && (a == null || a === '')
+  ) return '—';
+  const deg = a != null && a !== '' ? `${a}°` : '—';
+  return `${h ?? '—'} × ${w ?? '—'} × ${deg}`;
+};
+
+/** Нормализует ответ бэка к { open, close, updates, pauseResume }. */
+const normalizeSessionDetailPayload = (raw) => {
+  if (!raw || typeof raw !== 'object') return null;
+  const updates = raw.updates ?? raw.param_updates ?? raw.changes ?? [];
+  const pauseResume = raw.pause_resume ?? raw.pauseResume ?? [];
+  return {
+    open: raw.open ?? null,
+    close: raw.close ?? null,
+    updates: Array.isArray(updates) ? updates : [],
+    pauseResume: Array.isArray(pauseResume) ? pauseResume : [],
+  };
+};
 
 const LinesPage = () => {
   const toast = useToast();
@@ -22,8 +275,18 @@ const LinesPage = () => {
   });
   const [lineModal, setLineModal] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [historyLineId, setHistoryLineId] = useState(null);
+  /** null — все линии; иначе фильтр по id */
+  const [historyFilterLineId, setHistoryFilterLineId] = useState(null);
+  const [historyFeedQuery, setHistoryFeedQuery] = useState({
+    page: 1,
+    page_size: 20,
+  });
+  const [historySessionModal, setHistorySessionModal] = useState(null);
+  const [historySessionRemote, setHistorySessionRemote] = useState(null);
+  const [historySessionRemoteLoading, setHistorySessionRemoteLoading] = useState(false);
+  const [historySessionRemoteError, setHistorySessionRemoteError] = useState(null);
   const [submitError, setSubmitError] = useState('');
+  const [shiftModal, setShiftModal] = useState(null);
 
   const { items: lines, meta, loading, error, refetch } = useServerQuery(
     'lines/',
@@ -31,62 +294,241 @@ const LinesPage = () => {
     { enabled: activeTab === 'line' || activeTab === 'history' }
   );
 
+  const {
+    items: historyFeedItems,
+    meta: historyFeedMeta,
+    loading: historyFeedLoading,
+    error: historyFeedError,
+    refetch: refetchHistoryFeed,
+  } = useServerQuery(null, historyFeedQuery, {
+    enabled: activeTab === 'history' && historyFilterLineId == null,
+    fetcher: fetchLinesHistoryPage,
+  });
+
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+
   const [linesWithStatus, setLinesWithStatus] = useState([]);
   const [linesWithStatusLoading, setLinesWithStatusLoading] = useState(false);
   const [historyItems, setHistoryItems] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
-    if (activeTab !== 'opening') return;
-    const load = async () => {
-      setLinesWithStatusLoading(true);
-      try {
-        const res = await apiClient.get('lines/', { params: { page_size: 100 } });
-        const list = res.data?.items || [];
-        const withStatus = await Promise.all(
+    setHistoryFeedQuery((q) => ({ ...q, page: 1 }));
+  }, [historyFilterLineId]);
+
+  useEffect(() => {
+    if (!historySessionModal || historySessionModal.kind !== 'session') {
+      setHistorySessionRemote(null);
+      setHistorySessionRemoteError(null);
+      setHistorySessionRemoteLoading(false);
+      return;
+    }
+    const o = historySessionModal.open;
+    const lineId = resolveHistoryLineId(o, lines, historyFilterLineId);
+    if (!lineId || o?.id == null) {
+      setHistorySessionRemote(null);
+      setHistorySessionRemoteLoading(false);
+      return;
+    }
+
+    const ac = new AbortController();
+    setHistorySessionRemote(null);
+    setHistorySessionRemoteError(null);
+    setHistorySessionRemoteLoading(true);
+
+    getLineHistorySessionDetail(lineId, o.id, { signal: ac.signal })
+      .then((res) => {
+        const n = normalizeSessionDetailPayload(res.data);
+        setHistorySessionRemote(n);
+      })
+      .catch((e) => {
+        if (e.code === 'ERR_CANCELED' || e.name === 'CanceledError') return;
+        setHistorySessionRemote(null);
+        const st = e.response?.status;
+        const d = e.response?.data;
+        const apiMsg = (() => {
+          if (!d || typeof d !== 'object') return null;
+          if (typeof d.message === 'string' && d.message) return d.message;
+          if (d.error && typeof d.error === 'object' && typeof d.error.message === 'string') {
+            return d.error.message;
+          }
+          if (typeof d.error === 'string') return d.error;
+          if (typeof d.detail === 'string') return d.detail;
+          return null;
+        })();
+        if (st === 400 || st === 404) {
+          setHistorySessionRemoteError(
+            apiMsg || (st === 404 ? 'Событие открытия не найдено' : 'Некорректный запрос')
+          );
+          return;
+        }
+        if (st && st >= 500) {
+          setHistorySessionRemoteError(apiMsg || 'Не удалось загрузить полную историю с сервера');
+        }
+      })
+      .finally(() => {
+        setHistorySessionRemoteLoading(false);
+      });
+
+    return () => ac.abort();
+  }, [historySessionModal, lines, historyFilterLineId]);
+
+  const loadOpeningLines = useCallback(async (syncShiftParams) => {
+    setLinesWithStatusLoading(true);
+    try {
+      const res = await apiClient.get('lines/', { params: { page_size: 100 } });
+      const list = res.data?.items || [];
+      const hasEmbeddedShift = list.length > 0 && Object.prototype.hasOwnProperty.call(list[0], 'shift_is_open');
+
+      let withStatus;
+
+      if (hasEmbeddedShift) {
+        withStatus = list.map((line) => {
+          const isOpen = line.shift_is_open === true;
+          const snap = line.shift_snapshot || null;
+          const isPaused = isOpen && readShiftPausedFromApi(line, snap);
+          const pauseReason = isPaused ? readPauseReasonFromApi(line, snap) : '';
+          let lastOpenEv = null;
+          if (snap?.opened_at) {
+            const s = String(snap.opened_at);
+            lastOpenEv = {
+              action: 'open',
+              date: s.length >= 10 ? s.slice(0, 10) : s,
+              time: s.length >= 19 ? s.slice(11, 19) : '',
+              height: snap.height,
+              width: snap.width,
+              angle_deg: snap.angle_deg,
+              comment: snap.comment,
+            };
+          }
+          return {
+            ...line,
+            historyItems: [],
+            lastEvent: isOpen && lastOpenEv ? lastOpenEv : null,
+            isOpen,
+            isPaused,
+            pauseReason,
+            lastOpenEv,
+            lastCloseEv: line.shift_last_closed_at
+              ? { action: 'close', date: String(line.shift_last_closed_at).slice(0, 10), time: '' }
+              : null,
+            shiftSnapshot: isOpen && snap ? { ...snap, ...lastOpenEv } : null,
+          };
+        });
+      } else {
+        withStatus = await Promise.all(
           list.map(async (line) => {
             try {
               const h = await apiClient.get(`lines/${line.id}/history/`);
               const items = h.data?.items || [];
-              const last = items[0];
+              const latest = items[0] || null;
+              const isOpen = !!(latest && latest.action !== 'close');
+              const isPaused = isOpen && latest && PAUSE_HISTORY_ACTIONS.has(latest.action);
+              const pauseReason = isPaused
+                ? String(
+                  latest.pause_reason ?? latest.reason ?? latest.comment ?? ''
+                ).trim()
+                : '';
+              const paramSnap = items.find(
+                (e) =>
+                  e
+                  && e.action !== 'close'
+                  && !PAUSE_HISTORY_ACTIONS.has(e.action)
+                  && !RESUME_HISTORY_ACTIONS.has(e.action)
+                  && (e.action === 'open' || e.action === 'params_update')
+              ) || null;
+              const lastOpenEv = items.find((e) => e.action === 'open');
+              const lastCloseEv = items.find((e) => e.action === 'close');
+              const shiftSnapshot = isOpen
+                ? (isPaused ? paramSnap : latest)
+                : null;
               return {
                 ...line,
-                lastEvent: last,
-                isOpen: last?.action === 'open',
+                historyItems: items,
+                lastEvent: latest,
+                isOpen,
+                isPaused,
+                pauseReason,
+                lastOpenEv,
+                lastCloseEv,
+                shiftSnapshot,
               };
             } catch {
-              return { ...line, lastEvent: null, isOpen: false };
+              return {
+                ...line,
+                historyItems: [],
+                lastEvent: null,
+                isOpen: false,
+                isPaused: false,
+                pauseReason: '',
+                lastOpenEv: null,
+                lastCloseEv: null,
+                shiftSnapshot: null,
+              };
             }
           })
         );
-        setLinesWithStatus(withStatus);
-      } catch {
-        setLinesWithStatus([]);
-      } finally {
-        setLinesWithStatusLoading(false);
       }
-    };
-    load();
-  }, [activeTab]);
+
+      if (syncShiftParams?.lineId != null && syncShiftParams?.payload) {
+        withStatus = mergeOpeningRowsAfterShiftParamsSave(
+          withStatus,
+          syncShiftParams.lineId,
+          syncShiftParams.payload
+        );
+      }
+
+      setLinesWithStatus(withStatus);
+    } catch {
+      setLinesWithStatus([]);
+    } finally {
+      setLinesWithStatusLoading(false);
+    }
+  }, []);
+
+  const refetchLinesOperational = useCallback(() => {
+    refetch();
+    refetchHistoryFeed();
+    if (activeTabRef.current === 'opening') {
+      loadOpeningLines();
+    }
+  }, [refetch, refetchHistoryFeed, loadOpeningLines]);
+
+  useOperationalRefetch(['line', 'line_history', 'shift'], refetchLinesOperational, true);
 
   useEffect(() => {
-    if (activeTab !== 'history' || !historyLineId) {
+    if (activeTab !== 'opening') return;
+    loadOpeningLines();
+  }, [activeTab, loadOpeningLines]);
+
+  useEffect(() => {
+    if (activeTab !== 'history' || historyFilterLineId == null) {
       setHistoryItems([]);
+      setHistoryLoading(false);
       return;
     }
+
+    const ac = new AbortController();
+    const { signal } = ac;
+
     const load = async () => {
       setHistoryLoading(true);
       try {
-        const res = await apiClient.get(`lines/${historyLineId}/history/`);
-        setHistoryItems(res.data?.items || []);
-      } catch {
-        setHistoryItems([]);
+        const res = await getLineHistory(historyFilterLineId, { signal });
+        if (!signal.aborted) setHistoryItems(res.data?.items || []);
+      } catch (e) {
+        if (e.code !== 'ERR_CANCELED' && e.name !== 'CanceledError' && !signal.aborted) {
+          setHistoryItems([]);
+        }
       } finally {
-        setHistoryLoading(false);
+        if (!signal.aborted) setHistoryLoading(false);
       }
     };
+
     load();
-  }, [activeTab, historyLineId]);
+    return () => ac.abort();
+  }, [activeTab, historyFilterLineId]);
 
   const handleFilterChange = useCallback((patch) => {
     setQueryState((prev) => ({ ...prev, ...patch, page: 1 }));
@@ -95,6 +537,17 @@ const LinesPage = () => {
   const handlePageChange = useCallback((page) => {
     setQueryState((prev) => ({ ...prev, page }));
   }, []);
+
+  const handleHistoryFeedPageChange = useCallback((page) => {
+    setHistoryFeedQuery((prev) => ({ ...prev, page }));
+  }, []);
+
+  const historySourceItems = historyFilterLineId != null ? historyItems : historyFeedItems;
+  const historyViewRows = useMemo(
+    () => buildLineHistorySessionRows(historySourceItems),
+    [historySourceItems]
+  );
+  const historyBusy = historyFilterLineId != null ? historyLoading : historyFeedLoading;
 
   const handleLineSubmit = async (data) => {
     setSubmitError('');
@@ -106,6 +559,7 @@ const LinesPage = () => {
       }
       setLineModal(null);
       refetch();
+      refetchHistoryFeed();
       toast.show('Успешно сохранено');
     } catch (err) {
       setSubmitError(err.response?.data?.error || 'Ошибка');
@@ -119,43 +573,114 @@ const LinesPage = () => {
       await deleteLine(deleteTarget.id);
       setDeleteTarget(null);
       refetch();
+      refetchHistoryFeed();
       toast.show('Успешно удалено');
     } catch (err) {
       setSubmitError(err.response?.data?.error || 'Ошибка удаления');
     }
   };
 
-  const [openCloseTarget, setOpenCloseTarget] = useState(null);
-
-  const handleOpenCloseConfirm = async () => {
-    if (!openCloseTarget) return;
-    const { lineId, isOpen } = openCloseTarget;
+  const handleShiftModalSubmit = async (form) => {
+    if (!shiftModal) return;
+    const { type, line } = shiftModal;
     setSubmitError('');
-    try {
-      if (isOpen) {
-        await closeShift(lineId);
-      } else {
-        await openShift(lineId);
+
+    if (type === 'open') {
+      const payload = buildPayload(form);
+      if (!payload) {
+        setSubmitError('Укажите числа: высота, ширина, градус');
+        return;
       }
-      setOpenCloseTarget(null);
-      setLinesWithStatus((prev) =>
-        prev.map((l) =>
-          l.id === lineId
-            ? {
-                ...l,
-                isOpen: !isOpen,
-                lastEvent: {
-                  action: isOpen ? 'close' : 'open',
-                  date: new Date().toISOString().slice(0, 10),
-                  time: new Date().toTimeString().slice(0, 5),
-                },
-              }
-            : l
-        )
-      );
-      toast.show('Успешно');
-    } catch (err) {
-      setSubmitError(err.response?.data?.error || 'Ошибка');
+      try {
+        await openShift(line.id, payload);
+        setShiftModal(null);
+        await loadOpeningLines();
+        refetch();
+        refetchHistoryFeed();
+        toast.show('Смена открыта');
+      } catch (err) {
+        const msg = getApiErrorMessage(err, 'Ошибка открытия смены на линии');
+        const st = err.response?.status;
+        if (st === 409 || /открытая смена|уже есть открыта/i.test(String(msg))) {
+          setSubmitError(
+            `${msg} Обновите страницу. Личная смена («Моя смена») линию не блокирует; конфликт — только если на этой линии у вас уже открыта смена на линии.`,
+          );
+        } else {
+          setSubmitError(msg);
+        }
+      }
+      return;
+    }
+
+    if (type === 'close') {
+      const payload = buildPayload(form);
+      if (!payload) {
+        setSubmitError('Укажите числа: высота, ширина, градус');
+        return;
+      }
+      try {
+        await closeShift(line.id, payload);
+        setShiftModal(null);
+        await loadOpeningLines();
+        refetch();
+        refetchHistoryFeed();
+        toast.show('Смена закрыта');
+      } catch (err) {
+        setSubmitError(getApiErrorMessage(err, 'Ошибка закрытия смены на линии'));
+      }
+      return;
+    }
+
+    if (type === 'params') {
+      const payload = buildPayload(form);
+      if (!payload) {
+        setSubmitError('Укажите числа: высота, ширина, градус');
+        return;
+      }
+      try {
+        await updateShiftParams(line.id, payload);
+        setShiftModal(null);
+        await loadOpeningLines({ lineId: line.id, payload });
+        refetch();
+        refetchHistoryFeed();
+        toast.show('Параметры обновлены');
+      } catch (err) {
+        setSubmitError(getApiErrorMessage(err, 'Ошибка обновления параметров'));
+      }
+      return;
+    }
+
+    if (type === 'pause') {
+      const reason = String(form?.reason ?? '').trim();
+      if (!reason) {
+        setSubmitError('Укажите причину остановки');
+        return;
+      }
+      try {
+        await pauseLineShift(line.id, { reason });
+        setShiftModal(null);
+        await loadOpeningLines();
+        refetch();
+        refetchHistoryFeed();
+        toast.show('Смена остановлена');
+      } catch (err) {
+        setSubmitError(getApiErrorMessage(err, 'Ошибка паузы смены'));
+      }
+      return;
+    }
+
+    if (type === 'resume') {
+      try {
+        await resumeLineShift(line.id);
+        setShiftModal(null);
+        await loadOpeningLines();
+        refetch();
+        refetchHistoryFeed();
+        toast.show('Смена возобновлена');
+      } catch (err) {
+        setSubmitError(getApiErrorMessage(err, 'Ошибка возобновления смены'));
+      }
+      return;
     }
   };
 
@@ -163,6 +688,14 @@ const LinesPage = () => {
     if (!dateStr) return '—';
     const t = timeStr ? ` ${timeStr}` : '';
     return `${dateStr}${t}`;
+  };
+
+  const formatParamsShort = (ev) => {
+    if (!ev || (ev.height == null && ev.width == null && ev.angle_deg == null)) return '—';
+    const h = ev.height ?? '—';
+    const w = ev.width ?? '—';
+    const a = ev.angle_deg ?? '—';
+    return `${h} × ${w} × ${a}°`;
   };
 
   return (
@@ -206,7 +739,7 @@ const LinesPage = () => {
               <button
                 type="button"
                 className="btn btn--primary"
-                onClick={() => setLineModal({})}
+                onClick={() => { setSubmitError(''); setLineModal({}); }}
               >
                 Создать
               </button>
@@ -231,7 +764,7 @@ const LinesPage = () => {
                         <button
                           type="button"
                           className="btn btn--secondary btn--sm"
-                          onClick={() => setLineModal(line)}
+                          onClick={() => { setSubmitError(''); setLineModal(line); }}
                         >
                           Редактировать
                         </button>
@@ -272,54 +805,129 @@ const LinesPage = () => {
                   <div className="lines-table__header">
                     <span className="lines-table__th">ЛИНИЯ</span>
                     <span className="lines-table__th">СТАТУС</span>
-                    <span className="lines-table__th">ПОСЛЕДНЕЕ ОТКРЫТИЕ</span>
-                    <span className="lines-table__th">ПОСЛЕДНЕЕ ЗАКРЫТИЕ</span>
+                    <span className="lines-table__th">ПАРАМЕТРЫ</span>
+                    <span className="lines-table__th">ПОСЛ. ОТКРЫТИЕ</span>
+                    <span className="lines-table__th">ПОСЛ. ЗАКРЫТИЕ</span>
                     <span className="lines-table__th lines-table__th--actions">ДЕЙСТВИЯ</span>
                   </div>
                   {linesWithStatus.map((l) => (
-                      <div key={l.id} className="lines-table__row">
-                        <span className="lines-table__name">{l.name}</span>
-                        <span>
-                          <span className={`lines-table__badge ${l.isOpen ? 'lines-table__badge--open' : 'lines-table__badge--closed'}`}>
-                            {l.isOpen ? 'ОТКРЫТА' : 'ЗАКРЫТА'}
-                          </span>
+                    <div key={l.id} className="lines-table__row">
+                      <span className="lines-table__name">{l.name}</span>
+                      <span>
+                        <span
+                          className={`lines-table__badge ${
+                            !l.isOpen
+                              ? 'lines-table__badge--closed'
+                              : l.isPaused
+                                ? 'lines-table__badge--paused'
+                                : 'lines-table__badge--open'
+                          }`}
+                          title={l.isPaused && l.pauseReason ? `Причина: ${l.pauseReason}` : undefined}
+                        >
+                          {!l.isOpen ? 'Смена закрыта' : l.isPaused ? 'Смена остановлена' : 'Смена открыта'}
                         </span>
-                        <span className="lines-table__date">
-                          {l.lastEvent?.action === 'open'
-                            ? formatDateTime(l.lastEvent?.date, l.lastEvent?.time)
-                            : '—'}
-                        </span>
-                        <span className="lines-table__date">
-                          {l.lastEvent?.action === 'close'
-                            ? formatDateTime(l.lastEvent?.date, l.lastEvent?.time)
-                            : '—'}
-                        </span>
-                        <div className="lines-table__actions">
-                          {l.isOpen ? (
+                      </span>
+                      <span className="lines-table__params" title="Текущие параметры смены">
+                        {l.isOpen ? formatParamsShort(l.shiftSnapshot) : '—'}
+                      </span>
+                      <span className="lines-table__date">
+                        {formatDateTime(l.lastOpenEv?.date, l.lastOpenEv?.time)}
+                      </span>
+                      <span className="lines-table__date">
+                        {formatDateTime(l.lastCloseEv?.date, l.lastCloseEv?.time)}
+                      </span>
+                      <div className="lines-table__actions lines-table__actions--wrap">
+                        {l.isOpen ? (
+                          <>
+                            {l.isPaused ? (
+                              <button
+                                type="button"
+                                className="btn btn--primary btn--sm"
+                                onClick={() => {
+                                  setSubmitError('');
+                                  setShiftModal({
+                                    type: 'resume',
+                                    line: l,
+                                    modalKey: Date.now(),
+                                  });
+                                }}
+                              >
+                                Возобновить
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="btn btn--secondary btn--sm"
+                                onClick={() => {
+                                  setSubmitError('');
+                                  setShiftModal({
+                                    type: 'pause',
+                                    line: l,
+                                    modalKey: Date.now(),
+                                  });
+                                }}
+                              >
+                                Остановить
+                              </button>
+                            )}
                             <button
                               type="button"
                               className="btn btn--secondary btn--sm"
-                              onClick={() => setOpenCloseTarget({ lineId: l.id, isOpen: true })}
+                              onClick={() => {
+                                setSubmitError('');
+                                setShiftModal({
+                                  type: 'params',
+                                  line: l,
+                                  initial: eventToForm(l.shiftSnapshot),
+                                  modalKey: Date.now(),
+                                });
+                              }}
+                            >
+                              Параметры
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn--secondary btn--sm"
+                              onClick={() => {
+                                setSubmitError('');
+                                setShiftModal({
+                                  type: 'close',
+                                  line: l,
+                                  initial: eventToForm(l.shiftSnapshot),
+                                  modalKey: Date.now(),
+                                });
+                              }}
                             >
                               Закрыть смену
                             </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className="btn btn--open btn--sm"
-                              onClick={() => setOpenCloseTarget({ lineId: l.id, isOpen: false })}
-                            >
-                              Открыть смену
-                            </button>
-                          )}
-                        </div>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn btn--open btn--sm"
+                            onClick={() => {
+                              setSubmitError('');
+                              setShiftModal({
+                                type: 'open',
+                                line: l,
+                                initial: emptyParams(),
+                                modalKey: Date.now(),
+                              });
+                            }}
+                          >
+                            Открыть смену
+                          </button>
+                        )}
                       </div>
+                    </div>
                   ))}
                 </div>
               )}
             </>
           )}
-          {submitError && <p className="lines-card__error">{submitError}</p>}
+          {submitError && activeTab === 'opening' && !shiftModal && (
+            <p className="lines-card__error">{submitError}</p>
+          )}
         </div>
       )}
 
@@ -329,45 +937,141 @@ const LinesPage = () => {
           <div className="lines-card__head">
             <label className="lines-card__label">
               Линия:
-              <select
+              <Select
                 className="lines-card__select"
-                value={historyLineId || ''}
-                onChange={(e) => setHistoryLineId(e.target.value ? Number(e.target.value) : null)}
-              >
-                <option value="">— Выберите линию —</option>
-                {lines.map((l) => (
-                  <option key={l.id} value={l.id}>{l.name}</option>
-                ))}
-              </select>
+                value={historyFilterLineId != null ? String(historyFilterLineId) : ''}
+                onChange={(v) => setHistoryFilterLineId(v ? Number(v) : null)}
+                placeholder="Все линии"
+                options={[
+                  { value: '', label: 'Все линии' },
+                  ...lines.map((l) => ({ value: String(l.id), label: l.name })),
+                ]}
+              />
             </label>
           </div>
-          {!historyLineId && <EmptyState title="Выберите линию" />}
-          {historyLineId && historyLoading && <Loading />}
-          {historyLineId && !historyLoading && (
+          {error && <ErrorState error={error} onRetry={refetch} />}
+          {historyFilterLineId == null && historyFeedError && (
+            <ErrorState error={historyFeedError} onRetry={refetchHistoryFeed} />
+          )}
+          {historyBusy && <Loading />}
+          {!historyBusy
+            && (historyFilterLineId != null || !historyFeedError)
+            && (historyFilterLineId != null || lines.length > 0 || historyFeedMeta != null) && (
             <>
-              {historyItems.length === 0 ? (
-                <EmptyState title="Нет данных" />
+              {historySourceItems.length === 0 ? (
+                <EmptyState
+                  title="Нет данных"
+                  description={lines.length === 0 ? 'Создайте линию на вкладке «Линия»' : undefined}
+                />
               ) : (
-                <div className="lines-table lines-table--history">
-                  <div className="lines-table__header">
-                    <span className="lines-table__th">ДАТА И ВРЕМЯ</span>
-                    <span className="lines-table__th">ЛИНИЯ</span>
-                    <span className="lines-table__th">ДЕЙСТВИЕ</span>
-                  </div>
-                  {historyItems.map((h) => (
-                    <div key={h.id} className="lines-table__row">
-                      <span className="lines-table__date">
-                        {formatDateTime(h.date, h.time)}
-                      </span>
-                      <span className="lines-table__name">{h.line_name || h.line}</span>
-                      <span>
-                        <span className={`lines-table__badge ${h.action === 'open' ? 'lines-table__badge--open' : 'lines-table__badge--closed'}`}>
-                          {h.action === 'open' ? 'ОТКРЫТА' : 'ЗАКРЫТА'}
-                        </span>
-                      </span>
+                <>
+                  <div className="lines-table-scroll">
+                    <div className="lines-table lines-table--history-rich">
+                      <div className="lines-table__header">
+                        <span className="lines-table__th">Открыто</span>
+                        <span className="lines-table__th">Закрыто</span>
+                        <span className="lines-table__th">Линия</span>
+                        <span className="lines-table__th">Высота</span>
+                        <span className="lines-table__th">Ширина</span>
+                        <span className="lines-table__th">Градус</span>
+                        <span className="lines-table__th">Комментарий</span>
+                        <span className="lines-table__th">Смена</span>
+                      </div>
+                      {historyViewRows.map((row) => {
+                        if (row.kind === 'session') {
+                          const { open: o, close: c, paramUpdates } = row;
+                          const { height, width, angle_deg } = sessionParams(o, c);
+                          const parts = [formatEvComment(o), formatEvComment(c)].filter(Boolean);
+                          if (paramUpdates.length) {
+                            parts.push(
+                              paramUpdates.length === 1
+                                ? 'Параметры обновлялись'
+                                : `Параметры обновлялись (${paramUpdates.length})`
+                            );
+                          }
+                          const comment = parts.length ? parts.join(' · ') : '—';
+                          const shiftTitle = c?.session_title || o?.session_title || '—';
+                          return (
+                            <div
+                              key={`sess-${row.lineKey}-${o?.id}-${c?.id ?? 'open'}`}
+                              role="button"
+                              tabIndex={0}
+                              className="lines-table__row lines-table__row--clickable"
+                              onClick={() => setHistorySessionModal({
+                                kind: 'session',
+                                open: o,
+                                close: c,
+                                paramUpdates,
+                              })}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  setHistorySessionModal({
+                                    kind: 'session',
+                                    open: o,
+                                    close: c,
+                                    paramUpdates,
+                                  });
+                                }
+                              }}
+                            >
+                              <span className="lines-table__date">
+                                {formatDateTime(o?.date, o?.time)}
+                              </span>
+                              <span className="lines-table__date">
+                                {c ? formatDateTime(c.date, c.time) : (
+                                  <span className="lines-table__session-open">Открыта</span>
+                                )}
+                              </span>
+                              <span className="lines-table__name">{sessionLineName(o, c)}</span>
+                              <span>{height != null && height !== '' ? height : '—'}</span>
+                              <span>{width != null && width !== '' ? width : '—'}</span>
+                              <span>{angle_deg != null && angle_deg !== '' ? `${angle_deg}°` : '—'}</span>
+                              <span className="lines-table__comment">{comment}</span>
+                              <span className="lines-table__muted">{shiftTitle}</span>
+                            </div>
+                          );
+                        }
+                        const h = row.event;
+                        const badgeAction = h.action || 'x';
+                        return (
+                          <div
+                            key={`one-${row.lineKey}-${h.id}`}
+                            role="button"
+                            tabIndex={0}
+                            className="lines-table__row lines-table__row--clickable"
+                            onClick={() => setHistorySessionModal({ kind: 'single', event: h })}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                setHistorySessionModal({ kind: 'single', event: h });
+                              }
+                            }}
+                          >
+                            <span className="lines-table__date">
+                              {formatDateTime(h.date, h.time)}
+                            </span>
+                            <span className="lines-table__muted">—</span>
+                            <span className="lines-table__name">
+                              {h.line_name || h.line || '—'}
+                              <span className={`lines-table__badge lines-table__badge--inline lines-table__badge--action-${badgeAction}`}>
+                                {actionLabel(h.action)}
+                              </span>
+                            </span>
+                            <span>{h.height != null && h.height !== '' ? h.height : '—'}</span>
+                            <span>{h.width != null && h.width !== '' ? h.width : '—'}</span>
+                            <span>{h.angle_deg != null && h.angle_deg !== '' ? `${h.angle_deg}°` : '—'}</span>
+                            <span className="lines-table__comment">{h.comment || '—'}</span>
+                            <span className="lines-table__muted">{h.session_title || '—'}</span>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                  {historyFilterLineId == null && (
+                    <Pagination meta={historyFeedMeta} onPageChange={handleHistoryFeedPageChange} />
+                  )}
+                </>
               )}
             </>
           )}
@@ -383,6 +1087,38 @@ const LinesPage = () => {
         />
       )}
 
+      {shiftModal && (shiftModal.type === 'open' || shiftModal.type === 'close' || shiftModal.type === 'params') && (
+        <ShiftParamsModal
+          key={shiftModal.modalKey}
+          type={shiftModal.type}
+          lineName={shiftModal.line.name}
+          initial={shiftModal.initial}
+          onSubmit={handleShiftModalSubmit}
+          onClose={() => { setShiftModal(null); setSubmitError(''); }}
+          error={submitError}
+        />
+      )}
+
+      {shiftModal && shiftModal.type === 'pause' && (
+        <ShiftPauseModal
+          key={shiftModal.modalKey}
+          lineName={shiftModal.line.name}
+          onSubmit={handleShiftModalSubmit}
+          onClose={() => { setShiftModal(null); setSubmitError(''); }}
+          error={submitError}
+        />
+      )}
+
+      {shiftModal && shiftModal.type === 'resume' && (
+        <ShiftResumeModal
+          key={shiftModal.modalKey}
+          lineName={shiftModal.line.name}
+          onSubmit={handleShiftModalSubmit}
+          onClose={() => { setShiftModal(null); setSubmitError(''); }}
+          error={submitError}
+        />
+      )}
+
       <ConfirmModal
         open={!!deleteTarget}
         title="Удалить линию?"
@@ -392,14 +1128,167 @@ const LinesPage = () => {
         onCancel={() => setDeleteTarget(null)}
       />
 
-      <ConfirmModal
-        open={!!openCloseTarget}
-        title={openCloseTarget?.isOpen ? 'Закрыть смену?' : 'Открыть смену?'}
-        message={openCloseTarget ? (openCloseTarget.isOpen ? 'Линия будет закрыта. Выпуск запрещён.' : 'Линия будет открыта. Выпуск разрешён.') : ''}
-        confirmText={openCloseTarget?.isOpen ? 'Закрыть' : 'Открыть'}
-        onConfirm={handleOpenCloseConfirm}
-        onCancel={() => setOpenCloseTarget(null)}
-      />
+      {historySessionModal && (
+        <LineHistorySessionModal
+          snapshot={historySessionModal}
+          remote={historySessionRemote}
+          remoteLoading={historySessionRemoteLoading}
+          remoteError={historySessionRemoteError}
+          formatDateTime={formatDateTime}
+          onClose={() => {
+            setHistorySessionModal(null);
+            setHistorySessionRemote(null);
+            setHistorySessionRemoteError(null);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+const LineHistorySessionModal = ({
+  snapshot,
+  remote,
+  remoteLoading,
+  remoteError,
+  formatDateTime: fd,
+  onClose,
+}) => {
+  if (!snapshot) return null;
+
+  const block = (title, ev, extra) => {
+    if (!ev) return null;
+    return (
+      <section className="lines-history-detail__block">
+        <h4 className="lines-history-detail__block-title">{title}</h4>
+        <p className="lines-history-detail__time">{fd(ev.date, ev.time)}</p>
+        <dl className="lines-history-detail__params">
+          <div><dt>Высота</dt><dd>{ev.height != null && ev.height !== '' ? ev.height : '—'}</dd></div>
+          <div><dt>Ширина</dt><dd>{ev.width != null && ev.width !== '' ? ev.width : '—'}</dd></div>
+          <div><dt>Градус</dt><dd>{ev.angle_deg != null && ev.angle_deg !== '' ? `${ev.angle_deg}°` : '—'}</dd></div>
+        </dl>
+        {ev.session_title ? (
+          <p className="lines-history-detail__meta">Смена: {ev.session_title}</p>
+        ) : null}
+        {formatEvComment(ev) ? (
+          <p className="lines-history-detail__comment">{formatEvComment(ev)}</p>
+        ) : null}
+        {extra}
+      </section>
+    );
+  };
+
+  if (snapshot.kind === 'single') {
+    const ev = snapshot.event;
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div
+          className="modal modal--wide lines-history-detail-modal"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="modal__head">
+            <h3>Событие: {actionLabel(ev.action)}</h3>
+            <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+          </div>
+          <div className="modal__body lines-history-detail">
+            <p className="lines-history-detail__line">{ev.line_name || ev.line || '—'}</p>
+            {block(actionLabel(ev.action), ev)}
+          </div>
+          <div className="modal__actions">
+            <button type="button" className="btn btn--secondary" onClick={onClose}>Закрыть</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const hasRemote = remote != null;
+  const displayOpen = hasRemote ? (remote.open ?? snapshot.open) : snapshot.open;
+  const displayClose = hasRemote ? (remote.close ?? null) : snapshot.close;
+  const displayUpdates = hasRemote ? (remote.updates ?? []) : (snapshot.paramUpdates ?? []);
+  const displayPauseResume = hasRemote ? (remote.pauseResume ?? []) : [];
+  const lineTitle = sessionLineName(displayOpen, displayClose);
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal modal--wide lines-history-detail-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal__head">
+          <h3>Параметры смены</h3>
+          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+        </div>
+        <div className="modal__body lines-history-detail">
+          {remoteLoading && (
+            <p className="lines-history-detail__hint">Загрузка полной истории с сервера…</p>
+          )}
+          {remoteError && (
+            <p className="lines-history-detail__warn">{remoteError}</p>
+          )}
+          {!hasRemote && !remoteLoading && !remoteError && (
+            <p className="lines-history-detail__hint">
+              Показаны данные с текущей страницы ленты; после ответа сервера подставляется полный таймлайн.
+            </p>
+          )}
+          <p className="lines-history-detail__line">{lineTitle}</p>
+
+          {block('Открытие', displayOpen)}
+
+          {displayUpdates.length > 0 && (
+            <section className="lines-history-detail__block">
+              <h4 className="lines-history-detail__block-title">
+                Изменения параметров во время работы ({displayUpdates.length})
+              </h4>
+              <ol className="lines-history-detail__updates">
+                {displayUpdates.map((u) => (
+                  <li key={u.id} className="lines-history-detail__update-item">
+                    <span className="lines-history-detail__time">{fd(u.date, u.time)}</span>
+                    <span className="lines-history-detail__param-line">{formatParamsTriple(u)}</span>
+                    {formatEvComment(u) ? (
+                      <span className="lines-history-detail__comment">{formatEvComment(u)}</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+
+          {displayPauseResume.length > 0 && (
+            <section className="lines-history-detail__block">
+              <h4 className="lines-history-detail__block-title">
+                Остановки и возобновления ({displayPauseResume.length})
+              </h4>
+              <ol className="lines-history-detail__updates">
+                {displayPauseResume.map((ev, idx) => (
+                  <li
+                    key={ev.id != null ? ev.id : `pr-${idx}-${ev.date}-${ev.time}`}
+                    className="lines-history-detail__update-item"
+                  >
+                    <span className="lines-history-detail__time">{fd(ev.date, ev.time)}</span>
+                    <span className="lines-history-detail__param-line">{actionLabel(ev.action)}</span>
+                    {formatEvComment(ev) ? (
+                      <span className="lines-history-detail__comment">{formatEvComment(ev)}</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+
+          {displayClose
+            ? block('Закрытие', displayClose)
+            : (
+              <section className="lines-history-detail__block lines-history-detail__block--open">
+                <h4 className="lines-history-detail__block-title">Закрытие</h4>
+                <p className="lines-history-detail__session-open-label">Смена ещё открыта</p>
+              </section>
+            )}
+        </div>
+        <div className="modal__actions">
+          <button type="button" className="btn btn--secondary" onClick={onClose}>Закрыть</button>
+        </div>
+      </div>
     </div>
   );
 };
@@ -407,12 +1296,30 @@ const LinesPage = () => {
 const LineFormModal = ({ line, onSubmit, onClose, error }) => {
   const [name, setName] = useState(line?.name ?? '');
 
+  const isDirty = useDirtyFromBaseline(line?.id != null ? String(line.id) : 'new', false, {
+    name: name.trim(),
+  });
+  const {
+    requestClose,
+    discardConfirmOpen,
+    confirmDiscardAndClose,
+    cancelDiscard,
+  } = useDiscardOnClose(onClose, isDirty);
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={requestClose}>
+      <ConfirmModal
+        open={discardConfirmOpen}
+        title="Закрыть без сохранения?"
+        message="Введённые данные не будут сохранены."
+        confirmText="Закрыть"
+        onConfirm={confirmDiscardAndClose}
+        onCancel={cancelDiscard}
+      />
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
           <h3>{line ? 'Редактировать линию' : 'Создать линию'}</h3>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+          <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
         <form
           onSubmit={(e) => {
@@ -424,8 +1331,195 @@ const LineFormModal = ({ line, onSubmit, onClose, error }) => {
           <input value={name} onChange={(e) => setName(e.target.value)} required />
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
+            <button type="button" className="btn btn--secondary" onClick={requestClose}>Отмена</button>
             <button type="submit" className="btn btn--primary">Сохранить</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const ShiftPauseModal = ({ lineName, onSubmit, onClose, error }) => {
+  const [reason, setReason] = useState('');
+
+  const isDirty = useDirtyFromBaseline(`pause-${lineName}`, false, {
+    reason: reason.trim(),
+  });
+  const {
+    requestClose,
+    discardConfirmOpen,
+    confirmDiscardAndClose,
+    cancelDiscard,
+  } = useDiscardOnClose(onClose, isDirty);
+
+  return (
+    <div className="modal-overlay" onClick={requestClose}>
+      <ConfirmModal
+        open={discardConfirmOpen}
+        title="Закрыть без сохранения?"
+        message="Введённые данные не будут сохранены."
+        confirmText="Закрыть"
+        onConfirm={confirmDiscardAndClose}
+        onCancel={cancelDiscard}
+      />
+      <div className="modal modal--wide" onClick={(e) => e.stopPropagation()} style={{ padding: 0 }}>
+        <div className="modal__head">
+          <h3>Остановить смену: {lineName}</h3>
+          <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
+        </div>
+        <form
+          className="lines-shift-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSubmit({ reason });
+          }}
+        >
+          <p className="lines-shift-form__hint">
+            Укажите причину остановки — без неё остановить смену нельзя.
+          </p>
+          <label htmlFor="lines-shift-pause-reason">Причина остановки *</label>
+          <textarea
+            id="lines-shift-pause-reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Например: поломка оборудования, переналадка…"
+            rows={4}
+            required
+            aria-required="true"
+          />
+          {error && <p className="modal__error">{error}</p>}
+          <div className="modal__actions">
+            <button type="button" className="btn btn--secondary" onClick={requestClose}>Отмена</button>
+            <button type="submit" className="btn btn--primary">Остановить смену</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const ShiftResumeModal = ({ lineName, onSubmit, onClose, error }) => (
+  <div className="modal-overlay" onClick={onClose}>
+    <div className="modal modal--wide" onClick={(e) => e.stopPropagation()} style={{ padding: 0 }}>
+      <div className="modal__head">
+        <h3>Возобновить смену: {lineName}</h3>
+        <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+      </div>
+      <div className="lines-shift-form">
+        <p className="lines-shift-form__hint">
+          Линия снова перейдёт в статус «Смена открыта».
+        </p>
+        {error && <p className="modal__error">{error}</p>}
+        <div className="modal__actions">
+          <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={() => onSubmit({})}
+          >
+            Возобновить
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const ShiftParamsModal = ({
+  type,
+  lineName,
+  initial,
+  onSubmit,
+  onClose,
+  error,
+}) => {
+  const [form, setForm] = useState(() => ({ ...emptyParams(), ...initial }));
+
+  const setField = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+
+  const titles = {
+    open: 'Открыть смену',
+    close: 'Закрыть смену',
+    params: 'Параметры линии',
+  };
+
+  const isDirty = useDirtyFromBaseline(`${type}-${lineName}`, false, {
+    height: String(form.height ?? '').trim(),
+    width: String(form.width ?? '').trim(),
+    angle_deg: String(form.angle_deg ?? '').trim(),
+    comment: String(form.comment ?? '').trim(),
+  });
+  const {
+    requestClose,
+    discardConfirmOpen,
+    confirmDiscardAndClose,
+    cancelDiscard,
+  } = useDiscardOnClose(onClose, isDirty);
+
+  return (
+    <div className="modal-overlay" onClick={requestClose}>
+      <ConfirmModal
+        open={discardConfirmOpen}
+        title="Закрыть без сохранения?"
+        message="Введённые данные не будут сохранены."
+        confirmText="Закрыть"
+        onConfirm={confirmDiscardAndClose}
+        onCancel={cancelDiscard}
+      />
+      <div className="modal modal--wide" onClick={(e) => e.stopPropagation()} style={{ padding: 0 }}>
+        <div className="modal__head">
+          <h3>{titles[type]}: {lineName}</h3>
+          <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
+        </div>
+        <form
+          className="lines-shift-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSubmit(form);
+          }}
+        >
+          {type === 'open' && (
+            <p className="lines-shift-form__hint">
+              Высота, ширина и градус относятся к настройке линии на эту смену. Норма количества по изделию задаётся в рецептуре.
+            </p>
+          )}
+          <label>Высота *</label>
+          <DecimalInput
+            min={0}
+            value={form.height}
+            onChange={(v) => setField('height', v)}
+            required
+            placeholder="0"
+          />
+          <label>Ширина *</label>
+          <DecimalInput
+            min={0}
+            value={form.width}
+            onChange={(v) => setField('width', v)}
+            required
+            placeholder="0"
+          />
+          <label>Градус (°) *</label>
+          <DecimalInput
+            value={form.angle_deg}
+            onChange={(v) => setField('angle_deg', v)}
+            required
+            placeholder="0"
+          />
+          <label>Комментарий</label>
+          <textarea
+            value={form.comment}
+            onChange={(e) => setField('comment', e.target.value)}
+            placeholder="Комментарий к событию"
+            rows={3}
+          />
+          {error && <p className="modal__error">{error}</p>}
+          <div className="modal__actions">
+            <button type="button" className="btn btn--secondary" onClick={requestClose}>Отмена</button>
+            <button type="submit" className="btn btn--primary">
+              {type === 'open' ? 'Открыть' : type === 'close' ? 'Закрыть и сохранить' : 'Сохранить'}
+            </button>
           </div>
         </form>
       </div>

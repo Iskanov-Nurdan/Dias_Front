@@ -1,22 +1,16 @@
 @use '../../../shared/styles/variables' as *;
 @use '../../../shared/styles/mixins' as *;
 
-// ── Layout shell ──────────────────────────────────────────────
-
 .main-layout {
   min-height: 100vh;
   display: flex;
   background: var(--bg);
-
-  // CSS variable for sidebar width, used by body offset
   --_sidebar-w: var(--sidebar-width);
 
   &--collapsed {
     --_sidebar-w: var(--sidebar-width-collapsed);
   }
 }
-
-// ── Sidebar (desktop) ─────────────────────────────────────────
 
 .main-layout__sidebar {
   width: var(--_sidebar-w);
@@ -35,8 +29,6 @@
   }
 }
 
-// ── Sidebar inner ─────────────────────────────────────────────
-
 .main-layout__sidebar-inner {
   width: 100%;
   height: 100%;
@@ -50,14 +42,12 @@
   }
 }
 
-// ── Logo row ──────────────────────────────────────────────────
-
 .main-layout__logo-row {
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-4) var(--space-4) var(--space-4) var(--space-5);
+  padding: 0 var(--space-3) 0 var(--space-4);
   border-bottom: 1px solid var(--sidebar-border);
   height: var(--header-height);
 }
@@ -73,33 +63,32 @@
   flex-shrink: 0;
   width: 32px;
   height: 32px;
-  border-radius: var(--radius-sm);
-  background: var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--primary);
   color: #fff;
-  font-size: 1rem;
-  font-weight: var(--weight-extrabold);
-  font-family: 'Montserrat', sans-serif;
+  font-size: var(--font-label);
+  font-weight: var(--weight-medium);
+  font-family: var(--font-sans);
   @include flex-center;
-  letter-spacing: -0.02em;
 }
 
 .main-layout__logo-text {
-  font-size: 1.25rem;
-  font-weight: var(--weight-extrabold);
-  font-family: 'Montserrat', sans-serif;
-  color: #ffffff;
-  letter-spacing: 0.1em;
+  font-size: var(--font-label);
+  font-weight: var(--weight-medium);
+  font-family: var(--font-sans);
+  color: rgba(255, 255, 255, 0.92);
+  letter-spacing: 0.04em;
   white-space: nowrap;
 }
 
 .main-layout__collapse-btn {
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   background: transparent;
   border: 1px solid var(--sidebar-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   color: var(--sidebar-text-muted);
   cursor: pointer;
   @include flex-center;
@@ -107,7 +96,7 @@
 
   &:hover {
     color: #fff;
-    border-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.15);
     background: var(--sidebar-bg-hover);
   }
 
@@ -120,18 +109,16 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--primary);
     outline-offset: 2px;
   }
 }
-
-// ── Nav ───────────────────────────────────────────────────────
 
 .main-layout__nav-wrap {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--space-3) var(--space-3);
+  padding: var(--space-2);
 
   &::-webkit-scrollbar {
     width: 4px;
@@ -140,9 +127,11 @@
     background: transparent;
   }
   &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.12);
     border-radius: 2px;
-    &:hover { background: rgba(255, 255, 255, 0.25); }
+    &:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
   }
 }
 
@@ -152,18 +141,33 @@
   gap: 2px;
 }
 
+.main-layout__nav-section {
+  font-size: 10px;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sidebar-text-muted);
+  padding: var(--space-3) var(--space-3) var(--space-1);
+  margin-top: var(--space-1);
+
+  &:first-child {
+    margin-top: 0;
+    padding-top: var(--space-1);
+  }
+}
+
 .main-layout__link {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-3);
+  padding: var(--space-2) var(--space-3);
   color: var(--sidebar-text);
   text-decoration: none;
   font-size: var(--font-sm);
   font-weight: var(--weight-medium);
   border-radius: var(--radius-md);
-  transition: all var(--transition-fast);
-  min-height: 46px;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  min-height: 40px;
   white-space: nowrap;
   overflow: hidden;
 
@@ -175,7 +179,7 @@
   &--active {
     color: var(--sidebar-active-text);
     background: var(--sidebar-active-bg);
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-medium);
 
     .main-layout__link-icon {
       color: var(--sidebar-active-text);
@@ -183,7 +187,7 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--primary);
     outline-offset: 2px;
   }
 }
@@ -196,10 +200,13 @@
   width: 20px;
   height: 20px;
 
-  svg { width: 20px; height: 20px; }
+  svg {
+    width: 20px;
+    height: 20px;
+  }
 
   .main-layout__link:hover & {
-    color: #fff;
+    color: rgba(255, 255, 255, 0.85);
   }
 }
 
@@ -208,25 +215,23 @@
   font-size: var(--font-sm);
 }
 
-// ── User card ─────────────────────────────────────────────────
-
 .main-layout__user-card {
   flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-3);
+  padding: var(--space-3);
   border-top: 1px solid var(--sidebar-border);
-  min-height: 60px;
+  min-height: 56px;
 }
 
 .main-layout__user-avatar {
   flex-shrink: 0;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: rgba(230, 57, 70, 0.2);
-  color: var(--accent);
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
   @include flex-center;
 }
 
@@ -235,47 +240,45 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
 
 .main-layout__user-name {
   font-size: var(--font-sm);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-medium);
   color: rgba(255, 255, 255, 0.9);
   @include text-ellipsis;
 }
 
 .main-layout__user-role {
-  font-size: var(--font-xs);
+  font-size: var(--font-caption);
   color: var(--sidebar-text-muted);
   @include text-ellipsis;
 }
 
 .main-layout__logout-btn {
   flex-shrink: 0;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   background: transparent;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   color: var(--sidebar-text-muted);
   cursor: pointer;
   @include flex-center;
   transition: all var(--transition-fast);
 
   &:hover {
-    color: var(--accent);
+    color: var(--sidebar-active-text);
     background: var(--sidebar-bg-hover);
   }
 
   &:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--primary);
     outline-offset: 2px;
   }
 }
-
-// ── Mobile overlay + drawer ────────────────────────────────────
 
 .main-layout__overlay {
   display: none;
@@ -284,7 +287,7 @@
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(15, 22, 36, 0.6);
+    background: rgba(15, 23, 42, 0.5);
     backdrop-filter: blur(2px);
     z-index: calc(var(--z-sidebar) - 1);
   }
@@ -310,8 +313,6 @@
   }
 }
 
-// ── Mobile menu button ────────────────────────────────────────
-
 .main-layout__mobile-menu-btn {
   display: none;
 
@@ -324,7 +325,7 @@
     padding: 0;
     background: transparent;
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     color: var(--text);
     cursor: pointer;
     flex-shrink: 0;
@@ -334,8 +335,6 @@
     }
   }
 }
-
-// ── Body ──────────────────────────────────────────────────────
 
 .main-layout__body {
   flex: 1;
@@ -350,18 +349,16 @@
   }
 }
 
-// ── Header ────────────────────────────────────────────────────
-
 .main-layout__header {
   flex-shrink: 0;
   height: var(--header-height);
-  padding: 0 var(--space-8);
+  padding: 0 var(--space-6);
   background: var(--header-bg);
-  border-bottom: 1px solid var(--header-border);
+  border-bottom: none;
+  box-shadow: 0 1px 0 var(--header-border);
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  box-shadow: var(--shadow-sm);
   position: sticky;
   top: 0;
   z-index: var(--z-header);
@@ -373,17 +370,16 @@
 
 .main-layout__page-title {
   margin: 0;
-  font-size: var(--font-xl);
-  font-weight: var(--weight-semibold);
+  font-size: var(--font-h1);
+  font-weight: var(--weight-medium);
   color: var(--text);
-  letter-spacing: -0.01em;
+  line-height: var(--leading-h);
+  text-align: left;
 }
-
-// ── Main ──────────────────────────────────────────────────────
 
 .main-layout__main {
   flex: 1;
-  padding: var(--space-6) var(--space-8);
+  padding: var(--layout-gap) var(--space-6);
   overflow: auto;
   @include scrollbar;
 
@@ -391,3 +387,11 @@
     padding: var(--space-4);
   }
 }
+
+.main-layout__viewport {
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  min-width: 0;
+}
+

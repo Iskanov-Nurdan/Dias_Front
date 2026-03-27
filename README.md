@@ -1,3 +1,11 @@
+# DIAS — фронт
+
+## Документация для бэкенда
+
+Контракты API и ожидания к ответам — в папке **[`docs/`](./docs/README.md)** (сырьё, рецепты, линии, продажи, формат чисел). Это **общая часть** проекта с сервером: при смене API правьте `docs/*.md` вместе с кодом.
+
+---
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).

@@ -6,14 +6,25 @@
   flex-wrap: wrap;
   gap: var(--space-3);
   align-items: flex-end;
-  margin-bottom: var(--space-5);
+  margin-bottom: 0;
+
+  &--row {
+    align-items: center;
+
+    .filter-bar__item {
+      flex: 0 1 auto;
+      min-width: min(100%, 140px);
+      max-width: 240px;
+    }
+  }
 
   &__item {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: var(--space-2);
     min-width: 160px;
-    flex: 1;
+    flex: 1 1 160px;
+    max-width: 100%;
 
     .dias-select {
       width: 100%;
@@ -21,25 +32,30 @@
   }
 
   &__input {
-    height: var(--input-height);
+    min-height: var(--input-height);
     padding: 0 var(--space-3);
-    background: var(--card);
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius-lg);
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-md);
     color: var(--text);
     font-size: var(--font-base);
     font-family: inherit;
-    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    transition:
+      border-color var(--transition-fast),
+      box-shadow var(--transition-fast);
     width: 100%;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 
-    &::placeholder { color: var(--text-muted); }
+    &::placeholder {
+      color: var(--placeholder);
+    }
 
-    &:hover { border-color: var(--accent); }
+    &:hover {
+      border-color: rgba(15, 23, 42, 0.18);
+    }
 
     &:focus {
       @include focus-ring;
-      border-color: var(--accent);
     }
   }
 }
+

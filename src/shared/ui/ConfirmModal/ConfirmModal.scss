@@ -9,44 +9,57 @@
   background: var(--card);
   border: 1px solid var(--card-border);
   border-radius: var(--radius-lg);
-  box-shadow: 0 8px 32px rgba(15, 22, 36, 0.18), 0 2px 8px rgba(15, 22, 36, 0.08);
-  padding: 20px;
-  min-width: 320px;
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-5);
+  min-width: min(320px, 90vw);
   max-width: 90vw;
-  animation: modalIn 0.18s ease;
+  animation: modalIn 0.16s ease;
 
   &__title {
-    margin: 0 0 8px;
-    font-size: 0.95rem;
-    font-weight: 600;
+    margin: 0 0 var(--space-2);
+    font-size: var(--font-title-sm);
+    font-weight: var(--weight-semibold);
     color: var(--text);
+    line-height: var(--leading-tight);
   }
 
   &__message {
-    margin: 0 0 16px;
+    margin: 0 0 var(--space-5);
     color: var(--text-secondary);
-    font-size: 0.875rem;
-    line-height: 1.5;
+    font-size: var(--font-sm);
+    line-height: var(--leading-normal);
+  }
+
+  &__error {
+    margin: 0 0 var(--space-3);
+    padding: 0;
+    color: var(--danger);
+    font-size: var(--font-caption);
+    line-height: var(--leading-normal);
   }
 
   &__actions {
     display: flex;
     justify-content: flex-end;
-    gap: 8px;
+    gap: var(--space-2);
   }
 
   &__btn {
-    padding: 6px 14px;
-    border-radius: 7px;
+    padding: 0 var(--space-4);
+    border-radius: var(--radius-md);
     cursor: pointer;
-    font-size: 0.875rem;
+    font-size: var(--font-sm);
     font-weight: var(--weight-medium);
-    transition: all var(--transition-base);
-    min-height: 32px;
+    transition:
+      background var(--transition-fast),
+      border-color var(--transition-fast),
+      box-shadow var(--transition-fast);
+    min-height: var(--input-height);
     border: 1px solid transparent;
+    font-family: inherit;
 
     &--cancel {
-      background: transparent;
+      background: var(--card);
       border-color: var(--border);
       color: var(--text-secondary);
 
@@ -63,7 +76,7 @@
 
       &:hover {
         background: #b91c1c;
-        box-shadow: 0 3px 10px rgba(220, 38, 38, 0.3);
+        border-color: #b91c1c;
       }
     }
 
@@ -72,3 +85,15 @@
     }
   }
 }
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

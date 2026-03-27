@@ -1,21 +1,21 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../../auth';
 import { useToast } from '../../../../shared/ui';
+import { setAuditShiftId } from '../../../../shared/lib/auditContext';
+import { getApiErrorMessage } from '../../../../shared/lib';
 import {
   getMyShift, openShift, closeShift,
   addShiftNote, getMyShiftNotes,
-  getMyShiftHistory, getMyActivity, getShiftDetails,
+  getMyShiftHistory, getMyActivity, getMyActivityDetail, getShiftDetails,
+  getAllUsers,
 } from '../../api/shiftsApi';
+import ShiftActivityListModal from '../ActivityAudit/ShiftActivityListModal';
+import { fetchShiftActivityList } from '../../lib/fetchShiftActivityList';
+import { shiftLineLabel } from '../../lib/shiftDisplayUtils';
+import ComplaintModal from '../ComplaintModal/ComplaintModal';
+import ComplaintsInbox from '../ComplaintsInbox/ComplaintsInbox';
+import { useOperationalRefetch } from '../../../../shared/realtime';
 import './MyShiftPage.scss';
-
-const extractErrMsg = (err, fallback) => {
-  const d = err?.response?.data;
-  if (!d) return fallback;
-  const raw = d.error ?? d.detail ?? d.message ?? d;
-  if (typeof raw === 'string') return raw;
-  if (typeof raw === 'object' && raw !== null) return raw.message ?? raw.detail ?? fallback;
-  return fallback;
-};
 
 const formatDuration = (seconds) => {
   if (!seconds || seconds < 0) return '0 ч 0 мин';
@@ -60,20 +60,6 @@ const calcDuration = (start, end) => {
   return Math.floor((e - s) / 1000);
 };
 
-const ACTION_LABELS = {
-  create: 'Создал',
-  update: 'Изменил',
-  delete: 'Удалил',
-  view: 'Просмотрел',
-};
-
-const ACTION_COLORS = {
-  create: 'var(--success)',
-  update: 'var(--accent)',
-  delete: 'var(--danger)',
-  view: 'var(--text-muted)',
-};
-
 // ── Icons ─────────────────────────────────────────────────────
 const NoteIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -115,6 +101,12 @@ const HistoryIcon = () => (
     <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.68"/>
   </svg>
 );
+const ComplaintTabIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    <line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="13" y2="13"/>
+  </svg>
+);
 
 // ── MyShiftPage ───────────────────────────────────────────────
 const MyShiftPage = () => {
@@ -145,7 +137,11 @@ const MyShiftPage = () => {
 
   // Per-shift activity modal
   const [shiftActivityModal, setShiftActivityModal] = useState(null);
-  // shiftActivityModal = { shift, items: [], loading: false }
+  // shiftActivityModal = { shift, items: [], loading: false, banner?: string }
+
+  const [employees, setEmployees] = useState([]);
+  const [complaintModalOpen, setComplaintModalOpen] = useState(false);
+  const [complaintsReloadToken, setComplaintsReloadToken] = useState(0);
 
   // ── Load current shift ──────────────────────────────────────
   const loadShift = useCallback(async () => {
@@ -166,7 +162,7 @@ const MyShiftPage = () => {
     try {
       const res = await getMyShiftNotes();
       const data = res.data;
-      setNotes(Array.isArray(data) ? data : (data.items || data.results || []));
+      setNotes(Array.isArray(data) ? data : (data.items || []));
     } catch {
       setNotes([]);
     }
@@ -176,6 +172,22 @@ const MyShiftPage = () => {
     loadShift();
     loadNotes();
   }, [loadShift, loadNotes]);
+
+  useEffect(() => {
+    const open = shift?.status === 'open' && shift?.id != null;
+    if (open) setAuditShiftId(shift.id);
+    else setAuditShiftId(null);
+    return () => setAuditShiftId(null);
+  }, [shift?.id, shift?.status]);
+
+  useEffect(() => {
+    getAllUsers({ page_size: 500 })
+      .then((res) => {
+        const data = res.data;
+        setEmployees(Array.isArray(data) ? data : (data.items || []));
+      })
+      .catch(() => setEmployees([]));
+  }, []);
 
   const shiftOpenedAt = shift?.opened_at || shift?.started_at;
 
@@ -199,7 +211,7 @@ const MyShiftPage = () => {
     try {
       const res = await getMyShiftHistory({ page_size: 50 });
       const data = res.data;
-      setHistory(Array.isArray(data) ? data : (data.items || data.results || []));
+      setHistory(Array.isArray(data) ? data : (data.items || []));
       setHistoryLoaded(true);
     } catch {
       setHistory([]);
@@ -209,16 +221,24 @@ const MyShiftPage = () => {
     }
   }, []);
 
+  const refreshMyShiftOperational = useCallback(() => {
+    loadShift();
+    loadNotes();
+    setComplaintsReloadToken((t) => t + 1);
+    if (historyLoaded) loadHistory();
+  }, [loadShift, loadNotes, historyLoaded, loadHistory]);
+
+  useOperationalRefetch(['shift', 'shift_note', 'shift_complaint', 'activity'], refreshMyShiftOperational, true);
+
   // ── Open per-shift activity modal ──────────────────────────
   const openShiftActivity = async (s) => {
-    setShiftActivityModal({ shift: s, items: [], loading: true });
+    setShiftActivityModal({ shift: s, items: [], loading: true, banner: null });
     try {
-      const res = await getMyActivity({ shift_id: s.id, page_size: 100 });
-      const data = res.data;
-      const items = Array.isArray(data) ? data : (data.items || data.results || []);
-      setShiftActivityModal({ shift: s, items, loading: false });
-    } catch {
-      setShiftActivityModal({ shift: s, items: [], loading: false });
+      const { items, banner } = await fetchShiftActivityList((params) => getMyActivity(params), s);
+      setShiftActivityModal({ shift: s, items, loading: false, banner });
+    } catch (err) {
+      toast.show(getApiErrorMessage(err, 'Не удалось загрузить журнал действий'), 'error');
+      setShiftActivityModal({ shift: s, items: [], loading: false, banner: null });
     }
   };
 
@@ -241,7 +261,6 @@ const MyShiftPage = () => {
       const notes =
         d.notes ??
         d.items ??
-        d.results ??
         d.shift?.notes ??
         [];
       setExpandedNotes((prev) => ({ ...prev, [shiftId]: Array.isArray(notes) ? notes : [] }));
@@ -263,7 +282,7 @@ const MyShiftPage = () => {
       await loadNotes();
       toast.show('Смена открыта');
     } catch (err) {
-      toast.show(extractErrMsg(err, 'Ошибка открытия смены'), 'error');
+      toast.show(getApiErrorMessage(err, 'Ошибка открытия смены'), 'error');
     } finally {
       setActionLoading(false);
     }
@@ -289,7 +308,7 @@ const MyShiftPage = () => {
       // Sync from server in background
       loadShift().catch(() => {});
     } catch (err) {
-      toast.show(extractErrMsg(err, 'Ошибка закрытия смены'), 'error');
+      toast.show(getApiErrorMessage(err, 'Ошибка закрытия смены'), 'error');
     } finally {
       setActionLoading(false);
     }
@@ -306,7 +325,7 @@ const MyShiftPage = () => {
       await loadNotes();
       toast.show('Заметка добавлена');
     } catch (err) {
-      toast.show(extractErrMsg(err, 'Ошибка добавления заметки'), 'error');
+      toast.show(getApiErrorMessage(err, 'Ошибка добавления заметки'), 'error');
     } finally {
       setNoteLoading(false);
     }
@@ -316,6 +335,7 @@ const MyShiftPage = () => {
     ['open', 'opened', 'active'].includes(shift?.status) ||
     (shift?.opened_at && !shift?.closed_at)
   );
+  const activeShiftLineLbl = isOpen ? shiftLineLabel(shift) : '';
   const displayName = user?.name || user?.username || 'Сотрудник';
   const roleName = user?.role_name || user?.role?.name || '';
   const today = new Date().toLocaleDateString('ru-RU', {
@@ -342,9 +362,18 @@ const MyShiftPage = () => {
           {roleName && <p className="my-shift__role">{roleName}</p>}
           <p className="my-shift__date">{today}</p>
         </div>
-        <div className={`my-shift__status-badge my-shift__status-badge--${isOpen ? 'open' : 'closed'}`}>
-          <span className="my-shift__status-dot" />
-          {isOpen ? 'Смена открыта' : 'Смена закрыта'}
+        <div className="my-shift__header-right">
+          <button
+            type="button"
+            className="btn btn--secondary btn--sm my-shift__complaint-header-btn"
+            onClick={() => setComplaintModalOpen(true)}
+          >
+            Добавить жалобу
+          </button>
+          <div className={`my-shift__status-badge my-shift__status-badge--${isOpen ? 'open' : 'closed'}`}>
+            <span className="my-shift__status-dot" />
+            {isOpen ? 'Смена открыта' : 'Смена закрыта'}
+          </div>
         </div>
       </div>
 
@@ -365,6 +394,14 @@ const MyShiftPage = () => {
         >
           <HistoryIcon />
           История смен
+        </button>
+        <button
+          type="button"
+          className={`my-shift__tab${activeTab === 'complaints' ? ' my-shift__tab--active' : ''}`}
+          onClick={() => setActiveTab('complaints')}
+        >
+          <ComplaintTabIcon />
+          Жалобы
         </button>
       </div>
 
@@ -412,16 +449,31 @@ const MyShiftPage = () => {
                     <span className="my-shift__notes-count-label">Заметок</span>
                     <span className="my-shift__notes-count-value">{notes.length}</span>
                   </div>
+                  {activeShiftLineLbl ? (
+                    <div className="my-shift__line-badge" title="Линия по данным смены">
+                      <span className="my-shift__notes-count-label">Линия</span>
+                      <span className="my-shift__notes-count-value">{activeShiftLineLbl}</span>
+                    </div>
+                  ) : null}
                 </div>
-                <button
-                  type="button"
-                  className="btn btn--danger my-shift__close-btn"
-                  onClick={() => setShowCloseModal(true)}
-                  disabled={actionLoading}
-                >
-                  <StopIcon />
-                  Закрыть смену
-                </button>
+                <div className="my-shift__active-actions">
+                  <button
+                    type="button"
+                    className="btn btn--secondary my-shift__complaint-btn"
+                    onClick={() => setComplaintModalOpen(true)}
+                  >
+                    Добавить жалобу
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--danger my-shift__close-btn"
+                    onClick={() => setShowCloseModal(true)}
+                    disabled={actionLoading}
+                  >
+                    <StopIcon />
+                    Закрыть смену
+                  </button>
+                </div>
               </div>
 
               <div className="my-shift__notes-card">
@@ -542,11 +594,11 @@ const MyShiftPage = () => {
                         <div className="my-shift__history-info-row">
                           <span>Длительность:</span><strong>{formatDuration(dur)}</strong>
                         </div>
-                        {s.line_name && (
+                        {shiftLineLabel(s) ? (
                           <div className="my-shift__history-info-row">
-                            <span>Линия:</span><strong>{s.line_name}</strong>
+                            <span>Линия:</span><strong>{shiftLineLabel(s)}</strong>
                           </div>
-                        )}
+                        ) : null}
                         {(s.comment || s.closing_note) && (
                           <div className="my-shift__history-closing-note">
                             <span>Итоговый комментарий:</span>
@@ -600,57 +652,32 @@ const MyShiftPage = () => {
         </div>
       )}
 
-      {/* Shift activity modal */}
-      {shiftActivityModal && (
-        <div className="modal-overlay" onClick={() => setShiftActivityModal(null)}>
-          <div className="modal my-shift__activity-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal__head">
-              <h3>
-                Действия — {formatDate(shiftActivityModal.shift?.opened_at || shiftActivityModal.shift?.started_at)}
-              </h3>
-              <button type="button" className="modal__close" onClick={() => setShiftActivityModal(null)} aria-label="Закрыть">×</button>
-            </div>
-            <div className="modal__body">
-              {shiftActivityModal.loading ? (
-                <div className="my-shift__loading">
-                  <div className="my-shift__spinner" />
-                  <span>Загрузка...</span>
-                </div>
-              ) : shiftActivityModal.items.length === 0 ? (
-                <div className="my-shift__empty-state" style={{ padding: '24px 0' }}>
-                  <ActivityIcon />
-                  <p>Действий не найдено</p>
-                </div>
-              ) : (
-                <div className="my-shift__activity-list">
-                  {shiftActivityModal.items.map((a, i) => {
-                    const actionKey = a.action || a.action_type || 'view';
-                    const actionLabel = a.action_display || ACTION_LABELS[actionKey] || actionKey;
-                    const color = ACTION_COLORS[actionKey] || 'var(--text-muted)';
-                    return (
-                      <div key={a.id || i} className="my-shift__activity-item">
-                        <div className="my-shift__activity-dot" style={{ background: color }} />
-                        <div className="my-shift__activity-content">
-                          <div className="my-shift__activity-top">
-                            <span className="my-shift__activity-label" style={{ color }}>{actionLabel}</span>
-                            {a.section && <span className="my-shift__activity-section">{a.section}</span>}
-                          </div>
-                          <span className="my-shift__activity-desc">
-                            {a.description || a.object_repr || `${a.model || ''} #${a.object_id || ''}`}
-                          </span>
-                          <span className="my-shift__activity-time">{formatDateTime(a.created_at || a.timestamp)}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+      {activeTab === 'complaints' && (
+        <ComplaintsInbox reloadToken={complaintsReloadToken} />
       )}
 
+      <ShiftActivityListModal
+        open={Boolean(shiftActivityModal)}
+        onClose={() => setShiftActivityModal(null)}
+        title={`Действия — ${formatDate(shiftActivityModal?.shift?.opened_at || shiftActivityModal?.shift?.started_at)}`}
+        items={shiftActivityModal?.items ?? []}
+        loading={Boolean(shiftActivityModal?.loading)}
+        banner={shiftActivityModal?.banner}
+        fetchActivityDetail={(id) => getMyActivityDetail(id)}
+      />
+
       {/* Close shift modal */}
+      <ComplaintModal
+        open={complaintModalOpen}
+        onClose={() => setComplaintModalOpen(false)}
+        employees={employees}
+        shiftId={isOpen ? shift?.id : undefined}
+        onSuccess={() => {
+          setComplaintsReloadToken((t) => t + 1);
+          toast.show('Жалоба отправлена');
+        }}
+      />
+
       {showCloseModal && (
         <div className="modal-overlay" onClick={() => setShowCloseModal(false)}>
           <div className="modal my-shift__close-modal" onClick={(e) => e.stopPropagation()}>

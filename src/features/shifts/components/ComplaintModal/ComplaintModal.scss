@@ -1,0 +1,89 @@
+@use '../../../../shared/styles/variables' as *;
+
+.complaint-modal {
+  max-width: 520px;
+  width: 100%;
+
+  &__body {
+    text-align: left;
+  }
+
+  &__hint {
+    margin: 0 0 var(--space-2);
+    font-size: var(--font-caption);
+    color: var(--text-muted);
+    line-height: 1.45;
+  }
+
+  &__field-wrap {
+    position: relative;
+  }
+
+  &__textarea {
+    width: 100%;
+    min-height: 140px;
+    resize: vertical;
+    font-family: inherit;
+    font-size: var(--font-body);
+    line-height: 1.45;
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--input-bg);
+    color: var(--text);
+    box-sizing: border-box;
+
+    &:focus {
+      outline: none;
+      border-color: var(--input-focus-border);
+      box-shadow: 0 0 0 3px var(--input-focus-ring);
+    }
+  }
+
+  &__mention-list {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    margin: 0 0 4px;
+    padding: 4px;
+    list-style: none;
+    max-height: 220px;
+    overflow-y: auto;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 5;
+  }
+
+  &__mention-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+    font-size: var(--font-sm);
+    color: var(--text);
+
+    &:hover,
+    &--active {
+      background: var(--bg-hover);
+    }
+  }
+
+  &__mention-name {
+    font-weight: var(--weight-medium);
+  }
+
+  &__mention-meta {
+    font-size: var(--font-caption);
+    color: var(--text-muted);
+  }
+}

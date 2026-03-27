@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../../features/auth';
-import { Loading, EmptyState, ErrorState, FilterBar, useToast } from '../../../../shared/ui';
-import { useServerQuery } from '../../../../shared/lib';
+import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
+import { Loading, EmptyState, ErrorState, FilterBar, useToast, DecimalInput, ConfirmModal } from '../../../../shared/ui';
+import {
+  useServerQuery,
+  formatNumberForInput,
+  formatQuantityDisplay,
+  parseLocaleNumber,
+  otkResultStatusRu,
+  recipeOutputUnitKindRu,
+} from '../../../../shared/lib';
 import { getBatchesAwaitingOtk, getOtkHistory, acceptBatch } from '../../api';
+import { useOperationalRefetch } from '../../../../shared/realtime';
 import './OTKPage.scss';
-
-const OTK_STATUSES = [
-  { label: 'ОЖИДАЕТ', color: 'orange' },
-  { label: '→', color: 'muted' },
-  { label: 'ПРИНЯТО', color: 'green' },
-  { label: '/', color: 'muted' },
-  { label: 'БРАК', color: 'red' },
-];
 
 const formatDateTime = (d) => {
   if (!d) return '—';
@@ -20,10 +21,30 @@ const formatDateTime = (d) => {
   return s.slice(0, 10);
 };
 const orderName = (b) => b.order_name || b.order_product || b.product_name || b.product?.name || b.product || b.recipe?.name || '—';
+
+const releasedQty = (b) => b.quantity ?? b.released ?? b.produced ?? 0;
+
+/** Подсказка: GET /api/otk/pending/ — recipe_name, recipe_output_quantity (норма). */
+const recipeContextHint = (b) => {
+  const rname = b.recipe_name || b.recipe?.recipe || b.recipe?.name;
+  const ro =
+    b.recipe_output_quantity ??
+    b.recipe_expected_qty ??
+    b.expected_quantity ??
+    b.recipe?.output_quantity;
+  const ukindRaw = b.recipe_output_unit_kind;
+  const ukind = ukindRaw ? `, ед. нормы: ${recipeOutputUnitKindRu(ukindRaw) || ukindRaw}` : '';
+  if (ro != null && ro !== '') {
+    return rname
+      ? `Норма по рецепту «${rname}»: ${ro}${ukind}`
+      : `Норма по рецепту (справочно): ${ro}${ukind}`;
+  }
+  if (rname) return `Рецептура: ${rname}. Габариты — при открытии смены на линии.`;
+  return 'Объём партии — по данным выпуска; габариты линии — в смене.';
+};
 const errorToMessage = (err) => {
   const data = err?.response?.data;
   if (!data || typeof data !== 'object') return err?.message || 'Ошибка';
-  const code = data.code ? `[${data.code}] ` : '';
   const base = data.error || data.message || 'Ошибка';
   const details = data.details && typeof data.details === 'object'
     ? Object.entries(data.details).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join('; ')
@@ -40,16 +61,33 @@ const errorToMessage = (err) => {
       return String(m);
     }).join('; ')
     : '';
-  return [code + base, details, missing].filter(Boolean).join('. ');
+  let msg = [base, details, missing].filter(Boolean).join('. ');
+  if (/otk_accepted|otk_defect/i.test(msg)) {
+    msg = 'Не удалось сохранить. Укажите «Принято» и «Брак» (брак может быть 0).';
+  }
+  return msg;
 };
 
 const statusOtk = (b) => {
-  const s = String(b.otk_status ?? b.status ?? '').toLowerCase();
-  const defectQty = Number(b.otk_defect) || 0;
-  if (s === 'accepted' || s === 'принято') return { label: defectQty > 0 ? 'Принято с браком' : 'Принято', color: 'green' };
-  if (s === 'defect' || s === 'rejected' || s === 'брак') return { label: 'БРАК', color: 'red' };
-  return { label: 'ОЖИДАЕТ', color: 'orange' };
+  const { label, tone } = otkResultStatusRu(b);
+  const display = b.otk_status_display != null && String(b.otk_status_display).trim() !== ''
+    ? String(b.otk_status_display).trim()
+    : label;
+  const color = tone === 'green' ? 'green' : tone === 'red' ? 'red' : tone === 'amber' ? 'amber' : 'orange';
+  return { label: display, color };
 };
+
+const shiftParamsLine = (b) => {
+  const h = b.shift_height ?? b.height ?? b.line_height;
+  const w = b.shift_width ?? b.width ?? b.line_width;
+  const a = b.shift_angle_deg ?? b.angle_deg ?? b.line_angle_deg;
+  if ((h == null || h === '') && (w == null || w === '') && (a == null || a === '')) return '—';
+  const deg = a != null && a !== '' ? `${a}°` : '—';
+  return `${h ?? '—'} × ${w ?? '—'} × ${deg}`;
+};
+
+const lineLabel = (b) =>
+  b.line_name || b.line?.name || b.production_line || b.line || '—';
 
 const updateQuery = (setter) => (patch) => {
   setter((prev) => ({
@@ -61,7 +99,7 @@ const updateQuery = (setter) => (patch) => {
 
 const Pagination = ({ meta, onChange }) => {
   const page = Number(meta?.page || 1);
-  const totalPages = Number(meta?.total_pages || 1);
+  const totalPages = Number(meta?.total_pages ?? meta?.totalPages ?? 1);
   if (totalPages <= 1) return null;
   return (
     <div className="otk-pagination">
@@ -76,11 +114,68 @@ const Pagination = ({ meta, onChange }) => {
   );
 };
 
+const HistoryDetailModal = ({ batch, onClose }) => {
+  if (!batch) return null;
+  const st = statusOtk(batch);
+  return (
+    <div className="modal-overlay" onClick={onClose} role="presentation">
+      <div className="modal modal--wide otk-history-detail-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal__head">
+          <h3>Запись ОТК №{batch.id}</h3>
+          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+        </div>
+        <div className="modal__body otk-history-detail-modal__body">
+          <div className="otk-modal-summary">
+            <div className="otk-modal-summary__item">
+              <span className="otk-modal-summary__label">Статус</span>
+              <span className="otk-modal-summary__value">
+                <span className={`otk-table__status otk-table__status--${st.color}`}>{st.label}</span>
+              </span>
+            </div>
+            <div className="otk-modal-summary__item">
+              <span className="otk-modal-summary__label">Задание / продукт</span>
+              <span className="otk-modal-summary__value">{orderName(batch)}</span>
+            </div>
+            <div className="otk-modal-summary__item">
+              <span className="otk-modal-summary__label">Принято</span>
+              <span className="otk-modal-summary__value">{batch.otk_accepted ?? 0} шт</span>
+            </div>
+            <div className="otk-modal-summary__item">
+              <span className="otk-modal-summary__label">Брак</span>
+              <span className="otk-modal-summary__value">{batch.otk_defect ?? 0} шт</span>
+            </div>
+            <div className="otk-modal-summary__item otk-modal-summary__item--span-row">
+              <span className="otk-modal-summary__label">Причина</span>
+              <span className="otk-modal-summary__value">{batch.otk_defect_reason || '—'}</span>
+            </div>
+            <div className="otk-modal-summary__item">
+              <span className="otk-modal-summary__label">Инспектор</span>
+              <span className="otk-modal-summary__value">{batch.otk_inspector || '—'}</span>
+            </div>
+            <div className="otk-modal-summary__item">
+              <span className="otk-modal-summary__label">Проверка</span>
+              <span className="otk-modal-summary__value otk-history-detail-modal__mono">{formatDateTime(batch.otk_checked_at)}</span>
+            </div>
+            <div className="otk-modal-summary__item otk-modal-summary__item--span-row">
+              <span className="otk-modal-summary__label">Комментарий</span>
+              <span className="otk-modal-summary__value">{batch.otk_comment || '—'}</span>
+            </div>
+          </div>
+        </div>
+        <div className="modal__actions">
+          <button type="button" className="btn btn--primary" onClick={onClose}>Закрыть</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const OTKPage = () => {
   const { user } = useAuth();
   const toast = useToast();
   const [activeTab, setActiveTab] = useState('awaiting');
   const [acceptModalBatch, setAcceptModalBatch] = useState(null);
+  const [historyDetailBatch, setHistoryDetailBatch] = useState(null);
   const [submitError, setSubmitError] = useState('');
   const [awaitingQuery, setAwaitingQuery] = useState({
     page: 1,
@@ -98,6 +193,10 @@ const OTKPage = () => {
 
   const onAwaitingQueryChange = updateQuery(setAwaitingQuery);
   const onHistoryQueryChange = updateQuery(setHistoryQuery);
+
+  useEffect(() => {
+    if (activeTab !== 'history') setHistoryDetailBatch(null);
+  }, [activeTab]);
 
   const {
     items: awaitingList,
@@ -121,10 +220,12 @@ const OTKPage = () => {
     fetcher: (queryState, signal) => getOtkHistory({ query: queryState, signal }),
   });
 
-  const refetchAll = () => {
+  const refetchAll = useCallback(() => {
     refetchAwaiting();
     refetchHistory();
-  };
+  }, [refetchAwaiting, refetchHistory]);
+
+  useOperationalRefetch(['production_batch', 'recipe_run'], refetchAll, true);
 
   const handleAcceptSubmit = async (data) => {
     if (!acceptModalBatch?.id) return;
@@ -147,19 +248,6 @@ const OTKPage = () => {
 
   return (
     <div className="page page--otk">
-      <div className="otk-statuses">
-        <span className="otk-statuses__label">Статусы:</span>
-        {OTK_STATUSES.map((st, i) => (
-          <span
-            key={i}
-            className={`otk-statuses__chip otk-statuses__chip--${st.color}`}
-          >
-            {st.label}
-          </span>
-        ))}
-      </div>
-
-
       <div className="otk-tabs">
         <button
           type="button"
@@ -179,8 +267,7 @@ const OTKPage = () => {
 
       {activeTab === 'awaiting' && (
         <div className="otk-card">
-          <h2 className="otk-card__title">Контроль качества — ожидает проверки</h2>
-          <p className="otk-card__subtitle">Партии, требующие проверки ОТК</p>
+          <h2 className="otk-card__title">Ожидают проверки</h2>
           <FilterBar
             filters={[
               { key: 'search', type: 'search', placeholder: 'Поиск' },
@@ -195,32 +282,38 @@ const OTKPage = () => {
           {loadingAwaiting && <Loading />}
           {errorAwaiting && <ErrorState error={errorAwaiting} onRetry={refetchAwaiting} />}
           {!loadingAwaiting && !errorAwaiting && awaitingList.length === 0 && (
-            <EmptyState title="Нет партий, ожидающих проверки" />
+            <EmptyState title="Нет партий на проверку" />
           )}
           {!loadingAwaiting && !errorAwaiting && awaitingList.length > 0 && (
             <div className="otk-table otk-table--awaiting">
               <div className="otk-table__header">
-                <span className="otk-table__th">ЗАКАЗ</span>
-                <span className="otk-table__th">КОЛИЧЕСТВО</span>
-                <span className="otk-table__th">ОПЕРАТОР</span>
-                <span className="otk-table__th">ДАТА ПРОИЗВОДСТВА</span>
-                <span className="otk-table__th otk-table__th--actions">ДЕЙСТВИЯ</span>
+                <span className="otk-table__th otk-table__th--id">№ ОТК</span>
+                <span className="otk-table__th">Продукт</span>
+                <span className="otk-table__th">Линия</span>
+                <span className="otk-table__th">Выпуск</span>
+                <span className="otk-table__th">Размеры</span>
+                <span className="otk-table__th">Оператор</span>
+                <span className="otk-table__th">Дата</span>
+                <span className="otk-table__th otk-table__th--actions" />
               </div>
               {awaitingList.map((b) => {
-                const qty = b.quantity ?? b.released ?? 0;
+                const qty = releasedQty(b);
                 return (
                   <div key={b.id} className="otk-table__row">
+                    <span className="otk-table__batch-id" title="Номер партии в ОТК">#{b.id}</span>
                     <span>{orderName(b)}</span>
-                    <span className="otk-table__qty-pill">{qty} шт</span>
+                    <span>{lineLabel(b)}</span>
+                    <span className="otk-table__qty-pill" title={recipeContextHint(b)}>{qty} шт</span>
+                    <span>{shiftParamsLine(b)}</span>
                     <span>{b.operator_name || b.operator?.name || b.operator || b.assigned_to || '—'}</span>
                     <span>{formatDateTime(b.date || b.created_at)}</span>
                     <div className="otk-table__actions">
                       <button
                         type="button"
-                        className="btn btn--primary btn--sm otk-btn-check"
+                        className="btn btn--secondary btn--sm otk-btn-check"
                         onClick={() => setAcceptModalBatch(b)}
                       >
-                        <span className="otk-btn-check__icon">✓</span> Проверить
+                        Проверить
                       </button>
                     </div>
                   </div>
@@ -234,14 +327,13 @@ const OTKPage = () => {
 
       {activeTab === 'history' && (
         <div className="otk-card">
-          <h2 className="otk-card__title">История контроля качества</h2>
-          <p className="otk-card__subtitle">Проверенные партии</p>
+          <h2 className="otk-card__title">История</h2>
           <FilterBar
             filters={[
               { key: 'search', type: 'search', placeholder: 'Поиск' },
               { key: 'otk_status', type: 'select', placeholder: 'Статус', options: [
                 { value: 'accepted', label: 'Принято' },
-                { value: 'rejected', label: 'Брак' },
+                { value: 'rejected', label: 'Забраковано' },
               ] },
               { key: 'ordering', type: 'ordering', placeholder: 'Сортировка', options: [
                 { value: 'otk_checked_at', label: 'Проверка (возр.)' },
@@ -259,28 +351,31 @@ const OTKPage = () => {
           {!loadingHistory && !errorHistory && historyList.length > 0 && (
             <div className="otk-table otk-table--history">
               <div className="otk-table__header">
-                <span className="otk-table__th">СТАТУС</span>
-                <span className="otk-table__th">ЗАКАЗ</span>
-                <span className="otk-table__th">ПРИНЯТО</span>
-                <span className="otk-table__th">БРАК</span>
-                <span className="otk-table__th">ПРИЧИНА БРАКА</span>
-                <span className="otk-table__th">ИНСПЕКТОР ОТК</span>
-                <span className="otk-table__th">ДАТА ПРОВЕРКИ</span>
-                <span className="otk-table__th">КОММЕНТАРИЙ</span>
+                <span className="otk-table__th">Статус</span>
+                <span className="otk-table__th otk-table__th--id">№ ОТК</span>
+                <span className="otk-table__th">Задание / продукт</span>
+                <span className="otk-table__th">Принято</span>
+                <span className="otk-table__th">Брак</span>
+                <span className="otk-table__th">Комментарий</span>
               </div>
               {historyList.map((b) => {
                 const st = statusOtk(b);
                 return (
-                  <div key={b.id} className="otk-table__row">
+                  <div
+                    key={b.id}
+                    className="otk-table__row otk-table__row--clickable"
+                    onClick={() => setHistoryDetailBatch(b)}
+                    onKeyDown={(e) => e.key === 'Enter' && setHistoryDetailBatch(b)}
+                    role="button"
+                    tabIndex={0}
+                  >
                     <span className={`otk-table__status otk-table__status--${st.color}`}>
                       {st.label}
                     </span>
+                    <span className="otk-table__batch-id" title="Номер партии в ОТК">#{b.id}</span>
                     <span>{orderName(b)}</span>
                     <span className="otk-table__qty-pill otk-table__qty-pill--white">{b.otk_accepted ?? 0} шт</span>
                     <span className="otk-table__qty-pill otk-table__qty-pill--red">{b.otk_defect ?? 0} шт</span>
-                    <span>{b.otk_defect_reason || '—'}</span>
-                    <span>{b.otk_inspector || '—'}</span>
-                    <span>{formatDateTime(b.otk_checked_at)}</span>
                     <span>{b.otk_comment || '—'}</span>
                   </div>
                 );
@@ -289,6 +384,10 @@ const OTKPage = () => {
           )}
           {!loadingHistory && !errorHistory && <Pagination meta={historyMeta} onChange={onHistoryQueryChange} />}
         </div>
+      )}
+
+      {historyDetailBatch && (
+        <HistoryDetailModal batch={historyDetailBatch} onClose={() => setHistoryDetailBatch(null)} />
       )}
 
       {acceptModalBatch && (
@@ -305,16 +404,16 @@ const OTKPage = () => {
 };
 
 const AcceptModal = ({ batch, onSubmit, onClose, error }) => {
-  const produced = Number(batch?.quantity ?? batch?.released ?? 0) || 0;
-  const [accepted, setAccepted] = useState(produced > 0 ? String(produced) : '');
+  const produced = Number(releasedQty(batch)) || 0;
+  const [accepted, setAccepted] = useState(produced > 0 ? formatNumberForInput(produced) : '');
   const [defect, setDefect] = useState('0');
   const [defectReason, setDefectReason] = useState('');
   const [comment, setComment] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const a = Number(accepted) || 0;
-    const d = Number(defect) || 0;
+    const a = Math.max(0, Math.floor(parseLocaleNumber(accepted) || 0));
+    const d = Math.max(0, Math.floor(parseLocaleNumber(defect) || 0));
     if (a + d <= 0) return;
     if (produced > 0 && a + d !== produced) return;
     if (d > 0 && !defectReason.trim()) return;
@@ -326,107 +425,154 @@ const AcceptModal = ({ batch, onSubmit, onClose, error }) => {
     });
   };
 
-  const defectQty = Number(defect) || 0;
+  const defectQty = Math.max(0, Math.floor(parseLocaleNumber(defect) || 0));
   const defectReasonRequired = defectQty > 0;
-  const acceptedQty = Number(accepted) || 0;
+  const acceptedQty = Math.max(0, Math.floor(parseLocaleNumber(accepted) || 0));
   const invalidTotal = produced > 0 && acceptedQty + defectQty !== produced;
 
   const handleAcceptedChange = (value) => {
-    const n = Number(value);
-    if (!Number.isFinite(n) || n < 0) {
+    const n = parseLocaleNumber(value);
+    if (value === '' || value === '-' || !Number.isFinite(n) || n < 0) {
       setAccepted(value);
       return;
     }
     if (produced > 0) {
-      const safeAccepted = Math.min(n, produced);
-      setAccepted(String(safeAccepted));
+      const safeAccepted = Math.min(Math.floor(n), produced);
+      setAccepted(formatNumberForInput(safeAccepted));
       const autoDefect = Math.max(produced - safeAccepted, 0);
-      setDefect(String(autoDefect));
+      setDefect(formatNumberForInput(autoDefect));
       return;
     }
     setAccepted(value);
   };
 
   const handleDefectChange = (value) => {
-    const n = Number(value);
-    if (!Number.isFinite(n) || n < 0) {
+    const n = parseLocaleNumber(value);
+    if (value === '' || value === '-' || !Number.isFinite(n) || n < 0) {
       setDefect(value);
       return;
     }
     if (produced > 0) {
-      const safeDefect = Math.min(n, produced);
-      setDefect(String(safeDefect));
+      const safeDefect = Math.min(Math.floor(n), produced);
+      setDefect(formatNumberForInput(safeDefect));
       const autoAccepted = Math.max(produced - safeDefect, 0);
-      setAccepted(String(autoAccepted));
+      setAccepted(formatNumberForInput(autoAccepted));
       return;
     }
     setDefect(value);
   };
 
+  const isDirty = useDirtyFromBaseline(String(batch?.id ?? ''), false, {
+    accepted: String(accepted ?? '').trim(),
+    defect: String(defect ?? '').trim(),
+    defectReason: defectReason.trim(),
+    comment: comment.trim(),
+  });
+  const {
+    requestClose,
+    discardConfirmOpen,
+    confirmDiscardAndClose,
+    cancelDiscard,
+  } = useDiscardOnClose(onClose, isDirty);
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
-        <div className="modal__head">
-          <h3>Контроль качества</h3>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+    <div className="modal-overlay" onClick={requestClose}>
+      <ConfirmModal
+        open={discardConfirmOpen}
+        title="Закрыть без сохранения?"
+        message="Введённые данные не будут сохранены."
+        confirmText="Закрыть"
+        onConfirm={confirmDiscardAndClose}
+        onCancel={cancelDiscard}
+      />
+      <div className="modal modal--wide otk-accept-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal__head otk-accept-modal__head">
+          <h3>Проверка партии</h3>
+          <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
-        <p className="otk-modal-subtitle">Проверка произведённой партии</p>
-        <div className="otk-modal-readonly">
-          <div className="otk-modal-readonly__row">
-            <span className="otk-modal-readonly__label">Заказ:</span>
-            <span>{orderName(batch)}</span>
+        <form className="otk-accept-form" onSubmit={handleSubmit}>
+          <div className="otk-modal-summary">
+            <div className="otk-modal-summary__item">
+              <span className="otk-modal-summary__label">Продукт</span>
+              <span className="otk-modal-summary__value">{orderName(batch)}</span>
+            </div>
+            <div className="otk-modal-summary__item">
+              <span className="otk-modal-summary__label">Линия</span>
+              <span className="otk-modal-summary__value">{lineLabel(batch)}</span>
+            </div>
+            <div className="otk-modal-summary__item">
+              <span className="otk-modal-summary__label">Размеры</span>
+              <span className="otk-modal-summary__value">{shiftParamsLine(batch)}</span>
+            </div>
+            <div className="otk-modal-summary__item">
+              <span className="otk-modal-summary__label">Оператор</span>
+              <span className="otk-modal-summary__value">{batch?.operator_name || batch?.operator?.name || batch?.operator || '—'}</span>
+            </div>
+            <div className="otk-modal-summary__item">
+              <span className="otk-modal-summary__label">К проверке, шт</span>
+              <span className="otk-modal-summary__value">{formatQuantityDisplay(produced)}</span>
+            </div>
           </div>
-          <div className="otk-modal-readonly__row">
-            <span className="otk-modal-readonly__label">Оператор:</span>
-            <span>{batch?.operator_name || batch?.operator?.name || batch?.operator || '—'}</span>
+          <div className="otk-accept-form__row">
+            <div className="otk-accept-form__field">
+              <label htmlFor={`otk-acc-${batch.id}`}>Принято, шт</label>
+              <DecimalInput
+                id={`otk-acc-${batch.id}`}
+                min={0}
+                max={produced > 0 ? produced : undefined}
+                value={accepted}
+                onChange={handleAcceptedChange}
+              />
+            </div>
+            <div className="otk-accept-form__field">
+              <label htmlFor={`otk-def-${batch.id}`}>Брак, шт</label>
+              <DecimalInput
+                id={`otk-def-${batch.id}`}
+                min={0}
+                max={produced > 0 ? produced : undefined}
+                value={defect}
+                onChange={handleDefectChange}
+              />
+            </div>
           </div>
-          <div className="otk-modal-readonly__row">
-            <span className="otk-modal-readonly__label">Количество произведено:</span>
-            <span>{produced} шт</span>
+          <div className="otk-accept-form__row">
+            <div className="otk-accept-form__field">
+              <label htmlFor={`otk-cm-${batch.id}`}>Комментарий</label>
+              <input
+                id={`otk-cm-${batch.id}`}
+                type="text"
+                className="otk-accept-input"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="необязательно"
+                autoComplete="off"
+              />
+            </div>
+            <div className="otk-accept-form__field">
+              <label htmlFor={`otk-rs-${batch.id}`}>
+                Причина брака
+                {defectReasonRequired ? ' *' : ''}
+              </label>
+              <input
+                id={`otk-rs-${batch.id}`}
+                type="text"
+                className="otk-accept-input"
+                value={defectReason}
+                onChange={(e) => setDefectReason(e.target.value)}
+                placeholder={defectReasonRequired ? 'обязательно при браке' : 'при браке'}
+                autoComplete="off"
+              />
+            </div>
           </div>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <label>Принято (шт)</label>
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value={accepted}
-            onChange={(e) => handleAcceptedChange(e.target.value)}
-          />
-          <label>Брак (шт)</label>
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value={defect}
-            onChange={(e) => handleDefectChange(e.target.value)}
-          />
-          <label>Комментарий</label>
-          <textarea
-            className="otk-modal-textarea"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="Примечания по качеству продукции"
-            rows={2}
-          />
-          <label>Причина брака {defectReasonRequired && '*'}</label>
-          <textarea
-            className="otk-modal-textarea"
-            value={defectReason}
-            onChange={(e) => setDefectReason(e.target.value)}
-            placeholder="Укажите причину брака (обязательно при наличии брака)"
-            rows={2}
-          />
-          {error && <p className="modal__error">{error}</p>}
+          {error && <p className="modal__error otk-accept-form__error">{error}</p>}
           {invalidTotal && (
-            <p className="modal__error">
-              Сумма «Принято + Брак» должна быть равна выпущенному количеству ({produced} шт).
+            <p className="modal__error otk-accept-form__error">
+              Сумма принято + брак должна быть {formatQuantityDisplay(produced)} шт
             </p>
           )}
-          <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary" disabled={invalidTotal}>Сохранить результат</button>
+          <div className="modal__actions otk-accept-form__actions">
+            <button type="button" className="btn btn--secondary" onClick={requestClose}>Отмена</button>
+            <button type="submit" className="btn btn--primary" disabled={invalidTotal}>Сохранить</button>
           </div>
         </form>
       </div>

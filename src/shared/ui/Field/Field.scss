@@ -1,0 +1,30 @@
+@use '../../styles/variables' as *;
+
+.ds-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.ds-field__label {
+  font-size: var(--font-label);
+  font-weight: var(--weight-normal);
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+  text-align: left;
+}
+
+.ds-field__error {
+  margin: 0;
+  font-size: var(--font-caption);
+  font-weight: var(--weight-normal);
+  color: var(--danger);
+  line-height: var(--leading-normal);
+  text-align: left;
+}
+

@@ -1,10 +1,11 @@
 /**
- * Этап 2: Клиенты, Продажи, Отгрузки.
- * Скрыты, пока бизнес-логика не утверждена.
+ * Этап 2: Клиенты и Продажи.
+ * При false разделы сбыта скрыты из меню и недоступны для редиректа после входа.
  */
 export const STAGE2_TABS_ENABLED = true;
 
 /** Доступы для ролей (access_keys по документации) */
+/** Синхронизировано с config.settings.ACCESS_KEYS бэка (см. docs/DIAS_BACKEND_CONTRACT.md). */
 export const ACCESS_KEYS = [
   'users',
   'lines',
@@ -15,28 +16,28 @@ export const ACCESS_KEYS = [
   'production',
   'otk',
   'warehouse',
-  'analytics',
   'clients',
   'sales',
   'shipments',
-  'my_shift',
+  'analytics',
   'shifts',
+  'my_shift',
 ];
 
 export const ACCESS_LABELS = {
-  analytics:  'Аналитика',
+  analytics:  'Отчёты и аналитика',
   users:      'Сотрудники',
-  lines:      'Линии',
-  materials:  'Сырьё',
-  chemistry:  'Химия',
-  recipes:    'Рецепты',
+  lines:      'Линии и смены на линиях',
+  materials:  'Сырьё и остатки',
+  chemistry:  'Замесы по рецепту',
+  recipes:    'Рецептуры',
   orders:     'Заказы',
   production: 'Производство',
   otk:        'ОТК',
-  warehouse:  'Готовая продукция',
+  warehouse:  'Склад готовой продукции',
   clients:    'Клиенты',
   sales:      'Продажи',
   shipments:  'Отгрузки',
   my_shift:   'Моя смена',
-  shifts:     'Отчёт смен',
+  shifts:     'Журнал смен',
 };

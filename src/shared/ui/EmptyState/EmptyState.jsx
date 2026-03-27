@@ -2,9 +2,9 @@ import './EmptyState.scss';
 
 const EmptyState = ({ title = 'Нет данных', description }) => (
   <div className="empty-state">
-    <div className="empty-state__icon">∅</div>
-    <h3 className="empty-state__title">{title}</h3>
-    {description && <p className="empty-state__desc">{description}</p>}
+    <div className="empty-state__visual" aria-hidden="true" />
+    <p className="empty-state__title">{title}</p>
+    {description ? <p className="empty-state__desc">{description}</p> : null}
   </div>
 );
 

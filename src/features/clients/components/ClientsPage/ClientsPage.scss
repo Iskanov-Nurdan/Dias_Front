@@ -2,33 +2,41 @@
 @use '../../../../shared/styles/mixins' as *;
 
 .page--clients {
-  .page__actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-
-    input[type="text"] {
-      flex: 1;
-      max-width: 340px;
-      height: var(--input-height);
-      padding: 0 1rem;
-      background: var(--input-bg);
-      border: 1px solid var(--input-border);
-      border-radius: var(--radius-md);
-      color: var(--text);
-      font-size: var(--font-base);
-      font-family: inherit;
-      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-
-      &::placeholder { color: var(--text-muted); }
-
-      &:focus {
-        @include focus-ring;
-      }
-    }
+  .ds-toolbar {
+    margin-bottom: var(--layout-gap);
   }
 }
+
+.data-table--clients {
+  th:nth-child(1),
+  td:nth-child(1) {
+    width: 42%;
+  }
+
+  th:nth-child(2),
+  td:nth-child(2) {
+    width: 36%;
+  }
+}
+
+.clients-history__date {
+  white-space: nowrap;
+  font-size: var(--font-caption);
+  color: var(--text-secondary);
+  vertical-align: top;
+}
+
+.clients-history__type {
+  font-weight: var(--weight-medium);
+  font-size: var(--font-label);
+}
+
+.clients-history__desc {
+  margin-top: var(--space-1);
+  font-size: var(--font-caption);
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+}
+
 
 

@@ -1,2 +1,2 @@
 export { OTKPage } from './components/OTKPage';
-export { getBatchesAwaitingOtk, getOtkHistory, acceptBatch } from './api';
+export { getBatchesAwaitingOtk, getOtkHistory, acceptBatch, fetchBatchesByIds } from './api';

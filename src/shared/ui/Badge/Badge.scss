@@ -1,4 +1,4 @@
-@use '../../styles/variables' as *;
+﻿@use '../../styles/variables' as *;
 
 .badge {
   display: inline-flex;
@@ -31,8 +31,8 @@
   }
 
   &--primary {
-    background: var(--accent-muted);
-    color: var(--accent);
+    background: var(--primary-muted);
+    color: var(--primary);
   }
 
   &--success {
@@ -63,3 +63,4 @@
     flex-shrink: 0;
   }
 }
+

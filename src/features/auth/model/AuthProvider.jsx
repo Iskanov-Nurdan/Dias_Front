@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { OPERATIONAL_WS_TOKEN_REJECTED_EVENT } from '../../../shared/realtime/operationalWsConstants';
 import { login as loginApi, logout as logoutApi, getMe } from '../api';
 
 const AuthContext = createContext(null);
@@ -22,6 +23,7 @@ export const AuthProvider = ({ children }) => {
     } catch {
       setUser(null);
       localStorage.removeItem('token');
+      localStorage.removeItem('refresh');
     } finally {
       setLoading(false);
     }
@@ -31,15 +33,28 @@ export const AuthProvider = ({ children }) => {
     loadUser();
   }, [loadUser]);
 
+  useEffect(() => {
+    const onWsTokenRejected = () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refresh');
+      setUser(null);
+    };
+    window.addEventListener(OPERATIONAL_WS_TOKEN_REJECTED_EVENT, onWsTokenRejected);
+    return () => window.removeEventListener(OPERATIONAL_WS_TOKEN_REJECTED_EVENT, onWsTokenRejected);
+  }, []);
+
   const login = useCallback(async (name, password) => {
     const data = await loginApi(name, password);
     localStorage.setItem('token', data.token);
+    if (data.refresh) localStorage.setItem('refresh', data.refresh);
+    else localStorage.removeItem('refresh');
     await loadUser();
   }, [loadUser]);
 
   const logout = useCallback(async () => {
     await logoutApi();
     localStorage.removeItem('token');
+    localStorage.removeItem('refresh');
     setUser(null);
   }, []);
 

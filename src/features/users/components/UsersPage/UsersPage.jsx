@@ -1,25 +1,41 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
 import { useServerQuery } from '../../../../shared/lib';
-import { ServerList, FilterBar, ConfirmModal, useToast } from '../../../../shared/ui';
+import {
+  ServerList,
+  FilterBar,
+  Collapse,
+  ConfirmModal,
+  Pagination,
+  ActionMenu,
+  useToast,
+  Select,
+} from '../../../../shared/ui';
 import { useAuth } from '../../../auth/model';
-import { createUser, updateUser, deleteUser, updateUserAccess } from '../../api/usersApi';
+import { createUser, updateUser, deleteUser, updateUserAccess, getUser } from '../../api/usersApi';
 import { createRole, updateRole, deleteRole } from '../../api/rolesApi';
 import { ACCESS_KEYS, ACCESS_LABELS } from '../../../../shared/config/constants';
-import { getUserShifts, getUserActivity, getShiftDetails } from '../../../shifts/api/shiftsApi';
+import { getUserShifts, getUserActivity, getShiftDetails, getActivityDetail } from '../../../shifts/api/shiftsApi';
+import { fetchShiftActivityList } from '../../../shifts/lib/fetchShiftActivityList';
+import { shiftLineLabel } from '../../../shifts/lib/shiftDisplayUtils';
+import ShiftActivityListModal from '../../../shifts/components/ActivityAudit/ShiftActivityListModal';
 import './UsersPage.scss';
 
-const USERS_FILTERS = (roleOptions) => [
-  { key: 'search', type: 'search', placeholder: 'Поиск по имени' },
+const USERS_FILTERS_PRIMARY = (roleOptions) => [
+  { key: 'search', type: 'search', placeholder: 'Поиск' },
   { key: 'role', type: 'select', placeholder: 'Роль', options: roleOptions },
+];
+
+const USERS_FILTERS_EXTRA = () => [
   { key: 'is_active', type: 'select', placeholder: 'Статус', options: [
     { value: 'true', label: 'Активные' },
     { value: 'false', label: 'Неактивные' },
   ]},
   { key: 'ordering', type: 'ordering', placeholder: 'Сортировка', options: [
-    { value: 'id', label: 'По ID' },
-    { value: '-id', label: 'По ID (убыв.)' },
-    { value: 'name', label: 'По имени' },
-    { value: '-name', label: 'По имени (убыв.)' },
+    { value: 'id', label: 'ID ↑' },
+    { value: '-id', label: 'ID ↓' },
+    { value: 'name', label: 'Имя А–Я' },
+    { value: '-name', label: 'Имя Я–А' },
   ]},
 ];
 
@@ -145,32 +161,38 @@ const UsersPage = () => {
 
   return (
     <div className="page page--users">
-      <div className="page__header">
-        <div className="page__tabs">
-          <button
-            type="button"
-            className={`page__tab ${activeTab === 'users' ? 'page__tab--active' : ''}`}
-            onClick={() => setActiveTab('users')}
-          >
-            Список
-          </button>
-          <button
-            type="button"
-            className={`page__tab ${activeTab === 'roles' ? 'page__tab--active' : ''}`}
-            onClick={() => setActiveTab('roles')}
-          >
-            Роли
-          </button>
+      <div className="users-page__top ds-toolbar ds-toolbar--page-head">
+        <div className="users-page__tabs-wrap">
+          <div className="page__tabs" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'users'}
+              className={`page__tab ${activeTab === 'users' ? 'page__tab--active' : ''}`}
+              onClick={() => setActiveTab('users')}
+            >
+              Список
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'roles'}
+              className={`page__tab ${activeTab === 'roles' ? 'page__tab--active' : ''}`}
+              onClick={() => setActiveTab('roles')}
+            >
+              Роли
+            </button>
+          </div>
         </div>
-        <div className="page__actions">
+        <div className="ds-toolbar__end users-page__top-actions">
           {activeTab === 'roles' && (
             <button type="button" className="btn btn--primary" onClick={() => setRoleModal({})}>
-              + Создать
+              Создать роль
             </button>
           )}
           {activeTab === 'users' && (
             <button type="button" className="btn btn--primary" onClick={() => setUserModal({})}>
-              + Добавить
+              Добавить
             </button>
           )}
         </div>
@@ -184,32 +206,35 @@ const UsersPage = () => {
           meta={{ page: 1, total_pages: 1 }}
           onRetry={refetchRoles}
           renderTable={(listItems) => (
-            <table className="data-table">
+            <table className="data-table data-table--fixed data-table--roles data-table--row-actions data-table--clickable">
               <thead>
                 <tr>
-                  <th>Название</th>
-                  <th></th>
+                  <th>Роль</th>
+                  <th aria-hidden />
                 </tr>
               </thead>
               <tbody>
                 {listItems.map((r) => (
-                  <tr key={r.id}>
-                    <td>{r.name}</td>
+                  <tr
+                    key={r.id}
+                    tabIndex={0}
+                    role="button"
+                    onClick={() => setRoleModal(r)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setRoleModal(r);
+                      }
+                    }}
+                  >
+                    <td className="data-table__cell--lead">{r.name}</td>
                     <td>
-                      <button
-                        type="button"
-                        className="btn btn--sm"
-                        onClick={() => setRoleModal(r)}
-                      >
-                        Редактировать
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn--sm btn--danger"
-                        onClick={() => setDeleteTarget({ type: 'role', id: r.id, name: r.name })}
-                      >
-                        Удалить
-                      </button>
+                      <ActionMenu
+                        ariaLabel="Действия"
+                        items={[
+                          { label: 'Удалить', danger: true, onClick: () => setDeleteTarget({ type: 'role', id: r.id, name: r.name }) },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -227,55 +252,64 @@ const UsersPage = () => {
           meta={meta}
           onRetry={refetch}
           renderFilters={() => (
-            <FilterBar
-              filters={USERS_FILTERS(roleOptions)}
-              queryState={cleanQuery(queryState)}
-              onChange={handleFilterChange}
-            />
+            <div className="users-page__filters">
+              <FilterBar
+                variant="row"
+                filters={USERS_FILTERS_PRIMARY(roleOptions)}
+                queryState={cleanQuery(queryState)}
+                onChange={handleFilterChange}
+              />
+              <Collapse title="Ещё фильтры">
+                <FilterBar
+                  variant="row"
+                  filters={USERS_FILTERS_EXTRA()}
+                  queryState={cleanQuery(queryState)}
+                  onChange={handleFilterChange}
+                />
+              </Collapse>
+            </div>
           )}
+          filtersClassName="server-list__filters--tight"
           renderTable={(listItems) => (
-            <table className="data-table">
+            <table className="data-table data-table--fixed data-table--users data-table--row-actions data-table--clickable">
               <thead>
                 <tr>
                   <th>Имя</th>
                   <th>Роль</th>
-                  <th></th>
+                  <th>Статус</th>
+                  <th aria-hidden />
                 </tr>
               </thead>
               <tbody>
                 {listItems.map((u) => (
-                  <tr key={u.id}>
-                    <td>{u.name}</td>
-                    <td>{u.role_name ?? (roles.find((r) => r.id === u.role)?.name) ?? '—'}</td>
+                  <tr
+                    key={u.id}
+                    tabIndex={0}
+                    role="button"
+                    onClick={() => setUserModal(u)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setUserModal(u);
+                      }
+                    }}
+                  >
+                    <td className="data-table__cell--lead">{u.name}</td>
+                    <td className="users-page__muted data-table__cell--muted">{u.role_name ?? (roles.find((r) => r.id === u.role)?.name) ?? '—'}</td>
                     <td>
-                      <button
-                        type="button"
-                        className="btn btn--sm"
-                        onClick={() => setAccessModal(u)}
-                      >
-                        Доступы
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn--sm btn--secondary"
-                        onClick={() => setReportModal(u)}
-                      >
-                        Отчёт
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn--sm"
-                        onClick={() => setUserModal(u)}
-                      >
-                        Редактировать
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn--sm btn--danger"
-                        onClick={() => setDeleteTarget({ type: 'user', id: u.id, name: u.name })}
-                      >
-                        Удалить
-                      </button>
+                      <span className={`users-page__pill${u.is_active === false ? ' users-page__pill--off' : ''}`}>
+                        {u.is_active === false ? 'Выкл' : 'Активен'}
+                      </span>
+                    </td>
+                    <td>
+                      <ActionMenu
+                        ariaLabel="Действия"
+                        items={[
+                          { label: 'Доступы', onClick: () => setAccessModal(u) },
+                          { label: 'Отчёт', onClick: () => setReportModal(u) },
+                          { label: 'Удалить', danger: true, onClick: () => setDeleteTarget({ type: 'user', id: u.id, name: u.name }) },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -283,15 +317,14 @@ const UsersPage = () => {
             </table>
           )}
           renderPagination={(m) => (
-            <>
-              {m.page > 1 && (
-                <button onClick={() => handlePageChange(m.page - 1)}>← Назад</button>
-              )}
-              <span>Страница {m.page} из {m.total_pages}</span>
-              {m.page < m.total_pages && (
-                <button onClick={() => handlePageChange(m.page + 1)}>Вперёд →</button>
-              )}
-            </>
+            <Pagination
+              meta={{
+                page: m.page,
+                pages: m.total_pages ?? m.pages,
+                total: m.total ?? m.count,
+              }}
+              onPageChange={handlePageChange}
+            />
           )}
         />
       )}
@@ -358,8 +391,7 @@ const AccessModal = ({ user, accessKeys, accessLabels, roles, onSave, onClose, e
     }
     const load = async () => {
       try {
-        const { apiClient } = await import('../../../../shared/api');
-        const res = await apiClient.get(`/users/${user.id}/`);
+        const res = await getUser(user.id);
         const acc = res.data?.accesses || [];
         const keys = acc.map((a) => a.access_key ?? a);
         setSelected(new Set(keys));
@@ -381,12 +413,30 @@ const AccessModal = ({ user, accessKeys, accessLabels, roles, onSave, onClose, e
     });
   };
 
+  const isDirty = useDirtyFromBaseline(String(user?.id ?? ''), loading, {
+    access: [...selected].sort().join('|'),
+  });
+  const {
+    requestClose,
+    discardConfirmOpen,
+    confirmDiscardAndClose,
+    cancelDiscard,
+  } = useDiscardOnClose(onClose, isDirty);
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={requestClose}>
+      <ConfirmModal
+        open={discardConfirmOpen}
+        title="Закрыть без сохранения?"
+        message="Введённые данные не будут сохранены."
+        confirmText="Закрыть"
+        onConfirm={confirmDiscardAndClose}
+        onCancel={cancelDiscard}
+      />
       <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
           <h3>Доступы: {user?.name}</h3>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+          <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
         {loading ? (
           <p>Загрузка...</p>
@@ -418,7 +468,7 @@ const AccessModal = ({ user, accessKeys, accessLabels, roles, onSave, onClose, e
             </div>
             {error && <p className="modal__error">{error}</p>}
             <div className="modal__actions">
-              <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>Отмена</button>
+              <button type="button" className="btn btn--secondary" onClick={requestClose} disabled={saving}>Отмена</button>
               <button type="submit" className="btn btn--primary" disabled={saving}>
                 {saving ? 'Сохранение…' : 'Сохранить'}
               </button>
@@ -435,16 +485,37 @@ const UserFormModal = ({ user, roles, onSubmit, onClose, error }) => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState(user?.role != null ? String(user.role) : '');
 
+  const isDirty = useDirtyFromBaseline(user?.id != null ? String(user.id) : 'new', false, {
+    name: name.trim(),
+    password,
+    role: String(role ?? ''),
+  });
+  const {
+    requestClose,
+    discardConfirmOpen,
+    confirmDiscardAndClose,
+    cancelDiscard,
+  } = useDiscardOnClose(onClose, isDirty);
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={requestClose}>
+      <ConfirmModal
+        open={discardConfirmOpen}
+        title="Закрыть без сохранения?"
+        message="Введённые данные не будут сохранены."
+        confirmText="Закрыть"
+        onConfirm={confirmDiscardAndClose}
+        onCancel={cancelDiscard}
+      />
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
           <h3>{user ? 'Редактировать сотрудника' : 'Добавить сотрудника'}</h3>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+          <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            if (!role) return;
             const data = { name, role: role ? Number(role) : null };
             if (password) data.password = password;
             if (!user && !password) return;
@@ -453,23 +524,36 @@ const UserFormModal = ({ user, roles, onSubmit, onClose, error }) => {
         >
           <label>Имя *</label>
           <input value={name} onChange={(e) => setName(e.target.value)} required />
-          <label>Пароль {user ? '(оставьте пустым, чтобы не менять)' : '*'}</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required={!user}
-          />
+          {!user ? (
+            <>
+              <label>Пароль *</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </>
+          ) : (
+            <Collapse title="Смена пароля">
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Новый пароль"
+              />
+            </Collapse>
+          )}
           <label>Роль *</label>
-          <select value={role} onChange={(e) => setRole(e.target.value)} required>
-            <option value="">—</option>
-            {roles.map((r) => (
-              <option key={r.id} value={r.id}>{r.name}</option>
-            ))}
-          </select>
+          <Select
+            value={role}
+            onChange={setRole}
+            placeholder="Выберите роль"
+            options={roles.map((r) => ({ value: String(r.id), label: r.name }))}
+          />
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
+            <button type="button" className="btn btn--secondary" onClick={requestClose}>Отмена</button>
             <button type="submit" className="btn btn--primary">Сохранить</button>
           </div>
         </form>
@@ -508,10 +592,8 @@ const MONTHS_RU = [
   'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
 ];
 
-const ACT_LABELS = { create: 'Создал', update: 'Изменил', delete: 'Удалил', view: 'Просмотрел' };
-const ACT_COLORS = { create: 'var(--success)', update: 'var(--accent)', delete: 'var(--danger)', view: 'var(--text-muted)' };
-
 const UserReportModal = ({ user, onClose }) => {
+  const toast = useToast();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -551,7 +633,7 @@ const UserReportModal = ({ user, onClose }) => {
     try {
       const res = await getUserShifts(user.id, params);
       const d = res.data;
-      setShifts(Array.isArray(d) ? d : (d.items || d.results || []));
+      setShifts(Array.isArray(d) ? d : (d.items || []));
     } catch {
       setShifts([]);
     } finally {
@@ -560,13 +642,16 @@ const UserReportModal = ({ user, onClose }) => {
   }, [user.id, buildParams]);
 
   const openShiftActivity = async (s) => {
-    setShiftActivityModal({ shift: s, items: [], loading: true });
+    setShiftActivityModal({ shift: s, items: [], loading: true, banner: null });
     try {
-      const res = await getUserActivity(user.id, { shift_id: s.id, page_size: 100 });
-      const d = res.data;
-      setShiftActivityModal({ shift: s, items: Array.isArray(d) ? d : (d.items || d.results || []), loading: false });
+      const { items, banner } = await fetchShiftActivityList(
+        (params) => getUserActivity(user.id, params),
+        s
+      );
+      setShiftActivityModal({ shift: s, items, loading: false, banner });
     } catch {
-      setShiftActivityModal({ shift: s, items: [], loading: false });
+      toast.show('Не удалось загрузить журнал действий', 'error');
+      setShiftActivityModal({ shift: s, items: [], loading: false, banner: null });
     }
   };
 
@@ -591,8 +676,28 @@ const UserReportModal = ({ user, onClose }) => {
     .filter((s) => s.status === 'closed')
     .reduce((acc, s) => acc + calcDur(s.opened_at || s.started_at, s.closed_at), 0);
 
+  const filtersDirty = useDirtyFromBaseline(`report-${user.id}`, false, {
+    year,
+    month,
+    day: day === '' || day == null ? '' : String(day),
+  });
+  const {
+    requestClose: requestReportClose,
+    discardConfirmOpen: reportDiscardOpen,
+    confirmDiscardAndClose: confirmReportDiscard,
+    cancelDiscard: cancelReportDiscard,
+  } = useDiscardOnClose(onClose, filtersDirty);
+
   return (
-      <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-overlay" onClick={requestReportClose}>
+      <ConfirmModal
+        open={reportDiscardOpen}
+        title="Закрыть без сохранения?"
+        message="Вы изменили период отчёта — при закрытии фильтр сбросится."
+        confirmText="Закрыть"
+        onConfirm={confirmReportDiscard}
+        onCancel={cancelReportDiscard}
+      />
       <div className="modal modal--fullscreen" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
           <div>
@@ -601,7 +706,7 @@ const UserReportModal = ({ user, onClose }) => {
               {user.role_name || ''}
             </span>
           </div>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+          <button type="button" className="modal__close" onClick={requestReportClose} aria-label="Закрыть">×</button>
         </div>
 
         {/* Toolbar: filters + stats in one row */}
@@ -609,34 +714,34 @@ const UserReportModal = ({ user, onClose }) => {
           <div className="report-modal__toolbar-filters">
             <div className="report-modal__filter-group">
               <label className="report-modal__filter-label">Год</label>
-              <select
+              <Select
                 className="report-modal__filter-select"
-                value={year}
-                onChange={(e) => { setYear(Number(e.target.value)); setDay(''); }}
-              >
-                {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
-              </select>
+                value={String(year)}
+                onChange={(v) => { setYear(Number(v)); setDay(''); }}
+                options={yearOptions.map((y) => ({ value: String(y), label: String(y) }))}
+              />
             </div>
             <div className="report-modal__filter-group">
               <label className="report-modal__filter-label">Месяц</label>
-              <select
+              <Select
                 className="report-modal__filter-select"
-                value={month}
-                onChange={(e) => { setMonth(Number(e.target.value)); setDay(''); }}
-              >
-                {MONTHS_RU.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
-              </select>
+                value={String(month)}
+                onChange={(v) => { setMonth(Number(v)); setDay(''); }}
+                options={MONTHS_RU.map((m, i) => ({ value: String(i + 1), label: m }))}
+              />
             </div>
             <div className="report-modal__filter-group">
               <label className="report-modal__filter-label">День</label>
-              <select
+              <Select
                 className="report-modal__filter-select"
-                value={day}
-                onChange={(e) => setDay(e.target.value)}
-              >
-                <option value="">Весь месяц</option>
-                {dayOptions.map((d) => <option key={d} value={d}>{d}</option>)}
-              </select>
+                value={day === '' || day == null ? '' : String(day)}
+                onChange={(v) => setDay(v)}
+                placeholder="Весь месяц"
+                options={[
+                  { value: '', label: 'Весь месяц' },
+                  ...dayOptions.map((d) => ({ value: String(d), label: String(d) })),
+                ]}
+              />
             </div>
           </div>
           {!loading && (
@@ -677,6 +782,7 @@ const UserReportModal = ({ user, onClose }) => {
                   const notesLoading = expandedNotesLoading[s.id];
                   const notesCount = s.notes_count ?? s.notes?.length ?? 0;
                   const openedAt = s.opened_at || s.started_at;
+                  const lineLbl = shiftLineLabel(s);
                   return (
                     <div key={s.id} className={`report-modal__shift-item${isExpanded ? ' report-modal__shift-item--expanded' : ''}`}>
                       <button
@@ -709,11 +815,11 @@ const UserReportModal = ({ user, onClose }) => {
                           <div className="report-modal__detail-row">
                             <span>Длительность:</span><strong>{formatDur(dur)}</strong>
                           </div>
-                          {s.line_name && (
+                          {lineLbl ? (
                             <div className="report-modal__detail-row">
-                              <span>Линия:</span><strong>{s.line_name}</strong>
+                              <span>Линия:</span><strong>{lineLbl}</strong>
                             </div>
-                          )}
+                          ) : null}
                           {(s.comment || s.closing_note) && (
                             <div className="report-modal__closing-note">
                               <span>Итоговый комментарий:</span>
@@ -757,48 +863,15 @@ const UserReportModal = ({ user, onClose }) => {
           )}
         </div>
 
-      {/* Per-shift activity modal */}
-      {shiftActivityModal && (
-        <div className="modal-overlay" onClick={() => setShiftActivityModal(null)}>
-          <div className="modal" style={{ minWidth: 360, maxWidth: 540, width: '100%' }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal__head">
-              <h3>Действия — {formatDT(shiftActivityModal.shift?.opened_at || shiftActivityModal.shift?.started_at)}</h3>
-              <button type="button" className="modal__close" onClick={() => setShiftActivityModal(null)} aria-label="Закрыть">×</button>
-            </div>
-            <div className="modal__body">
-              {shiftActivityModal.loading ? (
-                <div className="report-modal__loading"><div className="my-shift__spinner" /><span>Загрузка...</span></div>
-              ) : shiftActivityModal.items.length === 0 ? (
-                <div className="report-modal__empty">Действий не найдено</div>
-              ) : (
-                <div className="report-modal__activity">
-                  {shiftActivityModal.items.map((a, i) => {
-                    const actionKey = a.action || a.action_type || 'view';
-                    const actionLabel = a.action_display || ACT_LABELS[actionKey] || actionKey;
-                    return (
-                      <div key={a.id || i} className="report-modal__activity-item">
-                        <div className="report-modal__activity-dot" style={{ background: ACT_COLORS[actionKey] || 'var(--text-muted)' }} />
-                        <div className="report-modal__activity-content">
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                            <span style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: ACT_COLORS[actionKey], textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                              {actionLabel}
-                            </span>
-                            {a.section && <span className="report-modal__activity-section">{a.section}</span>}
-                          </div>
-                          <span className="report-modal__activity-desc">
-                            {a.description || a.object_repr || `${a.model || ''} #${a.object_id || ''}`}
-                          </span>
-                          <span className="report-modal__activity-time">{formatDT(a.created_at || a.timestamp)}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <ShiftActivityListModal
+        open={Boolean(shiftActivityModal)}
+        onClose={() => setShiftActivityModal(null)}
+        title={`Действия — ${formatDT(shiftActivityModal?.shift?.opened_at || shiftActivityModal?.shift?.started_at)}`}
+        items={shiftActivityModal?.items ?? []}
+        loading={Boolean(shiftActivityModal?.loading)}
+        banner={shiftActivityModal?.banner}
+        fetchActivityDetail={(id) => getActivityDetail(id)}
+      />
       </div>
     </div>
   );
@@ -807,12 +880,30 @@ const UserReportModal = ({ user, onClose }) => {
 const RoleFormModal = ({ role, onSubmit, onClose, error }) => {
   const [name, setName] = useState(role?.name ?? '');
 
+  const isDirty = useDirtyFromBaseline(role?.id != null ? String(role.id) : 'new', false, {
+    name: name.trim(),
+  });
+  const {
+    requestClose,
+    discardConfirmOpen,
+    confirmDiscardAndClose,
+    cancelDiscard,
+  } = useDiscardOnClose(onClose, isDirty);
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={requestClose}>
+      <ConfirmModal
+        open={discardConfirmOpen}
+        title="Закрыть без сохранения?"
+        message="Введённые данные не будут сохранены."
+        confirmText="Закрыть"
+        onConfirm={confirmDiscardAndClose}
+        onCancel={cancelDiscard}
+      />
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
           <h3>{role ? 'Редактировать роль' : 'Создать роль'}</h3>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+          <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
         <form
           onSubmit={(e) => {
@@ -824,7 +915,7 @@ const RoleFormModal = ({ role, onSubmit, onClose, error }) => {
           <input value={name} onChange={(e) => setName(e.target.value)} required />
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
+            <button type="button" className="btn btn--secondary" onClick={requestClose}>Отмена</button>
             <button type="submit" className="btn btn--primary">Сохранить</button>
           </div>
         </form>

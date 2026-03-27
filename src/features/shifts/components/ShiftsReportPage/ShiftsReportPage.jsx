@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useToast } from '../../../../shared/ui';
-import { getAllShifts, getShiftDetails, getAllUsers, getUserActivity } from '../../api/shiftsApi';
+import { useToast, Select } from '../../../../shared/ui';
+import { getAllShifts, getShiftDetails, getAllUsers, getUserActivity, getActivityDetail } from '../../api/shiftsApi';
+import ShiftActivityListModal from '../ActivityAudit/ShiftActivityListModal';
+import { fetchShiftActivityList } from '../../lib/fetchShiftActivityList';
+import ComplaintModal from '../ComplaintModal/ComplaintModal';
+import ComplaintsInbox from '../ComplaintsInbox/ComplaintsInbox';
+import { useOperationalRefetch } from '../../../../shared/realtime';
 import './ShiftsReportPage.scss';
 
 const formatDateTime = (dt) => {
@@ -61,6 +66,10 @@ const EyeIcon = () => (
 const ShiftsReportPage = () => {
   const toast = useToast();
 
+  const [mainTab, setMainTab] = useState('shifts');
+  const [complaintModalOpen, setComplaintModalOpen] = useState(false);
+  const [complaintsReloadToken, setComplaintsReloadToken] = useState(0);
+
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
@@ -83,7 +92,7 @@ const ShiftsReportPage = () => {
       if (filterStatus) params.status = filterStatus;
       const res = await getAllShifts(params);
       const data = res.data;
-      setShifts(Array.isArray(data) ? data : (data.items || data.results || []));
+      setShifts(Array.isArray(data) ? data : (data.items || []));
     } catch (err) {
       if (err.response?.status !== 404) {
         toast.show('Ошибка загрузки смен', 'error');
@@ -94,6 +103,13 @@ const ShiftsReportPage = () => {
     }
   }, [filterDate, filterUser, filterStatus, toast]);
 
+  const refreshShiftsReportOperational = useCallback(() => {
+    loadShifts();
+    setComplaintsReloadToken((t) => t + 1);
+  }, [loadShifts]);
+
+  useOperationalRefetch(['shift', 'shift_complaint', 'activity'], refreshShiftsReportOperational, true);
+
   useEffect(() => {
     loadShifts();
   }, [loadShifts]);
@@ -102,20 +118,23 @@ const ShiftsReportPage = () => {
     getAllUsers({ page_size: 500 })
       .then((res) => {
         const data = res.data;
-        setUsers(Array.isArray(data) ? data : (data.items || data.results || []));
+        setUsers(Array.isArray(data) ? data : (data.items || []));
       })
       .catch(() => setUsers([]));
   }, []);
 
   const openShiftActivity = async (shift) => {
-    setShiftActivityModal({ shift, items: [], loading: true });
+    setShiftActivityModal({ shift, items: [], loading: true, banner: null });
     try {
       const userId = shift.user_id || shift.user?.id;
-      const res = await getUserActivity(userId, { shift_id: shift.id, page_size: 100 });
-      const d = res.data;
-      setShiftActivityModal({ shift, items: Array.isArray(d) ? d : (d.items || d.results || []), loading: false });
+      const { items, banner } = await fetchShiftActivityList(
+        (params) => getUserActivity(userId, params),
+        shift
+      );
+      setShiftActivityModal({ shift, items, loading: false, banner });
     } catch {
-      setShiftActivityModal({ shift, items: [], loading: false });
+      toast.show('Не удалось загрузить журнал действий', 'error');
+      setShiftActivityModal({ shift, items: [], loading: false, banner: null });
     }
   };
 
@@ -136,18 +155,58 @@ const ShiftsReportPage = () => {
   const openShifts = shifts.filter((s) => s.status === 'open');
   const closedShifts = shifts.filter((s) => s.status === 'closed');
   const uniqueUsers = new Set(shifts.map((s) => s.user_id || s.user?.id));
+  const showEmployeeColumn = !filterUser;
 
   const userName = (s) => s.user_name || s.user?.name || s.user?.username || `#${s.user_id || s.user}`;
 
   return (
     <div className="page shifts-report-page">
-      <div className="shifts-report__top">
-        <h1 className="page__title">Отчёт по сменам</h1>
-        <button type="button" className="btn btn--secondary" onClick={loadShifts}>
-          Обновить
+      <div className="shifts-report__main-tabs" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mainTab === 'shifts'}
+          className={`shifts-report__main-tab${mainTab === 'shifts' ? ' shifts-report__main-tab--active' : ''}`}
+          onClick={() => setMainTab('shifts')}
+        >
+          Отчёт по сменам
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mainTab === 'complaints'}
+          className={`shifts-report__main-tab${mainTab === 'complaints' ? ' shifts-report__main-tab--active' : ''}`}
+          onClick={() => setMainTab('complaints')}
+        >
+          Жалобы
         </button>
       </div>
 
+      <div className="ds-toolbar ds-toolbar--page-head shifts-report__toolbar">
+        <div className="ds-toolbar__start">
+          {mainTab === 'shifts' && (
+            <button type="button" className="btn btn--secondary" onClick={loadShifts}>
+              Обновить
+            </button>
+          )}
+        </div>
+        <div className="ds-toolbar__end">
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={() => setComplaintModalOpen(true)}
+          >
+            Добавить жалобу
+          </button>
+        </div>
+      </div>
+
+      {mainTab === 'complaints' && (
+        <ComplaintsInbox reloadToken={complaintsReloadToken} className="shifts-report__complaints-block" />
+      )}
+
+      {mainTab === 'shifts' && (
+        <>
       <div className="shifts-report__stats">
         <div className="shifts-report__stat-card shifts-report__stat-card--blue">
           <UsersIcon />
@@ -193,30 +252,33 @@ const ShiftsReportPage = () => {
         </div>
         <div className="shifts-report__filter-group">
           <label className="shifts-report__filter-label">Сотрудник</label>
-          <select
+          <Select
             className="shifts-report__filter-select"
-            value={filterUser}
-            onChange={(e) => setFilterUser(e.target.value)}
-          >
-            <option value="">Все сотрудники</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name || u.username || u.email || u.id}
-              </option>
-            ))}
-          </select>
+            value={filterUser === '' || filterUser == null ? '' : String(filterUser)}
+            onChange={setFilterUser}
+            placeholder="Все сотрудники"
+            options={[
+              { value: '', label: 'Все сотрудники' },
+              ...users.map((u) => ({
+                value: String(u.id),
+                label: u.name || u.username || u.email || String(u.id),
+              })),
+            ]}
+          />
         </div>
         <div className="shifts-report__filter-group">
           <label className="shifts-report__filter-label">Статус</label>
-          <select
+          <Select
             className="shifts-report__filter-select"
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-          >
-            <option value="">Все</option>
-            <option value="open">Открыта</option>
-            <option value="closed">Закрыта</option>
-          </select>
+            onChange={setFilterStatus}
+            placeholder="Все"
+            options={[
+              { value: '', label: 'Все' },
+              { value: 'open', label: 'Открыта' },
+              { value: 'closed', label: 'Закрыта' },
+            ]}
+          />
         </div>
         <button
           type="button"
@@ -239,13 +301,13 @@ const ShiftsReportPage = () => {
           <table className="data-table shifts-report__table">
             <thead>
               <tr>
-                <th>СОТРУДНИК</th>
-                <th>НАЧАЛО</th>
-                <th>КОНЕЦ</th>
-                <th>ДЛИТЕЛЬНОСТЬ</th>
-                <th>ЗАМЕТКИ</th>
-                <th>СТАТУС</th>
-                <th>ДЕЙСТВИЯ</th>
+                {showEmployeeColumn ? <th>Сотрудник</th> : null}
+                <th>Начало</th>
+                <th>Конец</th>
+                <th>Длительность</th>
+                <th>Заметки</th>
+                <th>Статус</th>
+                <th>Действия</th>
               </tr>
             </thead>
             <tbody>
@@ -255,12 +317,14 @@ const ShiftsReportPage = () => {
                 const isOpen = s.status === 'open';
                 return (
                   <tr key={s.id}>
-                    <td className="shifts-report__user-cell">
-                      <div className="shifts-report__user-avatar">
-                        {(userName(s)[0] || '?').toUpperCase()}
-                      </div>
-                      <span>{userName(s)}</span>
-                    </td>
+                    {showEmployeeColumn ? (
+                      <td className="shifts-report__user-cell">
+                        <div className="shifts-report__user-avatar">
+                          {(userName(s)[0] || '?').toUpperCase()}
+                        </div>
+                        <span>{userName(s)}</span>
+                      </td>
+                    ) : null}
                     <td>{formatDateTime(openedAt)}</td>
                     <td>{isOpen ? <span className="shifts-report__live">● сейчас</span> : formatDateTime(s.closed_at)}</td>
                     <td>{formatDuration(dur)}</td>
@@ -282,7 +346,7 @@ const ShiftsReportPage = () => {
                         onClick={() => openDetails(s)}
                       >
                         <EyeIcon />
-                        Детали
+                        Подробнее
                       </button>
                     </td>
                   </tr>
@@ -292,6 +356,18 @@ const ShiftsReportPage = () => {
           </table>
         )}
       </div>
+        </>
+      )}
+
+      <ComplaintModal
+        open={complaintModalOpen}
+        onClose={() => setComplaintModalOpen(false)}
+        employees={users}
+        onSuccess={() => {
+          setComplaintsReloadToken((t) => t + 1);
+          toast.show('Жалоба отправлена');
+        }}
+      />
 
       {selectedShift && (
         <div className="modal-overlay" onClick={() => setSelectedShift(null)}>
@@ -380,44 +456,19 @@ const ShiftsReportPage = () => {
         </div>
       )}
 
-      {/* Per-shift activity modal */}
-      {shiftActivityModal && (
-        <div className="modal-overlay" onClick={() => setShiftActivityModal(null)}>
-          <div className="modal" style={{ minWidth: 360, maxWidth: 540, width: '100%' }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal__head">
-              <h3>Действия — {userName(shiftActivityModal.shift)} — {formatDateTime(shiftActivityModal.shift?.opened_at || shiftActivityModal.shift?.started_at)}</h3>
-              <button type="button" className="modal__close" onClick={() => setShiftActivityModal(null)} aria-label="Закрыть">×</button>
-            </div>
-            <div className="modal__body">
-              {shiftActivityModal.loading ? (
-                <div className="shifts-report__loading">Загрузка...</div>
-              ) : shiftActivityModal.items.length === 0 ? (
-                <div className="shifts-report__notes-empty">Действий не найдено</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  {shiftActivityModal.items.map((a, i) => (
-                    <div key={a.id || i} style={{ display: 'flex', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', marginTop: 5, flexShrink: 0 }} />
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-                        <span style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          {a.action_display || a.action || a.action_type}
-                          {a.section && <span style={{ marginLeft: 6, fontWeight: 400, color: 'var(--text-muted)' }}>{a.section}</span>}
-                        </span>
-                        <span style={{ fontSize: 'var(--font-sm)', color: 'var(--text)' }}>
-                          {a.description || a.object_repr || `${a.model || ''} #${a.object_id || ''}`}
-                        </span>
-                        <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>
-                          {formatDateTime(a.created_at || a.timestamp)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <ShiftActivityListModal
+        open={Boolean(shiftActivityModal)}
+        onClose={() => setShiftActivityModal(null)}
+        title={
+          shiftActivityModal
+            ? `Действия — ${userName(shiftActivityModal.shift)} — ${formatDateTime(shiftActivityModal.shift?.opened_at || shiftActivityModal.shift?.started_at)}`
+            : ''
+        }
+        items={shiftActivityModal?.items ?? []}
+        loading={Boolean(shiftActivityModal?.loading)}
+        banner={shiftActivityModal?.banner}
+        fetchActivityDetail={(id) => getActivityDetail(id)}
+      />
     </div>
   );
 };

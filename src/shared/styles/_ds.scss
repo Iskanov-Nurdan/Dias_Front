@@ -1,0 +1,157 @@
+@use 'mixins' as *;
+
+/* ── Page frame (title lives in MainLayout header) ─────────────────────── */
+.ds-page-top {
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ds-page-top__desc {
+  margin: 0;
+  max-width: 42rem;
+  font-size: var(--font-label);
+  font-weight: var(--weight-normal);
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+}
+
+.ds-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--layout-gap);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+.ds-page-header__title {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-h2);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+  line-height: var(--leading-h);
+  text-align: left;
+}
+
+.ds-page-header__desc {
+  margin: 0;
+  font-size: var(--font-label);
+  font-weight: var(--weight-normal);
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+  max-width: 42rem;
+  text-align: left;
+}
+
+.ds-page-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* ── Toolbar: filters / search left · primary right ───────────────────── */
+.ds-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  row-gap: var(--space-3);
+  margin-bottom: var(--layout-gap);
+  min-width: 0;
+}
+
+.ds-toolbar--page-head {
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--layout-gap);
+  border-bottom: 1px solid var(--border-subtle);
+  align-items: center;
+}
+
+.ds-toolbar--in-card {
+  margin-bottom: var(--space-4);
+}
+
+.ds-toolbar__start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ds-toolbar__end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+@include mobile {
+  .ds-toolbar__end {
+    flex-basis: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+}
+
+.ds-toolbar__search {
+  flex: 1 1 200px;
+  max-width: 360px;
+  min-width: 0;
+  height: var(--control-height);
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-size: var(--font-body);
+  font-family: inherit;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+
+  &::placeholder {
+    color: var(--placeholder);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 3px var(--input-focus-ring);
+  }
+}
+
+.ds-card {
+  background: var(--card);
+  border: none;
+  border-radius: var(--radius-lg);
+  box-shadow:
+    var(--shadow-sm),
+    0 0 0 1px rgba(17, 24, 39, 0.04);
+}
+
+.ds-card--pad {
+  padding: var(--card-padding);
+}
+
+.ds-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--field-gap-lg);
+}
+
+.ds-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-end;
+}

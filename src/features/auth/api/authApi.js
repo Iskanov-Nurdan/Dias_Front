@@ -5,9 +5,13 @@ export const login = async (name, password) => {
   return res.data;
 };
 
+/** POST /api/auth/logout — тело `{ refresh }` для блэклиста refresh-токена (см. API бэка). */
 export const logout = async () => {
+  const refresh = localStorage.getItem('refresh');
   try {
-    await apiClient.post('auth/logout');
+    if (refresh) {
+      await apiClient.post('auth/logout', { refresh });
+    }
   } catch {
     // Logout may fail if token expired; still clear local state
   }

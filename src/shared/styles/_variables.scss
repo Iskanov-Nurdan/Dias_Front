@@ -1,129 +1,165 @@
-// ============================================
-// DIAS Design System — White / Red / Dark
-// ============================================
+// DIAS — design tokens (Inter, SaaS typography)
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
 :root {
-  // ── Base palette (light content) ──────────────────────────
-  --bg: #f4f6f8;
-  --bg-gradient: linear-gradient(160deg, #f4f6f8 0%, #eef1f5 100%);
+  --font-sans: 'Inter', system-ui, sans-serif;
+
+  --bg: #f7f7f9;
   --bg-elevated: #ffffff;
-  --bg-hover: #edf0f4;
+  --bg-hover: #f1f2f5;
+  --surface: #ffffff;
   --card: #ffffff;
-  --card-hover: #f9fafb;
-  --card-border: rgba(0, 0, 0, 0.08);
+  --card-border: rgba(17, 24, 39, 0.06);
 
-  // ── Sidebar (dark) ────────────────────────────────────────
-  --sidebar-bg: #0f1624;
+  --sidebar-bg: #0f1419;
   --sidebar-bg-hover: rgba(255, 255, 255, 0.06);
-  --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-text: rgba(255, 255, 255, 0.75);
-  --sidebar-text-muted: rgba(255, 255, 255, 0.4);
-  --sidebar-active-bg: rgba(230, 57, 70, 0.18);
-  --sidebar-active-text: #e63946;
-  --sidebar-width: 285px;
-  --sidebar-width-collapsed: 70px;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-text: rgba(255, 255, 255, 0.72);
+  --sidebar-text-muted: rgba(255, 255, 255, 0.42);
+  --sidebar-active-bg: rgba(230, 57, 70, 0.14);
+  --sidebar-active-text: #f87171;
+  --sidebar-width: 248px;
+  --sidebar-width-collapsed: 64px;
 
-  // ── Header ────────────────────────────────────────────────
-  --header-height: 60px;
+  --header-height: 56px;
   --header-bg: #ffffff;
-  --header-border: rgba(0, 0, 0, 0.08);
+  --header-border: rgba(17, 24, 39, 0.06);
 
-  // ── Text hierarchy ────────────────────────────────────────
-  --text: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
-  --muted: #94a3b8;
+  /* Typography hierarchy */
+  --font-h1: 1.375rem;
+  --font-h2: 1.25rem;
+  --font-h3: 1.125rem;
+  --font-body: 1rem;
+  --font-label: 0.8125rem;
+  --font-caption: 0.75rem;
+  --font-button: 0.875rem;
 
-  // ── Brand / Accent — RED ──────────────────────────────────
-  --accent: #e63946;
-  --accent-hover: #c1121f;
-  --accent-muted: rgba(230, 57, 70, 0.1);
-  --accent-glow: rgba(230, 57, 70, 0.25);
-  --accent-2: #f97316;
-  --accent-2-muted: rgba(249, 115, 22, 0.1);
+  --leading-h: 1.25;
+  --leading-tight: 1.25;
+  --leading-normal: 1.55;
 
-  // ── Semantic ──────────────────────────────────────────────
-  --success: #16a34a;
-  --success-muted: rgba(22, 163, 74, 0.12);
-  --warning: #d97706;
-  --warning-muted: rgba(217, 119, 6, 0.12);
-  --danger: #dc2626;
-  --danger-muted: rgba(220, 38, 38, 0.1);
-  --info: #0284c7;
-  --info-muted: rgba(2, 132, 199, 0.1);
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
 
-  // ── Card accent borders ───────────────────────────────────
-  --card-accent: linear-gradient(90deg, var(--accent) 0%, var(--accent-2) 100%);
-  --card-accent-red: var(--accent);
-  --card-accent-orange: var(--accent-2);
+  /* Text colors */
+  --text: #111827;
+  --text-secondary: #6b7280;
+  --text-muted: #6b7280;
+  --placeholder: #9ca3af;
+  --muted: #6b7280;
 
-  // ── Borders & dividers ────────────────────────────────────
-  --border: rgba(0, 0, 0, 0.1);
-  --border-subtle: rgba(0, 0, 0, 0.06);
+  --primary: #e11d48;
+  --primary-hover: #be123c;
+  --primary-muted: rgba(225, 29, 72, 0.1);
+  --accent: var(--primary);
+  --accent-hover: var(--primary-hover);
+  --accent-muted: var(--primary-muted);
+  --accent-glow: rgba(225, 29, 72, 0.22);
 
-  // ── Shadows (adapted for light backgrounds) ───────────────
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.06);
-  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.14), 0 8px 16px rgba(0, 0, 0, 0.08);
-  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.08);
-  --shadow-accent: 0 4px 20px rgba(230, 57, 70, 0.3);
-  --shadow-sidebar: 4px 0 24px rgba(0, 0, 0, 0.15);
+  --secondary-action-bg: #ffffff;
+  --secondary-action-border: #e5e7eb;
+  --secondary-action-text: var(--text);
 
-  // ── Spacing scale (4px base) ──────────────────────────────
-  --space-1: 0.25rem;  // 4px
-  --space-2: 0.5rem;   // 8px
-  --space-3: 0.75rem;  // 12px
-  --space-4: 1rem;     // 16px
-  --space-5: 1.25rem;  // 20px
-  --space-6: 1.5rem;   // 24px
-  --space-8: 2rem;     // 32px
-  --space-10: 2.5rem;
-  --space-12: 3rem;
+  --success: #15803d;
+  --success-muted: rgba(21, 128, 61, 0.1);
+  --warning: #b45309;
+  --warning-muted: rgba(180, 83, 9, 0.1);
+  --danger: #ef4444;
+  --danger-muted: rgba(239, 68, 68, 0.1);
+  --info: #0369a1;
+  --info-muted: rgba(3, 105, 161, 0.1);
 
-  // ── Border radius ─────────────────────────────────────────
-  --radius-sm: 6px;
+  --border: rgba(17, 24, 39, 0.08);
+  --border-subtle: rgba(17, 24, 39, 0.05);
+
+  --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.04);
+  --shadow-md: 0 4px 16px rgba(17, 24, 39, 0.06);
+  --shadow-lg: 0 16px 40px rgba(17, 24, 39, 0.08);
+  --shadow-accent: 0 4px 14px rgba(225, 29, 72, 0.22);
+  --shadow-sidebar: 1px 0 0 var(--sidebar-border);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  --radius-sm: 8px;
   --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
   --radius-full: 9999px;
 
-  // ── Z-index ───────────────────────────────────────────────
   --z-dropdown: 1100;
   --z-modal: 1000;
   --z-toast: 1200;
   --z-sidebar: 200;
   --z-header: 100;
 
-  // ── Input system ──────────────────────────────────────────
   --input-bg: #ffffff;
-  --input-border: rgba(0, 0, 0, 0.15);
-  --input-focus-border: var(--accent);
-  --input-focus-ring: rgba(230, 57, 70, 0.15);
+  --input-border: #e5e7eb;
+  --input-focus-border: var(--primary);
+  --input-focus-ring: rgba(225, 29, 72, 0.12);
   --input-height: 40px;
+  --control-height: var(--input-height);
 
-  // ── Transitions ───────────────────────────────────────────
+  --layout-gap: var(--space-6);
+  --layout-gap-lg: var(--space-8);
+  --content-max-width: 1280px;
+  --card-padding: var(--space-5);
+  --field-gap: var(--space-3);
+  --field-gap-lg: var(--space-4);
+
   --transition-fast: 0.12s ease;
-  --transition-base: 0.2s ease;
-  --transition-slow: 0.3s ease;
+  --transition-base: 0.18s ease;
 
-  // ── Typography scale ──────────────────────────────────────
-  --font-xs: 0.75rem;
-  --font-sm: 0.875rem;
-  --font-base: 0.9375rem;
+  /* Legacy aliases (existing SCSS) */
+  --font-sm: var(--font-label);
+  --font-base: var(--font-body);
   --font-md: 1rem;
-  --font-lg: 1.125rem;
-  --font-xl: 1.25rem;
-  --font-2xl: 1.5rem;
-  --font-3xl: 1.875rem;
-  --font-4xl: 2.25rem;
+  --font-title-sm: var(--font-h3);
+  --font-title: var(--font-h2);
+  --font-title-lg: var(--font-h1);
+  --font-xs: var(--font-caption);
+  --font-xl: var(--font-h2);
+  --font-2xl: var(--font-h1);
+  --font-3xl: 1.5rem;
+  --font-4xl: 1.75rem;
+  --weight-bold: 600;
+  --weight-extrabold: 600;
+  --transition-slow: 0.22s ease;
+  --bg-gradient: linear-gradient(180deg, #f6f7f9 0%, #f0f2f5 100%);
+  --card-hover: var(--bg-hover);
+  --accent-2: #ea580c;
+  --accent-2-muted: rgba(234, 88, 12, 0.1);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --shadow-soft: var(--shadow-sm);
 
-  --weight-normal: 400;
-  --weight-medium: 500;
-  --weight-semibold: 600;
-  --weight-bold: 700;
-  --weight-extrabold: 800;
+  --select-bg: #f8f9fb;
+  --select-border: #e5e7eb;
+  --select-border-hover: #d1d5db;
+  --select-radius: var(--radius-md);
+  --select-text: #111827;
+  --select-placeholder: #9ca3af;
+  --select-font-size: var(--font-body);
+  --select-line-height: var(--leading-normal);
+  --select-dropdown-bg: #ffffff;
+  --select-dropdown-radius: 14px;
+  --select-dropdown-shadow:
+    0 10px 40px rgba(17, 24, 39, 0.09),
+    0 0 0 1px rgba(17, 24, 39, 0.05);
+  --select-option-hover: #f3f4f6;
+  --select-option-selected-bg: #eef2ff;
+  --select-option-selected-text: #3730a3;
+  --select-focus-border: #c7d2fe;
+  --select-focus-ring: rgba(99, 102, 241, 0.22);
+  --select-invalid-border: #d1d5db;
+  --select-invalid-ring: rgba(107, 114, 128, 0.12);
 }
+

@@ -1,9 +1,9 @@
 import './Loading.scss';
 
-const Loading = () => (
-  <div className="loading">
+const Loading = ({ label = 'Загрузка' }) => (
+  <div className="loading" role="status" aria-live="polite">
     <div className="loading__spinner" />
-    <span className="loading__text">Загрузка...</span>
+    <span className="loading__text">{label}</span>
   </div>
 );
 

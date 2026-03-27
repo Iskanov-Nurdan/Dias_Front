@@ -1,0 +1,98 @@
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
+.action-menu {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.action-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height);
+  min-height: var(--control-height) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: var(--radius-md) !important;
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+
+  &:hover:not(:disabled) {
+    background: var(--bg-hover) !important;
+    color: var(--text) !important;
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+.action-menu__dots {
+  font-size: 1.25rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.action-menu__dropdown {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  z-index: var(--z-dropdown);
+  min-width: 168px;
+  margin: 0;
+  padding: var(--space-1);
+  list-style: none;
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    var(--shadow-md),
+    0 0 0 1px rgba(17, 24, 39, 0.05);
+
+  &--right {
+    right: 0;
+  }
+
+  &--left {
+    left: 0;
+  }
+}
+
+.action-menu__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--space-2) var(--space-3) !important;
+  min-height: auto !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: var(--radius-sm) !important;
+  background: transparent !important;
+  font-size: var(--font-label) !important;
+  font-weight: var(--weight-medium) !important;
+  color: var(--text) !important;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+
+  &:hover:not(:disabled) {
+    background: var(--bg-hover) !important;
+  }
+
+  &--danger {
+    color: var(--danger) !important;
+
+    &:hover:not(:disabled) {
+      background: var(--danger-muted) !important;
+    }
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed !important;
+  }
+}

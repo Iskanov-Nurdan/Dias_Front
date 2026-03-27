@@ -310,7 +310,7 @@ const LeadsPage = () => {
                 ) : items.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="leads-page__empty-cell">
-                      <EmptyState message="Нет заявок" />
+                      <EmptyState compact message="Нет заявок" />
                     </td>
                   </tr>
                 ) : (

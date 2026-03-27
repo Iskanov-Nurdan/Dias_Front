@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatMoney } from '../../../shared/constants/common';
+import { EmptyState } from '../../../shared/ui';
 
 const AnalyticsMarginTable = ({ marginTab, setMarginTab, salesMargin, marginByProduct, marginByCategory }) => (
   <section className="analytics-page__section analytics-page__section--table">
@@ -37,7 +38,7 @@ const AnalyticsMarginTable = ({ marginTab, setMarginTab, salesMargin, marginByPr
         </tbody>
       </table>
       {(marginTab === 'product' ? marginByProduct : marginByCategory).length === 0 && (
-        <p className="analytics-page__empty">Нет данных за период</p>
+        <EmptyState compact message="Нет данных за период" />
       )}
     </div>
   </section>
@@ -73,7 +74,7 @@ const AnalyticsSalesTable = ({ salesTab, setSalesTab, salesTotalRevenue, product
         </tbody>
       </table>
       {(salesTab === 'product' ? productItems : categoryItems).length === 0 && (
-        <p className="analytics-page__empty">Нет продаж за период</p>
+        <EmptyState compact message="Нет продаж за период" />
       )}
     </div>
   </section>

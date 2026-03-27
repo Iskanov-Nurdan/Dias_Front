@@ -32,7 +32,7 @@ const ClientsList = ({ items, loading, error, onRetry, onEdit, onDelete, onDetai
             ) : !list.length ? (
               <tr>
                 <td colSpan={5} className="clients-list__empty-cell">
-                  <EmptyState message={emptyMessage || 'Нет клиентов'} />
+                  <EmptyState compact message={emptyMessage || 'Нет клиентов'} />
                 </td>
               </tr>
             ) : list.map((c) => {

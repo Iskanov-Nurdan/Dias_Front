@@ -53,7 +53,7 @@ const RolesList = ({
               ) : !list.length ? (
                 <tr>
                   <td colSpan={2} className="roles-list__empty-cell">
-                    <EmptyState message="Нет ролей" />
+                    <EmptyState compact message="Нет ролей" />
                   </td>
                 </tr>
               ) : list.map((role) => {

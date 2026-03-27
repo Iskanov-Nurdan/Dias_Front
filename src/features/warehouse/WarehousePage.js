@@ -284,7 +284,7 @@ const WarehousePage = () => {
                     </tr>
                   ))
                 ) : productsItems.length === 0 ? (
-                  <tr><td colSpan={8} className="warehouse-page__empty-cell"><EmptyState message="Нет товаров" /></td></tr>
+                  <tr><td colSpan={8} className="warehouse-page__empty-cell"><EmptyState compact message="Нет товаров" /></td></tr>
                 ) : productsItems.map((p) => {
                     const qty = Number(p.qty ?? p.quantity ?? 0);
                     const minQtyVal = Number(p.minQty ?? p.min_quantity);
@@ -343,7 +343,7 @@ const WarehousePage = () => {
                     </tr>
                   ))
                 ) : categoriesList.length === 0 ? (
-                  <tr><td colSpan={2} className="warehouse-page__empty-cell"><EmptyState message="Нет категорий" /></td></tr>
+                  <tr><td colSpan={2} className="warehouse-page__empty-cell"><EmptyState compact message="Нет категорий" /></td></tr>
                 ) : (
                   <>
                     {categoriesList.length < 4 && (
@@ -441,7 +441,7 @@ const WarehousePage = () => {
                     </tr>
                   ))
                 ) : restocksItems.length === 0 ? (
-                  <tr><td colSpan={3} className="warehouse-page__empty-cell"><EmptyState message="Нет пополнений" /></td></tr>
+                  <tr><td colSpan={3} className="warehouse-page__empty-cell"><EmptyState compact message="Нет пополнений" /></td></tr>
                 ) : restocksItems.map((r) => (
                   <tr key={r.id} className="warehouse-page__product-row">
                     <td data-label="Товар">{r.productName ?? r.product?.name ?? '—'}</td>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { fetchIncomeDetail, fetchExpenseDetail, fetchProfitDetail } from './api';
-import { ErrorState, Select, DonutChart, Sparkline, Skeleton, SkeletonTable, FilterBar } from '../../shared/ui';
+import { ErrorState, Select, DonutChart, Sparkline, Skeleton, SkeletonTable, FilterBar, EmptyState } from '../../shared/ui';
 import { MONTHS, MONTHS_SHORT, DONUT_COLORS, formatMoney } from '../../shared/constants/common';
 import { useAnalyticsFilters } from './hooks/useAnalyticsFilters';
 import { useAnalyticsData } from './hooks/useAnalyticsData';
@@ -420,7 +420,7 @@ const AnalyticsPage = () => {
                   </div>
                 </>
               ) : (
-                <p className="analytics-page__empty">Нет данных за период</p>
+                <EmptyState compact message="Нет данных за период" />
               )}
             </div>
           </section>
@@ -480,7 +480,7 @@ const AnalyticsPage = () => {
                     </div>
                   );
                 })() : (
-                  <p className="analytics-page__empty">Нет данных</p>
+                  <EmptyState compact message="Нет данных" />
                 )}
               </div>
             </section>
@@ -515,7 +515,7 @@ const AnalyticsPage = () => {
                   </ul>
                 </div>
               ) : (
-                <p className="analytics-page__empty">Нет расходов за период</p>
+                <EmptyState compact message="Нет расходов за период" />
               )}
             </section>
           </div>
@@ -558,7 +558,11 @@ const AnalyticsPage = () => {
                   {leadsByChannel.map((x, i) => (
                     <li key={x.key ?? x.label ?? `channel-${i}`}>{x.label ?? x.key ?? '—'}: {x.count ?? 0}</li>
                   ))}
-                  {leadsByChannel.length === 0 && <li className="analytics-page__empty">Нет данных</li>}
+                  {leadsByChannel.length === 0 && (
+                    <li className="analytics-page__leads-empty-li">
+                      <EmptyState compact message="Нет данных" />
+                    </li>
+                  )}
                 </ul>
               </div>
               <div className="analytics-page__leads-block">
@@ -573,7 +577,7 @@ const AnalyticsPage = () => {
                       <span className="analytics-page__bar-value">{x.count ?? 0}</span>
                     </div>
                   ))}
-                  {leadsByStage.length === 0 && <p className="analytics-page__empty">Нет этапов или лидов в воронке</p>}
+                  {leadsByStage.length === 0 && <EmptyState compact message="Нет этапов или лидов в воронке" />}
                 </div>
                 {leadsFunnelTotal > 0 && (
                   <p className="analytics-page__leads-funnel-total">В воронке: <strong>{leadsFunnelTotal}</strong> лидов</p>
@@ -594,8 +598,10 @@ const AnalyticsPage = () => {
                       <span className="analytics-page__bar-value">{x.count ?? 0}</span>
                     </div>
                   ))}
-                  {leadsByResult.length === 0 && leadsByStatus.accepted > 0 && <p className="analytics-page__empty">Статусы результата не заполнены</p>}
-                  {leadsByStatus.accepted === 0 && <p className="analytics-page__empty">Нет принятых лидов</p>}
+                  {leadsByResult.length === 0 && leadsByStatus.accepted > 0 && (
+                    <EmptyState compact message="Статусы результата не заполнены" />
+                  )}
+                  {leadsByStatus.accepted === 0 && <EmptyState compact message="Нет принятых лидов" />}
                 </div>
               </div>
             </div>
@@ -614,7 +620,7 @@ const AnalyticsPage = () => {
                       <span className="analytics-page__bar-value">{x.count ?? 0}</span>
                     </div>
                   ))}
-                  {leadsBySource.length === 0 && <p className="analytics-page__empty">Нет данных</p>}
+                  {leadsBySource.length === 0 && <EmptyState compact message="Нет данных" />}
                 </div>
               </div>
               <div className="analytics-page__leads-block">
@@ -629,7 +635,7 @@ const AnalyticsPage = () => {
                       <span className="analytics-page__bar-value">{x.count ?? 0}</span>
                     </div>
                   ))}
-                  {leadsByTargetType.length === 0 && <p className="analytics-page__empty">Нет данных</p>}
+                  {leadsByTargetType.length === 0 && <EmptyState compact message="Нет данных" />}
                 </div>
               </div>
               <div className="analytics-page__leads-block">
@@ -644,7 +650,7 @@ const AnalyticsPage = () => {
                       <span className="analytics-page__bar-value">{x.count ?? 0}</span>
                     </div>
                   ))}
-                  {leadsBySport.length === 0 && <p className="analytics-page__empty">Нет данных</p>}
+                  {leadsBySport.length === 0 && <EmptyState compact message="Нет данных" />}
                 </div>
               </div>
               <div className="analytics-page__leads-block">
@@ -653,7 +659,11 @@ const AnalyticsPage = () => {
                   {leadsByTrainer.map((x, i) => (
                     <li key={x.trainerId ?? `trainer-${i}`}>{x.trainerName ?? '—'}: {x.count ?? 0}</li>
                   ))}
-                  {leadsByTrainer.length === 0 && <li className="analytics-page__empty">Нет данных</li>}
+                  {leadsByTrainer.length === 0 && (
+                    <li className="analytics-page__leads-empty-li">
+                      <EmptyState compact message="Нет данных" />
+                    </li>
+                  )}
                 </ol>
               </div>
               <div className="analytics-page__leads-block">
@@ -671,8 +681,10 @@ const AnalyticsPage = () => {
                       <span className="analytics-page__bar-value">{x.count ?? 0}</span>
                     </div>
                   ))}
-                  {leadsByTrialStatus.length === 0 && leadsByStatus.accepted > 0 && <p className="analytics-page__empty">Статусы не заполнены</p>}
-                  {leadsByStatus.accepted === 0 && <p className="analytics-page__empty">Нет принятых лидов</p>}
+                  {leadsByTrialStatus.length === 0 && leadsByStatus.accepted > 0 && (
+                    <EmptyState compact message="Статусы не заполнены" />
+                  )}
+                  {leadsByStatus.accepted === 0 && <EmptyState compact message="Нет принятых лидов" />}
                 </div>
               </div>
             </div>
@@ -707,7 +719,7 @@ const AnalyticsPage = () => {
                     ))}
                   </tbody>
                 </table>
-                {trainerItems.length === 0 && <p className="analytics-page__empty">Нет данных</p>}
+                {trainerItems.length === 0 && <EmptyState compact message="Нет данных" />}
               </div>
             </section>
 
@@ -741,7 +753,7 @@ const AnalyticsPage = () => {
                     ))}
                   </tbody>
                 </table>
-                {newClientsItems.length === 0 && <p className="analytics-page__empty">Нет новых клиентов за период</p>}
+                {newClientsItems.length === 0 && <EmptyState compact message="Нет новых клиентов за период" />}
               </div>
             </section>
 
@@ -767,7 +779,7 @@ const AnalyticsPage = () => {
                     ))}
                   </tbody>
                 </table>
-                {restockItems.length === 0 && <p className="analytics-page__empty">Нет пополнений за период</p>}
+                {restockItems.length === 0 && <EmptyState compact message="Нет пополнений за период" />}
               </div>
 
               <h4 className="analytics-page__subsection-title">Товары с низким остатком</h4>
@@ -838,12 +850,18 @@ const AnalyticsPage = () => {
                 );
               }
               return (
-                <p className="analytics-page__modal-empty">
-                  Нет записей за период.
-                  {income != null && Number(income) > 0 && (
-                    <span className="analytics-page__modal-summary"> Приход по сводке: <strong>{formatMoney(income)}</strong></span>
-                  )}
-                </p>
+                <EmptyState
+                  compact
+                  className="analytics-page__modal-empty-state"
+                  message={
+                    <>
+                      Нет записей за период.
+                      {income != null && Number(income) > 0 && (
+                        <span className="analytics-page__modal-summary"> Приход по сводке: <strong>{formatMoney(income)}</strong></span>
+                      )}
+                    </>
+                  }
+                />
               );
             })()}
             {!detailLoading && detailModal === 'expense' && (() => {
@@ -856,7 +874,9 @@ const AnalyticsPage = () => {
               const savedOnly = baseItems.filter(isRowSaved);
               const expenseItems = savedOnly;
               const expenseTotal = Number(detailData?.total) ?? 0;
-              if (expenseItems.length === 0) return <p>Нет записей за период</p>;
+              if (expenseItems.length === 0) {
+                return <EmptyState compact className="analytics-page__modal-empty-state" message="Нет записей за период" />;
+              }
               return (
                 <>
                   <table className="analytics-page__table">
@@ -893,7 +913,9 @@ const AnalyticsPage = () => {
                 <p className="analytics-page__modal-total">Приходы: {formatMoney(isFeb2026 ? Math.max(0, (detailData.incomeTotal ?? 0) - FEB_2026_ADJUSTMENT) : detailData.incomeTotal)} · Расходы: {formatMoney(detailData.expenseTotal)} · Прибыль: {formatMoney(isFeb2026 ? Math.max(0, (detailData.profit ?? 0) - FEB_2026_ADJUSTMENT) : detailData.profit)}</p>
               </>
             )}
-            {!detailLoading && detailModal === 'profit' && !detailData?.items?.length && <p>Нет записей за период</p>}
+            {!detailLoading && detailModal === 'profit' && !detailData?.items?.length && (
+              <EmptyState compact className="analytics-page__modal-empty-state" message="Нет записей за период" />
+            )}
             <button type="button" className="analytics-page__modal-close" onClick={() => setDetailModal(null)}>Закрыть</button>
           </div>
         </div>

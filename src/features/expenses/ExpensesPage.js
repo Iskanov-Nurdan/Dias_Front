@@ -169,7 +169,7 @@ const ExpensesPage = () => {
                 {categoriesLoading ? (
                   <tr><td colSpan={2} className="expenses-page__loading-cell"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></td></tr>
                 ) : categoriesList.length === 0 ? (
-                  <tr><td colSpan={2} className="expenses-page__empty-cell"><EmptyState message="Нет категорий" /></td></tr>
+                  <tr><td colSpan={2} className="expenses-page__empty-cell"><EmptyState compact message="Нет категорий" /></td></tr>
                 ) : (
                   <>
                     {categoriesList.length < 4 && (
@@ -221,7 +221,7 @@ const ExpensesPage = () => {
                     </tr>
                   ))
                 ) : expensesItems.length === 0 ? (
-                  <tr><td colSpan={6} className="expenses-page__empty-cell"><EmptyState message="Нет расходов" /></td></tr>
+                  <tr><td colSpan={6} className="expenses-page__empty-cell"><EmptyState compact message="Нет расходов" /></td></tr>
                 ) : expensesItems.map((e) => (
                     <tr key={e.id}>
                       <td>{e.name ?? '—'}</td>

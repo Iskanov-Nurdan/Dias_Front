@@ -38,7 +38,7 @@ const TrainersList = ({ items, sports = [], loading, error, onRetry, onEdit, onD
               ) : !list.length ? (
                 <tr>
                   <td colSpan={3} className="trainers-list__empty-cell">
-                    <EmptyState message="Нет тренеров" />
+                    <EmptyState compact message="Нет тренеров" />
                   </td>
                 </tr>
               ) : list.map((t) => (

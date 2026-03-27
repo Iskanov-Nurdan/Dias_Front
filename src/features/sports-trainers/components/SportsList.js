@@ -30,7 +30,7 @@ const SportsList = ({ items, loading, error, onRetry, onEdit, onDelete, confirmD
               ) : !list.length ? (
                 <tr>
                   <td colSpan={2} className="sports-list__empty-cell">
-                    <EmptyState message="Нет видов спорта" />
+                    <EmptyState compact message="Нет видов спорта" />
                   </td>
                 </tr>
               ) : list.map((s) => (

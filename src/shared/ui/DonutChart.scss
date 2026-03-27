@@ -25,7 +25,18 @@
 }
 
 .donut-chart--empty {
-  font-size: 13px;
-  color: var(--color-text-muted);
-  padding: 24px;
+  min-width: 180px;
+  min-height: 180px;
+  box-sizing: border-box;
+  padding: 8px;
+
+  .empty-state {
+    padding: 12px 8px;
+    min-height: 0;
+  }
+
+  .empty-state__illustration {
+    max-height: 120px;
+    max-width: 160px;
+  }
 }

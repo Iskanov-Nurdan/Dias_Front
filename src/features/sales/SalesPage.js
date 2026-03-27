@@ -162,7 +162,7 @@ const SalesPage = () => {
                 </tr>
               ))
             ) : salesItems.length === 0 ? (
-              <tr><td colSpan={7} className="sales-page__empty-cell"><EmptyState message="Нет продаж" /></td></tr>
+              <tr><td colSpan={7} className="sales-page__empty-cell"><EmptyState compact message="Нет продаж" /></td></tr>
             ) : salesItems.map((s) => {
                 const isCancelled = s.status === 'cancelled';
                 return (

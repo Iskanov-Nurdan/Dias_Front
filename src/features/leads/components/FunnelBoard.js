@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { EmptyState } from '../../../shared/ui';
 import './FunnelBoard.scss';
 
 const CHANNEL_LABELS = { instagram: 'Instagram', whatsapp: 'WhatsApp', tiktok: 'TikTok', other: 'Другое' };
@@ -84,7 +85,7 @@ const FunnelBoard = ({ stages, leadsByStage, onCardClick, onMoveLead, loading })
   if (stages.length === 0) {
     return (
       <div className="funnel-board__empty">
-        <p className="funnel-board__empty-text">Этапов пока нет. Добавьте этапы в админке.</p>
+        <EmptyState compact message="Этапов пока нет. Добавьте этапы в админке." />
       </div>
     );
   }

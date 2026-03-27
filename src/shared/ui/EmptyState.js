@@ -1,19 +1,18 @@
 import React from 'react';
 import './EmptyState.scss';
 
-const IconEmpty = () => (
-  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-    <path d="M14 2v6h6" />
-    <path d="M12 18v-6" />
-    <path d="M9 15h6" />
-  </svg>
-);
+const ILLUSTRATION_SRC = `${process.env.PUBLIC_URL || ''}/empty-state.png`;
 
-const EmptyState = ({ message = 'Нет данных', actionLabel, onAction }) => (
-  <div className="empty-state">
-    <span className="empty-state__icon" aria-hidden><IconEmpty /></span>
-    <p className="empty-state__message">{message}</p>
+const EmptyState = ({ message = 'Нет данных', actionLabel, onAction, compact, className = '' }) => (
+  <div className={`empty-state${compact ? ' empty-state--compact' : ''}${className ? ` ${className}` : ''}`.trim()}>
+    <img
+      className="empty-state__illustration"
+      src={ILLUSTRATION_SRC}
+      alt=""
+      loading="lazy"
+      decoding="async"
+    />
+    <div className="empty-state__message">{message}</div>
     {actionLabel && onAction && (
       <button type="button" className="empty-state__action" onClick={onAction}>
         {actionLabel}

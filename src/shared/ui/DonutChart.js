@@ -1,5 +1,6 @@
 import React from 'react';
 import { DONUT_COLORS } from '../constants/common';
+import EmptyState from './EmptyState';
 import './DonutChart.scss';
 
 /**
@@ -7,7 +8,13 @@ import './DonutChart.scss';
  */
 const DonutChart = ({ data, size = 180, strokeWidth = 22, centerLabel = '' }) => {
   const total = data.reduce((s, d) => s + (Number(d.value) || 0), 0);
-  if (total === 0) return <div className="donut-chart donut-chart--empty">Нет данных</div>;
+  if (total === 0) {
+    return (
+      <div className="donut-chart donut-chart--empty">
+        <EmptyState compact message="Нет данных" />
+      </div>
+    );
+  }
   const r = (size - strokeWidth) / 2;
   const cx = size / 2;
   const cy = size / 2;

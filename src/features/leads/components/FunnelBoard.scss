@@ -156,11 +156,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding: 40px 0;
-}
+  padding: 16px 0;
 
-.funnel-board__empty-text {
-  font-size: 14px;
-  color: var(--color-text-muted);
+  .empty-state {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
 }

@@ -6,10 +6,13 @@
   gap: var(--space-4);
   padding: 48px var(--space-6);
 
-  &__icon {
-    color: var(--color-text-muted);
-    opacity: 0.5;
+  &__illustration {
+    display: block;
+    max-width: min(380px, 100%);
+    width: auto;
+    height: auto;
     flex-shrink: 0;
+    object-fit: contain;
   }
 
   &__message {
@@ -19,7 +22,7 @@
     font-weight: 400;
     line-height: 1.5;
     text-align: center;
-    max-width: 320px;
+    max-width: 360px;
   }
 
   &__action {
@@ -38,5 +41,24 @@
 
   &__action:hover {
     background: var(--color-primary-hover);
+  }
+
+  &--compact {
+    padding: 32px var(--space-5);
+    gap: var(--space-4);
+    min-height: 240px;
+    box-sizing: border-box;
+    justify-content: center;
+
+    .empty-state__illustration {
+      max-width: min(300px, 100%);
+      max-height: 200px;
+      width: auto;
+    }
+
+    .empty-state__message {
+      font-size: 15px;
+      max-width: 360px;
+    }
   }
 }

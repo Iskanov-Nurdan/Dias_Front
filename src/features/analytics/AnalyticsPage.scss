@@ -867,6 +867,23 @@
   color: var(--color-text-muted);
 }
 
+.analytics-page__chart-wrap > .empty-state {
+  margin: 0 auto;
+}
+
+.analytics-page__leads-empty-li {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0;
+  width: 100%;
+  text-align: center;
+}
+
+.analytics-page__modal-empty-state.empty-state {
+  padding: 20px 0 28px;
+  min-height: 0;
+}
+
 .analytics-page__chart-legend {
   display: flex;
   flex-wrap: wrap;

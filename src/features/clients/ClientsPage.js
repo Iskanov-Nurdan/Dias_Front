@@ -9,7 +9,7 @@ import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { SEARCH_DEBOUNCE_MS, formatMoney, MONTHS, STATS_YEARS } from '../../shared/constants/common';
 import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiError';
 import { filterClientsByPeriod, getExactDuplicates, getSimilarGroups } from '../../shared/lib/duplicates';
-import { Select, ConfirmModal, Pagination, FiltersModal, FilterBar } from '../../shared/ui';
+import { Select, ConfirmModal, Pagination, FiltersModal, FilterBar, EmptyState } from '../../shared/ui';
 import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal, TrainerDetailsModal, DuplicateGroup } from './components';
 import './ClientsPage.scss';
 
@@ -579,7 +579,9 @@ const ClientsPage = () => {
             <div className="clients-page__dup-empty">Выберите год и месяц для просмотра дубликатов</div>
           ) : activeDupTab === SUBTAB_EXACT ? (
             exactGroups.length === 0 ? (
-              <div className="clients-page__dup-empty">Точных дубликатов не найдено 👍</div>
+              <div className="clients-page__dup-empty">
+                <EmptyState compact message="Точных дубликатов не найдено" />
+              </div>
             ) : (
               <>
                 <p className="clients-page__dup-info">
@@ -591,7 +593,9 @@ const ClientsPage = () => {
             )
           ) : (
             similarGroups.length === 0 ? (
-              <div className="clients-page__dup-empty">Похожих имён не найдено 👍</div>
+              <div className="clients-page__dup-empty">
+                <EmptyState compact message="Похожих имён не найдено" />
+              </div>
             ) : (
               <>
                 <p className="clients-page__dup-info">
@@ -660,7 +664,11 @@ const ClientsPage = () => {
                   </thead>
                   <tbody>
                     {!statsData.byTrainer?.length ? (
-                      <tr><td colSpan={4} className="clients-page__stats-empty">Нет данных</td></tr>
+                      <tr>
+                        <td colSpan={4} className="clients-page__stats-empty">
+                          <EmptyState compact message="Нет данных" />
+                        </td>
+                      </tr>
                     ) : (
                       statsData.byTrainer.map((r) => (
                         <tr
@@ -738,8 +746,17 @@ const ClientsPage = () => {
                     {!(oneTimeData?.items ?? oneTimeData?.results ?? []).length ? (
                       <tr>
                         <td colSpan={5} className="clients-page__stats-empty">
-                          Нет данных
-                          {(oneTimeYear || oneTimeMonth) && <span className="clients-page__onetime-empty-hint"> · Попробуйте сбросить год/месяц</span>}
+                          <EmptyState
+                            compact
+                            message={
+                              <>
+                                Нет данных
+                                {(oneTimeYear || oneTimeMonth) && (
+                                  <span className="clients-page__onetime-empty-hint"> · Попробуйте сбросить год/месяц</span>
+                                )}
+                              </>
+                            }
+                          />
                         </td>
                       </tr>
                     ) : (

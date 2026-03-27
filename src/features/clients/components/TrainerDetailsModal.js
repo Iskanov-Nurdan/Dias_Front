@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { isClientPaid } from '../../../shared/constants/common';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
+import { EmptyState } from '../../../shared/ui';
 import { fetchClients } from '../api';
 import './TrainerDetailsModal.scss';
 
@@ -64,7 +65,11 @@ const TrainerDetailsModal = ({ trainerId, trainerName, year, month, onDetails, o
               </thead>
               <tbody>
                 {students.length === 0 ? (
-                  <tr><td colSpan={6} className="trainer-details-modal__empty">Нет учеников</td></tr>
+                  <tr>
+                    <td colSpan={6} className="trainer-details-modal__empty">
+                      <EmptyState compact message="Нет учеников" />
+                    </td>
+                  </tr>
                 ) : (
                   students.map((c) => (
                     <tr

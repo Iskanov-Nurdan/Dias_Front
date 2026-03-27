@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import Toast from '../../shared/ui/Toast';
 
 const ToastContext = createContext(null);
@@ -36,8 +36,10 @@ export const ToastProvider = ({ children }) => {
     setItems((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  const value = useMemo(() => ({ show, success, error }), [show, success, error]);
+
   return (
-    <ToastContext.Provider value={{ show, success, error }}>
+    <ToastContext.Provider value={value}>
       {children}
       <div className="toast-container" aria-live="polite">
         {items.map((t) => (

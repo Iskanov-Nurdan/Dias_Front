@@ -5,6 +5,7 @@ import {
   User, LogOut, Moon, Sun,
 } from 'lucide-react';
 import { useAuth } from '../providers/AuthProvider';
+import { prefetchRoutePage } from '../prefetchRoutes';
 import { PAGE_IDS, PAGE_LABELS, PAGE_ROUTES, PAGE_GROUPS, PAGE_ICONS } from '../../shared/constants/pages';
 import './MainLayout.scss';
 
@@ -164,6 +165,8 @@ const MainLayout = () => {
                     type="button"
                     className={`main-layout__nav-item ${isActive ? 'main-layout__nav-item--active' : ''}`}
                     onClick={() => { navigate(path); if (isMobile) setMobileMenuOpen(false); }}
+                    onMouseEnter={() => prefetchRoutePage(pageId)}
+                    onFocus={() => prefetchRoutePage(pageId)}
                     title={Label}
                   >
                     {Icon && <span className="main-layout__nav-icon" aria-hidden><Icon size={ICON_SIZE} strokeWidth={1.75} /></span>}

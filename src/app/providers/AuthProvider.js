@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { PAGE_IDS, PAGE_ROUTES } from '../../shared/constants/pages';
 import { logout as logoutApi } from '../../features/auth/api';
@@ -37,7 +37,7 @@ const getStoredUser = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(getStoredUser);
-  const [showAccessDenied, setShowAccessDenied] = useState(false);
+  const [accessDeniedOpen, setAccessDeniedOpen] = useState(false);
 
   const roleName = user?.roleName ?? user?.role?.name ?? '';
   const isAdmin =
@@ -82,13 +82,28 @@ export const AuthProvider = ({ children }) => {
     return '/employees';
   }, [hasAccess]);
 
+  const showAccessDenied = useCallback(() => setAccessDeniedOpen(true), []);
+
+  const authValue = useMemo(
+    () => ({
+      user,
+      login,
+      logout,
+      hasAccess,
+      getFirstAvailableRoute,
+      isAdmin,
+      showAccessDenied,
+    }),
+    [user, login, logout, hasAccess, getFirstAvailableRoute, isAdmin, showAccessDenied]
+  );
+
   const accessDeniedModal =
-    showAccessDenied &&
+    accessDeniedOpen &&
     createPortal(
-      <div className="access-denied-overlay" onClick={() => setShowAccessDenied(false)}>
+      <div className="access-denied-overlay" onClick={() => setAccessDeniedOpen(false)}>
         <div className="access-denied-box" onClick={(e) => e.stopPropagation()}>
           <p className="access-denied-text">У вас нет доступа</p>
-          <button type="button" className="access-denied-btn" onClick={() => setShowAccessDenied(false)}>
+          <button type="button" className="access-denied-btn" onClick={() => setAccessDeniedOpen(false)}>
             Закрыть
           </button>
         </div>
@@ -97,7 +112,7 @@ export const AuthProvider = ({ children }) => {
     );
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, hasAccess, getFirstAvailableRoute, isAdmin, showAccessDenied: () => setShowAccessDenied(true) }}>
+    <AuthContext.Provider value={authValue}>
       {children}
       {accessDeniedModal}
     </AuthContext.Provider>

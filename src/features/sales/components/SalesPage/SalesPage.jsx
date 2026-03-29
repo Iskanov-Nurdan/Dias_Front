@@ -441,7 +441,7 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
     } else {
       setSaleUnit((u) => (u === 'package' ? 'piece' : u));
     }
-  }, [selectedBatch?.id, invForm, selectedBatch, sale?.id]);
+  }, [selectedBatch, invForm, sale?.id]);
 
   /** Новая продажа: при смене партии подставить кратность упаковки только для «Упаковано». */
   useEffect(() => {

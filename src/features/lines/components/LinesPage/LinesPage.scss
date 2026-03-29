@@ -59,6 +59,8 @@
 .lines-card {
   @include card-soft;
   padding: 1.5rem;
+  min-width: 0;
+  box-sizing: border-box;
 
   &__head {
     display: flex;
@@ -66,6 +68,7 @@
     align-items: center;
     gap: 1rem;
     margin-bottom: 1rem;
+    min-width: 0;
   }
 
   &__title {
@@ -80,11 +83,17 @@
     align-items: center;
     gap: 0.75rem;
     margin-left: auto;
+    min-width: 0;
+    flex: 1 1 280px;
   }
 
   &__search {
     padding: 0.5rem 0.75rem;
-    min-width: 220px;
+    min-width: 0;
+    flex: 1 1 160px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -318,10 +327,48 @@
   }
 }
 
+@include mobile {
+  .lines-card__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lines-card__actions {
+    margin-left: 0;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lines-card .lines-table:not(.lines-table--opening):not(.lines-table--history-rich) {
+    .lines-table__header,
+    .lines-table__row {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+
+    .lines-table__th--actions {
+      text-align: left;
+    }
+
+    .lines-table__actions {
+      justify-content: flex-start;
+      flex-wrap: wrap;
+    }
+  }
+}
+
 .lines-table-scroll {
   overflow-x: auto;
   width: 100%;
+  max-width: 100%;
   margin-top: 0.25rem;
+  min-width: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Узкий экран: горизонтальный скролл вместо сжатия колонок */
+.lines-table--opening {
+  min-width: 680px;
 }
 
 .lines-shift-form {

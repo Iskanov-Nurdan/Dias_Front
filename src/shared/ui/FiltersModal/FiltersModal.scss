@@ -1,24 +1,16 @@
 @use '../../styles/variables' as *;
 @use '../../styles/mixins' as *;
 
-@keyframes filtersSheetIn {
-  from {
-    transform: translateY(100%);
-    opacity: 0.96;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
 .filters-modal-overlay {
   @include modal-backdrop;
 
   @include mobile {
-    align-items: flex-end;
-    justify-content: stretch;
-    padding: 0;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+    padding-top: max(var(--space-4), env(safe-area-inset-top, 0px));
+    padding-bottom: max(var(--space-4), env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
   }
 }
 
@@ -36,11 +28,11 @@
 
   @include mobile {
     width: 100%;
-    max-width: none;
-    max-height: min(88vh, 720px);
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    border-bottom: none;
-    animation: filtersSheetIn 0.22s ease;
+    max-width: min(460px, 100%);
+    max-height: min(85vh, calc(100dvh - var(--space-8)));
+    border-radius: var(--radius-lg);
+    border-bottom: 1px solid var(--card-border);
+    animation: modalIn 0.18s ease;
     padding-bottom: 0;
   }
 

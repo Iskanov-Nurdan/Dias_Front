@@ -5,10 +5,12 @@
   @include modal-backdrop;
 
   @include mobile {
-    align-items: flex-end;
-    justify-content: stretch;
-    padding: 0;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+    padding-top: max(var(--space-4), env(safe-area-inset-top, 0px));
+    padding-bottom: max(var(--space-4), env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
   }
 }
 
@@ -24,11 +26,11 @@
 
   @include mobile {
     width: 100%;
-    max-width: 100%;
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    max-height: min(88vh, 640px);
+    max-width: min(480px, 100%);
+    border-radius: var(--radius-lg);
+    max-height: min(85vh, calc(100dvh - var(--space-8)));
     padding: var(--space-4) var(--space-4) var(--space-5);
-    animation: confirmSheetIn 0.22s ease;
+    animation: modalIn 0.16s ease;
   }
 
   &__title {
@@ -124,15 +126,3 @@
     transform: translateY(0);
   }
 }
-
-@keyframes confirmSheetIn {
-  from {
-    opacity: 0.97;
-    transform: translateY(100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-

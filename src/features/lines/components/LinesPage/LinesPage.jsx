@@ -801,126 +801,128 @@ const LinesPage = () => {
               {linesWithStatus.length === 0 ? (
                 <EmptyState title="Нет данных" />
               ) : (
-                <div className="lines-table lines-table--opening">
-                  <div className="lines-table__header">
-                    <span className="lines-table__th">ЛИНИЯ</span>
-                    <span className="lines-table__th">СТАТУС</span>
-                    <span className="lines-table__th">ПАРАМЕТРЫ</span>
-                    <span className="lines-table__th">ПОСЛ. ОТКРЫТИЕ</span>
-                    <span className="lines-table__th">ПОСЛ. ЗАКРЫТИЕ</span>
-                    <span className="lines-table__th lines-table__th--actions">ДЕЙСТВИЯ</span>
-                  </div>
-                  {linesWithStatus.map((l) => (
-                    <div key={l.id} className="lines-table__row">
-                      <span className="lines-table__name">{l.name}</span>
-                      <span>
-                        <span
-                          className={`lines-table__badge ${
-                            !l.isOpen
-                              ? 'lines-table__badge--closed'
-                              : l.isPaused
-                                ? 'lines-table__badge--paused'
-                                : 'lines-table__badge--open'
-                          }`}
-                          title={l.isPaused && l.pauseReason ? `Причина: ${l.pauseReason}` : undefined}
-                        >
-                          {!l.isOpen ? 'Смена закрыта' : l.isPaused ? 'Смена остановлена' : 'Смена открыта'}
+                <div className="lines-table-scroll">
+                  <div className="lines-table lines-table--opening">
+                    <div className="lines-table__header">
+                      <span className="lines-table__th">ЛИНИЯ</span>
+                      <span className="lines-table__th">СТАТУС</span>
+                      <span className="lines-table__th">ПАРАМЕТРЫ</span>
+                      <span className="lines-table__th">ПОСЛ. ОТКРЫТИЕ</span>
+                      <span className="lines-table__th">ПОСЛ. ЗАКРЫТИЕ</span>
+                      <span className="lines-table__th lines-table__th--actions">ДЕЙСТВИЯ</span>
+                    </div>
+                    {linesWithStatus.map((l) => (
+                      <div key={l.id} className="lines-table__row">
+                        <span className="lines-table__name">{l.name}</span>
+                        <span>
+                          <span
+                            className={`lines-table__badge ${
+                              !l.isOpen
+                                ? 'lines-table__badge--closed'
+                                : l.isPaused
+                                  ? 'lines-table__badge--paused'
+                                  : 'lines-table__badge--open'
+                            }`}
+                            title={l.isPaused && l.pauseReason ? `Причина: ${l.pauseReason}` : undefined}
+                          >
+                            {!l.isOpen ? 'Смена закрыта' : l.isPaused ? 'Смена остановлена' : 'Смена открыта'}
+                          </span>
                         </span>
-                      </span>
-                      <span className="lines-table__params" title="Текущие параметры смены">
-                        {l.isOpen ? formatParamsShort(l.shiftSnapshot) : '—'}
-                      </span>
-                      <span className="lines-table__date">
-                        {formatDateTime(l.lastOpenEv?.date, l.lastOpenEv?.time)}
-                      </span>
-                      <span className="lines-table__date">
-                        {formatDateTime(l.lastCloseEv?.date, l.lastCloseEv?.time)}
-                      </span>
-                      <div className="lines-table__actions lines-table__actions--wrap">
-                        {l.isOpen ? (
-                          <>
-                            {l.isPaused ? (
-                              <button
-                                type="button"
-                                className="btn btn--primary btn--sm"
-                                onClick={() => {
-                                  setSubmitError('');
-                                  setShiftModal({
-                                    type: 'resume',
-                                    line: l,
-                                    modalKey: Date.now(),
-                                  });
-                                }}
-                              >
-                                Возобновить
-                              </button>
-                            ) : (
+                        <span className="lines-table__params" title="Текущие параметры смены">
+                          {l.isOpen ? formatParamsShort(l.shiftSnapshot) : '—'}
+                        </span>
+                        <span className="lines-table__date">
+                          {formatDateTime(l.lastOpenEv?.date, l.lastOpenEv?.time)}
+                        </span>
+                        <span className="lines-table__date">
+                          {formatDateTime(l.lastCloseEv?.date, l.lastCloseEv?.time)}
+                        </span>
+                        <div className="lines-table__actions lines-table__actions--wrap">
+                          {l.isOpen ? (
+                            <>
+                              {l.isPaused ? (
+                                <button
+                                  type="button"
+                                  className="btn btn--primary btn--sm"
+                                  onClick={() => {
+                                    setSubmitError('');
+                                    setShiftModal({
+                                      type: 'resume',
+                                      line: l,
+                                      modalKey: Date.now(),
+                                    });
+                                  }}
+                                >
+                                  Возобновить
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="btn btn--secondary btn--sm"
+                                  onClick={() => {
+                                    setSubmitError('');
+                                    setShiftModal({
+                                      type: 'pause',
+                                      line: l,
+                                      modalKey: Date.now(),
+                                    });
+                                  }}
+                                >
+                                  Остановить
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 className="btn btn--secondary btn--sm"
                                 onClick={() => {
                                   setSubmitError('');
                                   setShiftModal({
-                                    type: 'pause',
+                                    type: 'params',
                                     line: l,
+                                    initial: eventToForm(l.shiftSnapshot),
                                     modalKey: Date.now(),
                                   });
                                 }}
                               >
-                                Остановить
+                                Параметры
                               </button>
-                            )}
+                              <button
+                                type="button"
+                                className="btn btn--secondary btn--sm"
+                                onClick={() => {
+                                  setSubmitError('');
+                                  setShiftModal({
+                                    type: 'close',
+                                    line: l,
+                                    initial: eventToForm(l.shiftSnapshot),
+                                    modalKey: Date.now(),
+                                  });
+                                }}
+                              >
+                                Закрыть смену
+                              </button>
+                            </>
+                          ) : (
                             <button
                               type="button"
-                              className="btn btn--secondary btn--sm"
+                              className="btn btn--open btn--sm"
                               onClick={() => {
                                 setSubmitError('');
                                 setShiftModal({
-                                  type: 'params',
+                                  type: 'open',
                                   line: l,
-                                  initial: eventToForm(l.shiftSnapshot),
+                                  initial: emptyParams(),
                                   modalKey: Date.now(),
                                 });
                               }}
                             >
-                              Параметры
+                              Открыть смену
                             </button>
-                            <button
-                              type="button"
-                              className="btn btn--secondary btn--sm"
-                              onClick={() => {
-                                setSubmitError('');
-                                setShiftModal({
-                                  type: 'close',
-                                  line: l,
-                                  initial: eventToForm(l.shiftSnapshot),
-                                  modalKey: Date.now(),
-                                });
-                              }}
-                            >
-                              Закрыть смену
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            type="button"
-                            className="btn btn--open btn--sm"
-                            onClick={() => {
-                              setSubmitError('');
-                              setShiftModal({
-                                type: 'open',
-                                line: l,
-                                initial: emptyParams(),
-                                modalKey: Date.now(),
-                              });
-                            }}
-                          >
-                            Открыть смену
-                          </button>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
             </>

@@ -53,6 +53,8 @@
 
   /* Портал в body + position:fixed в JS — не режется overflow таблицы (.data-table { overflow: hidden }) */
   &--portal {
+    max-width: min(320px, calc(100vw - 16px));
+    box-sizing: border-box;
     max-height: min(320px, calc(100vh - 24px));
     overflow-y: auto;
     @include scrollbar;

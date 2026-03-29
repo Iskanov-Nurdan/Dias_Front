@@ -12,40 +12,79 @@ const ActionMenu = ({ items, align = 'right', ariaLabel = 'Действия' }) 
   const dropdownRef = useRef(null);
 
   const updatePosition = useCallback(() => {
-    const el = rootRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
+    const trigger = rootRef.current;
+    const menu = dropdownRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
     const gap = 4;
-    const top = rect.bottom + gap;
-    if (align === 'right') {
+    const pad = 8;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const fallbackW = 168;
+
+    const apply = () => {
+      const m = dropdownRef.current;
+      if (!m) return;
+      const mw = m.offsetWidth || fallbackW;
+      const mh = m.offsetHeight || 0;
+
+      let left = align === 'right' ? rect.right - mw : rect.left;
+      left = Math.max(pad, Math.min(left, vw - pad - mw));
+
+      let top = rect.bottom + gap;
+      if (mh > 0 && top + mh > vh - pad) {
+        top = rect.top - mh - gap;
+      }
+      if (mh > 0) {
+        top = Math.max(pad, Math.min(top, vh - pad - mh));
+      } else {
+        top = Math.max(pad, top);
+      }
+
       setMenuStyle({
         position: 'fixed',
         top,
-        right: Math.max(8, window.innerWidth - rect.right),
-        left: 'auto',
-        zIndex: MENU_Z,
-      });
-    } else {
-      setMenuStyle({
-        position: 'fixed',
-        top,
-        left: Math.max(8, rect.left),
+        left,
         right: 'auto',
         zIndex: MENU_Z,
       });
+    };
+
+    if (!menu) {
+      setMenuStyle({
+        position: 'fixed',
+        top: Math.max(pad, rect.bottom + gap),
+        left: Math.max(
+          pad,
+          Math.min(
+            align === 'right' ? rect.right - fallbackW : rect.left,
+            vw - pad - fallbackW
+          )
+        ),
+        right: 'auto',
+        zIndex: MENU_Z,
+      });
+      return;
     }
+
+    apply();
   }, [align]);
 
   useLayoutEffect(() => {
     if (!open) return;
     updatePosition();
+    const id = requestAnimationFrame(() => {
+      updatePosition();
+    });
     window.addEventListener('scroll', updatePosition, true);
     window.addEventListener('resize', updatePosition);
     return () => {
+      cancelAnimationFrame(id);
       window.removeEventListener('scroll', updatePosition, true);
       window.removeEventListener('resize', updatePosition);
     };
-  }, [open, updatePosition]);
+  }, [open, updatePosition, items?.length]);
 
   useEffect(() => {
     if (!open) return;

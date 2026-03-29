@@ -55,6 +55,10 @@
     @include select-focus-ring;
   }
 
+  @include mobile {
+    min-height: 48px;
+  }
+
   &__value {
     flex: 1;
     min-width: 0;
@@ -98,7 +102,6 @@
 }
 
 .dias-select__dropdown {
-  position: fixed;
   z-index: var(--z-dropdown);
   background: var(--select-dropdown-bg);
   border-radius: var(--select-dropdown-radius);
@@ -122,6 +125,136 @@
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+.dias-select-sheet-root {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dropdown);
+  display: flex;
+  align-items: flex-end;
+  justify-content: stretch;
+  pointer-events: none;
+}
+
+.dias-select-sheet__backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.dias-select-sheet {
+  position: relative;
+  width: 100%;
+  max-height: min(85vh, 520px);
+  background: var(--select-dropdown-bg);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: var(--select-dropdown-shadow);
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  animation: diasSelectSheetIn 0.22s ease;
+}
+
+@keyframes diasSelectSheetIn {
+  from {
+    transform: translateY(100%);
+    opacity: 0.96;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.dias-select-sheet__handle {
+  flex-shrink: 0;
+  width: 36px;
+  height: 4px;
+  margin: var(--space-2) auto 0;
+  border-radius: var(--radius-full);
+  background: var(--border);
+}
+
+.dias-select-sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.dias-select-sheet__title {
+  font-size: var(--font-label);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.dias-select-sheet__close {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+
+  &:hover {
+    background: var(--bg-hover);
+    color: var(--text);
+  }
+}
+
+.dias-select-sheet__list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2) var(--space-3) var(--space-4);
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  @include scrollbar;
+}
+
+.dias-select-sheet__option {
+  margin: 0;
+  min-height: 48px;
+  padding: var(--space-3) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-body);
+  line-height: var(--leading-normal);
+  font-weight: var(--weight-normal);
+  color: var(--select-text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: background 0.14s ease;
+
+  &:active {
+    background: var(--select-option-hover);
+  }
+
+  &--selected {
+    background: var(--select-option-selected-bg);
+    color: var(--select-option-selected-text);
+    font-weight: var(--weight-medium);
   }
 }
 

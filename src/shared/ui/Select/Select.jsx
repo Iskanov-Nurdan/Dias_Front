@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { useModalEffect } from '../../hooks/useModalEffect';
 import './Select.scss';
 
 const Select = ({
@@ -18,29 +20,40 @@ const Select = ({
   const dropdownRef = useRef(null);
   const id = useId();
   const listboxId = `select-listbox-${id}`;
+  const isMobile = useIsMobile();
 
   const selected = options.find((o) => o.value === value);
 
+  useModalEffect(isMobile && open, () => setOpen(false));
+
   const updatePos = useCallback(() => {
-    if (!triggerRef.current) return;
+    if (!triggerRef.current || isMobile) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const dropH = Math.min(options.length * 44 + 16, 300);
-    const openUp = spaceBelow < dropH + 8 && rect.top > dropH + 8;
-    setPos({
-      left: rect.left + window.scrollX,
-      width: rect.width,
-      top: openUp
-        ? rect.top + window.scrollY - dropH - 4
-        : rect.bottom + window.scrollY + 4,
-    });
-  }, [options.length]);
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const pad = 8;
+    const itemH = 44;
+    const maxDrop = Math.min(288, Math.floor(vh * 0.5));
+    const estimatedH = Math.min(options.length * itemH + 16, maxDrop);
+    const spaceBelow = vh - rect.bottom - pad;
+    const spaceAbove = rect.top - pad;
+    const openUp = estimatedH > spaceBelow && spaceAbove > spaceBelow;
+    let top = openUp ? rect.top - estimatedH - 4 : rect.bottom + 4;
+    let left = rect.left;
+    let width = Math.max(rect.width, 160);
+    if (left + width > vw - pad) left = Math.max(pad, vw - pad - width);
+    if (left < pad) left = pad;
+    width = Math.min(width, vw - 2 * pad);
+    if (top + estimatedH > vh - pad) top = Math.max(pad, vh - pad - estimatedH);
+    if (top < pad) top = pad;
+    setPos({ top, left, width });
+  }, [options.length, isMobile]);
 
   const handleTriggerClick = () => {
     if (disabled) return;
     setOpen((prev) => {
       if (prev) return false;
-      updatePos();
+      if (!isMobile) updatePos();
       return true;
     });
   };
@@ -51,7 +64,7 @@ const Select = ({
   };
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || isMobile) return;
     const close = (e) => {
       if (
         !triggerRef.current?.contains(e.target) &&
@@ -73,7 +86,78 @@ const Select = ({
       window.removeEventListener('scroll', updatePos, true);
       window.removeEventListener('resize', updatePos);
     };
-  }, [open, updatePos]);
+  }, [open, isMobile, updatePos]);
+
+  const desktopDropdown = open && !isMobile && (
+    <ul
+      ref={dropdownRef}
+      id={listboxId}
+      role="listbox"
+      className="dias-select__dropdown"
+      style={{
+        position: 'fixed',
+        top: pos.top,
+        left: pos.left,
+        width: pos.width,
+      }}
+    >
+      {options.map((opt) => (
+        <li
+          key={String(opt.value)}
+          role="option"
+          aria-selected={opt.value === value}
+          className={`dias-select__option ${opt.value === value ? 'dias-select__option--selected' : ''}`}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            handleSelect(opt);
+          }}
+        >
+          {opt.label}
+        </li>
+      ))}
+    </ul>
+  );
+
+  const mobileSheet = open && isMobile && (
+    <div className="dias-select-sheet-root">
+      <button
+        type="button"
+        className="dias-select-sheet__backdrop"
+        aria-label="Закрыть"
+        onClick={() => setOpen(false)}
+      />
+      <div className="dias-select-sheet" role="dialog" aria-modal="true" aria-label={placeholder}>
+        <div className="dias-select-sheet__handle" aria-hidden />
+        <div className="dias-select-sheet__header">
+          <span className="dias-select-sheet__title">{placeholder}</span>
+          <button type="button" className="dias-select-sheet__close" onClick={() => setOpen(false)} aria-label="Закрыть">
+            ×
+          </button>
+        </div>
+        <ul
+          ref={dropdownRef}
+          id={listboxId}
+          role="listbox"
+          className="dias-select-sheet__list"
+        >
+          {options.map((opt) => (
+            <li
+              key={String(opt.value)}
+              role="option"
+              aria-selected={opt.value === value}
+              className={`dias-select-sheet__option ${opt.value === value ? 'dias-select-sheet__option--selected' : ''}`}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleSelect(opt);
+              }}
+            >
+              {opt.label}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -85,7 +169,6 @@ const Select = ({
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-invalid={invalid || undefined}
         aria-controls={open ? listboxId : undefined}
         {...rest}
       >
@@ -99,28 +182,8 @@ const Select = ({
         </span>
       </button>
 
-      {open && createPortal(
-        <ul
-          ref={dropdownRef}
-          id={listboxId}
-          role="listbox"
-          className="dias-select__dropdown"
-          style={{ top: pos.top, left: pos.left, width: pos.width }}
-        >
-          {options.map((opt) => (
-            <li
-              key={String(opt.value)}
-              role="option"
-              aria-selected={opt.value === value}
-              className={`dias-select__option ${opt.value === value ? 'dias-select__option--selected' : ''}`}
-              onMouseDown={(e) => { e.preventDefault(); handleSelect(opt); }}
-            >
-              {opt.label}
-            </li>
-          ))}
-        </ul>,
-        document.body
-      )}
+      {desktopDropdown && createPortal(desktopDropdown, document.body)}
+      {mobileSheet && createPortal(mobileSheet, document.body)}
     </>
   );
 };

@@ -387,7 +387,16 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
     if (pid == null || pid === '') return;
     const match = products.find((b) => sameWarehouseProductKey(pid, b));
     if (match) setProduct(String(match.id));
-  }, [sale?.id, sale?.product_id, sale?.warehouse_batch_id, sale?.batch_id, products]);
+  }, [
+    sale?.id,
+    sale?.product_id,
+    sale?.product,
+    sale?.warehouse_batch_id,
+    sale?.warehouse_batch?.id,
+    sale?.batch_id,
+    sale?.stock_batch_id,
+    products,
+  ]);
 
   const saleFormSnapshot = useMemo(
     () => ({
@@ -447,7 +456,7 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
     } else {
       setOverridePiecesPerPackage('');
     }
-  }, [selectedBatch?.id, sale?.id]);
+  }, [selectedBatch, sale?.id]);
 
   /** Редактирование: в записи продажи нет override, в партии есть кратность — подставить в поле. */
   useEffect(() => {
@@ -461,7 +470,7 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
     if (Number.isFinite(m.piecesPerPackage) && m.piecesPerPackage > 0) {
       setOverridePiecesPerPackage(formatNumberForInput(m.piecesPerPackage));
     }
-  }, [sale?.id, selectedBatch?.id, sale?.quantity_unit, sale?.override_pieces_per_package]);
+  }, [sale?.id, selectedBatch, sale?.quantity_unit, sale?.override_pieces_per_package]);
 
   /**
    * Откуда списывать на бэке. Зависит от формы строки склада, не только от единицы продажи:

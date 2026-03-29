@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../../features/auth';
-import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
-import { Loading, EmptyState, ErrorState, FilterBar, useToast, DecimalInput, ConfirmModal } from '../../../../shared/ui';
+import { useDiscardOnClose, useDirtyFromBaseline, useIsMobile } from '../../../../shared/hooks';
+import { Loading, EmptyState, ErrorState, FilterBar, FiltersModal, useToast, DecimalInput, ConfirmModal } from '../../../../shared/ui';
 import {
   useServerQuery,
   formatNumberForInput,
@@ -97,6 +97,39 @@ const updateQuery = (setter) => (patch) => {
   }));
 };
 
+const OTK_AWAITING_MODAL_FILTERS = [
+  {
+    key: 'ordering',
+    type: 'ordering',
+    placeholder: 'Сортировка',
+    options: [
+      { value: 'date', label: 'Дата (возр.)' },
+      { value: '-date', label: 'Дата (убыв.)' },
+    ],
+  },
+];
+
+const OTK_HISTORY_MODAL_FILTERS = [
+  {
+    key: 'otk_status',
+    type: 'select',
+    placeholder: 'Статус',
+    options: [
+      { value: 'accepted', label: 'Принято' },
+      { value: 'rejected', label: 'Забраковано' },
+    ],
+  },
+  {
+    key: 'ordering',
+    type: 'ordering',
+    placeholder: 'Сортировка',
+    options: [
+      { value: 'otk_checked_at', label: 'Проверка (возр.)' },
+      { value: '-otk_checked_at', label: 'Проверка (убыв.)' },
+    ],
+  },
+];
+
 const Pagination = ({ meta, onChange }) => {
   const page = Number(meta?.page || 1);
   const totalPages = Number(meta?.total_pages ?? meta?.totalPages ?? 1);
@@ -173,6 +206,8 @@ const HistoryDetailModal = ({ batch, onClose }) => {
 const OTKPage = () => {
   const { user } = useAuth();
   const toast = useToast();
+  const isMobile = useIsMobile();
+  const [otkFiltersOpen, setOtkFiltersOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('awaiting');
   const [acceptModalBatch, setAcceptModalBatch] = useState(null);
   const [historyDetailBatch, setHistoryDetailBatch] = useState(null);
@@ -196,6 +231,10 @@ const OTKPage = () => {
 
   useEffect(() => {
     if (activeTab !== 'history') setHistoryDetailBatch(null);
+  }, [activeTab]);
+
+  useEffect(() => {
+    setOtkFiltersOpen(false);
   }, [activeTab]);
 
   const {
@@ -268,17 +307,47 @@ const OTKPage = () => {
       {activeTab === 'awaiting' && (
         <div className="otk-card">
           <h2 className="otk-card__title">Ожидают проверки</h2>
-          <FilterBar
-            filters={[
-              { key: 'search', type: 'search', placeholder: 'Поиск' },
-              { key: 'ordering', type: 'ordering', placeholder: 'Сортировка', options: [
-                { value: 'date', label: 'Дата (возр.)' },
-                { value: '-date', label: 'Дата (убыв.)' },
-              ] },
-            ]}
-            queryState={awaitingQuery}
-            onChange={onAwaitingQueryChange}
-          />
+          {isMobile ? (
+            <>
+              <div className="otk-filters-mobile">
+                <input
+                  type="search"
+                  className="ds-toolbar__search ds-toolbar__search--full"
+                  placeholder="Поиск"
+                  value={awaitingQuery.search}
+                  onChange={(e) => onAwaitingQueryChange({ search: e.target.value })}
+                />
+                <button type="button" className="btn btn--secondary" onClick={() => setOtkFiltersOpen(true)}>
+                  Фильтры
+                </button>
+              </div>
+              <FiltersModal
+                open={otkFiltersOpen}
+                onClose={() => setOtkFiltersOpen(false)}
+                onReset={() => onAwaitingQueryChange({ ordering: '' })}
+                title="Сортировка"
+              >
+                <FilterBar
+                  stack
+                  filters={OTK_AWAITING_MODAL_FILTERS}
+                  queryState={awaitingQuery}
+                  onChange={onAwaitingQueryChange}
+                />
+              </FiltersModal>
+            </>
+          ) : (
+            <FilterBar
+              filters={[
+                { key: 'search', type: 'search', placeholder: 'Поиск' },
+                { key: 'ordering', type: 'ordering', placeholder: 'Сортировка', options: [
+                  { value: 'date', label: 'Дата (возр.)' },
+                  { value: '-date', label: 'Дата (убыв.)' },
+                ] },
+              ]}
+              queryState={awaitingQuery}
+              onChange={onAwaitingQueryChange}
+            />
+          )}
           {loadingAwaiting && <Loading />}
           {errorAwaiting && <ErrorState error={errorAwaiting} onRetry={refetchAwaiting} />}
           {!loadingAwaiting && !errorAwaiting && awaitingList.length === 0 && (
@@ -328,21 +397,51 @@ const OTKPage = () => {
       {activeTab === 'history' && (
         <div className="otk-card">
           <h2 className="otk-card__title">История</h2>
-          <FilterBar
-            filters={[
-              { key: 'search', type: 'search', placeholder: 'Поиск' },
-              { key: 'otk_status', type: 'select', placeholder: 'Статус', options: [
-                { value: 'accepted', label: 'Принято' },
-                { value: 'rejected', label: 'Забраковано' },
-              ] },
-              { key: 'ordering', type: 'ordering', placeholder: 'Сортировка', options: [
-                { value: 'otk_checked_at', label: 'Проверка (возр.)' },
-                { value: '-otk_checked_at', label: 'Проверка (убыв.)' },
-              ] },
-            ]}
-            queryState={historyQuery}
-            onChange={onHistoryQueryChange}
-          />
+          {isMobile ? (
+            <>
+              <div className="otk-filters-mobile">
+                <input
+                  type="search"
+                  className="ds-toolbar__search ds-toolbar__search--full"
+                  placeholder="Поиск"
+                  value={historyQuery.search}
+                  onChange={(e) => onHistoryQueryChange({ search: e.target.value })}
+                />
+                <button type="button" className="btn btn--secondary" onClick={() => setOtkFiltersOpen(true)}>
+                  Фильтры
+                </button>
+              </div>
+              <FiltersModal
+                open={otkFiltersOpen}
+                onClose={() => setOtkFiltersOpen(false)}
+                onReset={() => onHistoryQueryChange({ otk_status: '', ordering: '' })}
+                title="Фильтры"
+              >
+                <FilterBar
+                  stack
+                  filters={OTK_HISTORY_MODAL_FILTERS}
+                  queryState={historyQuery}
+                  onChange={onHistoryQueryChange}
+                />
+              </FiltersModal>
+            </>
+          ) : (
+            <FilterBar
+              filters={[
+                { key: 'search', type: 'search', placeholder: 'Поиск' },
+                { key: 'otk_status', type: 'select', placeholder: 'Статус', options: [
+                  { value: 'accepted', label: 'Принято' },
+                  { value: 'rejected', label: 'Забраковано' },
+                ] },
+                { key: 'ordering', type: 'ordering', placeholder: 'Сортировка', options: [
+                  { value: 'otk_checked_at', label: 'Проверка (возр.)' },
+                  { value: '-otk_checked_at', label: 'Проверка (убыв.)' },
+                ] },
+              ]}
+              queryState={historyQuery}
+              onChange={onHistoryQueryChange}
+            />
+          )}
           {loadingHistory && <Loading />}
           {errorHistory && <ErrorState error={errorHistory} onRetry={refetchHistory} />}
           {!loadingHistory && !errorHistory && historyList.length === 0 && (

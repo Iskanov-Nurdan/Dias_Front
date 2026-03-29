@@ -84,21 +84,27 @@ const ClientsPage = () => {
       <header className="ds-page-top">
         <p className="ds-page-top__desc">Контакты для документов и отгрузок.</p>
       </header>
-      <div className="ds-toolbar">
+      <div className="ds-toolbar ds-toolbar--stack-mobile">
         <div className="ds-toolbar__start">
           <input
             type="text"
-            className="ds-toolbar__search"
+            className="ds-toolbar__search ds-toolbar__search--full"
             placeholder="Поиск"
             value={queryState.search}
             onChange={(e) => setQueryState((p) => ({ ...p, search: e.target.value, page: 1 }))}
           />
         </div>
-        <div className="ds-toolbar__end">
+        <div className="ds-toolbar__end ds-hide-mobile">
           <button type="button" className="btn btn--primary" onClick={() => setModalClient({})}>
             Создать
           </button>
         </div>
+      </div>
+
+      <div className="ds-sticky-mobile-actions">
+        <button type="button" className="btn btn--primary" onClick={() => setModalClient({})}>
+          Создать
+        </button>
       </div>
 
       {loading && <Loading />}

@@ -31,6 +31,43 @@
   td:nth-child(4) {
     width: 16%;
   }
+
+  @include mobile {
+    th:nth-child(n),
+    td:nth-child(n) {
+      width: auto;
+    }
+
+    td:nth-child(n)::before {
+      flex-shrink: 0;
+      margin-right: var(--space-2);
+      font-size: var(--font-caption);
+      font-weight: var(--weight-medium);
+      color: var(--text-muted);
+      text-align: left;
+    }
+
+    td:nth-child(1)::before {
+      display: none;
+    }
+
+    td:nth-child(1) {
+      font-size: var(--font-body);
+      font-weight: var(--weight-medium);
+    }
+
+    td:nth-child(2)::before {
+      content: 'Продукт';
+    }
+
+    td:nth-child(3)::before {
+      content: 'Количество';
+    }
+
+    td:nth-child(4)::before {
+      content: 'Сумма';
+    }
+  }
 }
 
 .sales-table__qty-cell {

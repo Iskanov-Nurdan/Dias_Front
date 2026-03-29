@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
+import { useDiscardOnClose, useDirtyFromBaseline, useIsMobile } from '../../../../shared/hooks';
 import {
   useServerQuery,
   formatNumberForInput,
@@ -11,7 +11,7 @@ import {
   getWarehouseQuantityPresentation,
 } from '../../../../shared/lib';
 import { buildWarehouseBatchCardRows } from '../warehouseBatchCard';
-import { EmptyState, ErrorState, Loading, useToast, DecimalInput, ConfirmModal, ActionMenu } from '../../../../shared/ui';
+import { EmptyState, ErrorState, Loading, useToast, DecimalInput, ConfirmModal, ActionMenu, FiltersModal } from '../../../../shared/ui';
 import Select from '../../../../shared/ui/Select/Select';
 import { apiClient } from '../../../../shared/api';
 import { useOperationalRefetch } from '../../../../shared/realtime';
@@ -49,6 +49,8 @@ const WarehouseBatchDetailModal = ({ batch, onClose }) => {
 
 const WarehousePage = () => {
   const toast = useToast();
+  const isMobile = useIsMobile();
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [queryState, setQueryState] = useState({
     page: 1,
     page_size: 20,
@@ -88,41 +90,48 @@ const WarehousePage = () => {
 
   return (
     <div className="page page--warehouse">
-      <div className="page--warehouse__toolbar ds-toolbar ds-toolbar--page-head">
+      <div className="page--warehouse__toolbar ds-toolbar ds-toolbar--page-head ds-toolbar--stack-mobile">
         <div className="ds-toolbar__start page--warehouse__filters">
           <input
             type="text"
-            className="ds-toolbar__search page--warehouse__search"
+            className="ds-toolbar__search page--warehouse__search ds-toolbar__search--full"
             placeholder="Поиск"
             value={queryState.search}
             onChange={(e) => setQueryState((p) => ({ ...p, search: e.target.value, page: 1 }))}
           />
-          <Select
-            className="page--warehouse__select"
-            value={queryState.status}
-            placeholder="Статус"
-            options={[
-              { value: '', label: 'Все статусы' },
-              { value: 'available', label: 'Доступно' },
-              { value: 'reserved', label: 'Резерв' },
-              { value: 'shipped', label: 'Продано' },
-            ]}
-            onChange={(val) => setQueryState((p) => ({ ...p, status: val, page: 1 }))}
-          />
-          <Select
-            className="page--warehouse__select"
-            value={queryState.inventory_form}
-            placeholder="Форма"
-            options={[
-              { value: '', label: 'Все формы' },
-              { value: 'unpacked', label: 'Не упаковано' },
-              { value: 'packed', label: 'Упаковано' },
-              { value: 'open_package', label: 'Открытая упаковка' },
-            ]}
-            onChange={(val) => setQueryState((p) => ({ ...p, inventory_form: val, page: 1 }))}
-          />
+          {isMobile && (
+            <button type="button" className="btn btn--secondary page--warehouse__filters-btn" onClick={() => setFiltersOpen(true)}>
+              Фильтры
+            </button>
+          )}
+          <div className="page--warehouse__filters-inline ds-hide-mobile">
+            <Select
+              className="page--warehouse__select"
+              value={queryState.status}
+              placeholder="Статус"
+              options={[
+                { value: '', label: 'Все статусы' },
+                { value: 'available', label: 'Доступно' },
+                { value: 'reserved', label: 'Резерв' },
+                { value: 'shipped', label: 'Продано' },
+              ]}
+              onChange={(val) => setQueryState((p) => ({ ...p, status: val, page: 1 }))}
+            />
+            <Select
+              className="page--warehouse__select"
+              value={queryState.inventory_form}
+              placeholder="Форма"
+              options={[
+                { value: '', label: 'Все формы' },
+                { value: 'unpacked', label: 'Не упаковано' },
+                { value: 'packed', label: 'Упаковано' },
+                { value: 'open_package', label: 'Открытая упаковка' },
+              ]}
+              onChange={(val) => setQueryState((p) => ({ ...p, inventory_form: val, page: 1 }))}
+            />
+          </div>
         </div>
-        <div className="ds-toolbar__end">
+        <div className="ds-toolbar__end ds-hide-mobile">
           <button
             type="button"
             className="btn btn--primary"
@@ -131,6 +140,54 @@ const WarehousePage = () => {
             Упаковать
           </button>
         </div>
+      </div>
+
+      {isMobile && (
+        <FiltersModal
+          open={filtersOpen}
+          onClose={() => setFiltersOpen(false)}
+          onReset={() => setQueryState((p) => ({ ...p, status: '', inventory_form: '', page: 1 }))}
+          title="Фильтры"
+        >
+          <div className="page--warehouse__modal-filters">
+            <label className="page--warehouse__modal-label">Статус</label>
+            <Select
+              className="page--warehouse__select"
+              value={queryState.status}
+              placeholder="Статус"
+              options={[
+                { value: '', label: 'Все статусы' },
+                { value: 'available', label: 'Доступно' },
+                { value: 'reserved', label: 'Резерв' },
+                { value: 'shipped', label: 'Продано' },
+              ]}
+              onChange={(val) => setQueryState((p) => ({ ...p, status: val, page: 1 }))}
+            />
+            <label className="page--warehouse__modal-label">Форма хранения</label>
+            <Select
+              className="page--warehouse__select"
+              value={queryState.inventory_form}
+              placeholder="Форма"
+              options={[
+                { value: '', label: 'Все формы' },
+                { value: 'unpacked', label: 'Не упаковано' },
+                { value: 'packed', label: 'Упаковано' },
+                { value: 'open_package', label: 'Открытая упаковка' },
+              ]}
+              onChange={(val) => setQueryState((p) => ({ ...p, inventory_form: val, page: 1 }))}
+            />
+          </div>
+        </FiltersModal>
+      )}
+
+      <div className="ds-sticky-mobile-actions">
+        <button
+          type="button"
+          className="btn btn--primary"
+          onClick={() => { setPackError(''); setPackOpen(true); }}
+        >
+          Упаковать
+        </button>
       </div>
 
       {loading && <Loading />}

@@ -47,6 +47,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-2);
   padding: 0 var(--space-3) 0 var(--space-4);
   border-bottom: 1px solid var(--sidebar-border);
   height: var(--header-height);
@@ -79,6 +80,32 @@
   color: rgba(255, 255, 255, 0.92);
   letter-spacing: 0.04em;
   white-space: nowrap;
+}
+
+.main-layout__drawer-close {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius-md);
+  color: var(--sidebar-text-muted);
+  cursor: pointer;
+  @include flex-center;
+  transition: all var(--transition-fast);
+
+  &:hover {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.15);
+    background: var(--sidebar-bg-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
 }
 
 .main-layout__collapse-btn {
@@ -364,7 +391,22 @@
   z-index: var(--z-header);
 
   @include mobile {
+    display: grid;
+    grid-template-columns: 40px 1fr 40px;
+    align-items: center;
+    gap: var(--space-2);
     padding: 0 var(--space-4);
+  }
+}
+
+.main-layout__header-spacer {
+  display: none;
+
+  @include mobile {
+    display: block;
+    width: 40px;
+    height: 40px;
+    pointer-events: none;
   }
 }
 
@@ -375,6 +417,14 @@
   color: var(--text);
   line-height: var(--leading-h);
   text-align: left;
+
+  @include mobile {
+    grid-column: 2;
+    font-size: var(--font-h3);
+    text-align: center;
+    min-width: 0;
+    @include text-ellipsis;
+  }
 }
 
 .main-layout__main {
@@ -384,7 +434,7 @@
   @include scrollbar;
 
   @include mobile {
-    padding: var(--space-4);
+    padding: var(--space-3) var(--space-4) calc(var(--space-10) + env(safe-area-inset-bottom, 0px));
   }
 }
 

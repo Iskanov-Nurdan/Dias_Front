@@ -186,15 +186,21 @@ const SalesPage = () => {
 
   return (
     <div className="page page--sales">
-      <div className="ds-toolbar ds-toolbar--page-head">
+      <div className="ds-toolbar ds-toolbar--page-head ds-toolbar--stack-mobile">
         <div className="ds-toolbar__start">
           <p className="sales-page__lede">Отгрузки и накладные.</p>
         </div>
-        <div className="ds-toolbar__end">
+        <div className="ds-toolbar__end ds-hide-mobile">
           <button type="button" className="btn btn--primary" onClick={() => setModalSale({})}>
             Создать
           </button>
         </div>
+      </div>
+
+      <div className="ds-sticky-mobile-actions">
+        <button type="button" className="btn btn--primary" onClick={() => setModalSale({})}>
+          Создать
+        </button>
       </div>
 
       {loading && <Loading />}

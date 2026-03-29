@@ -41,9 +41,6 @@
 }
 
 .action-menu__dropdown {
-  position: absolute;
-  top: calc(100% + var(--space-1));
-  z-index: var(--z-dropdown);
   min-width: 168px;
   margin: 0;
   padding: var(--space-1);
@@ -54,12 +51,11 @@
     var(--shadow-md),
     0 0 0 1px rgba(17, 24, 39, 0.05);
 
-  &--right {
-    right: 0;
-  }
-
-  &--left {
-    left: 0;
+  /* Портал в body + position:fixed в JS — не режется overflow таблицы (.data-table { overflow: hidden }) */
+  &--portal {
+    max-height: min(320px, calc(100vh - 24px));
+    overflow-y: auto;
+    @include scrollbar;
   }
 }
 

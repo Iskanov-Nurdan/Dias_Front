@@ -2,8 +2,10 @@ import React from 'react';
 import Select from '../Select/Select';
 import './FilterBar.scss';
 
-const FilterBar = ({ filters, queryState, onChange, variant }) => (
-  <div className={`filter-bar${variant === 'row' ? ' filter-bar--row' : ''}`.trim()}>
+const FilterBar = ({ filters, queryState, onChange, variant, stack }) => (
+  <div
+    className={`filter-bar${variant === 'row' ? ' filter-bar--row' : ''}${stack ? ' filter-bar--stack' : ''}`.trim()}
+  >
     {filters.map((f) => (
       <div key={f.key} className="filter-bar__item">
         {f.type === 'search' && (

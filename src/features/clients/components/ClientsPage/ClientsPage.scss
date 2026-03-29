@@ -17,6 +17,38 @@
   td:nth-child(2) {
     width: 36%;
   }
+
+  @include mobile {
+    th:nth-child(n),
+    td:nth-child(n) {
+      width: auto;
+    }
+
+    td:nth-child(n)::before {
+      flex-shrink: 0;
+      margin-right: var(--space-2);
+      font-size: var(--font-caption);
+      font-weight: var(--weight-medium);
+      color: var(--text-muted);
+      text-align: left;
+    }
+
+    td:nth-child(1)::before {
+      display: none;
+    }
+
+    td:nth-child(1) {
+      font-size: var(--font-body);
+      font-weight: var(--weight-medium);
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: var(--space-3);
+      margin-bottom: var(--space-1);
+    }
+
+    td:nth-child(2)::before {
+      content: 'Телефон';
+    }
+  }
 }
 
 .clients-history__date {

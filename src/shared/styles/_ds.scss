@@ -130,6 +130,90 @@
   }
 }
 
+@include mobile {
+  .ds-toolbar__search--full {
+    flex: 1 1 100%;
+    max-width: none;
+    width: 100%;
+  }
+
+  .ds-toolbar--stack-mobile {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+
+    .ds-toolbar__start {
+      width: 100%;
+    }
+
+    .ds-toolbar__end {
+      flex-basis: auto;
+      width: 100%;
+      margin-left: 0;
+      justify-content: stretch;
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+        min-height: 44px;
+      }
+    }
+  }
+}
+
+/* Видимость только на мобилке / только на десктопе */
+.ds-hide-mobile {
+  @include mobile {
+    display: none !important;
+  }
+}
+
+.ds-hide-desktop {
+  @include desktop-only {
+    display: none !important;
+  }
+}
+
+/* Одна primary-действие снизу на мобилке */
+.ds-sticky-mobile-actions {
+  display: none;
+
+  @include mobile {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: calc(var(--z-header) - 1);
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+    background: color-mix(in srgb, var(--header-bg) 94%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid var(--header-border);
+    box-shadow: 0 -6px 24px rgba(15, 23, 42, 0.06);
+
+    .btn--primary {
+      flex: 1;
+      min-height: 48px;
+      justify-content: center;
+    }
+  }
+}
+
+@include desktop-only {
+  .ds-toolbar--page-head {
+    flex-wrap: nowrap;
+    align-items: center;
+    margin-bottom: var(--space-5);
+    padding-bottom: var(--space-3);
+  }
+
+  .ds-toolbar__search {
+    max-width: 400px;
+  }
+}
+
 .ds-card {
   background: var(--card);
   border: none;

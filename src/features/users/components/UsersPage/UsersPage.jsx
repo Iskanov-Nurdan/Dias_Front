@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
+import { useDiscardOnClose, useDirtyFromBaseline, useIsMobile } from '../../../../shared/hooks';
 import { useServerQuery } from '../../../../shared/lib';
 import {
   ServerList,
@@ -10,6 +10,7 @@ import {
   ActionMenu,
   useToast,
   Select,
+  FiltersModal,
 } from '../../../../shared/ui';
 import { useAuth } from '../../../auth/model';
 import { createUser, updateUser, deleteUser, updateUserAccess, getUser } from '../../api/usersApi';
@@ -24,6 +25,15 @@ import './UsersPage.scss';
 const USERS_FILTERS_PRIMARY = (roleOptions) => [
   { key: 'search', type: 'search', placeholder: 'Поиск' },
   { key: 'role', type: 'select', placeholder: 'Роль', options: roleOptions },
+];
+
+const USERS_FILTERS_ROLE_ONLY = (rolesList) => [
+  {
+    key: 'role',
+    type: 'select',
+    placeholder: 'Роль',
+    options: rolesList.map((r) => ({ value: String(r.id), label: r.name })),
+  },
 ];
 
 const USERS_FILTERS_EXTRA = () => [
@@ -49,6 +59,8 @@ const cleanQuery = (q) => {
 
 const UsersPage = () => {
   const toast = useToast();
+  const isMobile = useIsMobile();
+  const [usersFiltersOpen, setUsersFiltersOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('users');
   const [queryState, setQueryState] = useState({
     page: 1,
@@ -184,7 +196,7 @@ const UsersPage = () => {
             </button>
           </div>
         </div>
-        <div className="ds-toolbar__end users-page__top-actions">
+        <div className="ds-toolbar__end users-page__top-actions ds-hide-mobile">
           {activeTab === 'roles' && (
             <button type="button" className="btn btn--primary" onClick={() => setRoleModal({})}>
               Создать роль
@@ -196,6 +208,19 @@ const UsersPage = () => {
             </button>
           )}
         </div>
+      </div>
+
+      <div className="ds-sticky-mobile-actions">
+        {activeTab === 'roles' && (
+          <button type="button" className="btn btn--primary" onClick={() => setRoleModal({})}>
+            Создать роль
+          </button>
+        )}
+        {activeTab === 'users' && (
+          <button type="button" className="btn btn--primary" onClick={() => setUserModal({})}>
+            Добавить
+          </button>
+        )}
       </div>
 
       {activeTab === 'roles' && (
@@ -251,24 +276,60 @@ const UsersPage = () => {
           items={users}
           meta={meta}
           onRetry={refetch}
-          renderFilters={() => (
-            <div className="users-page__filters">
-              <FilterBar
-                variant="row"
-                filters={USERS_FILTERS_PRIMARY(roleOptions)}
-                queryState={cleanQuery(queryState)}
-                onChange={handleFilterChange}
-              />
-              <Collapse title="Ещё фильтры">
+          renderFilters={() =>
+            isMobile ? (
+              <>
+                <div className="users-page__filters users-page__filters--mobile">
+                  <div className="users-page__filters-mobile-row">
+                    <input
+                      type="search"
+                      className="ds-toolbar__search ds-toolbar__search--full"
+                      placeholder="Поиск"
+                      value={queryState.search}
+                      onChange={(e) => handleFilterChange({ search: e.target.value })}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn--secondary"
+                      onClick={() => setUsersFiltersOpen(true)}
+                    >
+                      Фильтры
+                    </button>
+                  </div>
+                </div>
+                <FiltersModal
+                  open={usersFiltersOpen}
+                  onClose={() => setUsersFiltersOpen(false)}
+                  onReset={() => handleFilterChange({ role: '', is_active: '', ordering: '' })}
+                  title="Фильтры"
+                >
+                  <FilterBar
+                    stack
+                    filters={[...USERS_FILTERS_ROLE_ONLY(roles), ...USERS_FILTERS_EXTRA()]}
+                    queryState={cleanQuery(queryState)}
+                    onChange={handleFilterChange}
+                  />
+                </FiltersModal>
+              </>
+            ) : (
+              <div className="users-page__filters">
                 <FilterBar
                   variant="row"
-                  filters={USERS_FILTERS_EXTRA()}
+                  filters={USERS_FILTERS_PRIMARY(roleOptions)}
                   queryState={cleanQuery(queryState)}
                   onChange={handleFilterChange}
                 />
-              </Collapse>
-            </div>
-          )}
+                <Collapse title="Ещё фильтры">
+                  <FilterBar
+                    variant="row"
+                    filters={USERS_FILTERS_EXTRA()}
+                    queryState={cleanQuery(queryState)}
+                    onChange={handleFilterChange}
+                  />
+                </Collapse>
+              </div>
+            )
+          }
           filtersClassName="server-list__filters--tight"
           renderTable={(listItems) => (
             <table className="data-table data-table--fixed data-table--users data-table--row-actions data-table--clickable">

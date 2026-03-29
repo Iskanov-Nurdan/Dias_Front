@@ -84,10 +84,32 @@
   }
 }
 
+.otk-filters-mobile {
+  display: none;
+
+  @include mobile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+
+    .btn {
+      width: 100%;
+      min-height: 44px;
+      justify-content: center;
+    }
+  }
+}
+
 .otk-card {
   @include card-soft;
   padding: var(--space-6);
   margin-bottom: var(--space-6);
+
+  @include mobile {
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+  }
 
   &__title {
     margin: 0 0 0.75rem;
@@ -248,6 +270,93 @@
     display: flex;
     gap: 0.5rem;
     justify-content: flex-end;
+  }
+
+  @include mobile {
+    gap: var(--space-3);
+
+    &__header {
+      display: none;
+    }
+
+    &__row {
+      align-items: stretch;
+    }
+
+    &--awaiting &__row {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      padding: var(--space-4);
+
+      > * {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: var(--space-3);
+        padding: var(--space-2) 0;
+        border-bottom: 1px solid var(--border-subtle);
+        font-size: var(--font-label);
+
+        &::before {
+          flex-shrink: 0;
+          font-size: var(--font-caption);
+          font-weight: var(--weight-medium);
+          color: var(--text-muted);
+        }
+
+        &:last-child {
+          border-bottom: none;
+          justify-content: flex-end;
+          padding-top: var(--space-3);
+        }
+      }
+
+      > *:nth-child(1)::before { content: '№ ОТК'; }
+      > *:nth-child(2)::before { content: 'Продукт'; }
+      > *:nth-child(3)::before { content: 'Линия'; }
+      > *:nth-child(4)::before { content: 'Выпуск'; }
+      > *:nth-child(5)::before { content: 'Размеры'; }
+      > *:nth-child(6)::before { content: 'Оператор'; }
+      > *:nth-child(7)::before { content: 'Дата'; }
+    }
+
+    &--history &__row {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      padding: var(--space-4);
+
+      > * {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: var(--space-3);
+        padding: var(--space-2) 0;
+        border-bottom: 1px solid var(--border-subtle);
+        font-size: var(--font-label);
+        text-align: right;
+
+        &::before {
+          flex-shrink: 0;
+          font-size: var(--font-caption);
+          font-weight: var(--weight-medium);
+          color: var(--text-muted);
+          text-align: left;
+        }
+
+        &:last-child {
+          border-bottom: none;
+        }
+      }
+
+      > *:nth-child(1)::before { content: 'Статус'; }
+      > *:nth-child(2)::before { content: '№ ОТК'; }
+      > *:nth-child(3)::before { content: 'Задание'; }
+      > *:nth-child(4)::before { content: 'Принято'; }
+      > *:nth-child(5)::before { content: 'Брак'; }
+      > *:nth-child(6)::before { content: 'Комментарий'; }
+    }
   }
 }
 

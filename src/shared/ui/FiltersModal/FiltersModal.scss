@@ -1,8 +1,25 @@
-﻿@use '../../styles/variables' as *;
+@use '../../styles/variables' as *;
 @use '../../styles/mixins' as *;
+
+@keyframes filtersSheetIn {
+  from {
+    transform: translateY(100%);
+    opacity: 0.96;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
 
 .filters-modal-overlay {
   @include modal-backdrop;
+
+  @include mobile {
+    align-items: flex-end;
+    justify-content: stretch;
+    padding: 0;
+  }
 }
 
 .filters-modal {
@@ -16,6 +33,16 @@
   display: flex;
   flex-direction: column;
   animation: modalIn 0.18s ease;
+
+  @include mobile {
+    width: 100%;
+    max-width: none;
+    max-height: min(88vh, 720px);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border-bottom: none;
+    animation: filtersSheetIn 0.22s ease;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 
   &__head {
     @include flex-between;

@@ -99,6 +99,11 @@ const Icons = {
       <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
     </svg>
   ),
+  X: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  ),
 };
 
 const PAGE_ICONS = {
@@ -116,13 +121,23 @@ const PAGE_ICONS = {
   shifts: Icons.CalendarCheck,
 };
 
-const SidebarContent = memo(({ collapsed, inDrawer, navRows, currentPath, displayName, roleName, toggleCollapsed, handleLogout }) => (
+const SidebarContent = memo(({ collapsed, inDrawer, navRows, currentPath, displayName, roleName, toggleCollapsed, handleLogout, onCloseDrawer }) => (
   <div className={`main-layout__sidebar-inner${inDrawer ? ' main-layout__sidebar-inner--drawer' : ''}`}>
     <div className="main-layout__logo-row">
       <div className="main-layout__logo">
         <span className="main-layout__logo-icon">D</span>
         {(!collapsed || inDrawer) && <span className="main-layout__logo-text">DIAS LINE</span>}
       </div>
+      {inDrawer && onCloseDrawer && (
+        <button
+          type="button"
+          className="main-layout__drawer-close"
+          onClick={onCloseDrawer}
+          aria-label="Закрыть меню"
+        >
+          <Icons.X />
+        </button>
+      )}
       {!inDrawer && (
         <button
           type="button"
@@ -304,6 +319,7 @@ const MainLayout = () => {
           roleName={roleName}
           toggleCollapsed={toggleCollapsed}
           handleLogout={handleLogout}
+          onCloseDrawer={() => setMobileOpen(false)}
         />
       </div>
 
@@ -319,6 +335,7 @@ const MainLayout = () => {
             <Icons.Menu />
           </button>
           <h1 className="main-layout__page-title">{pageTitle}</h1>
+          <span className="main-layout__header-spacer" aria-hidden="true" />
         </header>
         <main className="main-layout__main" ref={mainRef}>
           <div className="main-layout__viewport">

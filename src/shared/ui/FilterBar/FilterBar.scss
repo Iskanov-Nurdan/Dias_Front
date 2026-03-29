@@ -31,6 +31,17 @@
     }
   }
 
+  &--stack {
+    flex-direction: column;
+    align-items: stretch;
+
+    .filter-bar__item {
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: none;
+    }
+  }
+
   &__input {
     min-height: var(--input-height);
     padding: 0 var(--space-3);

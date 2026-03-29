@@ -15,7 +15,8 @@ import {
 import { useAuth } from '../../../auth/model';
 import { createUser, updateUser, deleteUser, updateUserAccess, getUser } from '../../api/usersApi';
 import { createRole, updateRole, deleteRole } from '../../api/rolesApi';
-import { ACCESS_KEYS, ACCESS_LABELS } from '../../../../shared/config/constants';
+import { ACCESS_LABELS, ACCESS_GROUPS } from '../../../../shared/config/constants';
+import { ACCESS_NAV_ICONS } from '../../../../shared/config/navPageIcons';
 import { getUserShifts, getUserActivity, getShiftDetails, getActivityDetail } from '../../../shifts/api/shiftsApi';
 import { fetchShiftActivityList } from '../../../shifts/lib/fetchShiftActivityList';
 import { shiftLineLabel } from '../../../shifts/lib/shiftDisplayUtils';
@@ -403,9 +404,8 @@ const UsersPage = () => {
       {accessModal && (
         <AccessModal
           user={accessModal}
-          accessKeys={ACCESS_KEYS}
+          accessGroups={ACCESS_GROUPS}
           accessLabels={ACCESS_LABELS}
-          roles={roles}
           onSave={handleAccessSave}
           onClose={() => { setAccessModal(null); setSubmitError(''); }}
           error={submitError}
@@ -440,10 +440,15 @@ const UsersPage = () => {
   );
 };
 
-const AccessModal = ({ user, accessKeys, accessLabels, roles, onSave, onClose, error }) => {
+const AccessModal = ({ user, accessGroups, accessLabels, onSave, onClose, error }) => {
   const [selected, setSelected] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const allKeys = React.useMemo(
+    () => accessGroups.flatMap((g) => g.keys),
+    [accessGroups],
+  );
 
   React.useEffect(() => {
     if (!user?.id) {
@@ -474,6 +479,11 @@ const AccessModal = ({ user, accessKeys, accessLabels, roles, onSave, onClose, e
     });
   };
 
+  const selectAllKeys = () => setSelected(new Set(allKeys));
+  const clearAllKeys = () => setSelected(new Set());
+
+  const allSelected = allKeys.length > 0 && allKeys.every((k) => selected.has(k));
+
   const isDirty = useDirtyFromBaseline(String(user?.id ?? ''), loading, {
     access: [...selected].sort().join('|'),
   });
@@ -494,15 +504,16 @@ const AccessModal = ({ user, accessKeys, accessLabels, roles, onSave, onClose, e
         onConfirm={confirmDiscardAndClose}
         onCancel={cancelDiscard}
       />
-      <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
-        <div className="modal__head">
-          <h3>Доступы: {user?.name}</h3>
+      <div className="modal modal--access" onClick={(e) => e.stopPropagation()}>
+        <div className="modal__head access-modal__head">
+          <h3>Доступы — {user?.name}</h3>
           <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
         {loading ? (
-          <p>Загрузка...</p>
+          <div className="access-modal__loading" role="status">Загрузка…</div>
         ) : (
           <form
+            className="access-modal__form"
             onSubmit={async (e) => {
               e.preventDefault();
               if (saving) return;
@@ -514,22 +525,70 @@ const AccessModal = ({ user, accessKeys, accessLabels, roles, onSave, onClose, e
               }
             }}
           >
-            <label className="modal__access-label">Доступы к разделам</label>
-            <div className="access-keys">
-              {accessKeys.map((key) => (
-                <label key={key} className="access-keys__item">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(key)}
-                    onChange={() => toggle(key)}
-                  />
-                  {accessLabels[key] || key}
-                </label>
+            <div className="access-modal__toolbar">
+              <span className="access-modal__toolbar-label">Все разделы</span>
+              <div className="access-modal__toolbar-btns">
+                <button
+                  type="button"
+                  className="access-modal__link-btn"
+                  onClick={selectAllKeys}
+                  disabled={saving || allSelected}
+                >
+                  Выбрать всё
+                </button>
+                <button
+                  type="button"
+                  className="access-modal__link-btn"
+                  onClick={clearAllKeys}
+                  disabled={saving || selected.size === 0}
+                >
+                  Снять всё
+                </button>
+              </div>
+            </div>
+
+            <div className="access-modal__body">
+              {accessGroups.map((group, gi) => (
+                <section key={group.id} className="access-modal__group" aria-labelledby={`access-gr-${group.id}`}>
+                  {gi > 0 && <div className="access-modal__divider" aria-hidden />}
+                  <div className="access-modal__group-head">
+                    <h4 id={`access-gr-${group.id}`} className="access-modal__group-title">
+                      {group.title}
+                    </h4>
+                  </div>
+                  <div className="access-modal__grid">
+                    {group.keys.map((key) => {
+                      const IconComp = ACCESS_NAV_ICONS[key];
+                      return (
+                        <label key={key} className="access-modal__row">
+                          <span className="access-modal__row-leading">
+                            {IconComp ? (
+                              <span className="access-modal__row-icon" aria-hidden>
+                                <IconComp />
+                              </span>
+                            ) : null}
+                            <span className="access-modal__row-label">{accessLabels[key] || key}</span>
+                          </span>
+                          <input
+                            type="checkbox"
+                            className="access-modal__checkbox"
+                            checked={selected.has(key)}
+                            onChange={() => toggle(key)}
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                </section>
               ))}
             </div>
-            {error && <p className="modal__error">{error}</p>}
-            <div className="modal__actions">
-              <button type="button" className="btn btn--secondary" onClick={requestClose} disabled={saving}>Отмена</button>
+
+            {error && <p className="modal__error access-modal__error">{error}</p>}
+
+            <div className="modal__actions access-modal__footer">
+              <button type="button" className="btn btn--secondary" onClick={requestClose} disabled={saving}>
+                Отмена
+              </button>
               <button type="submit" className="btn btn--primary" disabled={saving}>
                 {saving ? 'Сохранение…' : 'Сохранить'}
               </button>

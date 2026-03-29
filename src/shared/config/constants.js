@@ -41,3 +41,16 @@ export const ACCESS_LABELS = {
   my_shift:   'Моя смена',
   shifts:     'Журнал смен',
 };
+
+/** Группы для UI модалки доступов (все ключи из ACCESS_KEYS по одному разу). */
+export const ACCESS_GROUPS = [
+  {
+    id: 'production',
+    title: 'Производство',
+    keys: ['lines', 'materials', 'chemistry', 'recipes', 'orders', 'production', 'otk'],
+  },
+  { id: 'warehouse', title: 'Склад', keys: ['warehouse'] },
+  { id: 'sales', title: 'Продажи', keys: ['clients', 'sales', 'shipments'] },
+  { id: 'personnel', title: 'Персонал', keys: ['users', 'shifts', 'my_shift'] },
+  { id: 'analytics', title: 'Аналитика', keys: ['analytics'] },
+];

@@ -26,8 +26,9 @@ export const deleteSport = async (id, signal) => {
 
 /**
  * GET /api/trainers/
- * query: sportId, sport_id, search, page, perPage,
- *        weekday (1=Пн … 7=Вс), timeFrom, timeTo (HH:mm) — см. docs/API_TRAINER_SCHEDULE.md
+ * query: sportId/sport_id, search, page, perPage,
+ *        weekday/week_day, timeFrom/time_from, timeTo/time_to,
+ *        includeSchedule/include_schedule — в каждом элементе поле schedule как у GET .../schedule/
  */
 export const fetchTrainers = async (queryState, signal) => {
   const params = {};
@@ -53,6 +54,11 @@ export const fetchTrainers = async (queryState, signal) => {
   if (tt) {
     params.timeTo = tt;
     params.time_to = tt;
+  }
+  const inc = queryState?.includeSchedule ?? queryState?.include_schedule;
+  if (inc === true || inc === 'true' || inc === 1) {
+    params.includeSchedule = true;
+    params.include_schedule = true;
   }
   const { data } = await apiClient.get('/trainers/', { params, ...withSignal({}, signal) });
   return data;

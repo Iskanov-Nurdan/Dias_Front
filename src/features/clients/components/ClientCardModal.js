@@ -7,7 +7,32 @@ import { fetchClientOneTimePayments, deleteOneTimePayment } from '../api';
 import { useToast } from '../../../app/providers/ToastProvider';
 import { isPeriodClosedError } from '../../../shared/lib/apiError';
 import { ConfirmModal } from '../../../shared/ui';
+import { WEEKDAYS } from '../../sports-trainers/scheduleConstants';
 import './ClientCardModal.scss';
+
+const formatHm = (v) => {
+  if (v == null || v === '') return '';
+  const s = String(v).trim();
+  return /^\d{2}:\d{2}/.test(s) ? s.slice(0, 5) : s;
+};
+
+/** Строка для карточки: день недели + интервал из training_* */
+const formatTrainingScheduleLabel = (client) => {
+  const tw = client?.trainingWeekday ?? client?.training_weekday;
+  const tf = formatHm(client?.trainingTimeFrom ?? client?.training_time_from);
+  const tt = formatHm(client?.trainingTimeTo ?? client?.training_time_to);
+  const hasDay = tw != null && tw !== '';
+  const hasTime = Boolean(tf || tt);
+  if (!hasDay && !hasTime) return '—';
+  const dayMeta = hasDay ? WEEKDAYS.find((w) => w.weekday === Number(tw)) : null;
+  const dayPart = dayMeta ? dayMeta.label : hasDay ? `День ${tw}` : '';
+  let timePart = '';
+  if (tf && tt) timePart = `${tf}–${tt}`;
+  else if (tf) timePart = `с ${tf}`;
+  else if (tt) timePart = `до ${tt}`;
+  if (dayPart && timePart) return `${dayPart}, ${timePart}`;
+  return dayPart || timePart || '—';
+};
 
 const ClientCardModal = ({ client, onEdit, onDelete, onRefresh, onClose }) => {
   const toast = useToast();
@@ -76,6 +101,7 @@ const ClientCardModal = ({ client, onEdit, onDelete, onRefresh, onClose }) => {
             <dl className="client-card-modal__dl">
               <dt>Вид спорта</dt><dd>{client.sportName ?? client.sport?.name ?? '—'}</dd>
               <dt>Тренер</dt><dd>{client.trainerName ?? client.trainer?.fio ?? '—'}</dd>
+              <dt>Время занятия</dt><dd>{formatTrainingScheduleLabel(client)}</dd>
               <dt>Дата начала</dt><dd>{dateStartRaw ? new Date(dateStartRaw).toLocaleDateString() : '—'}</dd>
               <dt>Тип</dt><dd className={client.clientType === 'individual' ? 'client-card-modal__type-cell client-card-modal__type-cell--individual' : client.clientType === 'one-time' ? 'client-card-modal__type-cell client-card-modal__type-cell--one-time' : ''}>{client.clientType === 'individual' ? 'Индивидуальный' : client.clientType === 'regular' ? 'Регулярный' : client.clientType === 'one-time' ? 'Разовый' : client.clientType || '—'}</dd>
             </dl>

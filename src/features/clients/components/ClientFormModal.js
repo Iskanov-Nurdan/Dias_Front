@@ -90,7 +90,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   useEffect(() => {
     if (!fetchTrainers) return;
     if (sportId) {
-      fetchTrainers({ sportId }, null)
+      fetchTrainers({ sportId, includeSchedule: true }, null)
         .then((d) => {
           const list = d?.items ?? d?.results ?? (Array.isArray(d) ? d : []) ?? [];
           setTrainersList(list);
@@ -116,6 +116,19 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       setTrainingSlotKey('');
       return undefined;
     }
+
+    const trainer = trainersList.find((x) => String(x.id) === String(trainerId));
+    const embedded = trainer?.schedule;
+    if (trainer && embedded != null && typeof embedded === 'object') {
+      const options = flattenScheduleToSlotOptions(embedded);
+      setScheduleSlots(options);
+      setScheduleSlotsLoading(false);
+      setTrainingSlotKey((prev) =>
+        prev && options.some((o) => String(o.value) === String(prev)) ? prev : ''
+      );
+      return undefined;
+    }
+
     let cancelled = false;
     setScheduleSlotsLoading(true);
     fetchTrainerSchedule(trainerId, null)
@@ -129,18 +142,13 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       })
       .catch((e) => {
         if (cancelled) return;
-        const status = e.response?.status;
-        if (status === 404) {
-          setScheduleSlots([]);
-        } else {
-          setScheduleSlots([]);
-          toast.error(
-            e?.userMessage ??
-              e?.response?.data?.error?.message ??
-              e?.response?.data?.message ??
-              'Не удалось загрузить график тренера'
-          );
-        }
+        setScheduleSlots([]);
+        toast.error(
+          e?.userMessage ??
+            e?.response?.data?.error?.message ??
+            e?.response?.data?.message ??
+            'Не удалось загрузить график тренера'
+        );
         setTrainingSlotKey('');
       })
       .finally(() => {
@@ -149,7 +157,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
     return () => {
       cancelled = true;
     };
-  }, [trainerId, toast]);
+  }, [trainerId, trainersList, toast]);
 
   useEffect(() => {
     if (!client?.id || !trainerId || scheduleSlots.length === 0) return;
@@ -198,6 +206,18 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
     // При очистке комментария явно отправляем "" — иначе PATCH без поля не обновляет его на бэкенде
     const commentValue = finalComment ?? (client?.id ? '' : undefined);
     const slot = parseTrainingSlotKey(trainingSlotKey);
+    /** null — бэкенд обнуляет training_* при PATCH (пустой слот). */
+    const trainingPayload = trainingSlotKey
+      ? {
+          trainingWeekday: slot.trainingWeekday,
+          trainingTimeFrom: slot.trainingTimeFrom,
+          trainingTimeTo: slot.trainingTimeTo,
+        }
+      : {
+          trainingWeekday: null,
+          trainingTimeFrom: null,
+          trainingTimeTo: null,
+        };
     onSave({
       fio,
       phone,
@@ -210,9 +230,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       clientType,
       gender: gender || undefined,
       comment: commentValue,
-      trainingWeekday: slot.trainingWeekday,
-      trainingTimeFrom: slot.trainingTimeFrom,
-      trainingTimeTo: slot.trainingTimeTo,
+      ...trainingPayload,
     });
   };
 

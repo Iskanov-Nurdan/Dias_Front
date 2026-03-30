@@ -28,6 +28,18 @@
       padding: var(--table-cell-padding);
       text-align: left;
       border-bottom: 1px solid var(--color-border);
+      vertical-align: middle;
+    }
+
+    @include mixins.desktop-only {
+      tbody td:not(.clients-list__actions) {
+        max-width: 220px;
+        @include mixins.text-ellipsis;
+      }
+
+      tbody tr {
+        height: var(--table-row-min-height);
+      }
     }
 
     @include mixins.mobile {

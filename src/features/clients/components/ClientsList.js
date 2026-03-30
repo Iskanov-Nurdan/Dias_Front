@@ -62,9 +62,9 @@ const ClientsList = ({
               else if (c.clientType === 'individual') rowClass += ' clients-list__row--individual';
               return (
                 <tr key={c.id} className={rowClass}>
-                  <td data-label="ФИО">{c.fio || '—'}</td>
+                  <td data-label="ФИО" title={c.fio || undefined}>{c.fio || '—'}</td>
                   <td data-label="Дата начала">{dateStart ? new Date(dateStart).toLocaleDateString() : '—'}</td>
-                  <td data-label="Вид спорта">{c.sportName ?? c.sport?.name ?? '—'}</td>
+                  <td data-label="Вид спорта" title={(c.sportName ?? c.sport?.name) || undefined}>{c.sportName ?? c.sport?.name ?? '—'}</td>
                   <td data-label="Оплачено">{paid ? 'Да' : 'Нет'}</td>
                   <td className="clients-list__actions" data-label="">
                     <button type="button" className="clients-list__btn clients-list__btn--primary" onClick={() => onDetails(c)}>Подробнее</button>

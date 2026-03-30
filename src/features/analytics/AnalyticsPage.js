@@ -194,7 +194,7 @@ const AnalyticsPage = () => {
     <div className="analytics-page">
       <header className="analytics-page__header">
         <div className="analytics-page__header-text">
-          <h1 className="analytics-page__title">Аналитика</h1>
+          <h1 className="analytics-page__title ui-page-h1">Аналитика</h1>
           <p className="analytics-page__subtitle">Сводка по выбранному периоду</p>
         </div>
         <FilterBar className="analytics-page__filter-bar">

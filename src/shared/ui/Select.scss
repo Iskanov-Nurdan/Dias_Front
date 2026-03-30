@@ -1,6 +1,131 @@
+@use '../styles/mixins';
+
+.select__sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1150;
+  background: rgba(15, 23, 42, 0.48);
+  display: flex;
+  align-items: flex-end;
+  justify-content: stretch;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  animation: select-sheet-bg-in 0.2s ease;
+}
+
+.select__sheet {
+  width: 100%;
+  max-height: min(88vh, calc(100dvh - env(safe-area-inset-top, 0px)));
+  background: var(--color-surface);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  animation: select-sheet-panel-in 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.select__sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-border-strong);
+  margin: 10px auto 6px;
+  flex-shrink: 0;
+}
+
+.select__sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 0 var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.select__sheet-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--color-text);
+  min-width: 0;
+  flex: 1;
+  @include mixins.text-ellipsis;
+}
+
+.select__sheet-close {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 18px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+
+  &:hover {
+    background: var(--color-surface-secondary);
+    color: var(--color-text);
+  }
+}
+
+.select__sheet-list {
+  overflow-y: auto;
+  padding: var(--space-2);
+  flex: 1;
+  min-height: 0;
+  @include mixins.scrollbar;
+}
+
+.select__sheet-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 16px;
+  font-weight: 400;
+  background: none;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background 0.1s ease;
+
+  &:hover {
+    background: var(--dropdown-item-hover);
+  }
+
+  &--selected {
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-weight: 500;
+  }
+}
+
+@keyframes select-sheet-bg-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes select-sheet-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .select {
-  position: relative;
-  min-width: 140px;
+  position: relative;  min-width: 140px;
 
   @media (max-width: 768px) {
     min-width: 0;
@@ -78,14 +203,15 @@
 }
 
 .select__dropdown {
-  max-height: 280px;
   overflow-y: auto;
+  overflow-x: hidden;
   background: var(--color-surface);
   border: 1px solid var(--input-border);
   border-radius: var(--input-radius);
   box-shadow: var(--dropdown-shadow);
   z-index: 1100;
   padding: 6px;
+  @include mixins.scrollbar;
 }
 
 .select__option {

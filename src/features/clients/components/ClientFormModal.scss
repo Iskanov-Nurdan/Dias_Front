@@ -13,23 +13,25 @@
   background: var(--color-surface);
   border-radius: 18px;
   padding: 20px 24px;
-  max-width: 560px;
+  max-width: min(560px, calc(100vw - 32px));
   width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
+  max-height: min(90vh, calc(100dvh - 24px));
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   box-shadow: var(--shadow-xl);
   margin: 12px;
 
   @include mixins.mobile {
-    padding: 16px;
+    padding: 16px 16px 0;
     margin: 0;
-    max-height: 90vh;
-    border-radius: 12px 12px 0 0;
+    max-height: min(90vh, calc(100dvh - env(safe-area-inset-top, 0px)));
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   }
 
   @include mixins.xs {
-    padding: 12px;
-    border-radius: 10px 10px 0 0;
+    padding: 12px 12px 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
 }
 
@@ -64,6 +66,19 @@
 }
 
 .client-form-modal__form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 0;
+}
+
+.client-form-modal__scroll {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding-bottom: var(--space-3);
+  @include mixins.scrollbar;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -290,20 +305,41 @@ textarea.client-form-modal__input {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
-  margin-top: 0;
-  padding: 16px 0 0;
+  flex-shrink: 0;
+  margin-top: auto;
+  padding: var(--space-4) 0 max(var(--space-4), env(safe-area-inset-bottom));
   border-top: 1px solid var(--color-border);
-  background: var(--color-surface-secondary);
+  background: var(--color-surface);
   margin-left: -24px;
   margin-right: -24px;
   margin-bottom: -20px;
-  padding: 16px 24px 20px;
+  padding-left: 24px;
+  padding-right: 24px;
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
   border-radius: 0 0 18px 18px;
+  box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.04);
+
+  @include mixins.mobile {
+    margin-left: -16px;
+    margin-right: -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+    margin-bottom: 0;
+    border-radius: 0;
+  }
+
+  @include mixins.xs {
+    margin-left: -12px;
+    margin-right: -12px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
 }
 
 .client-form-modal__btn {
-  height: 40px;
-  padding: 0 16px;
+  min-height: 44px;
+  height: auto;
+  padding: 10px 16px;
   border-radius: 10px;
   font-size: 14px;
   font-weight: 500;

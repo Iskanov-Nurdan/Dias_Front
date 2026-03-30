@@ -4,13 +4,14 @@ import { useModalEffect } from '../hooks/useModalEffect';
 import './FiltersModal.scss';
 
 /**
- * Модалка с фильтрами. Центрированная, поверх всего контента.
+ * Модалка с фильтрами. На десктопе — по центру; на мобиле — bottom sheet.
  * @param {boolean} open
  * @param {function} onClose
  * @param {string} title
- * @param {React.ReactNode} children
+ * @param {React.ReactNode} children — тело (скролл)
+ * @param {React.ReactNode} [footer] — нижняя панель (Сброс / Применить), липкая на мобиле
  */
-const FiltersModal = ({ open, onClose, title = 'Фильтры', children }) => {
+const FiltersModal = ({ open, onClose, title = 'Фильтры', children, footer }) => {
   useModalEffect(open, onClose);
 
   if (!open) return null;
@@ -24,6 +25,11 @@ const FiltersModal = ({ open, onClose, title = 'Фильтры', children }) => 
         <div className="filters-modal__body">
           {children}
         </div>
+        {footer != null && footer !== false && (
+          <div className="filters-modal__footer">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );

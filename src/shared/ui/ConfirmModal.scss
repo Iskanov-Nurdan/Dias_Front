@@ -13,6 +13,17 @@
   }
 }
 
+@keyframes confirm-modal-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .confirm-modal__backdrop,
   .confirm-modal {
@@ -23,6 +34,12 @@
 .confirm-modal__backdrop {
   @include mixins.modal-backdrop;
   animation: confirm-modal-backdrop-in 0.2s ease;
+
+  @include mixins.mobile {
+    align-items: flex-end;
+    padding: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
 }
 
 .confirm-modal {
@@ -30,16 +47,25 @@
   border-radius: 18px;
   padding: 24px;
   min-width: 280px;
-  max-width: calc(100vw - 24px);
+  max-width: min(480px, calc(100vw - 32px));
+  width: 100%;
   margin: 12px;
   box-shadow: var(--shadow-xl);
   animation: confirm-modal-panel-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 
+  @include mixins.mobile {
+    margin: 0;
+    max-width: 100%;
+    max-height: min(88vh, calc(100dvh - env(safe-area-inset-top, 0px)));
+    overflow-y: auto;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    padding: var(--space-5) var(--space-4) max(var(--space-5), env(safe-area-inset-bottom));
+    animation: confirm-modal-sheet-in 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
   @media (max-width: 374px) {
     padding: 20px;
     min-width: 0;
-    width: calc(100% - 16px);
-    margin: 8px;
   }
 
   &__title {
@@ -63,8 +89,9 @@
   }
 
   &__btn {
-    height: 40px;
-    padding: 0 16px;
+    min-height: 40px;
+    height: auto;
+    padding: 10px 16px;
     border-radius: var(--radius-md);
     font-size: 14px;
     font-weight: 600;

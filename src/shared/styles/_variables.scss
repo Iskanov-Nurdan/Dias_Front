@@ -41,8 +41,9 @@
   --sidebar-width: 284px;
   --sidebar-width-collapsed: 80px;
   --header-height: 64px;
+  --content-max-width: 1280px;
 
-  // —— Spacing (4px base) ——
+  // —— Spacing (8px system, шаг 4px для половинных шагов) ——
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -82,7 +83,8 @@
   --dropdown-item-hover: #F1F5F9;
   --block-border: #E2E8F0;
   --block-radius: 12px;
-  --table-cell-padding: 16px 20px;
+  --table-cell-padding: 12px 16px;
+  --table-row-min-height: 48px;
   --card-padding: 20px 24px;
 
   // —— Transitions ——

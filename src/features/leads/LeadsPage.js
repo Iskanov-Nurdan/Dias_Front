@@ -253,7 +253,7 @@ const LeadsPage = () => {
 
   return (
     <div className="leads-page">
-      <h1 className="leads-page__title">Лиды</h1>
+      <h1 className="leads-page__title ui-page-h1">Лиды</h1>
 
       {/* Табы */}
       <div className="leads-page__tabs">

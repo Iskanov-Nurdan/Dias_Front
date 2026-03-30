@@ -9,6 +9,21 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+/* Заголовок страницы остаётся в DOM для a11y; на мобилке дублируется в шапке приложения */
+@include mixins.mobile {
+  .main-layout__content .ui-page-h1 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
 body {
   margin: 0;
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -207,7 +222,9 @@ textarea {
   .confirm-modal__backdrop,
   .confirm-modal,
   .filters-modal__backdrop,
-  .filters-modal {
+  .filters-modal,
+  .select__sheet-backdrop,
+  .select__sheet {
     animation: none !important;
   }
 }

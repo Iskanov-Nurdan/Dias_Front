@@ -1,44 +1,84 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import React, {
+  useState, useRef, useEffect, useLayoutEffect, useCallback,
+} from 'react';
 import { createPortal } from 'react-dom';
 import './Select.scss';
 
+const MOBILE_MQ = '(max-width: 768px)';
+const DROPDOWN_MAX_H = 280;
+const OPTION_ESTIMATE = 44;
+
+function useIsMobileSheet() {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia(MOBILE_MQ).matches);
+
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_MQ);
+    const onChange = () => setIsMobile(mq.matches);
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  return isMobile;
+}
+
 /**
- * Кастомный Select (dropdown) с современным UI.
- * @param {string|number} value - выбранное значение
- * @param {function} onChange - (value) => void
- * @param {Array<{value: string|number, label: string}>} options
- * @param {string} [placeholder] - текст когда ничего не выбрано
- * @param {string} [className]
- * @param {boolean} [disabled]
+ * Кастомный Select: на десктопе — dropdown с авто-позицией; на мобиле — bottom sheet.
  */
 const Select = ({ value, onChange, options = [], placeholder = 'Выберите...', className = '', disabled = false }) => {
   const [open, setOpen] = useState(false);
-  const [dropdownPosition, setDropdownPosition] = useState(null);
+  const [dropdownLayout, setDropdownLayout] = useState(null);
   const rootRef = useRef(null);
   const dropdownRef = useRef(null);
+  const isMobileSheet = useIsMobileSheet();
 
   const selectedOption = options.find((o) => String(o.value) === String(value));
   const displayLabel = selectedOption ? selectedOption.label : placeholder;
 
-  useLayoutEffect(() => {
-    if (!open || !rootRef.current) return;
+  const computeDesktopLayout = useCallback(() => {
+    if (!rootRef.current) return null;
     const rect = rootRef.current.getBoundingClientRect();
-    setDropdownPosition({
-      top: rect.bottom + 4,
-      left: rect.left,
-      width: rect.width,
-    });
-  }, [open]);
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const pad = 8;
+    const estimatedH = Math.min(DROPDOWN_MAX_H, options.length * OPTION_ESTIMATE + 16);
+    const spaceBelow = vh - rect.bottom - pad;
+    const spaceAbove = rect.top - pad;
+    const openDown = spaceBelow >= Math.min(estimatedH, 120) || spaceBelow >= spaceAbove;
+    let top = openDown ? rect.bottom + 4 : Math.max(pad, rect.top - estimatedH - 4);
+    let maxH = openDown
+      ? Math.min(DROPDOWN_MAX_H, Math.max(pad * 2, vh - top - pad))
+      : Math.min(DROPDOWN_MAX_H, Math.max(pad * 2, rect.top - pad - 4));
+    let left = rect.left;
+    let width = rect.width;
+    if (left + width > vw - pad) {
+      left = Math.max(pad, vw - width - pad);
+    }
+    if (left < pad) left = pad;
+    if (width > vw - 2 * pad) {
+      width = vw - 2 * pad;
+      left = pad;
+    }
+    return { top, left, width, maxHeight: maxH };
+  }, [options.length]);
+
+  useLayoutEffect(() => {
+    if (!open || isMobileSheet || !rootRef.current) return;
+    setDropdownLayout(computeDesktopLayout());
+  }, [open, isMobileSheet, computeDesktopLayout]);
+
+  useEffect(() => {
+    if (!open || isMobileSheet) return;
+    const onResize = () => setDropdownLayout(computeDesktopLayout());
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [open, isMobileSheet, computeDesktopLayout]);
 
   const handleTriggerClick = () => {
     if (disabled) return;
-    if (!open && rootRef.current) {
-      const rect = rootRef.current.getBoundingClientRect();
-      setDropdownPosition({
-        top: rect.bottom + 4,
-        left: rect.left,
-        width: rect.width,
-      });
+    if (!open && !isMobileSheet && rootRef.current) {
+      setDropdownLayout(computeDesktopLayout());
     }
     setOpen((v) => !v);
   };
@@ -54,6 +94,7 @@ const Select = ({ value, onChange, options = [], placeholder = 'Выберите
       if (e.key === 'Escape') setOpen(false);
     };
     const handleScroll = (e) => {
+      if (isMobileSheet) return;
       if (dropdownRef.current?.contains(e.target)) return;
       setOpen(false);
     };
@@ -62,18 +103,31 @@ const Select = ({ value, onChange, options = [], placeholder = 'Выберите
     const id = setTimeout(() => {
       document.addEventListener('mousedown', handleClickOutside, true);
     }, 0);
+    if (isMobileSheet) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        clearTimeout(id);
+        document.removeEventListener('keydown', handleEscape);
+        document.removeEventListener('scroll', handleScroll, true);
+        document.removeEventListener('mousedown', handleClickOutside, true);
+        document.body.style.overflow = prev;
+      };
+    }
     return () => {
       clearTimeout(id);
       document.removeEventListener('keydown', handleEscape);
       document.removeEventListener('scroll', handleScroll, true);
       document.removeEventListener('mousedown', handleClickOutside, true);
     };
-  }, [open]);
+  }, [open, isMobileSheet]);
 
   const handleSelect = (opt) => {
     onChange(opt.value);
     setOpen(false);
   };
+
+  const sheetTitle = displayLabel || placeholder;
 
   return (
     <div
@@ -95,20 +149,53 @@ const Select = ({ value, onChange, options = [], placeholder = 'Выберите
           </svg>
         </span>
       </button>
-      {open && dropdownPosition && createPortal(
+      {open && isMobileSheet && createPortal(
+        <div
+          className="select__sheet-backdrop"
+          role="presentation"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            ref={dropdownRef}
+            className="select__sheet"
+            role="listbox"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="select__sheet-handle" aria-hidden />
+            <div className="select__sheet-head">
+              <span className="select__sheet-title">{sheetTitle}</span>
+              <button type="button" className="select__sheet-close" onClick={() => setOpen(false)} aria-label="Закрыть">✕</button>
+            </div>
+            <div className="select__sheet-list">
+              {options.map((opt) => (
+                <button
+                  key={String(opt.value)}
+                  type="button"
+                  role="option"
+                  aria-selected={String(opt.value) === String(value)}
+                  className={`select__sheet-option ${String(opt.value) === String(value) ? 'select__sheet-option--selected' : ''}`}
+                  onClick={() => handleSelect(opt)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      {open && !isMobileSheet && dropdownLayout && createPortal(
         <div
           ref={dropdownRef}
           className="select__dropdown select__dropdown--portal"
           role="listbox"
           style={{
             position: 'fixed',
-            top: dropdownPosition.top,
-            left: dropdownPosition.left,
-            width: dropdownPosition.width,
+            top: dropdownLayout.top,
+            left: dropdownLayout.left,
+            width: dropdownLayout.width,
+            maxHeight: dropdownLayout.maxHeight,
             zIndex: 1100,
-          }}
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setOpen(false);
           }}
         >
           {options.map((opt) => (

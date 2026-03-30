@@ -243,6 +243,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
         </div>
         {error && <p className="client-form-modal__error" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="client-form-modal__form">
+          <div className="client-form-modal__scroll">
           <div className="client-form-modal__section">
             <h3 className="client-form-modal__section-title">Личные данные</h3>
             <div className="client-form-modal__row">
@@ -374,6 +375,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               </div>
             )}
             <textarea value={commentManual} onChange={(e) => setCommentManual(e.target.value)} className="client-form-modal__input" rows={2} placeholder="Комментарий" />
+          </div>
           </div>
           </div>
           <div className="client-form-modal__actions">

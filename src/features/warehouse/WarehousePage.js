@@ -51,6 +51,10 @@ const WarehousePage = () => {
   const [confirmDeleteProduct, setConfirmDeleteProduct] = useState(null);
   const [confirmDeleteCategory, setConfirmDeleteCategory] = useState(null);
   const [filtersModalOpen, setFiltersModalOpen] = useState(false);
+
+  const resetProductFilters = useCallback(() => {
+    setQueryState((q) => ({ ...q, categoryId: '', page: 1 }));
+  }, []);
   const productsControllerRef = useRef(null);
   const categoriesControllerRef = useRef(null);
   const restocksControllerRef = useRef(null);
@@ -222,7 +226,7 @@ const WarehousePage = () => {
 
   return (
     <div className="warehouse-page">
-      <h1 className="warehouse-page__title">Склад</h1>
+      <h1 className="warehouse-page__title ui-page-h1">Склад</h1>
       <div className="warehouse-page__tabs">
         <button type="button" className={`warehouse-page__tab ${activeTab === TAB_PRODUCTS ? 'warehouse-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_PRODUCTS)}>Товары</button>
         <button type="button" className={`warehouse-page__tab ${activeTab === TAB_CATEGORIES ? 'warehouse-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_CATEGORIES)}>Категории</button>
@@ -250,7 +254,17 @@ const WarehousePage = () => {
               </div>
             </div>
           </FilterBar>
-          <FiltersModal open={filtersModalOpen} onClose={() => setFiltersModalOpen(false)} title="Фильтры">
+          <FiltersModal
+            open={filtersModalOpen}
+            onClose={() => setFiltersModalOpen(false)}
+            title="Фильтры"
+            footer={(
+              <div className="warehouse-page__filters-modal-footer">
+                <button type="button" className="warehouse-page__filter-reset" onClick={resetProductFilters}>Сброс</button>
+                <button type="button" className="warehouse-page__filter-apply" onClick={() => setFiltersModalOpen(false)}>Применить</button>
+              </div>
+            )}
+          >
             <div className="warehouse-page__filters-modal-content">
               <label className="warehouse-page__filter-label">
                 <span>Категория</span>
@@ -262,7 +276,6 @@ const WarehousePage = () => {
                   className="warehouse-page__select-wrap"
                 />
               </label>
-              <button type="button" className="warehouse-page__filter-apply" onClick={() => setFiltersModalOpen(false)}>Применить</button>
             </div>
           </FiltersModal>
           {productsError && <ErrorState message={productsError} onRetry={fetchProductsSafe} />}

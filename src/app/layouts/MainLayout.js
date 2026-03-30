@@ -6,7 +6,9 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../providers/AuthProvider';
 import { prefetchRoutePage } from '../prefetchRoutes';
-import { PAGE_IDS, PAGE_LABELS, PAGE_ROUTES, PAGE_GROUPS, PAGE_ICONS } from '../../shared/constants/pages';
+import {
+  PAGE_IDS, PAGE_LABELS, PAGE_ROUTES, PAGE_GROUPS, PAGE_ICONS,
+} from '../../shared/constants/pages';
 import './MainLayout.scss';
 
 const SIDEBAR_STORAGE_KEY = 'mainLayout_sidebarCollapsed';
@@ -16,6 +18,12 @@ const ICON_SIZE = 20;
 const ICON_SIZE_SM = 18;
 /** Иконки в списке навигации сайдбара (см. .main-layout__nav-icon) */
 const NAV_ICON_SIZE = 20;
+
+const getSectionTitleForPath = (pathname) => {
+  const pageId = Object.keys(PAGE_ROUTES).find((id) => PAGE_ROUTES[id] === pathname);
+  if (pageId) return PAGE_LABELS[pageId] || 'Рахман Ата';
+  return 'Рахман Ата';
+};
 
 const getInitialTheme = () => {
   try {
@@ -100,6 +108,8 @@ const MainLayout = () => {
   const toggleSidebar = () => setSidebarCollapsed((prev) => !prev);
   const toggleMobileMenu = () => setMobileMenuOpen((prev) => !prev);
 
+  const sectionTitle = getSectionTitleForPath(location.pathname);
+
   const visiblePages = PAGE_IDS.filter((id) => hasAccess(id));
   const visibleSet = new Set(visiblePages);
   const navGroups = Object.entries(PAGE_GROUPS).map(([groupLabel, pageIds]) => ({
@@ -134,6 +144,9 @@ const MainLayout = () => {
             {mobileMenuOpen ? <X size={ICON_SIZE} /> : <Menu size={ICON_SIZE} />}
           </button>
           <span className="main-layout__brand">Рахман Ата</span>
+        </div>
+        <div className="main-layout__header-center">
+          <span className="main-layout__header-page-title">{sectionTitle}</span>
         </div>
         <div className="main-layout__header-right">
           <button
@@ -201,7 +214,9 @@ const MainLayout = () => {
         </div>
       </aside>
       <main className="main-layout__content">
-        <Outlet />
+        <div className="main-layout__content-shell">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

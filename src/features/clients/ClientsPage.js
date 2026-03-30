@@ -113,6 +113,20 @@ const ClientsPage = () => {
   const [extendFormError, setExtendFormError] = useState(null);
   const [extendFormSaving, setExtendFormSaving] = useState(false);
   const [filtersModalOpen, setFiltersModalOpen] = useState(false);
+
+  const resetListFilters = useCallback(() => {
+    setQueryState((q) => ({
+      ...q,
+      sportId: '',
+      trainerId: '',
+      paid: '',
+      clientType: '',
+      year: '',
+      month: '',
+      day: '',
+      page: 1,
+    }));
+  }, []);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [trainerDetails, setTrainerDetails] = useState(null);
 
@@ -387,7 +401,7 @@ const ClientsPage = () => {
 
   return (
     <div className="clients-page">
-      <h1 className="clients-page__title">Клиенты</h1>
+      <h1 className="clients-page__title ui-page-h1">Клиенты</h1>
 
       {/* Главные табы */}
       <div className="clients-page__tabs">
@@ -452,7 +466,17 @@ const ClientsPage = () => {
               </div>
             </div>
           </FilterBar>
-          <FiltersModal open={filtersModalOpen} onClose={() => setFiltersModalOpen(false)} title="Фильтры">
+          <FiltersModal
+            open={filtersModalOpen}
+            onClose={() => setFiltersModalOpen(false)}
+            title="Фильтры"
+            footer={(
+              <div className="clients-page__filters-modal-footer">
+                <button type="button" className="clients-page__filter-reset" onClick={resetListFilters}>Сброс</button>
+                <button type="button" className="clients-page__filter-apply" onClick={() => setFiltersModalOpen(false)}>Применить</button>
+              </div>
+            )}
+          >
             <div className="clients-page__filters-modal-content">
               <label className="clients-page__filter-label"><span>Вид спорта</span><Select value={queryState.sportId} onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...sports.map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="Все" className="clients-page__select-wrap" /></label>
               <label className="clients-page__filter-label"><span>Тренер</span><Select value={queryState.trainerId} onChange={(v) => setQueryState((q) => ({ ...q, trainerId: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...trainers.map((t) => ({ value: String(t.id), label: t.fio || '' }))]} placeholder="Все" className="clients-page__select-wrap" /></label>
@@ -461,7 +485,6 @@ const ClientsPage = () => {
               <label className="clients-page__filter-label"><span>Год</span><Select value={queryState.year} onChange={(v) => setQueryState((q) => ({ ...q, year: v, month: v ? q.month : '', day: v ? q.day : '', page: 1 }))} options={[{ value: '', label: 'Все' }, ...clientListFilterYearValues.map((y) => ({ value: y, label: y }))]} placeholder="Все" className="clients-page__select-wrap" /></label>
               {queryState.year && <label className="clients-page__filter-label"><span>Месяц</span><Select value={queryState.month} onChange={(v) => setQueryState((q) => ({ ...q, month: v, day: v ? q.day : '', page: 1 }))} options={[{ value: '', label: 'Все' }, ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: MONTHS[i + 1] }))]} placeholder="Все" className="clients-page__select-wrap" /></label>}
               {queryState.year && queryState.month && <label className="clients-page__filter-label"><span>День</span><Select value={queryState.day} onChange={(v) => setQueryState((q) => ({ ...q, day: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...Array.from({ length: 31 }, (_, i) => i + 1).map((d) => ({ value: String(d), label: String(d) }))]} placeholder="Все" className="clients-page__select-wrap" /></label>}
-              <button type="button" className="clients-page__filter-apply" onClick={() => setFiltersModalOpen(false)}>Применить</button>
             </div>
           </FiltersModal>
           <ClientsList

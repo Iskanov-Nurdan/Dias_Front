@@ -43,8 +43,16 @@
     z-index: var(--z-sticky);
     gap: var(--space-4);
 
+    @include mixins.mobile {
+      padding: 0 var(--space-4);
+      gap: var(--space-2);
+      display: grid;
+      grid-template-columns: 44px 1fr 44px;
+      align-items: center;
+    }
+
     @include mixins.xs {
-      padding: 0 var(--space-3) 0 var(--space-2);
+      padding: 0 var(--space-3);
       gap: var(--space-2);
     }
   }
@@ -54,6 +62,38 @@
     align-items: center;
     gap: var(--space-3);
     min-width: 0;
+
+    @include mixins.mobile {
+      gap: 0;
+      justify-self: start;
+    }
+  }
+
+  &__header-center {
+    display: none;
+    min-width: 0;
+    justify-content: center;
+    text-align: center;
+
+    @include mixins.mobile {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
+  &__header-page-title {
+    font-weight: 600;
+    font-size: 16px;
+    letter-spacing: -0.02em;
+    color: var(--color-text);
+    @include mixins.text-ellipsis;
+    max-width: 100%;
+    padding: 0 var(--space-2);
+
+    @include mixins.xs {
+      font-size: 15px;
+    }
   }
 
   &__sidebar-toggle {
@@ -100,6 +140,11 @@
     align-items: center;
     gap: var(--space-2);
     flex-shrink: 0;
+
+    @include mixins.mobile {
+      justify-self: end;
+      justify-content: flex-end;
+    }
   }
 
   &__theme-toggle {
@@ -130,12 +175,7 @@
     @include mixins.text-ellipsis;
 
     @include mixins.mobile {
-      font-size: 16px;
-    }
-
-    @include mixins.xs {
-      font-size: 14px;
-      max-width: 120px;
+      display: none;
     }
   }
 
@@ -143,7 +183,8 @@
     position: fixed;
     inset: 0;
     background: rgba(15, 23, 42, 0.48);
-    z-index: var(--z-modal);
+    /* Ниже шапки и сайдбара — иначе перехватывает все касания */
+    z-index: 160;
     animation: main-layout-fade-in 0.2s ease;
   }
 
@@ -164,12 +205,13 @@
 
     @include mixins.mobile {
       position: fixed;
-      top: 0;
+      top: var(--header-height);
       left: 0;
       width: min(300px, 88vw);
       max-width: 300px;
-      height: 100vh;
-      z-index: 101;
+      height: calc(100dvh - var(--header-height));
+      max-height: calc(100vh - var(--header-height));
+      z-index: 220;
       transform: translateX(-100%);
       border-right: 1px solid var(--color-sidebar-border);
       overflow-y: auto;
@@ -486,6 +528,7 @@
     grid-area: content;
     padding: var(--space-6) var(--space-8);
     overflow: auto;
+    overflow-x: hidden;
     @include mixins.scrollbar;
     min-width: 0;
     width: 100%;
@@ -496,12 +539,15 @@
     }
 
     @include mixins.mobile {
-      padding: var(--space-5);
-    }
-
-    @include mixins.xs {
       padding: var(--space-4);
     }
+  }
+
+  &__content-shell {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    width: 100%;
+    min-width: 0;
   }
 }
 

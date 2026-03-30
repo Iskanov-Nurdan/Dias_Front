@@ -121,7 +121,7 @@ const SalesPage = () => {
 
   return (
     <div className="sales-page">
-      <h1 className="sales-page__title">Продажи</h1>
+      <h1 className="sales-page__title ui-page-h1">Продажи</h1>
       <FilterBar className="sales-page__filter-bar">
         <div className="sales-page__date-range">
           <label className="sales-page__date-label">

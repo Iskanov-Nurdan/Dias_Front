@@ -12,9 +12,10 @@ import './MainLayout.scss';
 const SIDEBAR_STORAGE_KEY = 'mainLayout_sidebarCollapsed';
 const THEME_STORAGE_KEY = 'rahman-theme';
 
-/** Синхронно с --icon-size-md / --icon-size-sm в _variables.scss */
 const ICON_SIZE = 20;
 const ICON_SIZE_SM = 18;
+/** Иконки в списке навигации сайдбара (см. .main-layout__nav-icon) */
+const NAV_ICON_SIZE = 18;
 
 const getInitialTheme = () => {
   try {
@@ -153,7 +154,6 @@ const MainLayout = () => {
         <nav className="main-layout__nav">
           {navGroups.map((group) => (
             <div key={group.label} className="main-layout__nav-group">
-              {!sidebarCollapsed && <span className="main-layout__nav-group-label">{group.label}</span>}
               {group.pages.map((pageId) => {
                 const path = PAGE_ROUTES[pageId];
                 const isActive = location.pathname === path;
@@ -169,7 +169,7 @@ const MainLayout = () => {
                     onFocus={() => prefetchRoutePage(pageId)}
                     title={Label}
                   >
-                    {Icon && <span className="main-layout__nav-icon" aria-hidden><Icon size={ICON_SIZE} strokeWidth={1.75} /></span>}
+                    {Icon && <span className="main-layout__nav-icon" aria-hidden><Icon size={NAV_ICON_SIZE} strokeWidth={1.75} /></span>}
                     <span className="main-layout__nav-label">{Label}</span>
                   </button>
                 );

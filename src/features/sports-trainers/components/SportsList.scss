@@ -8,6 +8,14 @@
     box-shadow: var(--shadow-card);
     background: var(--color-bg-card);
     @include mixins.scrollbar;
+    min-width: 0;
+
+    @include mixins.mobile {
+      overflow-x: hidden;
+      border: none;
+      box-shadow: none;
+      background: transparent;
+    }
   }
 
   &__table {
@@ -20,6 +28,63 @@
       padding: 12px 20px;
       text-align: left;
       border-bottom: 1px solid var(--color-border);
+    }
+
+    @include mixins.mobile {
+      display: block;
+      background: transparent;
+
+      thead {
+        display: none;
+      }
+
+      tbody {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+      }
+
+      tr {
+        display: block;
+        padding: var(--space-4);
+        background: var(--color-bg-card);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+      }
+
+      td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-3);
+        padding: var(--space-2) 0;
+        border-bottom: none;
+        font-size: 15px;
+        font-weight: 600;
+
+        &::before {
+          content: attr(data-label);
+          font-size: 11px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          color: var(--color-text-muted);
+          flex-shrink: 0;
+        }
+
+        &.sports-list__actions {
+          flex-wrap: wrap;
+          justify-content: flex-end;
+          padding-top: var(--space-3);
+          margin-top: var(--space-2);
+          border-top: 1px solid var(--color-border);
+
+          &::before {
+            display: none;
+          }
+        }
+      }
     }
 
     th {
@@ -49,6 +114,10 @@
   &__table th:first-child,
   &__table td:first-child {
     min-width: 200px;
+
+    @include mixins.mobile {
+      min-width: 0;
+    }
   }
 
   &__loading-cell,
@@ -72,6 +141,18 @@
     display: flex;
     gap: 8px;
     justify-content: flex-end;
+    flex-wrap: wrap;
+
+    @include mixins.mobile {
+      width: 100%;
+      justify-content: stretch;
+
+      .sports-list__btn {
+        flex: 1 1 auto;
+        min-height: 44px;
+        justify-content: center;
+      }
+    }
   }
 
   &__table th:last-child,
@@ -80,6 +161,9 @@
   }
 
   &__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding: 6px 12px;
     font-size: 13px;
     font-weight: 500;

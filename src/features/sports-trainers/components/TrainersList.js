@@ -60,9 +60,9 @@ const TrainersList = ({
                 </tr>
               ) : list.map((t) => (
                 <tr key={t.id}>
-                  <td>{t.fio || '—'}</td>
-                  <td>{getSportsLabel(t)}</td>
-                  <td className="trainers-list__actions">
+                  <td data-label="ФИО">{t.fio || '—'}</td>
+                  <td data-label="Виды спорта">{getSportsLabel(t)}</td>
+                  <td className="trainers-list__actions" data-label="">
                     {onSchedule && (
                       <button type="button" className="trainers-list__btn trainers-list__btn--schedule" onClick={() => onSchedule(t)}>График</button>
                     )}

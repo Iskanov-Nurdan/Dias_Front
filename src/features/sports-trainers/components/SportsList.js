@@ -50,8 +50,8 @@ const SportsList = ({
                 </tr>
               ) : list.map((s) => (
                 <tr key={s.id}>
-                  <td>{s.name || '—'}</td>
-                  <td className="sports-list__actions">
+                  <td data-label="Название">{s.name || '—'}</td>
+                  <td className="sports-list__actions" data-label="">
                     <button type="button" className="sports-list__btn sports-list__btn--primary" onClick={() => onEdit(s)}>Изменить</button>
                     <button type="button" className="sports-list__btn sports-list__btn--danger" onClick={() => onDelete(s)}>Удалить</button>
                   </td>

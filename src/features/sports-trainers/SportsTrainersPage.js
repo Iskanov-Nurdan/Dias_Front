@@ -12,7 +12,7 @@ import {
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
-import { Select, Pagination, FilterBar } from '../../shared/ui';
+import { Select, Pagination, FilterBar, FiltersModal } from '../../shared/ui';
 import { SportsList, TrainersList, SportFormModal, TrainerFormModal, TrainerScheduleModal } from './components';
 import { WEEKDAYS } from './scheduleConstants';
 import './SportsTrainersPage.scss';
@@ -49,6 +49,7 @@ const SportsTrainersPage = () => {
   const [confirmDeleteSport, setConfirmDeleteSport] = useState(null);
   const [confirmDeleteTrainer, setConfirmDeleteTrainer] = useState(null);
   const [scheduleTrainer, setScheduleTrainer] = useState(null);
+  const [trainerFiltersOpen, setTrainerFiltersOpen] = useState(false);
   const { run: runSports } = useAbortSafeFetch();
   const { run: runTrainers } = useAbortSafeFetch();
 
@@ -136,6 +137,17 @@ const SportsTrainersPage = () => {
       });
   };
 
+  const resetTrainerFilters = useCallback(() => {
+    setQueryState((q) => ({
+      ...q,
+      sportId: '',
+      weekday: '',
+      timeFrom: '',
+      timeTo: '',
+      page: 1,
+    }));
+  }, []);
+
   const handleDeleteTrainer = () => {
     if (!confirmDeleteTrainer) return;
     setTrainersError(null);
@@ -158,14 +170,14 @@ const SportsTrainersPage = () => {
         <button type="button" className={`sports-trainers-page__tab ${activeTab === TAB_TRAINERS ? 'sports-trainers-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_TRAINERS)}>Тренеры</button>
       </div>
       {activeTab === TAB_SPORTS && (
-        <div className="sports-trainers-page__content">
-          <FilterBar className="sports-trainers-page__filter-bar">
+        <div className="sports-trainers-page__content sports-trainers-page__content--tab">
+          <FilterBar className="sports-trainers-page__filter-bar sports-trainers-page__filter-bar--sports">
             <input
               type="text"
               placeholder="Поиск"
               value={sportSearch}
               onChange={(e) => setSportSearch(e.target.value)}
-              className="sports-trainers-page__search"
+              className="sports-trainers-page__search sports-trainers-page__search--full"
             />
             <button type="button" className="sports-trainers-page__add filter-bar__action" onClick={() => setFormSport({})}>
               Добавить
@@ -187,57 +199,123 @@ const SportsTrainersPage = () => {
         </div>
       )}
       {activeTab === TAB_TRAINERS && (
-        <div className="sports-trainers-page__content">
-          <FilterBar className="sports-trainers-page__filter-bar">
+        <div className="sports-trainers-page__content sports-trainers-page__content--tab">
+          <FilterBar className="sports-trainers-page__filter-bar sports-trainers-page__filter-bar--trainers">
           <input
             type="text"
             placeholder="Поиск"
             value={trainerSearch}
             onChange={(e) => setTrainerSearch(e.target.value)}
-            className="sports-trainers-page__search"
+            className="sports-trainers-page__search sports-trainers-page__search--full"
           />
-          <Select
-            value={queryState.sportId}
-            onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))}
-            options={[{ value: '', label: 'Все виды спорта' }, ...sportsData.map((s) => ({ value: String(s.id), label: s.name || '' }))]}
-            placeholder="Спорт"
-            className="sports-trainers-page__select-wrap"
-          />
-          <Select
-            value={String(queryState.weekday ?? '')}
-            onChange={(v) => setQueryState((q) => ({ ...q, weekday: v, page: 1 }))}
-            options={[
-              { value: '', label: 'Все дни' },
-              ...WEEKDAYS.map((w) => ({ value: String(w.weekday), label: w.short })),
-            ]}
-            placeholder="День"
-            className="sports-trainers-page__select-wrap sports-trainers-page__select-wrap--compact"
-          />
-          <label className="sports-trainers-page__time-filter">
-            <span className="sports-trainers-page__time-filter-label">С</span>
-            <input
-              type="time"
-              className="sports-trainers-page__time-input"
-              value={queryState.timeFrom || ''}
-              onChange={(e) => setQueryState((q) => ({ ...q, timeFrom: e.target.value, page: 1 }))}
-              disabled={!queryState.weekday}
-              title={!queryState.weekday ? 'Сначала выберите день недели' : undefined}
+          <div className="sports-trainers-page__filters-desktop">
+            <Select
+              value={queryState.sportId}
+              onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))}
+              options={[{ value: '', label: 'Все виды спорта' }, ...sportsData.map((s) => ({ value: String(s.id), label: s.name || '' }))]}
+              placeholder="Спорт"
+              className="sports-trainers-page__select-wrap"
             />
-          </label>
-          <label className="sports-trainers-page__time-filter">
-            <span className="sports-trainers-page__time-filter-label">До</span>
-            <input
-              type="time"
-              className="sports-trainers-page__time-input"
-              value={queryState.timeTo || ''}
-              onChange={(e) => setQueryState((q) => ({ ...q, timeTo: e.target.value, page: 1 }))}
-              disabled={!queryState.weekday}
+            <Select
+              value={String(queryState.weekday ?? '')}
+              onChange={(v) => setQueryState((q) => ({ ...q, weekday: v, page: 1 }))}
+              options={[
+                { value: '', label: 'Все дни' },
+                ...WEEKDAYS.map((w) => ({ value: String(w.weekday), label: w.short })),
+              ]}
+              placeholder="День"
+              className="sports-trainers-page__select-wrap sports-trainers-page__select-wrap--compact"
             />
-          </label>
-          <button type="button" className="sports-trainers-page__add filter-bar__action" onClick={() => setFormTrainer({})}>
+            <label className="sports-trainers-page__time-filter">
+              <span className="sports-trainers-page__time-filter-label">С</span>
+              <input
+                type="time"
+                className="sports-trainers-page__time-input"
+                value={queryState.timeFrom || ''}
+                onChange={(e) => setQueryState((q) => ({ ...q, timeFrom: e.target.value, page: 1 }))}
+                disabled={!queryState.weekday}
+                title={!queryState.weekday ? 'Сначала выберите день недели' : undefined}
+              />
+            </label>
+            <label className="sports-trainers-page__time-filter">
+              <span className="sports-trainers-page__time-filter-label">До</span>
+              <input
+                type="time"
+                className="sports-trainers-page__time-input"
+                value={queryState.timeTo || ''}
+                onChange={(e) => setQueryState((q) => ({ ...q, timeTo: e.target.value, page: 1 }))}
+                disabled={!queryState.weekday}
+              />
+            </label>
+          </div>
+          <button type="button" className="sports-trainers-page__add sports-trainers-page__add--desktop filter-bar__action" onClick={() => setFormTrainer({})}>
             Добавить
           </button>
+          <div className="sports-trainers-page__toolbar-mobile">
+            <button type="button" className="sports-trainers-page__filters-btn" onClick={() => setTrainerFiltersOpen(true)}>Фильтры</button>
+            <button type="button" className="sports-trainers-page__add filter-bar__action" onClick={() => setFormTrainer({})}>Добавить</button>
+          </div>
         </FilterBar>
+          <FiltersModal
+            open={trainerFiltersOpen}
+            onClose={() => setTrainerFiltersOpen(false)}
+            title="Фильтры"
+            footer={(
+              <div className="sports-trainers-page__filters-modal-footer">
+                <button type="button" className="sports-trainers-page__filter-reset" onClick={resetTrainerFilters}>Сброс</button>
+                <button type="button" className="sports-trainers-page__filter-apply" onClick={() => setTrainerFiltersOpen(false)}>Применить</button>
+              </div>
+            )}
+          >
+            <div className="sports-trainers-page__filters-modal-content">
+              <label className="sports-trainers-page__filter-label">
+                <span>Вид спорта</span>
+                <Select
+                  value={queryState.sportId}
+                  onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))}
+                  options={[{ value: '', label: 'Все виды спорта' }, ...sportsData.map((s) => ({ value: String(s.id), label: s.name || '' }))]}
+                  placeholder="Спорт"
+                  className="sports-trainers-page__select-wrap sports-trainers-page__select-wrap--modal"
+                />
+              </label>
+              <label className="sports-trainers-page__filter-label">
+                <span>День недели</span>
+                <Select
+                  value={String(queryState.weekday ?? '')}
+                  onChange={(v) => setQueryState((q) => ({ ...q, weekday: v, page: 1 }))}
+                  options={[
+                    { value: '', label: 'Все дни' },
+                    ...WEEKDAYS.map((w) => ({ value: String(w.weekday), label: w.short })),
+                  ]}
+                  placeholder="День"
+                  className="sports-trainers-page__select-wrap sports-trainers-page__select-wrap--modal"
+                />
+              </label>
+              <div className="sports-trainers-page__filter-time-row">
+                <label className="sports-trainers-page__filter-label sports-trainers-page__filter-label--time">
+                  <span>Время с</span>
+                  <input
+                    type="time"
+                    className="sports-trainers-page__time-input sports-trainers-page__time-input--modal"
+                    value={queryState.timeFrom || ''}
+                    onChange={(e) => setQueryState((q) => ({ ...q, timeFrom: e.target.value, page: 1 }))}
+                    disabled={!queryState.weekday}
+                    title={!queryState.weekday ? 'Сначала выберите день недели' : undefined}
+                  />
+                </label>
+                <label className="sports-trainers-page__filter-label sports-trainers-page__filter-label--time">
+                  <span>Время до</span>
+                  <input
+                    type="time"
+                    className="sports-trainers-page__time-input sports-trainers-page__time-input--modal"
+                    value={queryState.timeTo || ''}
+                    onChange={(e) => setQueryState((q) => ({ ...q, timeTo: e.target.value, page: 1 }))}
+                    disabled={!queryState.weekday}
+                  />
+                </label>
+              </div>
+            </div>
+          </FiltersModal>
           <TrainersList
             items={trainersItems}
             sports={sportsData}

@@ -57,8 +57,8 @@ const RolesList = ({
                 const systemRole = isSystemRole(role);
                 return (
                   <tr key={role.id}>
-                    <td>{role.name || '—'}</td>
-                    <td className="roles-list__actions">
+                    <td data-label="Название">{role.name || '—'}</td>
+                    <td className="roles-list__actions" data-label="">
                       {!systemRole && (
                         <>
                           <button type="button" className="roles-list__btn roles-list__btn--primary" onClick={() => handleEdit(role)}>

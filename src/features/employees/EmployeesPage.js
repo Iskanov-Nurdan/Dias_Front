@@ -14,7 +14,7 @@ import {
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
 import { useDebounce } from '../../shared/hooks/useDebounce';
-import { Select, Pagination, FilterBar } from '../../shared/ui';
+import { Select, Pagination, FilterBar, FiltersModal } from '../../shared/ui';
 import { EmployeesList, RolesList, EmployeeFormModal, RoleFormModal, AccessModal } from './components';
 import './EmployeesPage.scss';
 
@@ -43,6 +43,7 @@ const EmployeesPage = () => {
   const [accessData, setAccessData] = useState(null);
   const [accessFormError, setAccessFormError] = useState(null);
   const [accessFormSaving, setAccessFormSaving] = useState(false);
+  const [employeeFiltersOpen, setEmployeeFiltersOpen] = useState(false);
   const [confirmDeleteEmployee, setConfirmDeleteEmployee] = useState(null);
   const [confirmDeleteRole, setConfirmDeleteRole] = useState(null);
   const [employeesFormError, setEmployeesFormError] = useState(null);
@@ -112,6 +113,10 @@ const EmployeesPage = () => {
   const roleOptions = [{ value: '', label: 'Все роли' }, ...rolesList.map((r) => ({ value: String(r.id), label: r.name || '' }))];
 
   const handleRoleFilter = (v) => setQueryState((q) => ({ ...q, roleId: v, page: 1 }));
+
+  const resetEmployeeRoleFilter = useCallback(() => {
+    setQueryState((q) => ({ ...q, roleId: '', page: 1 }));
+  }, []);
 
   const handleSaveEmployee = async (payload) => {
     setEmployeesFormError(null);
@@ -234,25 +239,57 @@ const EmployeesPage = () => {
       </div>
 
       {activeTab === TAB_EMPLOYEES && (
-        <FilterBar className="employees-page__filter-bar">
-          <input
-            type="text"
-            placeholder="Поиск"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="employees-page__search"
-          />
-          <Select
-            value={queryState.roleId}
-            onChange={(v) => handleRoleFilter(v)}
-            options={roleOptions}
-            placeholder="Роли"
-            className="employees-page__select-wrap"
-          />
-          <button type="button" className="employees-page__add filter-bar__action" onClick={() => setFormEmployee({})}>
-            Добавить
-          </button>
-        </FilterBar>
+        <>
+          <FilterBar className="employees-page__filter-bar">
+            <input
+              type="text"
+              placeholder="Поиск"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="employees-page__search employees-page__search--full"
+            />
+            <div className="employees-page__filters-desktop">
+              <Select
+                value={queryState.roleId}
+                onChange={(v) => handleRoleFilter(v)}
+                options={roleOptions}
+                placeholder="Роли"
+                className="employees-page__select-wrap"
+              />
+            </div>
+            <button type="button" className="employees-page__add employees-page__add--desktop filter-bar__action" onClick={() => setFormEmployee({})}>
+              Добавить
+            </button>
+            <div className="employees-page__toolbar-mobile">
+              <button type="button" className="employees-page__filters-btn" onClick={() => setEmployeeFiltersOpen(true)}>Фильтры</button>
+              <button type="button" className="employees-page__add filter-bar__action" onClick={() => setFormEmployee({})}>Добавить</button>
+            </div>
+          </FilterBar>
+          <FiltersModal
+            open={employeeFiltersOpen}
+            onClose={() => setEmployeeFiltersOpen(false)}
+            title="Фильтры"
+            footer={(
+              <div className="employees-page__filters-modal-footer">
+                <button type="button" className="employees-page__filter-reset" onClick={resetEmployeeRoleFilter}>Сброс</button>
+                <button type="button" className="employees-page__filter-apply" onClick={() => setEmployeeFiltersOpen(false)}>Применить</button>
+              </div>
+            )}
+          >
+            <div className="employees-page__filters-modal-content">
+              <label className="employees-page__filter-label">
+                <span>Роль</span>
+                <Select
+                  value={queryState.roleId}
+                  onChange={(v) => handleRoleFilter(v)}
+                  options={roleOptions}
+                  placeholder="Все роли"
+                  className="employees-page__select-wrap employees-page__select-wrap--modal"
+                />
+              </label>
+            </div>
+          </FiltersModal>
+        </>
       )}
 
       {activeTab === TAB_EMPLOYEES && (

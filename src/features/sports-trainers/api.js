@@ -24,18 +24,49 @@ export const deleteSport = async (id, signal) => {
   await apiClient.delete(`/sports/${id}/`, withSignal({}, signal));
 };
 
-/** ТЗ: GET /api/trainers/ — query: sportId, sport_id, search, page, perPage */
+/**
+ * GET /api/trainers/
+ * query: sportId, sport_id, search, page, perPage,
+ *        weekday (1=Пн … 7=Вс), timeFrom, timeTo (HH:mm) — см. docs/API_TRAINER_SCHEDULE.md
+ */
 export const fetchTrainers = async (queryState, signal) => {
   const params = {};
   const sid = queryState?.sportId ?? queryState?.sport_id;
-  if (sid != null) {
+  if (sid != null && sid !== '') {
     params.sportId = sid;
     params.sport_id = sid;
   }
   if (queryState?.search) params.search = queryState.search;
   if (queryState?.page) params.page = queryState.page;
   if (queryState?.perPage) params.perPage = queryState.perPage;
+  const wd = queryState?.weekday ?? queryState?.week_day;
+  if (wd != null && wd !== '') {
+    params.weekday = wd;
+    params.week_day = wd;
+  }
+  const tf = queryState?.timeFrom ?? queryState?.time_from;
+  const tt = queryState?.timeTo ?? queryState?.time_to;
+  if (tf) {
+    params.timeFrom = tf;
+    params.time_from = tf;
+  }
+  if (tt) {
+    params.timeTo = tt;
+    params.time_to = tt;
+  }
   const { data } = await apiClient.get('/trainers/', { params, ...withSignal({}, signal) });
+  return data;
+};
+
+/** GET /api/trainers/{id}/schedule/ — график работы тренера */
+export const fetchTrainerSchedule = async (id, signal) => {
+  const { data } = await apiClient.get(`/trainers/${id}/schedule/`, withSignal({}, signal));
+  return data;
+};
+
+/** PUT /api/trainers/{id}/schedule/ — полная замена графика */
+export const updateTrainerSchedule = async (id, body, signal) => {
+  const { data } = await apiClient.put(`/trainers/${id}/schedule/`, body, withSignal({}, signal));
   return data;
 };
 

@@ -5,6 +5,8 @@ import { useToast } from '../../../app/providers/ToastProvider';
 import { Select, SubmitButton } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { isClientPaid } from '../../../shared/constants/common';
+import { TrainerScheduleModal } from '../../sports-trainers/components';
+import { trainerMatchesTimeAcrossWeek } from '../../sports-trainers/scheduleConstants';
 import './ClientFormModal.scss';
 
 // Первая буква каждого слова — заглавная (работает для любого языка и вставленного текста)
@@ -26,6 +28,13 @@ const parseComment = (raw) => {
   const auto = lines.filter((l) => isAutoCommentLine(l));
   const manual = lines.filter((l) => !isAutoCommentLine(l)).join('\n').trim();
   return { auto, manual };
+};
+
+const normalizeTimeInput = (v) => {
+  if (v == null || v === '') return '';
+  const s = String(v).trim();
+  if (/^\d{2}:\d{2}/.test(s)) return s.slice(0, 5);
+  return s;
 };
 
 const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave, onClose, error, saving }) => {
@@ -51,6 +60,9 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const [gender, setGender] = useState('');
   const [commentManual, setCommentManual] = useState('');
   const [commentAuto, setCommentAuto] = useState([]);
+  const [trainingTimeFrom, setTrainingTimeFrom] = useState('');
+  const [trainingTimeTo, setTrainingTimeTo] = useState('');
+  const [scheduleModalTrainer, setScheduleModalTrainer] = useState(null);
 
   useEffect(() => {
     if (client) {
@@ -67,22 +79,46 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       const { auto, manual } = parseComment(client.comment);
       setCommentAuto(auto);
       setCommentManual(manual);
+      setTrainingTimeFrom(normalizeTimeInput(client.trainingTimeFrom ?? client.training_time_from));
+      setTrainingTimeTo(normalizeTimeInput(client.trainingTimeTo ?? client.training_time_to));
+    } else {
+      setTrainingTimeFrom('');
+      setTrainingTimeTo('');
     }
   }, [client]);
 
   useEffect(() => {
     if (!fetchTrainers) return;
     if (sportId) {
-      fetchTrainers({ sportId }, null)
-        .then((d) => setTrainersList(d?.items ?? d?.results ?? (Array.isArray(d) ? d : []) ?? []))
+      const params = { sportId };
+      if (trainingTimeFrom) params.timeFrom = trainingTimeFrom;
+      if (trainingTimeTo) params.timeTo = trainingTimeTo;
+      fetchTrainers(params, null)
+        .then((d) => {
+          let list = d?.items ?? d?.results ?? (Array.isArray(d) ? d : []) ?? [];
+          const hasSchedule = list.some(
+            (t) => t.schedule ?? t.work_schedule ?? t.workSchedule
+          );
+          if (hasSchedule && (trainingTimeFrom || trainingTimeTo)) {
+            list = list.filter((t) =>
+              trainerMatchesTimeAcrossWeek(t, trainingTimeFrom, trainingTimeTo)
+            );
+          }
+          setTrainersList(list);
+          setTrainerId((prev) => {
+            if (!prev) return prev;
+            return list.some((t) => String(t.id) === String(prev)) ? prev : '';
+          });
+        })
         .catch((e) => {
           setTrainersList([]);
           toast.error(e?.userMessage ?? e?.response?.data?.message ?? 'Ошибка загрузки тренеров');
         });
     } else {
       setTrainersList([]);
+      setTrainerId('');
     }
-  }, [sportId, fetchTrainers]);
+  }, [sportId, fetchTrainers, trainingTimeFrom, trainingTimeTo, toast]);
 
   const priceBase = Number(price) || 0;
   const discountPct = Number(discount) || 0;
@@ -117,7 +153,15 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       clientType,
       gender: gender || undefined,
       comment: commentValue,
+      trainingTimeFrom: trainingTimeFrom || undefined,
+      trainingTimeTo: trainingTimeTo || undefined,
     });
+  };
+
+  const openTrainerSchedule = () => {
+    if (!trainerId) return;
+    const t = trainersList.find((x) => String(x.id) === String(trainerId));
+    setScheduleModalTrainer({ id: Number(trainerId), fio: t?.fio || '' });
   };
 
   const content = (
@@ -156,10 +200,52 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                 <span className="client-form-modal__label-text">Вид спорта</span>
               <Select value={String(sportId)} onChange={(v) => { setSportId(v); setTrainerId(''); }} options={[{ value: '', label: '—' }, ...(sports || []).map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="—" className="client-form-modal__select" />
             </label>
-            <label className="client-form-modal__label">
+            <div className="client-form-modal__label client-form-modal__label--trainer-wrap">
               <span className="client-form-modal__label-text">Тренер</span>
-              <Select value={String(trainerId)} onChange={(v) => setTrainerId(v)} options={[{ value: '', label: '—' }, ...(trainersList || []).map((t) => ({ value: String(t.id), label: t.fio || '' }))]} placeholder="—" className="client-form-modal__select" />
-            </label>
+              <div className="client-form-modal__trainer-row">
+                <Select
+                  value={String(trainerId)}
+                  onChange={(v) => setTrainerId(v)}
+                  options={[{ value: '', label: '—' }, ...(trainersList || []).map((t) => ({ value: String(t.id), label: t.fio || '' }))]}
+                  placeholder="—"
+                  className="client-form-modal__select client-form-modal__select--trainer"
+                />
+                <button
+                  type="button"
+                  className="client-form-modal__schedule-btn"
+                  onClick={openTrainerSchedule}
+                  disabled={!trainerId}
+                  title={!trainerId ? 'Сначала выберите тренера' : 'Показать график'}
+                >
+                  График
+                </button>
+              </div>
+            </div>
+            </div>
+            <div className="client-form-modal__row">
+              <label className="client-form-modal__label client-form-modal__label--full">
+                <span className="client-form-modal__label-text">Время занятия</span>
+                <div className="client-form-modal__time-range">
+                  <input
+                    type="time"
+                    value={trainingTimeFrom}
+                    onChange={(e) => setTrainingTimeFrom(e.target.value)}
+                    className="client-form-modal__input client-form-modal__input--time"
+                    title="С"
+                  />
+                  <span className="client-form-modal__time-sep">—</span>
+                  <input
+                    type="time"
+                    value={trainingTimeTo}
+                    onChange={(e) => setTrainingTimeTo(e.target.value)}
+                    className="client-form-modal__input client-form-modal__input--time"
+                    title="До"
+                  />
+                </div>
+                <span className="client-form-modal__field-hint">
+                  Необязательно. Список тренеров сузится по графику: время должно попадать в слот хотя бы в один из дней недели.
+                </span>
+              </label>
             </div>
             <div className="client-form-modal__row">
               <label className="client-form-modal__label">
@@ -238,7 +324,18 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       </div>
     </div>
   );
-  return createPortal(content, document.body);
+  return (
+    <>
+      {createPortal(content, document.body)}
+      {scheduleModalTrainer?.id && (
+        <TrainerScheduleModal
+          trainer={scheduleModalTrainer}
+          readOnly
+          onClose={() => setScheduleModalTrainer(null)}
+        />
+      )}
+    </>
+  );
 };
 
 export default ClientFormModal;

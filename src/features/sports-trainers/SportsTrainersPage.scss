@@ -80,6 +80,47 @@
 
   &__select-wrap {
     min-width: 160px;
+
+    &--compact {
+      min-width: 100px;
+    }
+  }
+
+  &__time-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  &__time-filter-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  &__time-input {
+    height: 40px;
+    padding: 0 8px;
+    border: 1px solid var(--input-border);
+    border-radius: var(--input-radius);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 14px;
+    max-width: 118px;
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: var(--input-shadow-focus);
+    }
+
+    &:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
   }
 
   &__add {

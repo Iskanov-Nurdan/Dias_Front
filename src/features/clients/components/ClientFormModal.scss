@@ -198,6 +198,70 @@ textarea.client-form-modal__input {
 .client-form-modal__select {
   width: 100%;
   min-width: 0;
+
+  &--trainer {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.client-form-modal__label--trainer-wrap {
+  min-width: 0;
+}
+
+.client-form-modal__trainer-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.client-form-modal__schedule-btn {
+  flex-shrink: 0;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: var(--input-radius);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+
+  &:hover:not(:disabled) {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.client-form-modal__field-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--color-text-muted);
+}
+
+.client-form-modal__time-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.client-form-modal__time-sep {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.client-form-modal__input--time {
+  max-width: 130px;
+  flex: 1;
+  min-width: 0;
 }
 
 .client-form-modal__paid-toggle {

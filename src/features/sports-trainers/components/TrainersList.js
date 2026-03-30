@@ -10,6 +10,7 @@ const TrainersList = ({
   onRetry,
   onEdit,
   onDelete,
+  onSchedule,
   confirmDelete,
   onConfirmDelete,
   onCancelDelete,
@@ -62,6 +63,9 @@ const TrainersList = ({
                   <td>{t.fio || '—'}</td>
                   <td>{getSportsLabel(t)}</td>
                   <td className="trainers-list__actions">
+                    {onSchedule && (
+                      <button type="button" className="trainers-list__btn trainers-list__btn--schedule" onClick={() => onSchedule(t)}>График</button>
+                    )}
                     <button type="button" className="trainers-list__btn trainers-list__btn--primary" onClick={() => onEdit(t)}>Изменить</button>
                     <button type="button" className="trainers-list__btn trainers-list__btn--danger" onClick={() => onDelete(t)}>Удалить</button>
                   </td>

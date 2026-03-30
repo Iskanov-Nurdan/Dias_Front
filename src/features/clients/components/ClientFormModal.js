@@ -5,8 +5,12 @@ import { useToast } from '../../../app/providers/ToastProvider';
 import { Select, SubmitButton } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { isClientPaid } from '../../../shared/constants/common';
-import { TrainerScheduleModal } from '../../sports-trainers/components';
-import { trainerMatchesTimeAcrossWeek } from '../../sports-trainers/scheduleConstants';
+import { fetchTrainerSchedule } from '../../sports-trainers/api';
+import {
+  flattenScheduleToSlotOptions,
+  matchClientToSlotKey,
+  parseTrainingSlotKey,
+} from '../../sports-trainers/scheduleConstants';
 import './ClientFormModal.scss';
 
 // Первая буква каждого слова — заглавная (работает для любого языка и вставленного текста)
@@ -60,11 +64,12 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const [gender, setGender] = useState('');
   const [commentManual, setCommentManual] = useState('');
   const [commentAuto, setCommentAuto] = useState([]);
-  const [trainingTimeFrom, setTrainingTimeFrom] = useState('');
-  const [trainingTimeTo, setTrainingTimeTo] = useState('');
-  const [scheduleModalTrainer, setScheduleModalTrainer] = useState(null);
+  const [trainingSlotKey, setTrainingSlotKey] = useState('');
+  const [scheduleSlots, setScheduleSlots] = useState([]);
+  const [scheduleSlotsLoading, setScheduleSlotsLoading] = useState(false);
 
   useEffect(() => {
+    setTrainingSlotKey('');
     if (client) {
       setFio(capitalizeWords(client.fio || ''));
       setPhone(client.phone || '');
@@ -79,31 +84,15 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       const { auto, manual } = parseComment(client.comment);
       setCommentAuto(auto);
       setCommentManual(manual);
-      setTrainingTimeFrom(normalizeTimeInput(client.trainingTimeFrom ?? client.training_time_from));
-      setTrainingTimeTo(normalizeTimeInput(client.trainingTimeTo ?? client.training_time_to));
-    } else {
-      setTrainingTimeFrom('');
-      setTrainingTimeTo('');
     }
   }, [client]);
 
   useEffect(() => {
     if (!fetchTrainers) return;
     if (sportId) {
-      const params = { sportId };
-      if (trainingTimeFrom) params.timeFrom = trainingTimeFrom;
-      if (trainingTimeTo) params.timeTo = trainingTimeTo;
-      fetchTrainers(params, null)
+      fetchTrainers({ sportId }, null)
         .then((d) => {
-          let list = d?.items ?? d?.results ?? (Array.isArray(d) ? d : []) ?? [];
-          const hasSchedule = list.some(
-            (t) => t.schedule ?? t.work_schedule ?? t.workSchedule
-          );
-          if (hasSchedule && (trainingTimeFrom || trainingTimeTo)) {
-            list = list.filter((t) =>
-              trainerMatchesTimeAcrossWeek(t, trainingTimeFrom, trainingTimeTo)
-            );
-          }
+          const list = d?.items ?? d?.results ?? (Array.isArray(d) ? d : []) ?? [];
           setTrainersList(list);
           setTrainerId((prev) => {
             if (!prev) return prev;
@@ -118,7 +107,74 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       setTrainersList([]);
       setTrainerId('');
     }
-  }, [sportId, fetchTrainers, trainingTimeFrom, trainingTimeTo, toast]);
+  }, [sportId, fetchTrainers, toast]);
+
+  useEffect(() => {
+    if (!trainerId) {
+      setScheduleSlots([]);
+      setScheduleSlotsLoading(false);
+      setTrainingSlotKey('');
+      return undefined;
+    }
+    let cancelled = false;
+    setScheduleSlotsLoading(true);
+    fetchTrainerSchedule(trainerId, null)
+      .then((data) => {
+        if (cancelled) return;
+        const options = flattenScheduleToSlotOptions(data);
+        setScheduleSlots(options);
+        setTrainingSlotKey((prev) =>
+          prev && options.some((o) => String(o.value) === String(prev)) ? prev : ''
+        );
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        const status = e.response?.status;
+        if (status === 404) {
+          setScheduleSlots([]);
+        } else {
+          setScheduleSlots([]);
+          toast.error(
+            e?.userMessage ??
+              e?.response?.data?.error?.message ??
+              e?.response?.data?.message ??
+              'Не удалось загрузить график тренера'
+          );
+        }
+        setTrainingSlotKey('');
+      })
+      .finally(() => {
+        if (!cancelled) setScheduleSlotsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trainerId, toast]);
+
+  useEffect(() => {
+    if (!client?.id || !trainerId || scheduleSlots.length === 0) return;
+    const cid = client.trainerId ?? client.trainer_id ?? client.trainer?.id;
+    if (String(cid ?? '') !== String(trainerId)) return;
+    const tw = client.trainingWeekday ?? client.training_weekday;
+    const tf = normalizeTimeInput(client.trainingTimeFrom ?? client.training_time_from);
+    const tt = normalizeTimeInput(client.trainingTimeTo ?? client.training_time_to);
+    if (!tf && !tt && (tw == null || tw === '')) return;
+    const key = matchClientToSlotKey(scheduleSlots, tw, tf, tt);
+    if (key) setTrainingSlotKey(key);
+  }, [
+    client?.id,
+    client?.trainerId,
+    client?.trainer_id,
+    client?.trainer,
+    client?.trainingWeekday,
+    client?.training_weekday,
+    client?.trainingTimeFrom,
+    client?.training_time_from,
+    client?.trainingTimeTo,
+    client?.training_time_to,
+    scheduleSlots,
+    trainerId,
+  ]);
 
   const priceBase = Number(price) || 0;
   const discountPct = Number(discount) || 0;
@@ -141,6 +197,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
     const finalComment = [...autoWithoutDiscount, manualPart].filter(Boolean).join('\n').trim() || undefined;
     // При очистке комментария явно отправляем "" — иначе PATCH без поля не обновляет его на бэкенде
     const commentValue = finalComment ?? (client?.id ? '' : undefined);
+    const slot = parseTrainingSlotKey(trainingSlotKey);
     onSave({
       fio,
       phone,
@@ -153,15 +210,10 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       clientType,
       gender: gender || undefined,
       comment: commentValue,
-      trainingTimeFrom: trainingTimeFrom || undefined,
-      trainingTimeTo: trainingTimeTo || undefined,
+      trainingWeekday: slot.trainingWeekday,
+      trainingTimeFrom: slot.trainingTimeFrom,
+      trainingTimeTo: slot.trainingTimeTo,
     });
-  };
-
-  const openTrainerSchedule = () => {
-    if (!trainerId) return;
-    const t = trainersList.find((x) => String(x.id) === String(trainerId));
-    setScheduleModalTrainer({ id: Number(trainerId), fio: t?.fio || '' });
   };
 
   const content = (
@@ -198,52 +250,44 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
             <div className="client-form-modal__row">
               <label className="client-form-modal__label">
                 <span className="client-form-modal__label-text">Вид спорта</span>
-              <Select value={String(sportId)} onChange={(v) => { setSportId(v); setTrainerId(''); }} options={[{ value: '', label: '—' }, ...(sports || []).map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="—" className="client-form-modal__select" />
+              <Select value={String(sportId)} onChange={(v) => { setSportId(v); setTrainerId(''); setTrainingSlotKey(''); }} options={[{ value: '', label: '—' }, ...(sports || []).map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="—" className="client-form-modal__select" />
             </label>
-            <div className="client-form-modal__label client-form-modal__label--trainer-wrap">
+            <label className="client-form-modal__label">
               <span className="client-form-modal__label-text">Тренер</span>
-              <div className="client-form-modal__trainer-row">
-                <Select
-                  value={String(trainerId)}
-                  onChange={(v) => setTrainerId(v)}
-                  options={[{ value: '', label: '—' }, ...(trainersList || []).map((t) => ({ value: String(t.id), label: t.fio || '' }))]}
-                  placeholder="—"
-                  className="client-form-modal__select client-form-modal__select--trainer"
-                />
-                <button
-                  type="button"
-                  className="client-form-modal__schedule-btn"
-                  onClick={openTrainerSchedule}
-                  disabled={!trainerId}
-                  title={!trainerId ? 'Сначала выберите тренера' : 'Показать график'}
-                >
-                  График
-                </button>
-              </div>
-            </div>
+              <Select
+                value={String(trainerId)}
+                onChange={(v) => {
+                  setTrainerId(v);
+                  setTrainingSlotKey('');
+                }}
+                options={[{ value: '', label: '—' }, ...(trainersList || []).map((t) => ({ value: String(t.id), label: t.fio || '' }))]}
+                placeholder="—"
+                className="client-form-modal__select"
+              />
+            </label>
             </div>
             <div className="client-form-modal__row">
               <label className="client-form-modal__label client-form-modal__label--full">
                 <span className="client-form-modal__label-text">Время занятия</span>
-                <div className="client-form-modal__time-range">
-                  <input
-                    type="time"
-                    value={trainingTimeFrom}
-                    onChange={(e) => setTrainingTimeFrom(e.target.value)}
-                    className="client-form-modal__input client-form-modal__input--time"
-                    title="С"
-                  />
-                  <span className="client-form-modal__time-sep">—</span>
-                  <input
-                    type="time"
-                    value={trainingTimeTo}
-                    onChange={(e) => setTrainingTimeTo(e.target.value)}
-                    className="client-form-modal__input client-form-modal__input--time"
-                    title="До"
-                  />
-                </div>
+                <Select
+                  value={String(trainingSlotKey)}
+                  onChange={(v) => setTrainingSlotKey(v)}
+                  options={[
+                    { value: '', label: scheduleSlotsLoading ? 'Загрузка…' : '—' },
+                    ...scheduleSlots,
+                  ]}
+                  placeholder={scheduleSlotsLoading ? 'Загрузка…' : '—'}
+                  disabled={!trainerId || scheduleSlotsLoading}
+                  className="client-form-modal__select"
+                />
                 <span className="client-form-modal__field-hint">
-                  Необязательно. Список тренеров сузится по графику: время должно попадать в слот хотя бы в один из дней недели.
+                  {trainerId
+                    ? scheduleSlots.length
+                      ? 'Выберите слот из графика тренера (настраивается в разделе «Спорт и тренеры»).'
+                      : scheduleSlotsLoading
+                        ? 'Загрузка слотов…'
+                        : 'У этого тренера нет интервалов в графике — настройте график в разделе «Спорт и тренеры».'
+                    : 'Сначала выберите тренера.'}
                 </span>
               </label>
             </div>
@@ -324,18 +368,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       </div>
     </div>
   );
-  return (
-    <>
-      {createPortal(content, document.body)}
-      {scheduleModalTrainer?.id && (
-        <TrainerScheduleModal
-          trainer={scheduleModalTrainer}
-          readOnly
-          onClose={() => setScheduleModalTrainer(null)}
-        />
-      )}
-    </>
-  );
+  return createPortal(content, document.body);
 };
 
 export default ClientFormModal;

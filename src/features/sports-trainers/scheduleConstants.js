@@ -62,6 +62,67 @@ export function scheduleToApiPayload(rows) {
   };
 }
 
+/**
+ * Слоты для формы клиента: label «Пн 12:00–14:00», value «weekday|start|end» (1–7, HH:mm).
+ * data — ответ GET /trainers/{id}/schedule/
+ */
+export function flattenScheduleToSlotOptions(data) {
+  const rows = scheduleFromApiResponse(data || {});
+  const options = [];
+  for (const row of rows) {
+    if (!row.enabled) continue;
+    for (const int of row.intervals || []) {
+      if (!int.start || !int.end) continue;
+      const meta = WEEKDAYS.find((w) => w.weekday === row.weekday);
+      const label = `${meta?.short ?? row.weekday} ${int.start}–${int.end}`;
+      options.push({
+        value: `${row.weekday}|${int.start}|${int.end}`,
+        label,
+      });
+    }
+  }
+  return options;
+}
+
+export function parseTrainingSlotKey(key) {
+  if (key == null || key === '') {
+    return { trainingWeekday: undefined, trainingTimeFrom: undefined, trainingTimeTo: undefined };
+  }
+  const parts = String(key).split('|');
+  if (parts.length < 3) {
+    return { trainingWeekday: undefined, trainingTimeFrom: undefined, trainingTimeTo: undefined };
+  }
+  const wd = Number(parts[0]);
+  const start = parts[1] || '';
+  const end = parts[2] || '';
+  return {
+    trainingWeekday: Number.isFinite(wd) && wd >= 1 && wd <= 7 ? wd : undefined,
+    trainingTimeFrom: start || undefined,
+    trainingTimeTo: end || undefined,
+  };
+}
+
+/** Подобрать value слота по сохранённым у клиента полям (после загрузки списка слотов). */
+export function matchClientToSlotKey(options, weekday, timeFrom, timeTo) {
+  if (!options?.length) return '';
+  const tf = String(timeFrom || '').slice(0, 5);
+  const tt = String(timeTo || '').slice(0, 5);
+  if (weekday != null && weekday !== '' && tf && tt) {
+    const key = `${Number(weekday)}|${tf}|${tt}`;
+    if (options.some((o) => String(o.value) === key)) return key;
+  }
+  if (tf && tt) {
+    const hit = options.find((o) => {
+      const segs = String(o.value).split('|');
+      const st = segs[1] || '';
+      const en = segs[2] || '';
+      return st === tf && en === tt;
+    });
+    if (hit) return String(hit.value);
+  }
+  return '';
+}
+
 const timeToMinutes = (t) => {
   const [h, m] = String(t).split(':').map((x) => Number(x));
   if (!Number.isFinite(h) || !Number.isFinite(m)) return null;

@@ -13,17 +13,6 @@
   }
 }
 
-@keyframes confirm-modal-sheet-in {
-  from {
-    opacity: 0;
-    transform: translateY(100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .confirm-modal__backdrop,
   .confirm-modal {
@@ -34,12 +23,6 @@
 .confirm-modal__backdrop {
   @include mixins.modal-backdrop;
   animation: confirm-modal-backdrop-in 0.2s ease;
-
-  @include mixins.mobile {
-    align-items: flex-end;
-    padding: 0;
-    padding-bottom: env(safe-area-inset-bottom, 0);
-  }
 }
 
 .confirm-modal {
@@ -47,24 +30,22 @@
   border-radius: 18px;
   padding: 24px;
   min-width: 280px;
-  max-width: min(480px, calc(100vw - 32px));
+  max-width: min(520px, calc(100vw - 32px));
   width: 100%;
-  margin: 12px;
+  max-height: min(85vh, calc(100dvh - 24px));
+  overflow-y: auto;
+  margin: 0;
   box-shadow: var(--shadow-xl);
   animation: confirm-modal-panel-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 
   @include mixins.mobile {
-    margin: 0;
-    max-width: 100%;
-    max-height: min(88vh, calc(100dvh - env(safe-area-inset-top, 0px)));
-    overflow-y: auto;
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    padding: var(--space-5) var(--space-4) max(var(--space-5), env(safe-area-inset-bottom));
-    animation: confirm-modal-sheet-in 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+    max-width: min(520px, calc(100vw - 32px));
+    max-height: min(88vh, calc(100dvh - 24px));
+    padding: var(--space-5) var(--space-4);
   }
 
   @media (max-width: 374px) {
-    padding: 20px;
+    padding: 20px var(--space-3);
     min-width: 0;
   }
 
@@ -84,6 +65,7 @@
 
   &__actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
     justify-content: flex-end;
   }
@@ -96,6 +78,10 @@
     font-size: 14px;
     font-weight: 600;
     transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+
+    @include mixins.mobile {
+      min-height: 44px;
+    }
 
     &--cancel {
       background: var(--color-surface);

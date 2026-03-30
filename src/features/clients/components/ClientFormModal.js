@@ -41,11 +41,24 @@ const normalizeTimeInput = (v) => {
   return s;
 };
 
+const MOBILE_FORM_MQ = '(max-width: 768px)';
+
 const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave, onClose, error, saving }) => {
   const toast = useToast();
   const firstInputRef = useRef(null);
+  const [isMobileFormLayout, setIsMobileFormLayout] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(MOBILE_FORM_MQ).matches,
+  );
 
   useModalEffect(true, onClose);
+
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_FORM_MQ);
+    const sync = () => setIsMobileFormLayout(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => firstInputRef.current?.focus(), 50);
@@ -189,6 +202,14 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const priceAfterDiscount = discountPct > 0 ? priceBase * (1 - discountPct / 100) : priceBase;
   const formatSum = (v) => (v != null && !Number.isNaN(v) ? `${Number(v).toLocaleString('ru-RU')} сом` : '—');
 
+  const trainingSlotHint = trainerId
+    ? scheduleSlots.length
+      ? 'Выберите слот из графика тренера (настраивается в разделе «Спорт и тренеры»).'
+      : scheduleSlotsLoading
+        ? 'Загрузка слотов…'
+        : 'У этого тренера нет интервалов в графике — настройте график в разделе «Спорт и тренеры».'
+    : 'Сначала выберите тренера.';
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const autoLines = [...commentAuto];
@@ -256,6 +277,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                 <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="client-form-modal__input" />
               </label>
             </div>
+            {!isMobileFormLayout && (
             <div className="client-form-modal__row">
               <label className="client-form-modal__label">
                 <span className="client-form-modal__label-text">Пол</span>
@@ -263,6 +285,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               </label>
               <div />
             </div>
+            )}
           </div>
           <div className="client-form-modal__section">
             <h3 className="client-form-modal__section-title">Абонемент</h3>
@@ -299,14 +322,8 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                   disabled={!trainerId || scheduleSlotsLoading}
                   className="client-form-modal__select"
                 />
-                <span className="client-form-modal__field-hint">
-                  {trainerId
-                    ? scheduleSlots.length
-                      ? 'Выберите слот из графика тренера (настраивается в разделе «Спорт и тренеры»).'
-                      : scheduleSlotsLoading
-                        ? 'Загрузка слотов…'
-                        : 'У этого тренера нет интервалов в графике — настройте график в разделе «Спорт и тренеры».'
-                    : 'Сначала выберите тренера.'}
+                <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
+                  {trainingSlotHint}
                 </span>
               </label>
             </div>
@@ -358,25 +375,43 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               <div />
             </div>
           </div>
-          <div className="client-form-modal__section">
-            <h3 className="client-form-modal__section-title">Комментарий</h3>
-          <div className="client-form-modal__label client-form-modal__label--full">
-            <div className="client-form-modal__comment-header">
-              <span className="client-form-modal__label-text">Комментарий</span>
-              {(commentAuto.length > 0 || commentManual.trim()) && (
-                <button type="button" className="client-form-modal__comment-clear" onClick={() => { setCommentManual(''); setCommentAuto([]); }}>Очистить всё</button>
+          <details
+            className="client-form-modal__more"
+            key={isMobileFormLayout ? 'extra-mobile' : 'extra-desktop'}
+            {...(!isMobileFormLayout ? { open: true } : {})}
+          >
+            <summary className="client-form-modal__more-summary">Дополнительно</summary>
+            <div className="client-form-modal__more-inner">
+              {isMobileFormLayout && (
+                <div className="client-form-modal__section client-form-modal__section--flush">
+                  <label className="client-form-modal__label">
+                    <span className="client-form-modal__label-text">Пол</span>
+                    <Select value={gender} onChange={setGender} options={[{ value: '', label: '—' }, { value: 'male', label: 'М' }, { value: 'female', label: 'Ж' }]} placeholder="—" className="client-form-modal__select" />
+                  </label>
+                  <p className="client-form-modal__slot-hint-mobile">{trainingSlotHint}</p>
+                </div>
               )}
-            </div>
-            {commentAuto.length > 0 && (
-              <div className="client-form-modal__comment-auto" aria-readonly="true">
-                {commentAuto.map((line, i) => (
-                  <div key={i} className="client-form-modal__comment-auto-line">{line}</div>
-                ))}
+              <div className="client-form-modal__section client-form-modal__section--flush">
+                <h3 className="client-form-modal__section-title">Комментарий</h3>
+                <div className="client-form-modal__label client-form-modal__label--full">
+                  <div className="client-form-modal__comment-header">
+                    <span className="client-form-modal__label-text">Комментарий</span>
+                    {(commentAuto.length > 0 || commentManual.trim()) && (
+                      <button type="button" className="client-form-modal__comment-clear" onClick={() => { setCommentManual(''); setCommentAuto([]); }}>Очистить всё</button>
+                    )}
+                  </div>
+                  {commentAuto.length > 0 && (
+                    <div className="client-form-modal__comment-auto" aria-readonly="true">
+                      {commentAuto.map((line, i) => (
+                        <div key={i} className="client-form-modal__comment-auto-line">{line}</div>
+                      ))}
+                    </div>
+                  )}
+                  <textarea value={commentManual} onChange={(e) => setCommentManual(e.target.value)} className="client-form-modal__input" rows={2} placeholder="Комментарий" />
+                </div>
               </div>
-            )}
-            <textarea value={commentManual} onChange={(e) => setCommentManual(e.target.value)} className="client-form-modal__input" rows={2} placeholder="Комментарий" />
-          </div>
-          </div>
+            </div>
+          </details>
           </div>
           <div className="client-form-modal__actions">
             <button type="button" className="client-form-modal__btn client-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>

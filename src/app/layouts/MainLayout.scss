@@ -166,8 +166,8 @@
       position: fixed;
       top: 0;
       left: 0;
-      width: min(280px, 85vw);
-      max-width: 280px;
+      width: min(300px, 88vw);
+      max-width: 300px;
       height: 100vh;
       z-index: 101;
       transform: translateX(-100%);
@@ -246,8 +246,8 @@
   &__nav {
     display: flex;
     flex-direction: column;
-    padding: var(--space-2) var(--space-2);
-    gap: 2px;
+    padding: var(--space-3) var(--space-3);
+    gap: 4px;
     min-width: 0;
     flex: 1;
     overflow-y: auto;
@@ -256,8 +256,8 @@
 
     @include mixins.mobile {
       flex-direction: column;
-      padding: var(--space-3) var(--space-3);
-      gap: 2px;
+      padding: var(--space-3) var(--space-4);
+      gap: 4px;
     }
 
     @include mixins.xs {
@@ -367,38 +367,38 @@
   &__nav-group {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
   }
 
   &__nav-item {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-3);
     text-align: left;
-    min-height: 38px;
-    padding: 6px var(--space-2);
-    font-size: 14px;
+    min-height: 44px;
+    padding: 8px var(--space-3);
+    font-size: 15px;
     font-weight: 500;
-    line-height: 1.25;
+    line-height: 1.3;
     background: none;
     border: none;
     color: var(--color-sidebar-muted);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     transition: background var(--transition-fast), color var(--transition-fast);
     min-width: 0;
     white-space: nowrap;
     position: relative;
 
     @include mixins.mobile {
-      border-radius: var(--radius-md);
-      padding: 6px var(--space-3);
+      border-radius: var(--radius-lg);
+      padding: 8px var(--space-4);
       width: 100%;
       justify-content: flex-start;
     }
 
     @include mixins.xs {
-      padding: 6px var(--space-2);
-      font-size: 12px;
+      padding: 8px var(--space-3);
+      font-size: 13px;
     }
 
     &:hover {
@@ -418,7 +418,7 @@
         top: 50%;
         transform: translateY(-50%);
         width: 2px;
-        height: 18px;
+        height: 22px;
         background: rgba(255, 255, 255, 0.5);
         border-radius: 0 2px 2px 0;
       }
@@ -436,8 +436,8 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     opacity: 0.9;
   }
 
@@ -454,20 +454,20 @@
   &--sidebar-collapsed &__nav-item {
     padding: 0;
     justify-content: center;
-    min-height: 38px;
-    height: 38px;
+    min-height: 44px;
+    height: 44px;
 
     @include mixins.mobile {
       padding: 0 var(--space-3);
       justify-content: center;
       height: auto;
-      min-height: 38px;
+      min-height: 44px;
     }
   }
 
   &--sidebar-collapsed &__nav-item--active::before {
     left: 0;
-    height: 16px;
+    height: 20px;
   }
 
   &--sidebar-collapsed &__nav-label {

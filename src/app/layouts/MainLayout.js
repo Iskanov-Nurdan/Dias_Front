@@ -15,7 +15,7 @@ const THEME_STORAGE_KEY = 'rahman-theme';
 const ICON_SIZE = 20;
 const ICON_SIZE_SM = 18;
 /** Иконки в списке навигации сайдбара (см. .main-layout__nav-icon) */
-const NAV_ICON_SIZE = 18;
+const NAV_ICON_SIZE = 20;
 
 const getInitialTheme = () => {
   try {

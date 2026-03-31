@@ -5,15 +5,29 @@ import { isClientPaid } from '../../../shared/constants/common';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { EmptyState } from '../../../shared/ui';
 import { fetchClients } from '../api';
+import { formatScheduleSlotLabel } from '../lib/scheduleStatsNormalize';
+import { filterClientsByTrainingSlot, hasTrainingSlotFilter } from '../lib/filterClientsByTrainingSlot';
 import './TrainerDetailsModal.scss';
 
 const MONTH_NAMES = ['', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 
-const TrainerDetailsModal = ({ trainerId, trainerName, year, month, onDetails, onClose }) => {
+const TrainerDetailsModal = ({
+  trainerId,
+  trainerName,
+  year,
+  month,
+  trainingWeekday,
+  trainingTimeFrom,
+  trainingTimeTo,
+  onDetails,
+  onClose,
+}) => {
   useModalEffect(!!trainerId, onClose);
 
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const slotFilterActive = hasTrainingSlotFilter(trainingWeekday, trainingTimeFrom, trainingTimeTo);
 
   useEffect(() => {
     if (!trainerId) return;
@@ -21,15 +35,24 @@ const TrainerDetailsModal = ({ trainerId, trainerName, year, month, onDetails, o
     setLoading(true);
     setStudents([]);
     const q = { trainerId: String(trainerId), year: year || undefined, month: month || undefined, perPage: 500 };
+    if (slotFilterActive) {
+      q.trainingWeekday = Number(trainingWeekday);
+      q.trainingTimeFrom = String(trainingTimeFrom).slice(0, 5);
+      q.trainingTimeTo = String(trainingTimeTo).slice(0, 5);
+    }
     fetchClients(q, ctrl.signal)
       .then((res) => {
-        const list = res?.items ?? res?.results ?? (Array.isArray(res) ? res : []);
-        setStudents(Array.isArray(list) ? list : []);
+        let list = res?.items ?? res?.results ?? (Array.isArray(res) ? res : []);
+        list = Array.isArray(list) ? list : [];
+        if (slotFilterActive) {
+          list = filterClientsByTrainingSlot(list, trainingWeekday, trainingTimeFrom, trainingTimeTo);
+        }
+        setStudents(list);
       })
       .catch(() => setStudents([]))
       .finally(() => setLoading(false));
     return () => ctrl.abort();
-  }, [trainerId, year, month]);
+  }, [trainerId, year, month, trainingWeekday, trainingTimeFrom, trainingTimeTo]);
 
   if (!trainerId) return null;
 
@@ -44,7 +67,14 @@ const TrainerDetailsModal = ({ trainerId, trainerName, year, month, onDetails, o
           </h2>
           <button type="button" className="trainer-details-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
         </div>
-        {periodStr && <p className="trainer-details-modal__period">Период: {periodStr}</p>}
+        {periodStr && (
+          <p className="trainer-details-modal__period">
+            Период: {periodStr}
+            {slotFilterActive
+              ? ` · Слот: ${formatScheduleSlotLabel(Number(trainingWeekday), String(trainingTimeFrom).slice(0, 5), String(trainingTimeTo).slice(0, 5))}`
+              : ''}
+          </p>
+        )}
 
         {loading ? (
           <div className="trainer-details-modal__loading">

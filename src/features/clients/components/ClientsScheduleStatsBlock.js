@@ -13,7 +13,7 @@ import './ClientsScheduleStatsBlock.scss';
  * @param {boolean} props.loading
  * @param {string | null} props.errorMessage — текст ошибки (не 404)
  * @param {boolean} props.endpointMissing — true если 404 (эндпоинт ещё не на бэке)
- * @param {(id: number|string, name: string) => void} [props.onTrainerRowClick]
+ * @param {(id: number|string, name: string, slot?: { weekday: number, timeFrom: string, timeTo: string }) => void} [props.onTrainerRowClick]
  */
 const ClientsScheduleStatsBlock = ({
   raw,
@@ -22,7 +22,7 @@ const ClientsScheduleStatsBlock = ({
   endpointMissing,
   onTrainerRowClick,
 }) => {
-  const { trainers, unassigned } = useMemo(
+  const { trainers } = useMemo(
     () => (raw != null ? normalizeClientsScheduleStatsResponse(raw) : { trainers: [], unassigned: null }),
     [raw]
   );
@@ -95,10 +95,6 @@ const ClientsScheduleStatsBlock = ({
   return (
     <div className="clients-schedule-stats">
       <h3 className="clients-schedule-stats__title">По графику тренеров</h3>
-      <p className="clients-schedule-stats__hint">
-        Ученики с привязкой к интервалу графика тренера (день недели и время как в карточке клиента). Тот же период, что и
-        в блоке выше.
-      </p>
 
       <div className="clients-schedule-stats__table-wrap">
         <table className="clients-schedule-stats__table">
@@ -125,7 +121,12 @@ const ClientsScheduleStatsBlock = ({
                   className={r.trainerId ? 'clients-schedule-stats__row--clickable' : undefined}
                   onClick={
                     r.trainerId && onTrainerRowClick
-                      ? () => onTrainerRowClick(r.trainerId, r.trainerName)
+                      ? () =>
+                          onTrainerRowClick(r.trainerId, r.trainerName, {
+                            weekday: r.weekday,
+                            timeFrom: r.timeFrom,
+                            timeTo: r.timeTo,
+                          })
                       : undefined
                   }
                   role={r.trainerId ? 'button' : undefined}
@@ -135,7 +136,11 @@ const ClientsScheduleStatsBlock = ({
                       ? (e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            onTrainerRowClick(r.trainerId, r.trainerName);
+                            onTrainerRowClick(r.trainerId, r.trainerName, {
+                              weekday: r.weekday,
+                              timeFrom: r.timeFrom,
+                              timeTo: r.timeTo,
+                            });
                           }
                         }
                       : undefined
@@ -152,15 +157,6 @@ const ClientsScheduleStatsBlock = ({
           </tbody>
         </table>
       </div>
-
-      {unassigned && (unassigned.total > 0 || unassigned.paid > 0 || unassigned.unpaid > 0) && (
-        <div className="clients-schedule-stats__footer">
-          <span className="clients-schedule-stats__footer-label">Без слота графика / не сопоставлено</span>
-          <span className="clients-schedule-stats__footer-nums">
-            {unassigned.total} · оплатили {unassigned.paid} · не оплатили {unassigned.unpaid}
-          </span>
-        </div>
-      )}
     </div>
   );
 };

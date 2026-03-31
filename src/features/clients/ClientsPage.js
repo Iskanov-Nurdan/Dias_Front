@@ -758,8 +758,21 @@ const ClientsPage = () => {
                 loading={scheduleStatsLoading}
                 errorMessage={scheduleStatsError}
                 endpointMissing={scheduleStatsEndpointMissing}
-                onTrainerRowClick={(trainerId, trainerName) =>
-                  setTrainerDetails({ trainerId, trainerName })
+                onTrainerRowClick={(trainerId, trainerName, slot) =>
+                  setTrainerDetails({
+                    trainerId,
+                    trainerName,
+                    ...(slot &&
+                    slot.weekday != null &&
+                    slot.timeFrom &&
+                    slot.timeTo
+                      ? {
+                          trainingWeekday: slot.weekday,
+                          trainingTimeFrom: slot.timeFrom,
+                          trainingTimeTo: slot.timeTo,
+                        }
+                      : {}),
+                  })
                 }
               />
             </>
@@ -934,6 +947,9 @@ const ClientsPage = () => {
           trainerName={trainerDetails.trainerName}
           year={statsYear}
           month={statsMonth}
+          trainingWeekday={trainerDetails.trainingWeekday}
+          trainingTimeFrom={trainerDetails.trainingTimeFrom}
+          trainingTimeTo={trainerDetails.trainingTimeTo}
           onDetails={(c) => { setTrainerDetails(null); handleOpenCard(c); }}
           onClose={() => setTrainerDetails(null)}
         />

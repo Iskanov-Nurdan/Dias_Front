@@ -2,7 +2,7 @@ import { apiClient } from '../../shared/api/client';
 
 const withSignal = (config, signal) => (signal ? { ...config, signal } : config);
 
-/** ТЗ: GET /api/clients/ — query: search, sportId, trainerId, paid, clientType, year/month/day, page, perPage (camelCase) */
+/** ТЗ: GET /api/clients/ — query: search, sportId, trainerId, paid, clientType, year/month/day, page, perPage (camelCase); опционально trainingWeekday (1–7), trainingTimeFrom, trainingTimeTo — фильтр по слоту графика */
 const getLastDay = (year, month) => new Date(year, month, 0).getDate();
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -32,6 +32,17 @@ const buildClientsListParams = (queryState) => {
 
   if (queryState?.page) params.page = queryState.page;
   if (queryState?.perPage) params.perPage = queryState.perPage;
+
+  const twd = queryState?.trainingWeekday ?? queryState?.training_weekday;
+  if (twd !== undefined && twd !== null && twd !== '') {
+    const n = Number(twd);
+    if (Number.isFinite(n) && n >= 1 && n <= 7) params.trainingWeekday = n;
+  }
+  const ttf = queryState?.trainingTimeFrom ?? queryState?.training_time_from;
+  const ttt = queryState?.trainingTimeTo ?? queryState?.training_time_to;
+  if (ttf) params.trainingTimeFrom = String(ttf).slice(0, 5);
+  if (ttt) params.trainingTimeTo = String(ttt).slice(0, 5);
+
   return params;
 };
 

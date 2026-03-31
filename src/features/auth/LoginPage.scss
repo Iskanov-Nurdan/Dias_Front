@@ -1,60 +1,156 @@
 @use '../../shared/styles/mixins';
 
 .login-page {
-  min-height: 100vh;
-  @include mixins.flex-center;
-  background-color: #0d0f1a;
-  padding: var(--space-6);
-  position: relative;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  background-color: var(--color-bg);
   overflow: hidden;
 
-  @media (max-width: 768px) {
-    padding: var(--space-4);
+  @media (max-width: 960px) {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(200px, 28vh) 1fr;
+  }
+}
+
+.login-page__visual {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  align-items: flex-end;
+  padding: var(--space-10) var(--space-10) var(--space-12);
+  box-sizing: border-box;
+
+  @media (max-width: 960px) {
+    min-height: 0;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-8) var(--space-6);
+    text-align: center;
+  }
+}
+
+.login-page__visual-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    165deg,
+    rgba(13, 15, 26, 0.45) 0%,
+    rgba(25, 36, 71, 0.75) 45%,
+    rgba(13, 15, 26, 0.92) 100%
+  );
+  pointer-events: none;
+}
+
+.login-page__visual-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 420px;
+
+  @media (max-width: 960px) {
+    max-width: 360px;
+  }
+}
+
+.login-page__brand-logo {
+  display: block;
+  width: auto;
+  max-width: 200px;
+  height: auto;
+  margin-bottom: var(--space-6);
+  filter: drop-shadow(0 12px 32px rgba(0, 0, 0, 0.35));
+
+  @media (max-width: 960px) {
+    max-width: 140px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: var(--space-4);
+  }
+}
+
+.login-page__brand-title {
+  margin: 0 0 var(--space-3);
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #fff;
+  line-height: 1.15;
+}
+
+.login-page__brand-tagline {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.78);
+  max-width: 34ch;
+}
+
+.login-page__form-panel {
+  @include mixins.flex-center;
+  padding: var(--space-8) var(--space-10);
+  box-sizing: border-box;
+  min-height: 100dvh;
+
+  @media (max-width: 960px) {
+    min-height: 0;
+    padding: var(--space-6) var(--space-5) var(--space-10);
+    align-items: flex-start;
+    padding-top: var(--space-8);
   }
 
   @media (max-width: 374px) {
-    padding: var(--space-3);
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
   }
 }
 
 .login-page__card {
-  background: linear-gradient(145deg, rgba(31, 45, 89, 0.88) 0%, rgba(36, 66, 95, 0.88) 50%, rgba(30, 58, 95, 0.88) 100%);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-radius: var(--radius-2xl);
-  padding: var(--space-8) 40px var(--space-8);
   width: 100%;
-  max-width: 460px;
-  box-shadow: 0 32px 64px -12px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  position: relative;
-  z-index: 1;
+  max-width: 420px;
+  background: var(--color-surface);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-10) var(--space-8);
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--color-border);
   transition: box-shadow var(--transition-smooth);
 
   @media (max-width: 768px) {
-    padding: var(--space-6) var(--space-6) var(--space-6);
+    padding: var(--space-8) var(--space-6);
   }
 
   @media (max-width: 374px) {
-    padding: var(--space-5) var(--space-4) var(--space-6);
+    padding: var(--space-6) var(--space-5);
     border-radius: var(--radius-xl);
   }
 
   &:hover {
-    box-shadow: 0 40px 80px -16px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    box-shadow: var(--shadow-lg), 0 0 0 1px rgba(15, 23, 42, 0.04);
   }
 
   &--success {
     text-align: center;
-    padding: var(--space-8) 40px;
+    padding: var(--space-10) var(--space-8);
   }
 }
 
-.login-page__logo {
-  display: block;
-  margin: 0 auto var(--space-6);
-  max-width: 180px;
-  height: auto;
+.login-page__form-header {
+  margin-bottom: var(--space-8);
+}
+
+.login-page__form-title {
+  margin: 0 0 var(--space-2);
+  font-size: 24px;
+  font-weight: var(--font-weight-page-title);
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+}
+
+.login-page__form-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  font-weight: 400;
 }
 
 .login-page__form {
@@ -66,21 +162,21 @@
 
 .login-page__error {
   padding: var(--space-3) var(--space-4);
-  background: rgba(254, 226, 226, 0.95);
+  background: var(--color-danger-soft);
   color: var(--color-danger);
   border-radius: var(--radius-md);
   font-size: 14px;
   font-weight: 400;
-  border: 1px solid rgba(220, 38, 38, 0.3);
+  border: 1px solid rgba(220, 38, 38, 0.2);
 }
 
 .login-page__label {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  font-size: 13px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: var(--input-label-size);
+  font-weight: var(--input-label-weight);
+  color: var(--input-label-color);
 }
 
 .login-page__input {
@@ -88,25 +184,26 @@
   min-height: 42px;
   padding: 0 14px;
   box-sizing: border-box;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid var(--input-border);
   border-radius: var(--input-radius);
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--input-bg);
   font-size: 16px;
+  color: var(--color-text);
+  font-weight: 400;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 
   @media (max-width: 768px) {
     padding: 12px 14px;
   }
-  font-weight: 400;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 
   &:focus {
     outline: none;
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 4px var(--color-primary-soft);
+    box-shadow: var(--input-shadow-focus);
   }
 
   &::placeholder {
-    color: var(--color-text-muted);
+    color: var(--input-placeholder);
   }
 
   &--password {
@@ -133,7 +230,7 @@
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-sm);
-  transition: color 0.15s ease;
+  transition: color var(--transition-fast);
 
   &:hover {
     color: var(--color-text);
@@ -200,12 +297,12 @@
   margin: 0 0 var(--space-2);
   font-size: 20px;
   font-weight: 600;
-  color: #FFFFFF;
+  color: var(--color-text);
 }
 
 .login-page__success-text {
   margin: 0;
   font-size: 14px;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--color-text-muted);
 }

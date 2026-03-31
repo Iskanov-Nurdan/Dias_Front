@@ -58,85 +58,107 @@ const LoginPage = () => {
     if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
   }, []);
 
+  const publicUrl = process.env.PUBLIC_URL || '';
   const bgStyle = {
-    backgroundImage: `url(${process.env.PUBLIC_URL || ''}/login-bg.png)`,
+    backgroundImage: `url(${publicUrl}/login-bg.png)`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
   };
+
+  const brandAside = (
+    <aside className="login-page__visual" style={bgStyle}>
+      <div className="login-page__visual-overlay" />
+      <div className="login-page__visual-inner">
+        <img src={`${publicUrl}/rahman.png`} alt="Рахман Ата" className="login-page__brand-logo" />
+        <h1 className="login-page__brand-title">Рахман Ата</h1>
+        <p className="login-page__brand-tagline">Единая система управления клубом</p>
+      </div>
+    </aside>
+  );
+
   if (success) {
     return (
-      <div className="login-page" style={bgStyle}>
-        <div className="login-page__card login-page__card--success">
-          <div className="login-page__success-icon" aria-hidden>
-            <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="32" cy="32" r="30" stroke="currentColor" strokeWidth="2" fill="none" />
-              <path d="M20 32l8 8 16-16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+      <div className="login-page">
+        {brandAside}
+        <main className="login-page__form-panel">
+          <div className="login-page__card login-page__card--success">
+            <div className="login-page__success-icon" aria-hidden>
+              <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="32" cy="32" r="30" stroke="currentColor" strokeWidth="2" fill="none" />
+                <path d="M20 32l8 8 16-16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <p className="login-page__success-title">Вход выполнен успешно</p>
+            <p className="login-page__success-text">Перенаправление в систему…</p>
           </div>
-          <p className="login-page__success-title">Вход выполнен успешно</p>
-          <p className="login-page__success-text">Перенаправление в систему…</p>
-        </div>
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="login-page" style={bgStyle}>
-      <div className="login-page__card">
-        <img src={`${process.env.PUBLIC_URL || ''}/rahman.png`} alt="Рахман Ата" className="login-page__logo" />
-        <form className="login-page__form" onSubmit={handleSubmit}>
-          {error && (
-            <div className="login-page__error">{error}</div>
-          )}
-          <label className="login-page__label">
-            Логин
-            <input
-              type="text"
-              className="login-page__input"
-              value={loginValue}
-              onChange={(e) => setLoginValue(e.target.value)}
-              placeholder="Логин"
-              required
-              autoComplete="username"
-            />
-          </label>
-          <label className="login-page__label">
-            Пароль
-            <div className="login-page__password-wrap">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                className="login-page__input login-page__input--password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Пароль"
-                required
-                autoComplete="current-password"
-              />
-              <button
-                type="button"
-                className="login-page__password-toggle"
-                onClick={() => setShowPassword((v) => !v)}
-                title={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
-                aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
-                tabIndex={-1}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-          </label>
-          <button type="submit" className="login-page__submit" disabled={loading || rateLimitBlocked}>
-            {loading ? (
-              <span className="login-page__submit-text">
-                <span className="login-page__spinner" aria-hidden />
-                Вход…
-              </span>
-            ) : (
-              'Войти'
+    <div className="login-page">
+      {brandAside}
+      <main className="login-page__form-panel">
+        <div className="login-page__card">
+          <div className="login-page__form-header">
+            <h2 className="login-page__form-title">Вход</h2>
+            <p className="login-page__form-subtitle">Введите логин и пароль</p>
+          </div>
+          <form className="login-page__form" onSubmit={handleSubmit}>
+            {error && (
+              <div className="login-page__error">{error}</div>
             )}
-          </button>
-        </form>
-      </div>
+            <label className="login-page__label">
+              Логин
+              <input
+                type="text"
+                className="login-page__input"
+                value={loginValue}
+                onChange={(e) => setLoginValue(e.target.value)}
+                placeholder="Логин"
+                required
+                autoComplete="username"
+              />
+            </label>
+            <label className="login-page__label">
+              Пароль
+              <div className="login-page__password-wrap">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="login-page__input login-page__input--password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Пароль"
+                  required
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className="login-page__password-toggle"
+                  onClick={() => setShowPassword((v) => !v)}
+                  title={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                  aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </label>
+            <button type="submit" className="login-page__submit" disabled={loading || rateLimitBlocked}>
+              {loading ? (
+                <span className="login-page__submit-text">
+                  <span className="login-page__spinner" aria-hidden />
+                  Вход…
+                </span>
+              ) : (
+                'Войти'
+              )}
+            </button>
+          </form>
+        </div>
+      </main>
     </div>
   );
 };

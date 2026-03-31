@@ -59,21 +59,13 @@ const LoginPage = () => {
   }, []);
 
   const publicUrl = process.env.PUBLIC_URL || '';
-  const bgStyle = {
-    backgroundImage: `url(${publicUrl}/login-bg.png)`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundRepeat: 'no-repeat',
+  const visualStyle = {
+    '--login-page-bg': `url(${publicUrl}/login-bg.png)`,
   };
 
   const brandAside = (
-    <aside className="login-page__visual" style={bgStyle}>
-      <div className="login-page__visual-overlay" />
-      <div className="login-page__visual-inner">
-        <img src={`${publicUrl}/rahman.png`} alt="Рахман Ата" className="login-page__brand-logo" />
-        <h1 className="login-page__brand-title">Рахман Ата</h1>
-        <p className="login-page__brand-tagline">Единая система управления клубом</p>
-      </div>
+    <aside className="login-page__visual" style={visualStyle}>
+      <img src={`${publicUrl}/rahman.png`} alt="Рахман Ата" className="login-page__brand-logo" />
     </aside>
   );
 

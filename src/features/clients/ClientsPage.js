@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { fetchClients, fetchClientsNotRenewed, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchAllClientsPaginated, fetchClientsStats, createOneTimePayment } from './api';
+import { fetchClients, fetchClientsNotRenewed, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchAllClientsPaginated, fetchClientsStats, fetchClientsScheduleStats, createOneTimePayment } from './api';
 import { fetchSports } from '../sports-trainers/api';
 import { fetchTrainers } from '../sports-trainers/api';
 import { useAuth } from '../../app/providers/AuthProvider';
@@ -10,7 +10,7 @@ import { SEARCH_DEBOUNCE_MS, formatMoney, MONTHS, STATS_YEARS } from '../../shar
 import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiError';
 import { filterClientsByPeriod, getExactDuplicates, getSimilarGroups } from '../../shared/lib/duplicates';
 import { Select, ConfirmModal, Pagination, FiltersModal, FilterBar, EmptyState } from '../../shared/ui';
-import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal, TrainerDetailsModal, DuplicateGroup } from './components';
+import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal, TrainerDetailsModal, DuplicateGroup, ClientsScheduleStatsBlock } from './components';
 import './ClientsPage.scss';
 
 const TAB_LIST = 'list';
@@ -90,6 +90,12 @@ const ClientsPage = () => {
   const [statsData, setStatsData] = useState(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const statsControllerRef = useRef(null);
+  const [scheduleStatsRaw, setScheduleStatsRaw] = useState(null);
+  const [scheduleStatsLoading, setScheduleStatsLoading] = useState(false);
+  const [scheduleStatsEndpointMissing, setScheduleStatsEndpointMissing] = useState(false);
+  const [scheduleStatsError, setScheduleStatsError] = useState(null);
+  const scheduleStatsControllerRef = useRef(null);
+  const scheduleStatsRequestSeq = useRef(0);
 
   // ── Разовые оплаты ──
   const [oneTimeSearch, setOneTimeSearch] = useState('');
@@ -223,12 +229,44 @@ const ClientsPage = () => {
     }
   }, [statsYear, statsMonth]);
 
-  useEffect(() => {
-    if (activeTab === TAB_STATS) {
-      fetchStats();
-      return () => statsControllerRef.current?.abort();
+  const fetchScheduleStats = useCallback(async () => {
+    scheduleStatsControllerRef.current?.abort();
+    scheduleStatsControllerRef.current = new AbortController();
+    const { signal } = scheduleStatsControllerRef.current;
+    const seq = ++scheduleStatsRequestSeq.current;
+    setScheduleStatsLoading(true);
+    setScheduleStatsRaw(null);
+    setScheduleStatsEndpointMissing(false);
+    setScheduleStatsError(null);
+    const params = {};
+    if (statsYear) params.year = statsYear;
+    if (statsMonth) params.month = statsMonth;
+    try {
+      const raw = await fetchClientsScheduleStats(params, signal);
+      if (scheduleStatsRequestSeq.current === seq) setScheduleStatsRaw(raw);
+    } catch (err) {
+      if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
+      if (scheduleStatsRequestSeq.current !== seq) return;
+      const st = err?.response?.status;
+      if (st === 404) {
+        setScheduleStatsEndpointMissing(true);
+      } else {
+        setScheduleStatsError(getApiErrorMessage(err));
+      }
+    } finally {
+      if (scheduleStatsRequestSeq.current === seq) setScheduleStatsLoading(false);
     }
-  }, [activeTab, fetchStats]);
+  }, [statsYear, statsMonth]);
+
+  useEffect(() => {
+    if (activeTab !== TAB_STATS) return undefined;
+    fetchStats();
+    fetchScheduleStats();
+    return () => {
+      statsControllerRef.current?.abort();
+      scheduleStatsControllerRef.current?.abort();
+    };
+  }, [activeTab, fetchStats, fetchScheduleStats]);
 
   const fetchOneTime = useCallback(async () => {
     oneTimeControllerRef.current?.abort();
@@ -714,6 +752,16 @@ const ClientsPage = () => {
                   </tbody>
                 </table>
               </div>
+
+              <ClientsScheduleStatsBlock
+                raw={scheduleStatsRaw}
+                loading={scheduleStatsLoading}
+                errorMessage={scheduleStatsError}
+                endpointMissing={scheduleStatsEndpointMissing}
+                onTrainerRowClick={(trainerId, trainerName) =>
+                  setTrainerDetails({ trainerId, trainerName })
+                }
+              />
             </>
           ) : null}
         </div>

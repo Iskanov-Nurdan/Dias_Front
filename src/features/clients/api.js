@@ -115,6 +115,18 @@ export const fetchClientsStats = async ({ year, month }, signal) => {
   return data;
 };
 
+/**
+ * GET /api/clients/stats/schedule/ — ученики по слотам графика тренеров (тот же период, что и /clients/stats/).
+ * Формат ответа см. ТЗ для бэкенда в репозитории / у команды.
+ */
+export const fetchClientsScheduleStats = async ({ year, month }, signal) => {
+  const params = {};
+  if (year) params.year = year;
+  if (month) params.month = month;
+  const { data } = await apiClient.get('/clients/stats/schedule/', { params, ...withSignal({}, signal) });
+  return data;
+};
+
 /** Загружает ВСЕ клиенты, проходя по всем страницам (для дубликатов) */
 export const fetchAllClientsPaginated = async (queryOverrides, signal) => {
   const perPage = 100;

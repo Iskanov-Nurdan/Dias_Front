@@ -73,6 +73,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const [price, setPrice] = useState('');
   const [discount, setDiscount] = useState('');
   const [paid, setPaid] = useState(false);
+  const [actualPaymentDate, setActualPaymentDate] = useState('');
   const [clientType, setClientType] = useState('regular');
   const [gender, setGender] = useState('');
   const [commentManual, setCommentManual] = useState('');
@@ -92,6 +93,8 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       setPrice(client.price ?? '');
       setDiscount(client.discount ?? '');
       setPaid(isClientPaid(client));
+      const apd = client.actualPaymentDate ?? client.actual_payment_date;
+      setActualPaymentDate(apd ? String(apd).slice(0, 10) : '');
       setClientType(client.clientType || client.client_type || 'regular');
       setGender(client.gender || '');
       const { auto, manual } = parseComment(client.comment);
@@ -248,6 +251,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       price: price ? Number(price) : undefined,
       discount: discount ? Number(discount) : undefined,
       paid,
+      actualPaymentDate: actualPaymentDate || (client?.id ? null : undefined),
       clientType,
       gender: gender || undefined,
       comment: commentValue,
@@ -352,6 +356,22 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                 <button type="button" className={`client-form-modal__paid-option ${!paid ? 'client-form-modal__paid-option--active' : ''}`} onClick={() => setPaid(false)}>Нет</button>
               </div>
             </div>
+            </div>
+            <div className="client-form-modal__row">
+              <label className="client-form-modal__label client-form-modal__label--full">
+                <span className="client-form-modal__label-text">
+                  Фактический день оплаты <span className="client-form-modal__optional">(необязательно)</span>
+                </span>
+                <input
+                  type="date"
+                  value={actualPaymentDate}
+                  onChange={(e) => setActualPaymentDate(e.target.value)}
+                  className="client-form-modal__input"
+                />
+                <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
+                  Для отчёта «Записи по дням»: в какой день клиент реально оплатил. Можно оставить пустым.
+                </span>
+              </label>
             </div>
             {priceBase > 0 && (
             <div className="client-form-modal__price-summary">

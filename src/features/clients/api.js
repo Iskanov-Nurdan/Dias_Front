@@ -138,6 +138,18 @@ export const fetchClientsScheduleStats = async ({ year, month }, signal) => {
   return data;
 };
 
+/**
+ * GET /api/clients/stats/payment-days/?year=&month=
+ * По дням месяца: сколько записались (date_start) и сколько оплатили (actual_payment_date).
+ */
+export const fetchClientsPaymentDayReport = async ({ year, month }, signal) => {
+  const params = {};
+  if (year) params.year = year;
+  if (month) params.month = month;
+  const { data } = await apiClient.get('/clients/stats/payment-days/', { params, ...withSignal({}, signal) });
+  return data;
+};
+
 /** Загружает ВСЕ клиенты, проходя по всем страницам (для дубликатов) */
 export const fetchAllClientsPaginated = async (queryOverrides, signal) => {
   const perPage = 100;

@@ -77,6 +77,7 @@ const ClientCardModal = ({ client, onEdit, onDelete, onRefresh, onClose }) => {
 
   if (!client) return null;
   const dateStartRaw = client.dateStart ?? client.date_start;
+  const actualPayRaw = client.actualPaymentDate ?? client.actual_payment_date;
   const priceDisplay = client.priceDisplay ?? client.totalPrice ?? client.price_display ?? client.total_price;
   const priceBase = Number(client.price) || 0;
   const discountPct = Number(client.discount ?? client.discount_percent) || 0;
@@ -112,6 +113,8 @@ const ClientCardModal = ({ client, onEdit, onDelete, onRefresh, onClose }) => {
               {discountPct > 0 && <><dt>Скидка</dt><dd>{discountPct}%</dd></>}
               <dt>Цена</dt><dd>{formatMoney(priceFinal)}</dd>
               <dt>Оплачено</dt><dd>{isClientPaid(client) ? 'Да' : 'Нет'}</dd>
+              <dt>Фактический день оплаты</dt>
+              <dd>{actualPayRaw ? new Date(actualPayRaw).toLocaleDateString('ru-RU') : '—'}</dd>
             </dl>
           </section>
           <section className="client-card-modal__section">

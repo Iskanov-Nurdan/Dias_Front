@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { fetchClients, fetchClientsNotRenewed, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchAllClientsPaginated, fetchClientsStats, fetchClientsScheduleStats, createOneTimePayment } from './api';
+import { fetchClients, fetchClientsNotRenewed, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchAllClientsPaginated, fetchClientsStats, fetchClientsScheduleStats, fetchClientsPaymentDayReport, createOneTimePayment } from './api';
 import { fetchSports } from '../sports-trainers/api';
 import { fetchTrainers } from '../sports-trainers/api';
 import { useAuth } from '../../app/providers/AuthProvider';
@@ -10,7 +10,7 @@ import { SEARCH_DEBOUNCE_MS, formatMoney, MONTHS, STATS_YEARS } from '../../shar
 import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiError';
 import { filterClientsByPeriod, getExactDuplicates, getSimilarGroups } from '../../shared/lib/duplicates';
 import { Select, ConfirmModal, Pagination, FiltersModal, FilterBar, EmptyState } from '../../shared/ui';
-import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal, TrainerDetailsModal, DuplicateGroup, ClientsScheduleStatsBlock } from './components';
+import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal, TrainerDetailsModal, DuplicateGroup, ClientsScheduleStatsBlock, ClientsPaymentDayReportBlock } from './components';
 import './ClientsPage.scss';
 
 const TAB_LIST = 'list';
@@ -18,6 +18,7 @@ const TAB_NOT_RENEWED = 'not_renewed';
 const TAB_DUPS = 'dups';
 const TAB_STATS = 'stats';
 const TAB_ONETIME = 'onetime';
+const TAB_PAYMENT_DAYS = 'payment_days';
 
 const SUBTAB_EXACT   = 'exact';
 const SUBTAB_SIMILAR = 'similar';
@@ -96,6 +97,16 @@ const ClientsPage = () => {
   const [scheduleStatsError, setScheduleStatsError] = useState(null);
   const scheduleStatsControllerRef = useRef(null);
   const scheduleStatsRequestSeq = useRef(0);
+
+  // ── Отчёт «записи и оплаты по дням» ──
+  const [paymentDayYear, setPaymentDayYear] = useState(new Date().getFullYear().toString());
+  const [paymentDayMonth, setPaymentDayMonth] = useState(String(new Date().getMonth() + 1));
+  const [paymentDayReportRaw, setPaymentDayReportRaw] = useState(null);
+  const [paymentDayReportLoading, setPaymentDayReportLoading] = useState(false);
+  const [paymentDayReportEndpointMissing, setPaymentDayReportEndpointMissing] = useState(false);
+  const [paymentDayReportError, setPaymentDayReportError] = useState(null);
+  const paymentDayReportControllerRef = useRef(null);
+  const paymentDayReportRequestSeq = useRef(0);
 
   // ── Разовые оплаты ──
   const [oneTimeSearch, setOneTimeSearch] = useState('');
@@ -258,6 +269,41 @@ const ClientsPage = () => {
     }
   }, [statsYear, statsMonth]);
 
+  const fetchPaymentDayReport = useCallback(async () => {
+    if (!paymentDayYear || !paymentDayMonth) {
+      paymentDayReportControllerRef.current?.abort();
+      setPaymentDayReportLoading(false);
+      setPaymentDayReportRaw(null);
+      setPaymentDayReportEndpointMissing(false);
+      setPaymentDayReportError(null);
+      return;
+    }
+    paymentDayReportControllerRef.current?.abort();
+    paymentDayReportControllerRef.current = new AbortController();
+    const { signal } = paymentDayReportControllerRef.current;
+    const seq = ++paymentDayReportRequestSeq.current;
+    setPaymentDayReportLoading(true);
+    setPaymentDayReportRaw(null);
+    setPaymentDayReportEndpointMissing(false);
+    setPaymentDayReportError(null);
+    const params = { year: paymentDayYear, month: paymentDayMonth };
+    try {
+      const raw = await fetchClientsPaymentDayReport(params, signal);
+      if (paymentDayReportRequestSeq.current === seq) setPaymentDayReportRaw(raw);
+    } catch (err) {
+      if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
+      if (paymentDayReportRequestSeq.current !== seq) return;
+      const st = err?.response?.status;
+      if (st === 404) {
+        setPaymentDayReportEndpointMissing(true);
+      } else {
+        setPaymentDayReportError(getApiErrorMessage(err));
+      }
+    } finally {
+      if (paymentDayReportRequestSeq.current === seq) setPaymentDayReportLoading(false);
+    }
+  }, [paymentDayYear, paymentDayMonth]);
+
   useEffect(() => {
     if (activeTab !== TAB_STATS) return undefined;
     fetchStats();
@@ -267,6 +313,14 @@ const ClientsPage = () => {
       scheduleStatsControllerRef.current?.abort();
     };
   }, [activeTab, fetchStats, fetchScheduleStats]);
+
+  useEffect(() => {
+    if (activeTab !== TAB_PAYMENT_DAYS) return undefined;
+    fetchPaymentDayReport();
+    return () => {
+      paymentDayReportControllerRef.current?.abort();
+    };
+  }, [activeTab, fetchPaymentDayReport]);
 
   const fetchOneTime = useCallback(async () => {
     oneTimeControllerRef.current?.abort();
@@ -447,6 +501,7 @@ const ClientsPage = () => {
         <button type="button" className={`clients-page__tab${activeTab === TAB_NOT_RENEWED ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_NOT_RENEWED)}>Не продлили</button>
         <button type="button" className={`clients-page__tab${activeTab === TAB_DUPS ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_DUPS)}>Дубликаты</button>
         <button type="button" className={`clients-page__tab${activeTab === TAB_STATS ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_STATS)}>Статистика</button>
+        <button type="button" className={`clients-page__tab${activeTab === TAB_PAYMENT_DAYS ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_PAYMENT_DAYS)}>Записи по дням</button>
         <button type="button" className={`clients-page__tab${activeTab === TAB_ONETIME ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_ONETIME)}>Разовый</button>
       </div>
 
@@ -777,6 +832,49 @@ const ClientsPage = () => {
               />
             </>
           ) : null}
+        </div>
+      )}
+
+      {/* ── Записи и оплаты по дням (отчёт) ── */}
+      {activeTab === TAB_PAYMENT_DAYS && (
+        <div className="clients-page__stats-section">
+          <FilterBar className="clients-page__stats-toolbar">
+            <Select
+              value={paymentDayYear}
+              onChange={setPaymentDayYear}
+              options={[{ value: '', label: 'Год — все' }, ...STATS_YEARS.map((y) => ({ value: y, label: y }))]}
+              placeholder="Год"
+              className="clients-page__stats-select"
+            />
+            <Select
+              value={paymentDayMonth}
+              onChange={setPaymentDayMonth}
+              options={[
+                { value: '', label: 'Месяц — все' },
+                ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: MONTHS[i + 1] })),
+              ]}
+              placeholder="Месяц"
+              className="clients-page__stats-select"
+            />
+          </FilterBar>
+          {!paymentDayYear || !paymentDayMonth ? (
+            <p className="clients-page__stats-info" role="status">
+              Выберите <strong>год</strong> и <strong>месяц</strong>, чтобы построить отчёт по дням.
+            </p>
+          ) : (
+            <>
+              <p className="clients-page__stats-info">
+                Период: <strong>{paymentDayYear}</strong>
+                {` · ${MONTHS[Number(paymentDayMonth)]}`}
+              </p>
+              <ClientsPaymentDayReportBlock
+                raw={paymentDayReportRaw}
+                loading={paymentDayReportLoading}
+                errorMessage={paymentDayReportError}
+                endpointMissing={paymentDayReportEndpointMissing}
+              />
+            </>
+          )}
         </div>
       )}
 

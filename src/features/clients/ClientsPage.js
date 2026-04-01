@@ -872,6 +872,9 @@ const ClientsPage = () => {
                 loading={paymentDayReportLoading}
                 errorMessage={paymentDayReportError}
                 endpointMissing={paymentDayReportEndpointMissing}
+                year={paymentDayYear}
+                month={paymentDayMonth}
+                onOpenClient={handleOpenCard}
               />
             </>
           )}

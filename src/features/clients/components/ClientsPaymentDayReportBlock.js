@@ -1,21 +1,44 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { EmptyState } from '../../../shared/ui';
 import { normalizeClientsPaymentDayReportResponse } from '../lib/paymentDayReportNormalize';
+import PaymentDayClientsModal from './PaymentDayClientsModal';
 import './ClientsPaymentDayReportBlock.scss';
 
 /**
- * Отчёт: по каждому календарному дню месяца — сколько записалось (date_start) и сколько оплатили (фактический день оплаты).
- *
  * @param {object} props
  * @param {unknown} props.raw
  * @param {boolean} props.loading
  * @param {string | null} props.errorMessage
  * @param {boolean} props.endpointMissing
+ * @param {string} [props.year]
+ * @param {string} [props.month]
+ * @param {(c: { id: string|number }) => void} [props.onOpenClient] — открыть карточку клиента (после клика в модалке)
  */
-const ClientsPaymentDayReportBlock = ({ raw, loading, errorMessage, endpointMissing }) => {
+const ClientsPaymentDayReportBlock = ({
+  raw,
+  loading,
+  errorMessage,
+  endpointMissing,
+  year,
+  month,
+  onOpenClient,
+}) => {
   const { rows } = useMemo(
-    () => (raw != null ? normalizeClientsPaymentDayReportResponse(raw) : { rows: [] }),
-    [raw]
+    () =>
+      raw != null
+        ? normalizeClientsPaymentDayReportResponse(raw, { year, month })
+        : { rows: [] },
+    [raw, year, month]
+  );
+
+  const [detail, setDetail] = useState(null);
+
+  const handleOpenFromModal = useCallback(
+    (c) => {
+      setDetail(null);
+      onOpenClient?.(c);
+    },
+    [onOpenClient]
   );
 
   const totals = useMemo(() => {
@@ -27,6 +50,21 @@ const ClientsPaymentDayReportBlock = ({ raw, loading, errorMessage, endpointMiss
     }
     return { registered: reg, paid };
   }, [rows]);
+
+  const renderCountCell = (count, dayIso, dayLabel, kind) => {
+    if (count <= 0 || !dayIso) {
+      return <span className="clients-payment-day-report__count--zero">{count.toLocaleString('ru-RU')}</span>;
+    }
+    return (
+      <button
+        type="button"
+        className="clients-payment-day-report__count-btn"
+        onClick={() => setDetail({ dayIso, dayLabel, kind })}
+      >
+        {count.toLocaleString('ru-RU')}
+      </button>
+    );
+  };
 
   if (loading) {
     return (
@@ -79,7 +117,8 @@ const ClientsPaymentDayReportBlock = ({ raw, loading, errorMessage, endpointMiss
       <h3 className="clients-payment-day-report__title">Записи и оплаты по дням</h3>
       <p className="clients-payment-day-report__hint">
         <strong>Записались</strong> — клиенты с датой начала в этот день. <strong>Оплатили</strong> — у кого в этот день указан
-        фактический день оплаты (независимо от флага «Оплачено»).
+        фактический день оплаты. Числа в колонках можно нажать — откроется список клиентов с датами записи и фактической оплаты;
+        строку в списке можно нажать, чтобы открыть карточку.
       </p>
 
       <div className="clients-payment-day-report__table-wrap">
@@ -102,8 +141,8 @@ const ClientsPaymentDayReportBlock = ({ raw, loading, errorMessage, endpointMiss
               rows.map((r) => (
                 <tr key={String(r.dayKey)}>
                   <td>{r.dayLabel}</td>
-                  <td>{r.registeredCount.toLocaleString('ru-RU')}</td>
-                  <td>{r.paidCount.toLocaleString('ru-RU')}</td>
+                  <td>{renderCountCell(r.registeredCount, r.dayIso, r.dayLabel, 'registered')}</td>
+                  <td>{renderCountCell(r.paidCount, r.dayIso, r.dayLabel, 'paid')}</td>
                 </tr>
               ))
             )}
@@ -122,6 +161,19 @@ const ClientsPaymentDayReportBlock = ({ raw, loading, errorMessage, endpointMiss
             <span className="clients-payment-day-report__total-strong">{totals.paid.toLocaleString('ru-RU')}</span>
           </span>
         </div>
+      )}
+
+      {detail && year && month && (
+        <PaymentDayClientsModal
+          open
+          onClose={() => setDetail(null)}
+          year={year}
+          month={month}
+          dayIso={detail.dayIso}
+          dayLabel={detail.dayLabel}
+          kind={detail.kind}
+          onOpenCard={onOpenClient ? handleOpenFromModal : undefined}
+        />
       )}
     </div>
   );

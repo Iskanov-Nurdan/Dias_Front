@@ -150,6 +150,16 @@ export const fetchClientsPaymentDayReport = async ({ year, month }, signal) => {
   return data;
 };
 
+/**
+ * GET /api/clients/stats/payment-days/clients/?year=&month=&day=YYYY-MM-DD&kind=registered|paid
+ * Список клиентов для ячейки отчёта «Записи по дням».
+ */
+export const fetchClientsPaymentDayClients = async ({ year, month, day, kind }, signal) => {
+  const params = { year, month, day, kind };
+  const { data } = await apiClient.get('/clients/stats/payment-days/clients/', { params, ...withSignal({}, signal) });
+  return data;
+};
+
 /** Загружает ВСЕ клиенты, проходя по всем страницам (для дубликатов) */
 export const fetchAllClientsPaginated = async (queryOverrides, signal) => {
   const perPage = 100;

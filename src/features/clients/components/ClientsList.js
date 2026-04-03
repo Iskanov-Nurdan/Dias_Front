@@ -1,6 +1,7 @@
 import React from 'react';
 import { ErrorState, EmptyState, SkeletonTable } from '../../../shared/ui';
-import { isClientPaid, isClientSubscriptionExpired } from '../../../shared/constants/common';
+import { isClientPaid } from '../../../shared/constants/common';
+import { composeClientDataRowClass } from '../lib/clientRowHighlight';
 import './ClientsList.scss';
 
 const ClientsList = ({
@@ -52,14 +53,9 @@ const ClientsList = ({
                 </td>
               </tr>
             ) : list.map((c) => {
-              const expired = isClientSubscriptionExpired(c);
               const paid = isClientPaid(c);
               const dateStart = c.dateStart ?? c.date_start;
-              let rowClass = 'clients-list__row';
-              if (expired) rowClass += ' clients-list__row--subscription-expired';
-              else if (!paid) rowClass += ' clients-list__row--unpaid';
-              else if (c.clientType === 'one-time') rowClass += ' clients-list__row--one-time';
-              else if (c.clientType === 'individual') rowClass += ' clients-list__row--individual';
+              const rowClass = composeClientDataRowClass(c, 'clients-list__row');
               return (
                 <tr key={c.id} className={rowClass}>
                   <td data-label="ФИО" title={c.fio || undefined}>{c.fio || '—'}</td>

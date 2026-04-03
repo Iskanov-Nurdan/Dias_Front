@@ -139,6 +139,13 @@
       border-left: 4px solid #b45309;
       box-shadow: inset 0 0 0 1px rgba(180, 83, 9, 0.4);
     }
+    tbody tr.clients-list__row--installments-complete {
+      background: rgba(22, 163, 74, 0.14);
+      border-left: 3px solid rgba(22, 163, 74, 0.55);
+    }
+    tbody tr.clients-list__row--installments-complete:nth-child(even) {
+      background: rgba(22, 163, 74, 0.2);
+    }
     tbody tr.clients-list__row--one-time {
       background: rgba(37, 99, 235, 0.14);
     }
@@ -146,10 +153,11 @@
       background: rgba(37, 99, 235, 0.2);
     }
     tbody tr.clients-list__row--individual {
-      background: rgba(22, 163, 74, 0.14);
+      background: rgba(109, 40, 217, 0.12);
+      border-left: 3px solid rgba(109, 40, 217, 0.35);
     }
     tbody tr.clients-list__row--individual:nth-child(even) {
-      background: rgba(22, 163, 74, 0.2);
+      background: rgba(109, 40, 217, 0.16);
     }
     tbody tr:hover {
       background: var(--color-primary-light);
@@ -160,11 +168,14 @@
     tbody tr.clients-list__row--subscription-expired:hover {
       background: #fbbf24;
     }
+    tbody tr.clients-list__row--installments-complete:hover {
+      background: rgba(22, 163, 74, 0.24);
+    }
     tbody tr.clients-list__row--one-time:hover {
       background: rgba(37, 99, 235, 0.22);
     }
     tbody tr.clients-list__row--individual:hover {
-      background: rgba(22, 163, 74, 0.22);
+      background: rgba(109, 40, 217, 0.2);
     }
     tbody tr:last-child td {
       border-bottom: none;
@@ -201,7 +212,7 @@
   }
 
   &__type-cell--individual {
-    color: var(--color-success);
+    color: #6d28d9;
     font-weight: 500;
   }
 

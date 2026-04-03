@@ -102,3 +102,35 @@ export function getClientPaymentsForCard(client) {
   }
   return [];
 }
+
+/** Итоговая цена строки клиента (как в карточке: priceDisplay или цена со скидкой). */
+export function getClientFinalPriceForList(client) {
+  if (!client) return 0;
+  const priceDisplay = client.priceDisplay ?? client.totalPrice ?? client.price_display ?? client.total_price;
+  const priceBase = Number(client.price) || 0;
+  const discountPct = Number(client.discount ?? client.discount_percent) || 0;
+  if (priceDisplay != null && priceDisplay !== '' && Number.isFinite(Number(priceDisplay))) {
+    return Math.round(Number(priceDisplay));
+  }
+  const after = discountPct > 0 && priceBase > 0 ? priceBase * (1 - discountPct / 100) : priceBase;
+  return Math.round(after);
+}
+
+/** Сумма положительных amount в actualPayments / actual_payments. */
+export function getClientPartialPaymentsSum(client) {
+  const raw = client?.actualPayments ?? client?.actual_payments;
+  if (!Array.isArray(raw) || raw.length === 0) return 0;
+  let s = 0;
+  for (const p of raw) {
+    const n = Number(p.amount);
+    if (Number.isFinite(n) && n > 0) s += n;
+  }
+  return Math.round(s);
+}
+
+/** Сумма частичных оплат покрывает цену (для подсветки строки). */
+export function isClientFullyCoveredByInstallments(client) {
+  const target = getClientFinalPriceForList(client);
+  if (target <= 0) return false;
+  return getClientPartialPaymentsSum(client) >= target;
+}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { isClientPaid } from '../../../shared/constants/common';
+import { composeClientDataRowClass } from '../lib/clientRowHighlight';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { EmptyState } from '../../../shared/ui';
 import { fetchClients } from '../api';
@@ -104,15 +105,7 @@ const TrainerDetailsModal = ({
                   students.map((c) => (
                     <tr
                       key={c.id}
-                      className={
-                        !isClientPaid(c)
-                          ? 'trainer-details-modal__row trainer-details-modal__row--unpaid'
-                          : c.clientType === 'one-time'
-                            ? 'trainer-details-modal__row trainer-details-modal__row--one-time'
-                            : c.clientType === 'individual'
-                              ? 'trainer-details-modal__row trainer-details-modal__row--individual'
-                              : 'trainer-details-modal__row'
-                      }
+                      className={composeClientDataRowClass(c, 'trainer-details-modal__row')}
                     >
                       <td>{c.fio || '—'}</td>
                       <td>{c.phone || '—'}</td>

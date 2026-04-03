@@ -802,18 +802,28 @@
 
     tbody tr:last-child td { border-bottom: none; }
     tbody tr:hover { background: var(--color-primary-light); }
+    tbody tr.dup-group__row--subscription-expired,
+    tbody tr.dup-group__row--subscription-expired:nth-child(even) {
+      background: #fcd34d;
+      border-left: 4px solid #b45309;
+      box-shadow: inset 0 0 0 1px rgba(180, 83, 9, 0.4);
+    }
+    tbody tr.dup-group__row--subscription-expired:hover { background: #fbbf24; }
+    tbody tr.dup-group__row--installments-complete { background: rgba(22, 163, 74, 0.14); border-left: 3px solid rgba(22, 163, 74, 0.55); }
+    tbody tr.dup-group__row--installments-complete:nth-child(even) { background: rgba(22, 163, 74, 0.2); }
+    tbody tr.dup-group__row--installments-complete:hover { background: rgba(22, 163, 74, 0.24); }
     tbody tr.dup-group__row--unpaid { background: rgba(197, 48, 48, 0.06); border-left: 3px solid rgba(197, 48, 48, 0.4); }
     tbody tr.dup-group__row--unpaid:nth-child(even) { background: rgba(197, 48, 48, 0.08); }
     tbody tr.dup-group__row--unpaid:hover { background: rgba(197, 48, 48, 0.1); }
     tbody tr.dup-group__row--one-time { background: rgba(37, 99, 235, 0.14); }
     tbody tr.dup-group__row--one-time:nth-child(even) { background: rgba(37, 99, 235, 0.2); }
     tbody tr.dup-group__row--one-time:hover { background: rgba(37, 99, 235, 0.22); }
-    tbody tr.dup-group__row--individual { background: rgba(22, 163, 74, 0.14); }
-    tbody tr.dup-group__row--individual:nth-child(even) { background: rgba(22, 163, 74, 0.2); }
-    tbody tr.dup-group__row--individual:hover { background: rgba(22, 163, 74, 0.22); }
+    tbody tr.dup-group__row--individual { background: rgba(109, 40, 217, 0.12); border-left: 3px solid rgba(109, 40, 217, 0.35); }
+    tbody tr.dup-group__row--individual:nth-child(even) { background: rgba(109, 40, 217, 0.16); }
+    tbody tr.dup-group__row--individual:hover { background: rgba(109, 40, 217, 0.2); }
   }
 
-  &__type-cell--individual { color: var(--color-success); font-weight: 500; }
+  &__type-cell--individual { color: #6d28d9; font-weight: 500; }
   &__type-cell--one-time { color: var(--color-info); font-weight: 500; }
 
   &__btn {

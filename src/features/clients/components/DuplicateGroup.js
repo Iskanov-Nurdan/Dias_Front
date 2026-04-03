@@ -1,5 +1,6 @@
 import React from 'react';
 import { isClientPaid } from '../../../shared/constants/common';
+import { composeClientDataRowClass } from '../lib/clientRowHighlight';
 
 const DuplicateGroup = ({ group, label, onDetails }) => (
   <div className="dup-group">
@@ -15,15 +16,7 @@ const DuplicateGroup = ({ group, label, onDetails }) => (
         {group.map((c) => (
           <tr
             key={c.id}
-            className={
-              !isClientPaid(c)
-                ? 'dup-group__row dup-group__row--unpaid'
-                : c.clientType === 'one-time'
-                  ? 'dup-group__row dup-group__row--one-time'
-                  : c.clientType === 'individual'
-                    ? 'dup-group__row dup-group__row--individual'
-                    : 'dup-group__row'
-            }
+            className={composeClientDataRowClass(c, 'dup-group__row')}
           >
             <td>{c.fio || '—'}</td>
             <td>{c.phone || '—'}</td>

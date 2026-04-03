@@ -6,6 +6,7 @@ const loaders = {
   employees: () => import('../features/employees/EmployeesPage'),
   'sports-trainers': () => import('../features/sports-trainers/SportsTrainersPage'),
   clients: () => import('../features/clients/ClientsPage'),
+  reports: () => import('../features/clients/ClientsReportsPage'),
   leads: () => import('../features/leads/LeadsPage'),
   warehouse: () => import('../features/warehouse/WarehousePage'),
   sales: () => import('../features/sales/SalesPage'),

@@ -8,9 +8,9 @@ import './AccessModal.scss';
 
 /** Логические группы доступа (не хаос из одной линии) */
 const ACCESS_MODAL_GROUPS = [
-  { label: 'Аналитика', ids: ['analytics'] },
+  { label: 'Аналитика', ids: ['analytics', 'reports'] },
   { label: 'Персонал', ids: ['employees'] },
-  { label: 'Спорт, клиенты и лиды', ids: ['sports-trainers', 'clients', 'leads'] },
+  { label: 'Спорт, клиенты и лиды', ids: ['clients', 'sports-trainers', 'leads'] },
   { label: 'Склад', ids: ['warehouse'] },
   { label: 'Продажи и финансы', ids: ['sales', 'expenses', 'salary'] },
 ];

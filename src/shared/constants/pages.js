@@ -1,13 +1,14 @@
 import {
-  BarChart3, Users, Trophy, UsersRound, Package, ShoppingCart, Receipt, Wallet, Inbox,
+  BarChart3, Users, Trophy, UsersRound, ClipboardList, Package, ShoppingCart, Receipt, Wallet, Inbox,
 } from 'lucide-react';
 
 export const PAGE_IDS = [
   'analytics',
-  'employees',
-  'sports-trainers',
+  'reports',
   'clients',
+  'sports-trainers',
   'leads',
+  'employees',
   'warehouse',
   'sales',
   'expenses',
@@ -19,6 +20,7 @@ export const PAGE_ICONS = {
   employees: Users,
   'sports-trainers': Trophy,
   clients: UsersRound,
+  reports: ClipboardList,
   leads: Inbox,
   warehouse: Package,
   sales: ShoppingCart,
@@ -31,6 +33,7 @@ export const PAGE_LABELS = {
   employees: 'Сотрудники',
   'sports-trainers': 'Спорт и тренеры',
   clients: 'Клиенты',
+  reports: 'Отчёты',
   leads: 'Лиды',
   warehouse: 'Склад',
   sales: 'Продажи',
@@ -43,6 +46,7 @@ export const PAGE_ROUTES = {
   employees: '/employees',
   'sports-trainers': '/sports-trainers',
   clients: '/clients',
+  reports: '/reports',
   leads: '/leads',
   warehouse: '/warehouse',
   sales: '/sales',
@@ -52,8 +56,8 @@ export const PAGE_ROUTES = {
 
 /** Группы пунктов меню: ключ группы → массив pageId */
 export const PAGE_GROUPS = {
-  'Аналитика': ['analytics'],
-  'Люди': ['employees', 'sports-trainers', 'clients', 'leads'],
+  'Аналитика': ['analytics', 'reports'],
+  'Люди': ['clients', 'sports-trainers', 'leads', 'employees'],
   'Склад': ['warehouse'],
   'Финансы': ['sales', 'expenses', 'salary'],
 };

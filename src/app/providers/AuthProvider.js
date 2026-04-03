@@ -70,7 +70,12 @@ export const AuthProvider = ({ children }) => {
       if (!user) return false;
       const access = user.access;
       if (!access || typeof access !== 'object') return false;
-      return access[pageId] === true;
+      if (access[pageId] === true) return true;
+      if (pageId === 'reports') {
+        if (access.reports === false) return false;
+        return access.clients === true;
+      }
+      return false;
     },
     [user]
   );

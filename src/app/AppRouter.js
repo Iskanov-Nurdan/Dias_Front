@@ -9,6 +9,7 @@ const LoginPage = React.lazy(() => import('../features/auth/LoginPage'));
 const EmployeesPage = React.lazy(() => import('../features/employees/EmployeesPage'));
 const SportsTrainersPage = React.lazy(() => import('../features/sports-trainers/SportsTrainersPage'));
 const ClientsPage = React.lazy(() => import('../features/clients/ClientsPage'));
+const ClientsReportsPage = React.lazy(() => import('../features/clients/ClientsReportsPage'));
 const WarehousePage = React.lazy(() => import('../features/warehouse/WarehousePage'));
 const SalesPage = React.lazy(() => import('../features/sales/SalesPage'));
 const ExpensesPage = React.lazy(() => import('../features/expenses/ExpensesPage'));
@@ -67,6 +68,14 @@ const AppRouter = () => (
           element={
             <ProtectedRoute pageId="clients">
               <ClientsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="reports"
+          element={
+            <ProtectedRoute pageId="reports">
+              <ClientsReportsPage />
             </ProtectedRoute>
           }
         />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { fetchClients, fetchClientsNotRenewed, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchAllClientsPaginated, fetchClientsStats, fetchClientsScheduleStats, fetchClientsPaymentDayReport, createOneTimePayment } from './api';
+import { fetchClients, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchAllClientsPaginated, createOneTimePayment } from './api';
 import { fetchSports } from '../sports-trainers/api';
 import { fetchTrainers } from '../sports-trainers/api';
 import { useAuth } from '../../app/providers/AuthProvider';
@@ -10,15 +10,12 @@ import { SEARCH_DEBOUNCE_MS, formatMoney, MONTHS, STATS_YEARS } from '../../shar
 import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiError';
 import { filterClientsByPeriod, getExactDuplicates, getSimilarGroups } from '../../shared/lib/duplicates';
 import { Select, ConfirmModal, Pagination, FiltersModal, FilterBar, EmptyState } from '../../shared/ui';
-import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal, TrainerDetailsModal, DuplicateGroup, ClientsScheduleStatsBlock, ClientsPaymentDayReportBlock } from './components';
+import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal, DuplicateGroup } from './components';
 import './ClientsPage.scss';
 
 const TAB_LIST = 'list';
-const TAB_NOT_RENEWED = 'not_renewed';
 const TAB_DUPS = 'dups';
-const TAB_STATS = 'stats';
 const TAB_ONETIME = 'onetime';
-const TAB_PAYMENT_DAYS = 'payment_days';
 
 const SUBTAB_EXACT   = 'exact';
 const SUBTAB_SIMILAR = 'similar';
@@ -38,10 +35,6 @@ const ClientsPage = () => {
 
   const [activeTab, setActiveTab] = useState(TAB_LIST);
   const [activeDupTab, setActiveDupTab] = useState(SUBTAB_EXACT);
-
-  // ── Статистика ──
-  const [statsYear, setStatsYear] = useState(new Date().getFullYear().toString());
-  const [statsMonth, setStatsMonth] = useState(String(new Date().getMonth() + 1));
 
   // ── Дубликаты: фильтр по году/месяцу (2026/2027) ──
   const [dupYear, setDupYear] = useState(() => {
@@ -70,43 +63,12 @@ const ClientsPage = () => {
   const [trainers, setTrainers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [notRenewedData, setNotRenewedData] = useState(null);
-  const [notRenewedLoading, setNotRenewedLoading] = useState(false);
-  const [notRenewedError, setNotRenewedError] = useState(null);
-  const [nrYear, setNrYear] = useState(() => {
-    const y = new Date().getFullYear();
-    return y === 2026 || y === 2027 ? String(y) : '2026';
-  });
-  const [nrMonth, setNrMonth] = useState(String(new Date().getMonth() + 1));
-  const [nrPage, setNrPage] = useState(1);
   const { run: runMain } = useAbortSafeFetch();
-  const { run: runNotRenewed } = useAbortSafeFetch();
 
   // ── Все клиенты для дубликатов ──
   const [allClients, setAllClients] = useState([]);
   const [allLoading, setAllLoading] = useState(false);
   const allControllerRef = useRef(null);
-
-  // ── Статистика (с бэкенда) ──
-  const [statsData, setStatsData] = useState(null);
-  const [statsLoading, setStatsLoading] = useState(false);
-  const statsControllerRef = useRef(null);
-  const [scheduleStatsRaw, setScheduleStatsRaw] = useState(null);
-  const [scheduleStatsLoading, setScheduleStatsLoading] = useState(false);
-  const [scheduleStatsEndpointMissing, setScheduleStatsEndpointMissing] = useState(false);
-  const [scheduleStatsError, setScheduleStatsError] = useState(null);
-  const scheduleStatsControllerRef = useRef(null);
-  const scheduleStatsRequestSeq = useRef(0);
-
-  // ── Отчёт «записи и оплаты по дням» ──
-  const [paymentDayYear, setPaymentDayYear] = useState(new Date().getFullYear().toString());
-  const [paymentDayMonth, setPaymentDayMonth] = useState(String(new Date().getMonth() + 1));
-  const [paymentDayReportRaw, setPaymentDayReportRaw] = useState(null);
-  const [paymentDayReportLoading, setPaymentDayReportLoading] = useState(false);
-  const [paymentDayReportEndpointMissing, setPaymentDayReportEndpointMissing] = useState(false);
-  const [paymentDayReportError, setPaymentDayReportError] = useState(null);
-  const paymentDayReportControllerRef = useRef(null);
-  const paymentDayReportRequestSeq = useRef(0);
 
   // ── Разовые оплаты ──
   const [oneTimeSearch, setOneTimeSearch] = useState('');
@@ -145,7 +107,6 @@ const ClientsPage = () => {
     }));
   }, []);
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const [trainerDetails, setTrainerDetails] = useState(null);
 
   const fetchSafe = useCallback(async () => {
     setLoading(true);
@@ -161,28 +122,6 @@ const ClientsPage = () => {
       setLoading(false);
     }
   }, [runMain, queryState, debouncedSearch]);
-
-  const fetchNotRenewedSafe = useCallback(async () => {
-    if (!nrYear || !nrMonth) return;
-    setNotRenewedLoading(true);
-    setNotRenewedError(null);
-    try {
-      const res = await runNotRenewed((signal) =>
-        fetchClientsNotRenewed({ year: nrYear, month: nrMonth, page: nrPage, perPage: 20 }, signal)
-      );
-      if (res === null) return;
-      setNotRenewedData(res);
-    } catch (err) {
-      setNotRenewedError(getApiErrorMessage(err));
-    } finally {
-      setNotRenewedLoading(false);
-    }
-  }, [runNotRenewed, nrYear, nrMonth, nrPage]);
-
-  const refreshClientTabsData = useCallback(() => {
-    fetchSafe();
-    fetchNotRenewedSafe();
-  }, [fetchSafe, fetchNotRenewedSafe]);
 
   const fetchAllClients = useCallback(async () => {
     allControllerRef.current?.abort();
@@ -203,17 +142,10 @@ const ClientsPage = () => {
   }, [debouncedSearch]);
 
   useEffect(() => {
-    setNrPage(1);
-  }, [nrYear, nrMonth]);
-
-  useEffect(() => {
     if (activeTab === TAB_LIST) {
       fetchSafe();
     }
-    if (activeTab === TAB_NOT_RENEWED) {
-      fetchNotRenewedSafe();
-    }
-  }, [activeTab, fetchSafe, fetchNotRenewedSafe]);
+  }, [activeTab, fetchSafe]);
 
   useEffect(() => {
     if (activeTab === TAB_DUPS) {
@@ -221,106 +153,6 @@ const ClientsPage = () => {
       return () => allControllerRef.current?.abort();
     }
   }, [activeTab, fetchAllClients]);
-
-  const fetchStats = useCallback(async () => {
-    statsControllerRef.current?.abort();
-    statsControllerRef.current = new AbortController();
-    setStatsLoading(true);
-    setStatsData(null);
-    try {
-      const params = {};
-      if (statsYear) params.year = statsYear;
-      if (statsMonth) params.month = statsMonth;
-      const res = await fetchClientsStats(params, statsControllerRef.current.signal);
-      setStatsData(res);
-    } catch (err) {
-      if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
-    } finally {
-      setStatsLoading(false);
-    }
-  }, [statsYear, statsMonth]);
-
-  const fetchScheduleStats = useCallback(async () => {
-    scheduleStatsControllerRef.current?.abort();
-    scheduleStatsControllerRef.current = new AbortController();
-    const { signal } = scheduleStatsControllerRef.current;
-    const seq = ++scheduleStatsRequestSeq.current;
-    setScheduleStatsLoading(true);
-    setScheduleStatsRaw(null);
-    setScheduleStatsEndpointMissing(false);
-    setScheduleStatsError(null);
-    const params = {};
-    if (statsYear) params.year = statsYear;
-    if (statsMonth) params.month = statsMonth;
-    try {
-      const raw = await fetchClientsScheduleStats(params, signal);
-      if (scheduleStatsRequestSeq.current === seq) setScheduleStatsRaw(raw);
-    } catch (err) {
-      if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
-      if (scheduleStatsRequestSeq.current !== seq) return;
-      const st = err?.response?.status;
-      if (st === 404) {
-        setScheduleStatsEndpointMissing(true);
-      } else {
-        setScheduleStatsError(getApiErrorMessage(err));
-      }
-    } finally {
-      if (scheduleStatsRequestSeq.current === seq) setScheduleStatsLoading(false);
-    }
-  }, [statsYear, statsMonth]);
-
-  const fetchPaymentDayReport = useCallback(async () => {
-    if (!paymentDayYear || !paymentDayMonth) {
-      paymentDayReportControllerRef.current?.abort();
-      setPaymentDayReportLoading(false);
-      setPaymentDayReportRaw(null);
-      setPaymentDayReportEndpointMissing(false);
-      setPaymentDayReportError(null);
-      return;
-    }
-    paymentDayReportControllerRef.current?.abort();
-    paymentDayReportControllerRef.current = new AbortController();
-    const { signal } = paymentDayReportControllerRef.current;
-    const seq = ++paymentDayReportRequestSeq.current;
-    setPaymentDayReportLoading(true);
-    setPaymentDayReportRaw(null);
-    setPaymentDayReportEndpointMissing(false);
-    setPaymentDayReportError(null);
-    const params = { year: paymentDayYear, month: paymentDayMonth };
-    try {
-      const raw = await fetchClientsPaymentDayReport(params, signal);
-      if (paymentDayReportRequestSeq.current === seq) setPaymentDayReportRaw(raw);
-    } catch (err) {
-      if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
-      if (paymentDayReportRequestSeq.current !== seq) return;
-      const st = err?.response?.status;
-      if (st === 404) {
-        setPaymentDayReportEndpointMissing(true);
-      } else {
-        setPaymentDayReportError(getApiErrorMessage(err));
-      }
-    } finally {
-      if (paymentDayReportRequestSeq.current === seq) setPaymentDayReportLoading(false);
-    }
-  }, [paymentDayYear, paymentDayMonth]);
-
-  useEffect(() => {
-    if (activeTab !== TAB_STATS) return undefined;
-    fetchStats();
-    fetchScheduleStats();
-    return () => {
-      statsControllerRef.current?.abort();
-      scheduleStatsControllerRef.current?.abort();
-    };
-  }, [activeTab, fetchStats, fetchScheduleStats]);
-
-  useEffect(() => {
-    if (activeTab !== TAB_PAYMENT_DAYS) return undefined;
-    fetchPaymentDayReport();
-    return () => {
-      paymentDayReportControllerRef.current?.abort();
-    };
-  }, [activeTab, fetchPaymentDayReport]);
 
   const fetchOneTime = useCallback(async () => {
     oneTimeControllerRef.current?.abort();
@@ -390,37 +222,6 @@ const ClientsPage = () => {
   }, []);
 
   const items = data?.items ?? data?.results ?? (Array.isArray(data) ? data : []) ?? [];
-  const notRenewedItems = notRenewedData?.items ?? notRenewedData?.results ?? (Array.isArray(notRenewedData) ? notRenewedData : []) ?? [];
-
-  const nrNextPeriod = useMemo(() => {
-    if (!nrYear || !nrMonth) return null;
-    const y = Number(nrYear);
-    const m = Number(nrMonth);
-    if (!Number.isFinite(y) || m < 1 || m > 12) return null;
-    return m === 12 ? { year: y + 1, month: 1 } : { year: y, month: m + 1 };
-  }, [nrYear, nrMonth]);
-
-  const notRenewedSummary = useMemo(() => {
-    const r = notRenewedData;
-    if (!r) return null;
-    const meta = r.meta ?? {};
-    const totalFromMeta = meta.total ?? meta.totalCount ?? meta.count;
-    const s = r.summary ?? r.data?.summary;
-    const base = s?.baseMonthCount ?? s?.base_month_count ?? s?.inBaseMonthCount ?? s?.in_base_month_count;
-    const next = s?.nextMonthCount ?? s?.next_month_count ?? s?.inNextMonthCount ?? s?.in_next_month_count;
-    let notRen = s?.notRenewedCount ?? s?.not_renewed_count;
-    if (notRen == null && totalFromMeta != null) notRen = totalFromMeta;
-    let pct = s?.notRenewedPercent ?? s?.not_renewed_percent;
-    if ((pct === undefined || pct === null) && base != null && notRen != null && Number(base) > 0) {
-      pct = Math.round((Number(notRen) / Number(base)) * 1000) / 10;
-    }
-    return {
-      base: base != null ? Number(base) : null,
-      next: next != null ? Number(next) : null,
-      notRen: notRen != null ? Number(notRen) : null,
-      pct: pct != null && pct !== '' ? Number(pct) : null,
-    };
-  }, [notRenewedData]);
 
   // Дубликаты только среди клиентов выбранного месяца (по dateStart)
   const dupFilteredClients = useMemo(
@@ -438,7 +239,7 @@ const ClientsPage = () => {
       if (formClient?.id) await updateClient(formClient.id, payload, null);
       else await createClient(payload, null);
       setFormClient(null);
-      refreshClientTabsData();
+      fetchSafe();
       toast.success(formClient?.id ? 'Клиент сохранён' : 'Клиент добавлен');
     } catch (e) {
       const d = e.response?.data;
@@ -457,7 +258,7 @@ const ClientsPage = () => {
     deleteClient(confirmDelete.id, null)
       .then(() => {
         setConfirmDelete(null);
-        refreshClientTabsData();
+        fetchSafe();
         toast.success('Клиент удалён');
       })
       .catch((e) => {
@@ -480,7 +281,7 @@ const ClientsPage = () => {
     try {
       await extendClient(extendClientObj.id, payload, null);
       setExtendClientObj(null);
-      refreshClientTabsData();
+      fetchSafe();
       toast.success('Абонемент продлён');
     } catch (e) {
       const msg = getApiErrorMessage(e);
@@ -498,10 +299,7 @@ const ClientsPage = () => {
       {/* Главные табы */}
       <div className="clients-page__tabs">
         <button type="button" className={`clients-page__tab${activeTab === TAB_LIST ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_LIST)}>Клиенты</button>
-        <button type="button" className={`clients-page__tab${activeTab === TAB_NOT_RENEWED ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_NOT_RENEWED)}>Не продлили</button>
         <button type="button" className={`clients-page__tab${activeTab === TAB_DUPS ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_DUPS)}>Дубликаты</button>
-        <button type="button" className={`clients-page__tab${activeTab === TAB_STATS ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_STATS)}>Статистика</button>
-        <button type="button" className={`clients-page__tab${activeTab === TAB_PAYMENT_DAYS ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_PAYMENT_DAYS)}>Записи по дням</button>
         <button type="button" className={`clients-page__tab${activeTab === TAB_ONETIME ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_ONETIME)}>Разовый</button>
       </div>
 
@@ -596,72 +394,6 @@ const ClientsPage = () => {
         </>
       )}
 
-      {/* ── Не продлили (только год + месяц, сводка с бэка) ── */}
-      {activeTab === TAB_NOT_RENEWED && (
-        <>
-          <FilterBar className="clients-page__not-renewed-toolbar">
-            <div className="clients-page__not-renewed-toolbar-inner">
-              <span className="clients-page__not-renewed-toolbar-label">Месяц</span>
-              <Select
-                value={nrYear}
-                onChange={setNrYear}
-                options={STATS_YEARS.map((y) => ({ value: y, label: y }))}
-                placeholder="Год"
-                className="clients-page__not-renewed-select clients-page__not-renewed-select--year"
-              />
-              <Select
-                value={nrMonth}
-                onChange={setNrMonth}
-                options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: MONTHS[i + 1] }))}
-                placeholder="Месяц"
-                className="clients-page__not-renewed-select"
-              />
-              <button type="button" className="clients-page__add clients-page__add--desktop filter-bar__action clients-page__not-renewed-add" onClick={() => setFormClient({})}>Добавить клиента</button>
-            </div>
-          </FilterBar>
-          {nrNextPeriod && (
-            <p className="clients-page__not-renewed-period">
-              Учитываются записи за <strong>{MONTHS[Number(nrMonth)]} {nrYear}</strong>
-              {' — '}без продления на <strong>{MONTHS[nrNextPeriod.month]} {nrNextPeriod.year}</strong>
-            </p>
-          )}
-          {!notRenewedLoading && notRenewedSummary && (
-            <div className="clients-page__not-renewed-cards">
-              <div className="clients-page__not-renewed-card">
-                <div className="clients-page__not-renewed-card-value">{notRenewedSummary.base != null ? notRenewedSummary.base.toLocaleString('ru-RU') : '—'}</div>
-                <div className="clients-page__not-renewed-card-label">Учеников в базовом месяце</div>
-              </div>
-              <div className="clients-page__not-renewed-card">
-                <div className="clients-page__not-renewed-card-value">{notRenewedSummary.next != null ? notRenewedSummary.next.toLocaleString('ru-RU') : '—'}</div>
-                <div className="clients-page__not-renewed-card-label">Учеников в следующем месяце</div>
-              </div>
-              <div className="clients-page__not-renewed-card">
-                <div className="clients-page__not-renewed-card-value">{notRenewedSummary.notRen != null ? notRenewedSummary.notRen.toLocaleString('ru-RU') : '—'}</div>
-                <div className="clients-page__not-renewed-card-label">Не продлили</div>
-              </div>
-              <div className="clients-page__not-renewed-card">
-                <div className="clients-page__not-renewed-card-value">
-                  {notRenewedSummary.pct != null && !Number.isNaN(notRenewedSummary.pct) ? `${String(notRenewedSummary.pct).replace('.', ',')}%` : '—'}
-                </div>
-                <div className="clients-page__not-renewed-card-label">Доля не продливших</div>
-              </div>
-            </div>
-          )}
-          <ClientsList
-            items={notRenewedItems}
-            loading={notRenewedLoading}
-            error={notRenewedError}
-            onRetry={fetchNotRenewedSafe}
-            onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())}
-            onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())}
-            onDetails={handleOpenCard}
-            onExtend={setExtendClientObj}
-            emptyMessage="Нет клиентов без продления на следующий месяц"
-          />
-          <Pagination meta={notRenewedData?.meta} currentPage={nrPage} onPage={setNrPage} loading={notRenewedLoading} entityLabel="клиентов" />
-        </>
-      )}
-
       {/* ── Дубликаты ── */}
       {activeTab === TAB_DUPS && (
         <div className="clients-page__dup-section">
@@ -723,160 +455,6 @@ const ClientsPage = () => {
                 {similarGroups.map((group, i) => <DuplicateGroup key={i} group={group} label={`${group[0].fio} / ${group[1].fio}${group.length > 2 ? ` +${group.length - 2}` : ''}`} onDetails={handleOpenCard} />)}
               </>
             )
-          )}
-        </div>
-      )}
-
-      {/* ── Статистика ── */}
-      {activeTab === TAB_STATS && (
-        <div className="clients-page__stats-section">
-          <FilterBar className="clients-page__stats-toolbar">
-            <Select
-              value={statsYear}
-              onChange={setStatsYear}
-              options={[{ value: '', label: 'Год — все' }, ...STATS_YEARS.map((y) => ({ value: y, label: y }))]}
-              placeholder="Год"
-              className="clients-page__stats-select"
-            />
-            <Select
-              value={statsMonth}
-              onChange={setStatsMonth}
-              options={[
-                { value: '', label: 'Месяц — все' },
-                ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: MONTHS[i + 1] })),
-              ]}
-              placeholder="Месяц"
-              className="clients-page__stats-select"
-            />
-          </FilterBar>
-
-          {statsLoading ? (
-            <div className="clients-page__dup-loading"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка статистики…</span></div>
-          ) : statsData ? (
-            <>
-              <p className="clients-page__stats-info">
-                Период: <strong>{statsYear || 'все годы'}</strong>
-                {statsMonth ? ` · ${MONTHS[Number(statsMonth)]}` : ''}
-              </p>
-
-              <div className="clients-page__stats-cards">
-                <div className="clients-page__stats-card">
-                  <div className="clients-page__stats-card-value">{statsData.summary?.total ?? 0}</div>
-                  <div className="clients-page__stats-card-label">Учеников</div>
-                </div>
-                <div className="clients-page__stats-card">
-                  <div className="clients-page__stats-card-value">{statsData.summary?.paid ?? 0}</div>
-                  <div className="clients-page__stats-card-label">Оплатили</div>
-                </div>
-                <div className="clients-page__stats-card">
-                  <div className="clients-page__stats-card-value">{statsData.summary?.unpaid ?? 0}</div>
-                  <div className="clients-page__stats-card-label">Не оплатили</div>
-                </div>
-              </div>
-
-              <div className="clients-page__stats-block">
-                <h3 className="clients-page__stats-block-title">По тренерам</h3>
-                <table className="clients-page__stats-table">
-                  <thead>
-                    <tr><th>Тренер</th><th>Учеников</th><th>Оплатили</th><th>Не оплатили</th></tr>
-                  </thead>
-                  <tbody>
-                    {!statsData.byTrainer?.length ? (
-                      <tr>
-                        <td colSpan={4} className="clients-page__stats-empty">
-                          <EmptyState compact tableCell message="Нет данных" />
-                        </td>
-                      </tr>
-                    ) : (
-                      statsData.byTrainer.map((r) => (
-                        <tr
-                          key={r.trainerId ?? r.trainerName ?? 'no-trainer'}
-                          className={r.trainerId ? 'clients-page__stats-row--clickable' : ''}
-                          onClick={r.trainerId ? () => setTrainerDetails({ trainerId: r.trainerId, trainerName: r.trainerName }) : undefined}
-                          role={r.trainerId ? 'button' : undefined}
-                          tabIndex={r.trainerId ? 0 : undefined}
-                          onKeyDown={r.trainerId ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTrainerDetails({ trainerId: r.trainerId, trainerName: r.trainerName }); } } : undefined}
-                        >
-                          <td>{r.trainerName}</td>
-                          <td>{r.total}</td>
-                          <td>{r.paid}</td>
-                          <td>{r.unpaid}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              <ClientsScheduleStatsBlock
-                raw={scheduleStatsRaw}
-                loading={scheduleStatsLoading}
-                errorMessage={scheduleStatsError}
-                endpointMissing={scheduleStatsEndpointMissing}
-                onTrainerRowClick={(trainerId, trainerName, slot) =>
-                  setTrainerDetails({
-                    trainerId,
-                    trainerName,
-                    ...(slot &&
-                    slot.weekday != null &&
-                    slot.timeFrom &&
-                    slot.timeTo
-                      ? {
-                          trainingWeekday: slot.weekday,
-                          trainingTimeFrom: slot.timeFrom,
-                          trainingTimeTo: slot.timeTo,
-                        }
-                      : {}),
-                  })
-                }
-              />
-            </>
-          ) : null}
-        </div>
-      )}
-
-      {/* ── Записи и оплаты по дням (отчёт) ── */}
-      {activeTab === TAB_PAYMENT_DAYS && (
-        <div className="clients-page__stats-section">
-          <FilterBar className="clients-page__stats-toolbar">
-            <Select
-              value={paymentDayYear}
-              onChange={setPaymentDayYear}
-              options={[{ value: '', label: 'Год — все' }, ...STATS_YEARS.map((y) => ({ value: y, label: y }))]}
-              placeholder="Год"
-              className="clients-page__stats-select"
-            />
-            <Select
-              value={paymentDayMonth}
-              onChange={setPaymentDayMonth}
-              options={[
-                { value: '', label: 'Месяц — все' },
-                ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: MONTHS[i + 1] })),
-              ]}
-              placeholder="Месяц"
-              className="clients-page__stats-select"
-            />
-          </FilterBar>
-          {!paymentDayYear || !paymentDayMonth ? (
-            <p className="clients-page__stats-info" role="status">
-              Выберите <strong>год</strong> и <strong>месяц</strong>, чтобы построить отчёт по дням.
-            </p>
-          ) : (
-            <>
-              <p className="clients-page__stats-info">
-                Период: <strong>{paymentDayYear}</strong>
-                {` · ${MONTHS[Number(paymentDayMonth)]}`}
-              </p>
-              <ClientsPaymentDayReportBlock
-                raw={paymentDayReportRaw}
-                loading={paymentDayReportLoading}
-                errorMessage={paymentDayReportError}
-                endpointMissing={paymentDayReportEndpointMissing}
-                year={paymentDayYear}
-                month={paymentDayMonth}
-                onOpenClient={handleOpenCard}
-              />
-            </>
           )}
         </div>
       )}
@@ -1050,19 +628,6 @@ const ClientsPage = () => {
           confirmText="Добавить"
           onConfirm={() => handleAddOneTimeAmount(confirmAddOneTime.client, confirmAddOneTime.amount)}
           onCancel={() => setConfirmAddOneTime(null)}
-        />
-      )}
-      {trainerDetails && (
-        <TrainerDetailsModal
-          trainerId={trainerDetails.trainerId}
-          trainerName={trainerDetails.trainerName}
-          year={statsYear}
-          month={statsMonth}
-          trainingWeekday={trainerDetails.trainingWeekday}
-          trainingTimeFrom={trainerDetails.trainingTimeFrom}
-          trainingTimeTo={trainerDetails.trainingTimeTo}
-          onDetails={(c) => { setTrainerDetails(null); handleOpenCard(c); }}
-          onClose={() => setTrainerDetails(null)}
         />
       )}
     </div>

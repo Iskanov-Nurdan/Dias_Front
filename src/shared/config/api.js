@@ -1,4 +1,4 @@
-const DEFAULT_API = 'https://nur.tw1.ru/api/';
+const DEFAULT_API = 'https://www.nur.tw1.ru/';
 export const API_BASE = (process.env.REACT_APP_API_URL || DEFAULT_API).replace(/\/?$/, '/');
 
 const DEFAULT_WS = '';

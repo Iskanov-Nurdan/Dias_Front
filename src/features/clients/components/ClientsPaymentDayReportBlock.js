@@ -116,9 +116,9 @@ const ClientsPaymentDayReportBlock = ({
     <div className="clients-payment-day-report">
       <h3 className="clients-payment-day-report__title">Записи и оплаты по дням</h3>
       <p className="clients-payment-day-report__hint">
-        <strong>Записались</strong> — клиенты с датой начала в этот день. <strong>Оплатили</strong> — у кого в этот день указан
-        фактический день оплаты. Числа в колонках можно нажать — откроется список клиентов с датами записи и фактической оплаты;
-        строку в списке можно нажать, чтобы открыть карточку.
+        <strong>Записались</strong> — клиенты с датой начала в этот день. <strong>Оплатили</strong> — число <strong>платежей</strong>
+        с этой датой (частичные оплаты в карточке клиента); у одного человека может быть несколько строк в разные дни. Числа в
+        колонках открывают список, строку в списке — карточку клиента.
       </p>
 
       <div className="clients-payment-day-report__table-wrap">

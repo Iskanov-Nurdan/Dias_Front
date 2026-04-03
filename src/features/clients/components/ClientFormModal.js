@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { Plus, Trash2, X } from 'lucide-react';
 import { useToast } from '../../../app/providers/ToastProvider';
 import { Select, SubmitButton } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
@@ -11,6 +11,11 @@ import {
   matchClientToSlotKey,
   parseTrainingSlotKey,
 } from '../../sports-trainers/scheduleConstants';
+import {
+  buildActualPaymentsPayload,
+  emptyInstallmentRow,
+  getInitialInstallmentRows,
+} from '../lib/clientActualPayments';
 import './ClientFormModal.scss';
 
 // Первая буква каждого слова — заглавная (работает для любого языка и вставленного текста)
@@ -73,7 +78,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const [price, setPrice] = useState('');
   const [discount, setDiscount] = useState('');
   const [paid, setPaid] = useState(false);
-  const [actualPaymentDate, setActualPaymentDate] = useState('');
+  const [installments, setInstallments] = useState(() => [emptyInstallmentRow()]);
   const [clientType, setClientType] = useState('regular');
   const [gender, setGender] = useState('');
   const [commentManual, setCommentManual] = useState('');
@@ -93,8 +98,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       setPrice(client.price ?? '');
       setDiscount(client.discount ?? '');
       setPaid(isClientPaid(client));
-      const apd = client.actualPaymentDate ?? client.actual_payment_date;
-      setActualPaymentDate(apd ? String(apd).slice(0, 10) : '');
+      setInstallments(getInitialInstallmentRows(client));
       setClientType(client.clientType || client.client_type || 'regular');
       setGender(client.gender || '');
       const { auto, manual } = parseComment(client.comment);
@@ -106,13 +110,21 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   useEffect(() => {
     if (!fetchTrainers) return;
     if (sportId) {
-      fetchTrainers({ sportId, includeSchedule: true }, null)
+      fetchTrainers({ sportId, includeSchedule: true, perPage: 500 }, null)
         .then((d) => {
-          const list = d?.items ?? d?.results ?? (Array.isArray(d) ? d : []) ?? [];
+          let list = d?.items ?? d?.results ?? (Array.isArray(d) ? d : []) ?? [];
+          const tid = client?.trainerId ?? client?.trainer_id ?? client?.trainer?.id;
+          if (tid != null && tid !== '' && !list.some((t) => String(t.id) === String(tid))) {
+            const tr = client?.trainer;
+            if (tr && String(tr.id) === String(tid)) {
+              list = [...list, { ...tr, id: tr.id, fio: tr.fio ?? tr.name ?? '' }];
+            }
+          }
           setTrainersList(list);
           setTrainerId((prev) => {
             if (!prev) return prev;
-            return list.some((t) => String(t.id) === String(prev)) ? prev : '';
+            if (list.some((t) => String(t.id) === String(prev))) return prev;
+            return prev;
           });
         })
         .catch((e) => {
@@ -121,9 +133,12 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
         });
     } else {
       setTrainersList([]);
-      setTrainerId('');
+      // Не вызывать setTrainerId('') здесь: на первом кадре sportId ещё пустой, а следующий эффект [client]
+      // уже выставил trainerId — иначе получаем гонку и сброс тренера/слота. Обнуление при смене вида спорта — в onChange у Select.
     }
-  }, [sportId, fetchTrainers, toast]);
+    // merge использует client.trainer из замыкания; id тренера в deps достаточно при смене карточки
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- см. выше
+  }, [sportId, fetchTrainers, toast, client?.id, client?.trainerId, client?.trainer_id, client?.trainer?.id]);
 
   useEffect(() => {
     if (!trainerId) {
@@ -213,8 +228,30 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
         : 'У этого тренера нет интервалов в графике — настройте график в разделе «Спорт и тренеры».'
     : 'Сначала выберите тренера.';
 
+  const addInstallmentRow = () => {
+    setInstallments((prev) => [...prev, emptyInstallmentRow()]);
+  };
+
+  const removeInstallmentRow = (key) => {
+    setInstallments((prev) => {
+      if (prev.length <= 1) return [emptyInstallmentRow()];
+      return prev.filter((r) => r._key !== key);
+    });
+  };
+
+  const updateInstallment = (key, field, value) => {
+    setInstallments((prev) =>
+      prev.map((r) => (r._key === key ? { ...r, [field]: value } : r))
+    );
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    const built = buildActualPaymentsPayload(installments);
+    if (!built.ok) {
+      toast.error(built.message);
+      return;
+    }
     const autoLines = [...commentAuto];
     if (!client?.id && currentUserFio) {
       const addedLine = `Добавлен: ${currentUserFio}`;
@@ -242,6 +279,14 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
           trainingTimeFrom: null,
           trainingTimeTo: null,
         };
+    const paymentsPayload = {};
+    if (client?.id) {
+      paymentsPayload.actualPayments = built.payload;
+      paymentsPayload.actualPaymentDate = null;
+    } else if (built.payload.length > 0) {
+      paymentsPayload.actualPayments = built.payload;
+    }
+
     onSave({
       fio,
       phone,
@@ -251,7 +296,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       price: price ? Number(price) : undefined,
       discount: discount ? Number(discount) : undefined,
       paid,
-      actualPaymentDate: actualPaymentDate || (client?.id ? null : undefined),
+      ...paymentsPayload,
       clientType,
       gender: gender || undefined,
       comment: commentValue,
@@ -332,18 +377,75 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               </label>
             </div>
             <div className="client-form-modal__row">
-              <label className="client-form-modal__label">
+              <label className="client-form-modal__label client-form-modal__label--full">
                 <span className="client-form-modal__label-text">Дата начала</span>
-              <input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} className="client-form-modal__input" />
-            </label>
-            <label className="client-form-modal__label">
-              <span className="client-form-modal__label-text">Цена</span>
-              <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="client-form-modal__input" placeholder="0" />
-            </label>
+                <input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} className="client-form-modal__input" />
+              </label>
             </div>
           </div>
           <div className="client-form-modal__section">
             <h3 className="client-form-modal__section-title">Оплата</h3>
+            <div className="client-form-modal__row">
+              <label className="client-form-modal__label client-form-modal__label--full">
+                <span className="client-form-modal__label-text">Цена абонемента, сом</span>
+                <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="client-form-modal__input" placeholder="0" min="0" step="1" />
+                <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
+                  Общая стоимость по договору — для скидки и отображения. Частичные взносы ниже.
+                </span>
+              </label>
+            </div>
+
+            <div className="client-form-modal__installments">
+              <div className="client-form-modal__installments-header">
+                <span className="client-form-modal__installments-title">Частичные оплаты</span>
+                <span className="client-form-modal__optional">необязательно</span>
+              </div>
+              <p className="client-form-modal__installments-hint">
+                Несколько платежей (например, долями): у каждой строки — сумма и день фактической оплаты. Попадает в отчёт «Записи по дням».
+              </p>
+              <div className="client-form-modal__installments-grid client-form-modal__installments-grid--head" aria-hidden>
+                <span>Сумма, сом</span>
+                <span>Дата оплаты</span>
+                <span className="client-form-modal__installments-actions-head" />
+              </div>
+              {installments.map((row) => (
+                <div key={row._key} className="client-form-modal__installments-grid">
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={row.amount}
+                    onChange={(e) => updateInstallment(row._key, 'amount', e.target.value)}
+                    className="client-form-modal__input"
+                    placeholder="0"
+                    aria-label="Сумма частичной оплаты"
+                  />
+                  <input
+                    type="date"
+                    value={row.date}
+                    onChange={(e) => updateInstallment(row._key, 'date', e.target.value)}
+                    className="client-form-modal__input"
+                    aria-label="Дата частичной оплаты"
+                  />
+                  <div className="client-form-modal__installment-remove-wrap">
+                    <button
+                      type="button"
+                      className="client-form-modal__installment-remove"
+                      onClick={() => removeInstallmentRow(row._key)}
+                      aria-label="Удалить строку оплаты"
+                      title="Удалить строку"
+                    >
+                      <Trash2 size={18} strokeWidth={1.75} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <button type="button" className="client-form-modal__installment-add" onClick={addInstallmentRow}>
+                <Plus size={18} strokeWidth={1.75} aria-hidden />
+                Добавить платёж
+              </button>
+            </div>
+
             <div className="client-form-modal__row">
               <label className="client-form-modal__label">
                 <span className="client-form-modal__label-text">Скидка, %</span>
@@ -356,22 +458,6 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                 <button type="button" className={`client-form-modal__paid-option ${!paid ? 'client-form-modal__paid-option--active' : ''}`} onClick={() => setPaid(false)}>Нет</button>
               </div>
             </div>
-            </div>
-            <div className="client-form-modal__row">
-              <label className="client-form-modal__label client-form-modal__label--full">
-                <span className="client-form-modal__label-text">
-                  Фактический день оплаты <span className="client-form-modal__optional">(необязательно)</span>
-                </span>
-                <input
-                  type="date"
-                  value={actualPaymentDate}
-                  onChange={(e) => setActualPaymentDate(e.target.value)}
-                  className="client-form-modal__input"
-                />
-                <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
-                  Для отчёта «Записи по дням»: в какой день клиент реально оплатил. Можно оставить пустым.
-                </span>
-              </label>
             </div>
             {priceBase > 0 && (
             <div className="client-form-modal__price-summary">
@@ -414,12 +500,6 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               <div className="client-form-modal__section client-form-modal__section--flush">
                 <h3 className="client-form-modal__section-title">Комментарий</h3>
                 <div className="client-form-modal__label client-form-modal__label--full">
-                  <div className="client-form-modal__comment-header">
-                    <span className="client-form-modal__label-text">Комментарий</span>
-                    {(commentAuto.length > 0 || commentManual.trim()) && (
-                      <button type="button" className="client-form-modal__comment-clear" onClick={() => { setCommentManual(''); setCommentAuto([]); }}>Очистить всё</button>
-                    )}
-                  </div>
                   {commentAuto.length > 0 && (
                     <div className="client-form-modal__comment-auto" aria-readonly="true">
                       {commentAuto.map((line, i) => (

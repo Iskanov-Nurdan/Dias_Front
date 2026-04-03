@@ -42,3 +42,26 @@
 .client-card-modal__onetime-delete:hover:not(:disabled) { border-color: var(--color-error); color: var(--color-error); }
 .client-card-modal__onetime-delete:disabled { opacity: 0.6; cursor: not-allowed; }
 .client-card-modal__onetime-loading { margin: 8px 0; font-size: 13px; color: var(--color-text-muted); }
+
+.client-card-modal__payments-list {
+  margin: 0;
+  padding-left: 1.1em;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.client-card-modal__payments-item {
+  margin-bottom: 4px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.client-card-modal__payments-amt {
+  font-weight: 500;
+}
+
+.client-card-modal__payments-date {
+  color: var(--color-text-muted);
+}

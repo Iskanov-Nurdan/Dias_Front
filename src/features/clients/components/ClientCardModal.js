@@ -8,6 +8,7 @@ import { useToast } from '../../../app/providers/ToastProvider';
 import { isPeriodClosedError } from '../../../shared/lib/apiError';
 import { ConfirmModal } from '../../../shared/ui';
 import { WEEKDAYS } from '../../sports-trainers/scheduleConstants';
+import { getClientPaymentsForCard } from '../lib/clientActualPayments';
 import './ClientCardModal.scss';
 
 const formatHm = (v) => {
@@ -77,7 +78,7 @@ const ClientCardModal = ({ client, onEdit, onDelete, onRefresh, onClose }) => {
 
   if (!client) return null;
   const dateStartRaw = client.dateStart ?? client.date_start;
-  const actualPayRaw = client.actualPaymentDate ?? client.actual_payment_date;
+  const paymentParts = getClientPaymentsForCard(client);
   const priceDisplay = client.priceDisplay ?? client.totalPrice ?? client.price_display ?? client.total_price;
   const priceBase = Number(client.price) || 0;
   const discountPct = Number(client.discount ?? client.discount_percent) || 0;
@@ -113,8 +114,39 @@ const ClientCardModal = ({ client, onEdit, onDelete, onRefresh, onClose }) => {
               {discountPct > 0 && <><dt>Скидка</dt><dd>{discountPct}%</dd></>}
               <dt>Цена</dt><dd>{formatMoney(priceFinal)}</dd>
               <dt>Оплачено</dt><dd>{isClientPaid(client) ? 'Да' : 'Нет'}</dd>
-              <dt>Фактический день оплаты</dt>
-              <dd>{actualPayRaw ? new Date(actualPayRaw).toLocaleDateString('ru-RU') : '—'}</dd>
+              <dt>Частичные оплаты</dt>
+              <dd>
+                {paymentParts.length === 0 ? (
+                  '—'
+                ) : (
+                  <ul className="client-card-modal__payments-list">
+                    {paymentParts.map((p, i) => {
+                      const dateStr = p.date
+                        ? new Date(
+                            Number(p.date.slice(0, 4)),
+                            Number(p.date.slice(5, 7)) - 1,
+                            Number(p.date.slice(8, 10))
+                          ).toLocaleDateString('ru-RU')
+                        : '—';
+                      const amtStr =
+                        p.amount != null && Number.isFinite(p.amount)
+                          ? `${Number(p.amount).toLocaleString('ru-RU')} сом`
+                          : null;
+                      return (
+                        <li key={i} className="client-card-modal__payments-item">
+                          {amtStr ? (
+                            <>
+                              <span className="client-card-modal__payments-amt">{amtStr}</span>
+                              <span> · </span>
+                            </>
+                          ) : null}
+                          <span className="client-card-modal__payments-date">{dateStr}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </dd>
             </dl>
           </section>
           <section className="client-card-modal__section">

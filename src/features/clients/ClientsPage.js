@@ -1016,7 +1016,17 @@ const ClientsPage = () => {
 
       {/* ── Модалки ── */}
       {formClient && (
-        <ClientFormModal client={formClient} sports={sports} fetchTrainers={fetchTrainers} currentUserFio={user?.fio || user?.login || ''} onSave={handleSaveClient} onClose={() => { setFormClient(null); setClientFormError(null); }} error={clientFormError} saving={clientFormSaving} />
+        <ClientFormModal
+          key={formClient?.id != null ? String(formClient.id) : 'new-client'}
+          client={formClient}
+          sports={sports}
+          fetchTrainers={fetchTrainers}
+          currentUserFio={user?.fio || user?.login || ''}
+          onSave={handleSaveClient}
+          onClose={() => { setFormClient(null); setClientFormError(null); }}
+          error={clientFormError}
+          saving={clientFormSaving}
+        />
       )}
       {cardClient && (
         <ClientCardModal

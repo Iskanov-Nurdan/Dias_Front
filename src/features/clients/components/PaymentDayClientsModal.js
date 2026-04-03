@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { EmptyState } from '../../../shared/ui';
 import { fetchClientsPaymentDayClients } from '../api';
-import { normalizePaymentDayClientsResponse } from '../lib/paymentDayClientsNormalize';
+import { formatPaymentsThatDayCell, normalizePaymentDayClientsResponse } from '../lib/paymentDayClientsNormalize';
 import './PaymentDayClientsModal.scss';
 
 const fmtRuDate = (isoOrRaw) => {
@@ -106,7 +106,10 @@ const PaymentDayClientsModal = ({
               {dayLabel}
               <span className="payment-day-clients-modal__muted">
                 {' '}
-                · для каждого клиента: дата записи (начало) и фактический день оплаты — чтобы видеть расхождение по дням.
+                ·{' '}
+                {kind === 'paid'
+                  ? 'дата записи (абонемент) и суммы платежей именно в выбранный день.'
+                  : 'дата записи (начало) и при необходимости дата из карточки (legacy).'}
               </span>
             </p>
           </div>
@@ -145,7 +148,11 @@ const PaymentDayClientsModal = ({
                   <tr>
                     <th>ФИО</th>
                     <th>Дата записи</th>
-                    <th>Факт. оплата</th>
+                    {kind === 'paid' ? (
+                      <th>Платежи за день</th>
+                    ) : (
+                      <th>Факт. оплата</th>
+                    )}
                     <th>Телефон</th>
                     <th>Тренер</th>
                     <th>Спорт</th>
@@ -172,7 +179,12 @@ const PaymentDayClientsModal = ({
                     >
                       <td className="payment-day-clients-modal__fio">{r.fio}</td>
                       <td className="payment-day-clients-modal__date">{fmtRuDate(r.dateStart)}</td>
-                      <td className="payment-day-clients-modal__date">{fmtRuDate(r.actualPaymentDate)}</td>
+                      <td className="payment-day-clients-modal__payments-cell">
+                        {kind === 'paid'
+                          ? formatPaymentsThatDayCell(r.paymentsThatDay) ||
+                            fmtRuDate(r.actualPaymentDate)
+                          : fmtRuDate(r.actualPaymentDate)}
+                      </td>
                       <td>{r.phone || '—'}</td>
                       <td>{r.trainerName}</td>
                       <td>{r.sportName}</td>

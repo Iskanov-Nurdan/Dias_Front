@@ -4,14 +4,31 @@ import { apiClient } from '../../../shared/api';
 export const login = async (name, password) => {
   const res = await apiClient.post('auth/login/', {
     name,
+    username: name,
     password,
   });
-  const token = res.data.token || res.data.access || null;
+  const access = res.data.access || res.data.token || null;
+  const refresh = res.data.refresh || null;
+
+  if (access) {
+    localStorage.setItem('token', access);
+    localStorage.setItem('access', access);
+  } else {
+    localStorage.removeItem('token');
+    localStorage.removeItem('access');
+  }
+
+  if (refresh) {
+    localStorage.setItem('refresh', refresh);
+  } else {
+    localStorage.removeItem('refresh');
+  }
 
   return {
     ...res.data,
-    token,
-    refresh: res.data.refresh || null,
+    token: access,
+    access,
+    refresh,
   };
 };
 

@@ -2,6 +2,11 @@ import axios from 'axios';
 import { API_BASE } from '../config/api';
 import { getAuditShiftId } from '../lib/auditContext';
 
+const isAuthRequest = (url = '') => {
+  const normalized = String(url).replace(/^\/+/, '');
+  return normalized.startsWith('auth/login/') || normalized.startsWith('auth/refresh/');
+};
+
 const client = axios.create({
   baseURL: API_BASE,
   headers: {
@@ -49,6 +54,9 @@ client.interceptors.response.use(
     }
 
     if (err.response?.status === 401) {
+      if (isAuthRequest(err.config?.url)) {
+        return Promise.reject(err);
+      }
       localStorage.removeItem('token');
       localStorage.removeItem('access');
       localStorage.removeItem('refresh');

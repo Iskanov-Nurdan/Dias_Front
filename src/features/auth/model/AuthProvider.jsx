@@ -51,9 +51,11 @@ export const AuthProvider = ({ children }) => {
 
   const login = useCallback(async (name, password) => {
     const data = await loginApi(name, password);
-    if (data.token) localStorage.setItem('token', data.token);
-    else localStorage.removeItem('token');
-    localStorage.removeItem('access');
+    if (!data.token) {
+      throw new Error('Токен авторизации не получен');
+    }
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('access', data.access || data.token);
     if (data.refresh) localStorage.setItem('refresh', data.refresh);
     else localStorage.removeItem('refresh');
     await loadUser();

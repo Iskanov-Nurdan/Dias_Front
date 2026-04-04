@@ -15,14 +15,16 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     setError('');
-    if (!name || !password) {
+    const trimmedName = name.trim();
+    if (!trimmedName || !password) {
       setError('Введите имя и пароль');
       return;
     }
     setLoading(true);
     try {
-      await login(name, password);
+      await login(trimmedName, password);
       navigate('/');
     } catch (err) {
       setError(getApiErrorMessage(err, 'Неверные данные'));

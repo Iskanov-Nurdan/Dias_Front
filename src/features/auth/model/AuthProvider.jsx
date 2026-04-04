@@ -9,7 +9,11 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const loadUser = useCallback(async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || localStorage.getItem('access');
+    if (token && !localStorage.getItem('token')) {
+      localStorage.setItem('token', token);
+      localStorage.removeItem('access');
+    }
     if (!token) {
       setUser(null);
       setLoading(false);
@@ -23,6 +27,7 @@ export const AuthProvider = ({ children }) => {
     } catch {
       setUser(null);
       localStorage.removeItem('token');
+      localStorage.removeItem('access');
       localStorage.removeItem('refresh');
     } finally {
       setLoading(false);
@@ -36,6 +41,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const onWsTokenRejected = () => {
       localStorage.removeItem('token');
+      localStorage.removeItem('access');
       localStorage.removeItem('refresh');
       setUser(null);
     };
@@ -45,7 +51,9 @@ export const AuthProvider = ({ children }) => {
 
   const login = useCallback(async (name, password) => {
     const data = await loginApi(name, password);
-    localStorage.setItem('token', data.token);
+    if (data.token) localStorage.setItem('token', data.token);
+    else localStorage.removeItem('token');
+    localStorage.removeItem('access');
     if (data.refresh) localStorage.setItem('refresh', data.refresh);
     else localStorage.removeItem('refresh');
     await loadUser();
@@ -54,6 +62,7 @@ export const AuthProvider = ({ children }) => {
   const logout = useCallback(async () => {
     await logoutApi();
     localStorage.removeItem('token');
+    localStorage.removeItem('access');
     localStorage.removeItem('refresh');
     setUser(null);
   }, []);

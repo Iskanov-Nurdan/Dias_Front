@@ -28,7 +28,7 @@ function ensureRequestId(config) {
 }
 
 client.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('token') || localStorage.getItem('access');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -50,6 +50,7 @@ client.interceptors.response.use(
 
     if (err.response?.status === 401) {
       localStorage.removeItem('token');
+      localStorage.removeItem('access');
       localStorage.removeItem('refresh');
       window.location.href = '/login';
       return Promise.reject(err);

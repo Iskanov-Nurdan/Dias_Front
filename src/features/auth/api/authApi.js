@@ -6,16 +6,13 @@ export const login = async (name, password) => {
     name,
     password,
   });
+  const token = res.data.token || res.data.access || null;
 
-  // сохраняем токены
-  if (res.data.access) {
-    localStorage.setItem('access', res.data.access);
-  }
-  if (res.data.refresh) {
-    localStorage.setItem('refresh', res.data.refresh);
-  }
-
-  return res.data;
+  return {
+    ...res.data,
+    token,
+    refresh: res.data.refresh || null,
+  };
 };
 
 // LOGOUT
@@ -30,6 +27,7 @@ export const logout = async () => {
     // игнор ошибки
   }
 
+  localStorage.removeItem('token');
   localStorage.removeItem('access');
   localStorage.removeItem('refresh');
 };

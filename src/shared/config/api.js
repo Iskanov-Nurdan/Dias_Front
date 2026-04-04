@@ -5,9 +5,19 @@ const DEFAULT_API = isProd
   ? 'https://nur.tw1.ru/api/'
   : 'http://72.56.244.50/api/';
 
-export const API_BASE = (
+const normalizeApiBase = (rawBase) => {
+  const trimmed = (rawBase || '').trim();
+  const withoutTrailingSlash = trimmed.replace(/\/+$/, '');
+  const withApiPath = /\/api$/i.test(withoutTrailingSlash)
+    ? withoutTrailingSlash
+    : `${withoutTrailingSlash}/api`;
+
+  return `${withApiPath}/`;
+};
+
+export const API_BASE = normalizeApiBase(
   process.env.REACT_APP_API_URL || DEFAULT_API
-).replace(/\/?$/, '/');
+);
 
 const DEFAULT_WS = isProd
   ? 'wss://nur.tw1.ru/ws/'

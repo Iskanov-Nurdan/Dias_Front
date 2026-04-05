@@ -1,7 +1,28 @@
-const API_BASE =
-  process.env.REACT_APP_API_URL || 'https://diass.tw1.ru/api/';
+const DEFAULT_API_BASE = 'https://diass.tw1.ru/api/';
+const DEFAULT_WS_URL = 'wss://diass.tw1.ru/ws/';
 
-export { API_BASE };
+const normalizeHttpBase = (value, fallback) => {
+  const raw = String(value || '').trim();
+  if (!raw) return fallback;
 
-export const WS_URL =
-  process.env.REACT_APP_WS_URL || 'wss://diass.tw1.ru/ws/';
+  // Prevent mixed-content failures when the app is served over HTTPS.
+  if (
+    typeof window !== 'undefined' &&
+    window.location.protocol === 'https:' &&
+    raw.startsWith('http://')
+  ) {
+    return fallback;
+  }
+
+  return raw.replace(/\/+$/, '') + '/';
+};
+
+export const API_BASE = normalizeHttpBase(
+  process.env.REACT_APP_API_URL,
+  DEFAULT_API_BASE
+);
+
+export const WS_URL = normalizeHttpBase(
+  process.env.REACT_APP_WS_URL,
+  DEFAULT_WS_URL
+);

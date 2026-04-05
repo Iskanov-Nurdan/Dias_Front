@@ -1,13 +1,13 @@
-const isProd =
-  window.location.hostname.includes('nur.tw1.ru');
+// apiConfig.js (или где у тебя это лежит)
 
-const DEFAULT_API = isProd
-  ? 'https://nur.tw1.ru/api/'
-  : 'http://72.56.244.50/api/';
-
+// нормализация base URL
 const normalizeApiBase = (rawBase) => {
   const trimmed = (rawBase || '').trim();
+
+  if (!trimmed) return '';
+
   const withoutTrailingSlash = trimmed.replace(/\/+$/, '');
+
   const withApiPath = /\/api$/i.test(withoutTrailingSlash)
     ? withoutTrailingSlash
     : `${withoutTrailingSlash}/api`;
@@ -15,14 +15,12 @@ const normalizeApiBase = (rawBase) => {
   return `${withApiPath}/`;
 };
 
+// 🌍 API BASE
 export const API_BASE = normalizeApiBase(
-  process.env.REACT_APP_API_URL || DEFAULT_API
+  process.env.REACT_APP_API_URL
 );
 
-const DEFAULT_WS = isProd
-  ? 'wss://nur.tw1.ru/ws/'
-  : 'ws://72.56.244.50/ws/';
-
+// 🔌 WS URL
 export const WS_URL = (
-  process.env.REACT_APP_WS_URL || DEFAULT_WS
+  process.env.REACT_APP_WS_URL || ''
 ).trim() || undefined;

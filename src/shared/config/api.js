@@ -1,26 +1,7 @@
-// apiConfig.js (или где у тебя это лежит)
+const API_BASE =
+  process.env.REACT_APP_API_URL || 'https://diass.tw1.ru/api/';
 
-// нормализация base URL
-const normalizeApiBase = (rawBase) => {
-  const trimmed = (rawBase || '').trim();
+export { API_BASE };
 
-  if (!trimmed) return '';
-
-  const withoutTrailingSlash = trimmed.replace(/\/+$/, '');
-
-  const withApiPath = /\/api$/i.test(withoutTrailingSlash)
-    ? withoutTrailingSlash
-    : `${withoutTrailingSlash}/api`;
-
-  return `${withApiPath}/`;
-};
-
-// 🌍 API BASE
-export const API_BASE = normalizeApiBase(
-  process.env.REACT_APP_API_URL
-);
-
-// 🔌 WS URL
-export const WS_URL = (
-  process.env.REACT_APP_WS_URL || ''
-).trim() || undefined;
+export const WS_URL =
+  process.env.REACT_APP_WS_URL || 'wss://diass.tw1.ru/ws/';

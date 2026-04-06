@@ -2,9 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus, Trash2, X } from 'lucide-react';
 import { useToast } from '../../../app/providers/ToastProvider';
-import { Select, SubmitButton } from '../../../shared/ui';
+import { Select, SubmitButton, ConfirmModal } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
-import { isClientPaid } from '../../../shared/constants/common';
+import { formatMoney, isClientPaid } from '../../../shared/constants/common';
+import { isPeriodClosedError } from '../../../shared/lib/apiError';
+import {
+  createOneTimePayment,
+  deleteOneTimePayment,
+  fetchClientOneTimePayments,
+} from '../api';
 import { fetchTrainerSchedule } from '../../sports-trainers/api';
 import {
   flattenScheduleToSlotOptions,
@@ -15,6 +21,7 @@ import {
   buildActualPaymentsPayload,
   emptyInstallmentRow,
   getInitialInstallmentRows,
+  getPriceFieldInitialForForm,
 } from '../lib/clientActualPayments';
 import './ClientFormModal.scss';
 
@@ -79,33 +86,73 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const [discount, setDiscount] = useState('');
   const [paid, setPaid] = useState(false);
   const [installments, setInstallments] = useState(() => [emptyInstallmentRow()]);
-  const [clientType, setClientType] = useState('regular');
+  const [clientType, setClientType] = useState(
+    () => client?.clientType || client?.client_type || 'regular',
+  );
   const [gender, setGender] = useState('');
   const [commentManual, setCommentManual] = useState('');
   const [commentAuto, setCommentAuto] = useState([]);
   const [trainingSlotKey, setTrainingSlotKey] = useState('');
   const [scheduleSlots, setScheduleSlots] = useState([]);
   const [scheduleSlotsLoading, setScheduleSlotsLoading] = useState(false);
+  const [oneTimePayments, setOneTimePayments] = useState([]);
+  const [oneTimeLoading, setOneTimeLoading] = useState(false);
+  const [oneTimeNewAmount, setOneTimeNewAmount] = useState('');
+  const [oneTimeAdding, setOneTimeAdding] = useState(false);
+  const [confirmDeleteOneTime, setConfirmDeleteOneTime] = useState(null);
+  const [deletingOneTimeId, setDeletingOneTimeId] = useState(null);
 
   useEffect(() => {
-    setTrainingSlotKey('');
-    if (client) {
-      setFio(capitalizeWords(client.fio || ''));
-      setPhone(client.phone || '');
-      setSportId(client.sportId ?? client.sport_id ?? client.sport?.id ?? '');
-      setTrainerId(client.trainerId ?? client.trainer_id ?? client.trainer?.id ?? '');
-      setDateStart(client.dateStart ? client.dateStart.slice(0, 10) : '');
-      setPrice(client.price ?? '');
-      setDiscount(client.discount ?? '');
-      setPaid(isClientPaid(client));
-      setInstallments(getInitialInstallmentRows(client));
-      setClientType(client.clientType || client.client_type || 'regular');
-      setGender(client.gender || '');
-      const { auto, manual } = parseComment(client.comment);
-      setCommentAuto(auto);
-      setCommentManual(manual);
+    if (!client?.id || clientType !== 'one-time') {
+      setOneTimePayments([]);
+      setOneTimeLoading(false);
+      setOneTimeNewAmount('');
+      return undefined;
     }
-  }, [client]);
+    let cancelled = false;
+    setOneTimeLoading(true);
+    fetchClientOneTimePayments(client.id, null)
+      .then((res) => {
+        if (cancelled) return;
+        const items = res?.items ?? res?.results ?? res?.data ?? [];
+        setOneTimePayments(Array.isArray(items) ? items : []);
+      })
+      .catch(() => {
+        if (!cancelled) setOneTimePayments([]);
+      })
+      .finally(() => {
+        if (!cancelled) setOneTimeLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [client?.id, clientType]);
+
+  useEffect(() => {
+    if (clientType !== 'one-time') setConfirmDeleteOneTime(null);
+  }, [clientType]);
+
+  /** Только смена клиента (id / новая карточка), не каждый новый объект-ссылка — иначе поле цены постоянно сбрасывается и кажется «нерабочим». */
+  const clientFormSyncKey = client?.id != null && client?.id !== '' ? String(client.id) : 'new';
+  useEffect(() => {
+    if (!client) return;
+    setTrainingSlotKey('');
+    setFio(capitalizeWords(client.fio || ''));
+    setPhone(client.phone || '');
+    setSportId(client.sportId ?? client.sport_id ?? client.sport?.id ?? '');
+    setTrainerId(client.trainerId ?? client.trainer_id ?? client.trainer?.id ?? '');
+    setDateStart(client.dateStart ? client.dateStart.slice(0, 10) : '');
+    setPrice(getPriceFieldInitialForForm(client));
+    setDiscount(client.discount ?? '');
+    setPaid(isClientPaid(client));
+    setInstallments(getInitialInstallmentRows(client));
+    setClientType(client.clientType || client.client_type || 'regular');
+    setGender(client.gender || '');
+    const { auto, manual } = parseComment(client.comment);
+    setCommentAuto(auto);
+    setCommentManual(manual);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- намеренно не [client]: см. clientFormSyncKey
+  }, [clientFormSyncKey]);
 
   useEffect(() => {
     if (!fetchTrainers) return;
@@ -215,9 +262,28 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
     trainerId,
   ]);
 
-  const priceBase = Number(price) || 0;
   const discountPct = Number(discount) || 0;
-  const priceAfterDiscount = discountPct > 0 ? priceBase * (1 - discountPct / 100) : priceBase;
+  const priceInputNum = Number(price);
+  const rawPriceInput = Number.isFinite(priceInputNum) ? priceInputNum : 0;
+  const discountFactor = discountPct >= 100 ? 0 : 1 - discountPct / 100;
+
+  /**
+   * Поле «цена»: при скидке > 0 вводим сумму со скидкой (как «Цена» в карточке).
+   * На сервер уходит договорная сумма до скидки (price).
+   */
+  let contractBaseAmount;
+  let amountAfterDiscount;
+  if (discountPct > 0 && discountFactor > 0) {
+    amountAfterDiscount = rawPriceInput;
+    contractBaseAmount = Math.round(amountAfterDiscount / discountFactor);
+  } else if (discountPct > 0) {
+    amountAfterDiscount = 0;
+    contractBaseAmount = rawPriceInput;
+  } else {
+    contractBaseAmount = rawPriceInput;
+    amountAfterDiscount = rawPriceInput;
+  }
+
   const formatSum = (v) => (v != null && !Number.isNaN(v) ? `${Number(v).toLocaleString('ru-RU')} сом` : '—');
 
   const trainingSlotHint = trainerId
@@ -245,6 +311,105 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
     );
   };
 
+  const reloadOneTimePayments = async (clientId) => {
+    if (!clientId) return;
+    try {
+      const res = await fetchClientOneTimePayments(clientId, null);
+      const items = res?.items ?? res?.results ?? res?.data ?? [];
+      setOneTimePayments(Array.isArray(items) ? items : []);
+    } catch {
+      setOneTimePayments([]);
+    }
+  };
+
+  /** Дельта к договорной сумме до скидки; в поле ввода отображаем итог со скидкой, если скидка есть. */
+  const applySubscriptionPriceDeltaLocal = (deltaSom) => {
+    if (!Number.isFinite(deltaSom) || deltaSom === 0) return;
+    const d = Number(discount) || 0;
+    const factor = d >= 100 ? 0 : 1 - d / 100;
+    setPrice((prev) => {
+      const cur = Number(prev);
+      const curSafe = Number.isFinite(cur) ? cur : 0;
+      if (d > 0 && factor > 0) {
+        const base = Math.round(curSafe / factor);
+        const newBase = Math.max(0, base + Math.round(deltaSom));
+        return String(Math.round(newBase * factor));
+      }
+      return String(Math.max(0, Math.round(curSafe + deltaSom)));
+    });
+  };
+
+  const handleDiscountChange = (e) => {
+    const raw = e.target.value;
+    const nextNum = raw === '' ? 0 : Math.min(100, Math.max(0, Number(raw)));
+    const prevNum = Number(discount) || 0;
+    const p = Number(price);
+    const pSafe = Number.isFinite(p) ? p : 0;
+
+    if (prevNum > 0 && nextNum === 0) {
+      const f = 1 - prevNum / 100;
+      setPrice(f > 0 && pSafe > 0 ? String(Math.round(pSafe / f)) : String(pSafe));
+    } else if (prevNum === 0 && nextNum > 0) {
+      const f = 1 - nextNum / 100;
+      setPrice(f > 0 ? String(Math.round(pSafe * f)) : String(pSafe));
+    } else if (prevNum > 0 && nextNum > 0 && prevNum !== nextNum) {
+      const fOld = 1 - prevNum / 100;
+      const base = fOld > 0 && pSafe > 0 ? Math.round(pSafe / fOld) : pSafe;
+      const fNew = 1 - nextNum / 100;
+      setPrice(fNew > 0 ? String(Math.round(base * fNew)) : String(base));
+    }
+    setDiscount(raw === '' ? '' : String(nextNum));
+  };
+
+  const handleAddOneTimePayment = async () => {
+    const cid = client?.id;
+    if (!cid) return;
+    const n = Number(String(oneTimeNewAmount).trim());
+    if (!Number.isFinite(n) || n <= 0) {
+      toast.error('Укажите сумму больше ноля');
+      return;
+    }
+    setOneTimeAdding(true);
+    try {
+      await createOneTimePayment(cid, { amount: n }, null);
+      setOneTimeNewAmount('');
+      await reloadOneTimePayments(cid);
+      applySubscriptionPriceDeltaLocal(n);
+      toast.success(
+        `Доплата ${n.toLocaleString('ru-RU')} сом на сервере. Нажмите «Сохранить», чтобы записать цену абонемента.`
+      );
+    } catch (e) {
+      const msg = isPeriodClosedError(e)
+        ? 'Период закрыт. Изменение финансовых данных запрещено.'
+        : (e.response?.data?.error?.message ?? e.response?.data?.message ?? e.message ?? 'Ошибка');
+      toast.error(msg);
+    } finally {
+      setOneTimeAdding(false);
+    }
+  };
+
+  const handleDeleteOneTimePayment = async (payment) => {
+    const cid = client?.id;
+    if (!cid || !payment?.id) return;
+    const removed = Number(payment.amount);
+    const delta = Number.isFinite(removed) && removed > 0 ? -Math.round(removed) : 0;
+    setConfirmDeleteOneTime(null);
+    setDeletingOneTimeId(payment.id);
+    try {
+      await deleteOneTimePayment(cid, payment.id, null);
+      setOneTimePayments((prev) => prev.filter((p) => p.id !== payment.id));
+      applySubscriptionPriceDeltaLocal(delta);
+      toast.success('Доплата удалена. Нажмите «Сохранить», чтобы записать цену абонемента.');
+    } catch (e) {
+      const msg = isPeriodClosedError(e)
+        ? 'Период закрыт. Изменение финансовых данных запрещено.'
+        : (e.response?.data?.error?.message ?? e.response?.data?.message ?? e.message ?? 'Ошибка удаления');
+      toast.error(msg);
+    } finally {
+      setDeletingOneTimeId(null);
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const built = buildActualPaymentsPayload(installments);
@@ -257,8 +422,10 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       const addedLine = `Добавлен: ${currentUserFio}`;
       if (!autoLines.some((l) => l.trim().startsWith('Добавлен:'))) autoLines.push(addedLine);
     }
-    const discountLine = discountPct > 0 && priceBase > 0
-      ? `Скидка ${discountPct}%. До: ${formatSum(priceBase)}. После: ${formatSum(priceAfterDiscount)}.`
+    const priceTrim = String(price).trim();
+    const hasPriceField = priceTrim !== '' && Number.isFinite(Number(priceTrim));
+    const discountLine = discountPct > 0 && contractBaseAmount > 0
+      ? `Скидка ${discountPct}%. До: ${formatSum(contractBaseAmount)}. После: ${formatSum(amountAfterDiscount)}.`
       : '';
     const autoWithoutDiscount = autoLines.filter((l) => !l.trim().startsWith('Скидка'));
     if (discountLine) autoWithoutDiscount.push(discountLine);
@@ -293,7 +460,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       sportId: sportId || undefined,
       trainerId: trainerId || undefined,
       dateStart: dateStart || undefined,
-      price: price ? Number(price) : undefined,
+      price: hasPriceField ? contractBaseAmount : undefined,
       discount: discount ? Number(discount) : undefined,
       paid,
       ...paymentsPayload,
@@ -387,10 +554,24 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
             <h3 className="client-form-modal__section-title">Оплата</h3>
             <div className="client-form-modal__row">
               <label className="client-form-modal__label client-form-modal__label--full">
-                <span className="client-form-modal__label-text">Цена абонемента, сом</span>
-                <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="client-form-modal__input" placeholder="0" min="0" step="1" />
+                <span className="client-form-modal__label-text">
+                  {discountPct > 0 ? 'К оплате (со скидкой), сом' : 'Цена абонемента, сом'}
+                </span>
+                <input
+                  type="number"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  className="client-form-modal__input"
+                  placeholder="0"
+                  min="0"
+                  step="1"
+                  autoComplete="off"
+                  inputMode="numeric"
+                />
                 <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
-                  Общая стоимость по договору — для скидки и отображения. Частичные взносы ниже.
+                  {discountPct > 0
+                    ? 'Та же сумма, что «Цена» в карточке. Ниже — договорная до скидки. Частичные взносы отдельно.'
+                    : 'Общая стоимость по договору — для скидки и отображения. Частичные взносы ниже.'}
                 </span>
               </label>
             </div>
@@ -446,10 +627,67 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               </button>
             </div>
 
+            {client?.id && clientType === 'one-time' ? (
+              <div className="client-form-modal__installments client-form-modal__onetime-wrap">
+                <div className="client-form-modal__installments-header">
+                  <span className="client-form-modal__installments-title">Разовые доплаты</span>
+                </div>
+                <p className="client-form-modal__installments-hint">
+                  Доплаты по месяцам (как на вкладке «Разовый»). Добавление и удаление строки доплаты сразу уходит на сервер. Поле суммы к оплате / абонемента подстраиваем только в форме; чтобы записать на сервер, нажмите «Сохранить» внизу окна.
+                </p>
+                {oneTimeLoading && oneTimePayments.length === 0 ? (
+                  <p className="client-form-modal__onetime-loading">Загрузка…</p>
+                ) : null}
+                {oneTimePayments.map((p) => (
+                  <div key={p.id} className="client-form-modal__onetime-row">
+                    <span className="client-form-modal__onetime-amount">{formatMoney(p.amount)}</span>
+                    <span className="client-form-modal__onetime-date">
+                      {p.date ? new Date(p.date).toLocaleDateString('ru-RU') : '—'}
+                    </span>
+                    <div className="client-form-modal__installment-remove-wrap">
+                      <button
+                        type="button"
+                        className="client-form-modal__installment-remove"
+                        onClick={() => setConfirmDeleteOneTime(p)}
+                        disabled={deletingOneTimeId === p.id}
+                        aria-label="Удалить разовую доплату"
+                        title="Удалить"
+                      >
+                        <Trash2 size={18} strokeWidth={1.75} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <div className="client-form-modal__onetime-add-row">
+                  <label className="client-form-modal__onetime-add-label">
+                    <span className="client-form-modal__onetime-add-label-text">Сумма, сом</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={oneTimeNewAmount}
+                      onChange={(e) => setOneTimeNewAmount(e.target.value)}
+                      className="client-form-modal__input"
+                      placeholder="0"
+                      disabled={oneTimeAdding}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="client-form-modal__onetime-add-btn"
+                    onClick={handleAddOneTimePayment}
+                    disabled={oneTimeAdding}
+                  >
+                    Добавить доплату
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
             <div className="client-form-modal__row">
               <label className="client-form-modal__label">
                 <span className="client-form-modal__label-text">Скидка, %</span>
-              <input type="number" min="0" max="100" value={discount} onChange={(e) => setDiscount(e.target.value)} className="client-form-modal__input" placeholder="0" />
+              <input type="number" min="0" max="100" value={discount} onChange={handleDiscountChange} className="client-form-modal__input" placeholder="0" />
             </label>
             <div className="client-form-modal__label client-form-modal__label--toggle">
               <span className="client-form-modal__label-text">Оплачено</span>
@@ -459,16 +697,16 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               </div>
             </div>
             </div>
-            {priceBase > 0 && (
+            {(contractBaseAmount > 0 || rawPriceInput > 0) && (
             <div className="client-form-modal__price-summary">
               <div className="client-form-modal__price-row">
                 <span>До скидки</span>
-                <strong>{formatSum(priceBase)}</strong>
+                <strong>{formatSum(contractBaseAmount)}</strong>
               </div>
               {discountPct > 0 && (
                 <div className="client-form-modal__price-row client-form-modal__price-row--discount">
                   <span>Со скидкой ({discountPct}%)</span>
-                  <strong>{formatSum(priceAfterDiscount)}</strong>
+                  <strong>{formatSum(amountAfterDiscount)}</strong>
                 </div>
               )}
             </div>
@@ -520,6 +758,16 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
             </SubmitButton>
           </div>
         </form>
+        {confirmDeleteOneTime && (
+          <ConfirmModal
+            title="Удалить доплату?"
+            message={`Удалить доплату ${formatMoney(confirmDeleteOneTime.amount)} от ${confirmDeleteOneTime.date ? new Date(confirmDeleteOneTime.date).toLocaleDateString('ru-RU') : '—'}?`}
+            confirmText="Удалить"
+            onConfirm={() => handleDeleteOneTimePayment(confirmDeleteOneTime)}
+            onCancel={() => setConfirmDeleteOneTime(null)}
+            danger
+          />
+        )}
       </div>
     </div>
   );

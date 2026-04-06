@@ -1,12 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { formatMoney, isClientPaid } from '../../../shared/constants/common';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
-import { fetchClientOneTimePayments, deleteOneTimePayment } from '../api';
-import { useToast } from '../../../app/providers/ToastProvider';
-import { isPeriodClosedError } from '../../../shared/lib/apiError';
-import { ConfirmModal } from '../../../shared/ui';
 import { WEEKDAYS } from '../../sports-trainers/scheduleConstants';
 import { getClientPaymentsForCard } from '../lib/clientActualPayments';
 import './ClientCardModal.scss';
@@ -35,46 +31,8 @@ const formatTrainingScheduleLabel = (client) => {
   return dayPart || timePart || '—';
 };
 
-const ClientCardModal = ({ client, onEdit, onDelete, onRefresh, onClose }) => {
-  const toast = useToast();
-
+const ClientCardModal = ({ client, onEdit, onDelete, onClose }) => {
   useModalEffect(!!client, onClose);
-  const [oneTimePayments, setOneTimePayments] = useState([]);
-  const [oneTimeLoading, setOneTimeLoading] = useState(false);
-  const [deletingId, setDeletingId] = useState(null);
-  const [onetimeExpanded, setOnetimeExpanded] = useState(false);
-  const [confirmDeletePayment, setConfirmDeletePayment] = useState(null);
-
-  useEffect(() => {
-    if (!client?.id) return;
-    setOneTimeLoading(true);
-    fetchClientOneTimePayments(client.id, null)
-      .then((res) => {
-        const items = res?.items ?? res?.results ?? res?.data ?? [];
-        setOneTimePayments(Array.isArray(items) ? items : []);
-      })
-      .catch(() => setOneTimePayments([]))
-      .finally(() => setOneTimeLoading(false));
-  }, [client?.id]);
-
-  const handleDeleteOneTime = async (payment) => {
-    if (!client?.id || !payment?.id) return;
-    setConfirmDeletePayment(null);
-    setDeletingId(payment.id);
-    try {
-      await deleteOneTimePayment(client.id, payment.id, null);
-      setOneTimePayments((prev) => prev.filter((p) => p.id !== payment.id));
-      onRefresh?.();
-      toast.success('Доплата удалена');
-    } catch (e) {
-      const msg = isPeriodClosedError(e)
-        ? 'Период закрыт. Изменение финансовых данных запрещено.'
-        : (e.response?.data?.error?.message ?? e.response?.data?.message ?? e.message ?? 'Ошибка удаления');
-      toast.error(msg);
-    } finally {
-      setDeletingId(null);
-    }
-  };
 
   if (!client) return null;
   const dateStartRaw = client.dateStart ?? client.date_start;
@@ -154,49 +112,6 @@ const ClientCardModal = ({ client, onEdit, onDelete, onRefresh, onClose }) => {
             <p className="client-card-modal__comment">{client.comment || '—'}</p>
           </section>
         </div>
-        {oneTimePayments.length > 0 && (
-          <div className="client-card-modal__onetime">
-            <button
-              type="button"
-              className="client-card-modal__onetime-toggle"
-              onClick={() => setOnetimeExpanded((v) => !v)}
-              aria-expanded={onetimeExpanded}
-            >
-              <span className="client-card-modal__onetime-title">Разовые доплаты ({oneTimePayments.length})</span>
-              <span className={`client-card-modal__onetime-chevron${onetimeExpanded ? ' client-card-modal__onetime-chevron--open' : ''}`} aria-hidden>▼</span>
-            </button>
-            {onetimeExpanded && (
-              <ul className="client-card-modal__onetime-list">
-                {oneTimePayments.map((p) => (
-                  <li key={p.id} className="client-card-modal__onetime-item">
-                    <span className="client-card-modal__onetime-amount">{formatMoney(p.amount)}</span>
-                    <span className="client-card-modal__onetime-date">{p.date ? new Date(p.date).toLocaleDateString() : '—'}</span>
-                    <button
-                      type="button"
-                      className="client-card-modal__onetime-delete"
-                      onClick={() => setConfirmDeletePayment(p)}
-                      disabled={deletingId === p.id}
-                      title="Удалить доплату"
-                    >
-                      {deletingId === p.id ? '…' : '✕'}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-        {oneTimeLoading && oneTimePayments.length === 0 && <p className="client-card-modal__onetime-loading">Загрузка доплат…</p>}
-        {confirmDeletePayment && (
-          <ConfirmModal
-            title="Удалить доплату?"
-            message={`Удалить доплату ${formatMoney(confirmDeletePayment.amount)} от ${confirmDeletePayment.date ? new Date(confirmDeletePayment.date).toLocaleDateString() : '—'}?`}
-            confirmText="Удалить"
-            onConfirm={() => handleDeleteOneTime(confirmDeletePayment)}
-            onCancel={() => setConfirmDeletePayment(null)}
-            danger
-          />
-        )}
         <div className="client-card-modal__actions">
           <button type="button" className="client-card-modal__btn client-card-modal__btn--primary" onClick={() => { onEdit(client); onClose(); }}>Редактировать</button>
           <button type="button" className="client-card-modal__btn" onClick={onClose}>Закрыть</button>

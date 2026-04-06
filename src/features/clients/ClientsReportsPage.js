@@ -582,7 +582,6 @@ const ClientsReportsPage = () => {
           client={cardClient}
           onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())}
           onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())}
-          onRefresh={() => fetchClient(cardClient.id, null).then((res) => setCardClient(res?.data ?? res)).catch(() => {})}
           onClose={() => setCardClient(null)}
         />
       )}

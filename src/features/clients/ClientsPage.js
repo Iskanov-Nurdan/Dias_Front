@@ -193,8 +193,23 @@ const ClientsPage = () => {
     try {
       await createOneTimePayment(client.id, { amount }, null);
       setOneTimeAddInputs((prev) => ({ ...prev, [client.id]: '' }));
+      /** Договорная price на бэке — до скидки; как при доплате из формы редактирования. Иначе колонка «Текущая сумма» (priceDisplay) не растёт. */
+      const contractBase = Number(client.price) || 0;
+      const newContractPrice = Math.max(0, Math.round(contractBase + amount));
+      let pricePatchOk = true;
+      try {
+        await updateClient(client.id, { price: newContractPrice }, null);
+      } catch (patchErr) {
+        pricePatchOk = false;
+        const pmsg = isPeriodClosedError(patchErr)
+          ? 'Период закрыт — обновите цену договора вручную в карточке клиента.'
+          : (patchErr.response?.data?.error?.message ?? patchErr.response?.data?.message ?? patchErr.message ?? 'Не удалось обновить цену');
+        toast.error(`Доплата записана, но сумма договора на сервере не изменилась: ${pmsg}`);
+      }
       fetchOneTime();
-      toast.success(`Добавлено ${amount.toLocaleString('ru-RU')} сом`);
+      if (pricePatchOk) {
+        toast.success(`Добавлено ${amount.toLocaleString('ru-RU')} сом`);
+      }
     } catch (e) {
       const msg = isPeriodClosedError(e)
         ? 'Период закрыт. Изменение финансовых данных запрещено.'
@@ -611,7 +626,6 @@ const ClientsPage = () => {
           client={cardClient}
           onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())}
           onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())}
-          onRefresh={() => fetchClient(cardClient.id, null).then((res) => setCardClient(res?.data ?? res)).catch(() => {})}
           onClose={() => setCardClient(null)}
         />
       )}

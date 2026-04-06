@@ -103,6 +103,34 @@ export function getClientPaymentsForCard(client) {
   return [];
 }
 
+/**
+ * Значение поля «цена абонемента» при открытии формы — согласовано с цифрой «Цена» в карточке
+ * (приоритет price_display / total_price, затем price).
+ * При ненулевой скидке, если есть итог с бэка, восстанавливаем базу до скидки из него.
+ */
+export function getInitialSubscriptionPriceInputValue(client) {
+  if (!client) return '';
+  const discountPct = Number(client.discount ?? client.discount_percent) || 0;
+  const priceDisplay = client.priceDisplay ?? client.totalPrice ?? client.price_display ?? client.total_price;
+  const rawBase = client.price;
+  const hasDisplay =
+    priceDisplay != null && priceDisplay !== '' && Number.isFinite(Number(priceDisplay));
+  const finalShown = hasDisplay ? Number(priceDisplay) : null;
+
+  if (discountPct > 0) {
+    if (finalShown != null) {
+      const factor = 1 - discountPct / 100;
+      if (factor > 0) return String(Math.round(finalShown / factor));
+    }
+    if (rawBase != null && rawBase !== '') return String(rawBase);
+    return '';
+  }
+
+  if (finalShown != null) return String(Math.round(finalShown));
+  if (rawBase != null && rawBase !== '') return String(rawBase);
+  return '';
+}
+
 /** Итоговая цена строки клиента (как в карточке: priceDisplay или цена со скидкой). */
 export function getClientFinalPriceForList(client) {
   if (!client) return 0;
@@ -114,6 +142,20 @@ export function getClientFinalPriceForList(client) {
   }
   const after = discountPct > 0 && priceBase > 0 ? priceBase * (1 - discountPct / 100) : priceBase;
   return Math.round(after);
+}
+
+/**
+ * Начальное значение поля цены в форме редактирования.
+ * При скидке > 0 — та же цифра, что «Цена» в карточке (после скидки); без скидки — договорная сумма.
+ */
+export function getPriceFieldInitialForForm(client) {
+  if (!client) return '';
+  const discountPct = Number(client.discount ?? client.discount_percent) || 0;
+  if (discountPct > 0) {
+    const v = getClientFinalPriceForList(client);
+    return v > 0 ? String(v) : '';
+  }
+  return getInitialSubscriptionPriceInputValue(client);
 }
 
 /** Сумма положительных amount в actualPayments / actual_payments. */

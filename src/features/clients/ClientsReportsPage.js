@@ -9,6 +9,7 @@ import {
   fetchClientsStats,
   fetchClientsScheduleStats,
   fetchClientsPaymentDayReport,
+  uploadClientPhotos,
 } from './api';
 import { fetchSports, fetchTrainers } from '../sports-trainers/api';
 import { useAuth } from '../../app/providers/AuthProvider';
@@ -16,6 +17,7 @@ import { useToast } from '../../app/providers/ToastProvider';
 import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { MONTHS, STATS_YEARS } from '../../shared/constants/common';
 import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiError';
+import { prepareClientSavePayload } from './lib/prepareClientSavePayload';
 import { Select, ConfirmModal, Pagination, FilterBar, EmptyState } from '../../shared/ui';
 import {
   ClientsList,
@@ -257,8 +259,25 @@ const ClientsReportsPage = () => {
     setClientFormError(null);
     setClientFormSaving(true);
     try {
-      if (formClient?.id) await updateClient(formClient.id, payload, null);
-      else await createClient(payload, null);
+      const { body, photoUploads } = prepareClientSavePayload(payload);
+      let targetId = formClient?.id;
+      if (targetId) await updateClient(formClient.id, body, null);
+      else {
+        const created = await createClient(body, null);
+        targetId = created?.id ?? created?.data?.id;
+      }
+      if (photoUploads.length > 0 && targetId != null) {
+        try {
+          await uploadClientPhotos(targetId, photoUploads, null);
+        } catch (photoErr) {
+          const pmsg =
+            photoErr?.response?.data?.error?.message ??
+            photoErr?.response?.data?.message ??
+            photoErr?.message ??
+            'ошибка загрузки';
+          toast.error(`Клиент сохранён, но фото не загрузились: ${pmsg}`);
+        }
+      }
       setFormClient(null);
       refreshAfterSave();
       toast.success(formClient?.id ? 'Клиент сохранён' : 'Клиент добавлен');

@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { formatMoney, isClientPaid } from '../../../shared/constants/common';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { WEEKDAYS } from '../../sports-trainers/scheduleConstants';
 import { getClientPaymentsForCard } from '../lib/clientActualPayments';
+import { fetchClientPhotos } from '../api';
+import { getClientPhotoKindLabel } from '../lib/clientPhotos';
 import './ClientCardModal.scss';
 
 const formatHm = (v) => {
@@ -33,6 +35,32 @@ const formatTrainingScheduleLabel = (client) => {
 
 const ClientCardModal = ({ client, onEdit, onDelete, onClose }) => {
   useModalEffect(!!client, onClose);
+
+  const [cardPhotos, setCardPhotos] = useState([]);
+  const [cardPhotosLoading, setCardPhotosLoading] = useState(false);
+
+  useEffect(() => {
+    if (!client?.id) {
+      setCardPhotos([]);
+      setCardPhotosLoading(false);
+      return undefined;
+    }
+    let cancelled = false;
+    setCardPhotosLoading(true);
+    fetchClientPhotos(client.id, null)
+      .then((res) => {
+        if (!cancelled) setCardPhotos(res?.items ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setCardPhotos([]);
+      })
+      .finally(() => {
+        if (!cancelled) setCardPhotosLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [client?.id]);
 
   if (!client) return null;
   const dateStartRaw = client.dateStart ?? client.date_start;
@@ -106,6 +134,25 @@ const ClientCardModal = ({ client, onEdit, onDelete, onClose }) => {
                 )}
               </dd>
             </dl>
+          </section>
+          <section className="client-card-modal__section">
+            <h3 className="client-card-modal__section-title">Фото для сверки</h3>
+            {cardPhotosLoading ? (
+              <p className="client-card-modal__photos-status">Загрузка…</p>
+            ) : cardPhotos.length === 0 ? (
+              <p className="client-card-modal__photos-status">Нет фото</p>
+            ) : (
+              <ul className="client-card-modal__photos-grid" aria-label="Фото чеков и наличных">
+                {cardPhotos.map((ph) => (
+                  <li key={ph.id} className="client-card-modal__photos-item">
+                    <a href={ph.url || '#'} target="_blank" rel="noopener noreferrer" className="client-card-modal__photos-link">
+                      <img src={ph.url} alt="" className="client-card-modal__photos-thumb" />
+                      <span className="client-card-modal__photos-kind">{getClientPhotoKindLabel(ph.kind)}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
           <section className="client-card-modal__section">
             <h3 className="client-card-modal__section-title">Комментарий</h3>

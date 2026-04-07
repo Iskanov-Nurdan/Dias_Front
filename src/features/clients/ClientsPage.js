@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { fetchClients, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchAllClientsPaginated, createOneTimePayment } from './api';
+import { fetchClients, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchAllClientsPaginated, createOneTimePayment, uploadClientPhotos } from './api';
 import { fetchSports } from '../sports-trainers/api';
 import { fetchTrainers } from '../sports-trainers/api';
 import { useAuth } from '../../app/providers/AuthProvider';
@@ -9,6 +9,7 @@ import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { SEARCH_DEBOUNCE_MS, formatMoney, MONTHS, STATS_YEARS } from '../../shared/constants/common';
 import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiError';
 import { filterClientsByPeriod, getExactDuplicates, getSimilarGroups } from '../../shared/lib/duplicates';
+import { prepareClientSavePayload } from './lib/prepareClientSavePayload';
 import { Select, ConfirmModal, Pagination, FiltersModal, FilterBar, EmptyState } from '../../shared/ui';
 import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal, DuplicateGroup } from './components';
 import './ClientsPage.scss';
@@ -251,8 +252,25 @@ const ClientsPage = () => {
     setClientFormError(null);
     setClientFormSaving(true);
     try {
-      if (formClient?.id) await updateClient(formClient.id, payload, null);
-      else await createClient(payload, null);
+      const { body, photoUploads } = prepareClientSavePayload(payload);
+      let targetId = formClient?.id;
+      if (targetId) await updateClient(formClient.id, body, null);
+      else {
+        const created = await createClient(body, null);
+        targetId = created?.id ?? created?.data?.id;
+      }
+      if (photoUploads.length > 0 && targetId != null) {
+        try {
+          await uploadClientPhotos(targetId, photoUploads, null);
+        } catch (photoErr) {
+          const pmsg =
+            photoErr?.response?.data?.error?.message ??
+            photoErr?.response?.data?.message ??
+            photoErr?.message ??
+            'ошибка загрузки';
+          toast.error(`Клиент сохранён, но фото не загрузились: ${pmsg}`);
+        }
+      }
       setFormClient(null);
       fetchSafe();
       toast.success(formClient?.id ? 'Клиент сохранён' : 'Клиент добавлен');

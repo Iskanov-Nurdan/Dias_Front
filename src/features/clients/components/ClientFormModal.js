@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Trash2, X } from 'lucide-react';
+import { ImagePlus, Plus, Trash2, X } from 'lucide-react';
 import { useToast } from '../../../app/providers/ToastProvider';
 import { Select, SubmitButton, ConfirmModal } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
@@ -8,9 +8,12 @@ import { formatMoney, isClientPaid } from '../../../shared/constants/common';
 import { isPeriodClosedError } from '../../../shared/lib/apiError';
 import {
   createOneTimePayment,
+  deleteClientPhoto,
   deleteOneTimePayment,
   fetchClientOneTimePayments,
+  fetchClientPhotos,
 } from '../api';
+import { CLIENT_PHOTO_KIND_OPTIONS, getClientPhotoKindLabel } from '../lib/clientPhotos';
 import { fetchTrainerSchedule } from '../../sports-trainers/api';
 import {
   flattenScheduleToSlotOptions,
@@ -102,6 +105,13 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const [confirmDeleteOneTime, setConfirmDeleteOneTime] = useState(null);
   const [deletingOneTimeId, setDeletingOneTimeId] = useState(null);
 
+  const photoInputRef = useRef(null);
+  const [serverPhotos, setServerPhotos] = useState([]);
+  const [photosLoading, setPhotosLoading] = useState(false);
+  const [photoDeletingId, setPhotoDeletingId] = useState(null);
+  const [pendingPhotos, setPendingPhotos] = useState([]);
+  const [defaultPhotoKind, setDefaultPhotoKind] = useState('receipt');
+
   useEffect(() => {
     if (!client?.id || clientType !== 'one-time') {
       setOneTimePayments([]);
@@ -132,8 +142,41 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
     if (clientType !== 'one-time') setConfirmDeleteOneTime(null);
   }, [clientType]);
 
+  useEffect(() => {
+    return () => {
+      pendingPhotos.forEach((p) => {
+        if (p.previewUrl) URL.revokeObjectURL(p.previewUrl);
+      });
+    };
+  }, [pendingPhotos]);
+
   /** Только смена клиента (id / новая карточка), не каждый новый объект-ссылка — иначе поле цены постоянно сбрасывается и кажется «нерабочим». */
   const clientFormSyncKey = client?.id != null && client?.id !== '' ? String(client.id) : 'new';
+
+  useEffect(() => {
+    setPendingPhotos([]);
+    setServerPhotos([]);
+    if (!client?.id) {
+      setPhotosLoading(false);
+      return undefined;
+    }
+    let cancelled = false;
+    setPhotosLoading(true);
+    fetchClientPhotos(client.id, null)
+      .then((res) => {
+        if (!cancelled) setServerPhotos(res?.items ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setServerPhotos([]);
+      })
+      .finally(() => {
+        if (!cancelled) setPhotosLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [clientFormSyncKey, client?.id]);
+
   useEffect(() => {
     if (!client) return;
     setTrainingSlotKey('');
@@ -410,6 +453,51 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
     }
   };
 
+  const handlePhotoFilesChange = (e) => {
+    const fl = e.target.files;
+    if (!fl?.length) return;
+    const next = Array.from(fl).map((file) => ({
+      _key: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      file,
+      kind: defaultPhotoKind,
+      previewUrl: URL.createObjectURL(file),
+    }));
+    setPendingPhotos((prev) => [...prev, ...next]);
+    e.target.value = '';
+  };
+
+  const removePendingPhoto = (_key) => {
+    setPendingPhotos((prev) => {
+      const row = prev.find((x) => x._key === _key);
+      if (row?.previewUrl) URL.revokeObjectURL(row.previewUrl);
+      return prev.filter((x) => x._key !== _key);
+    });
+  };
+
+  const updatePendingPhotoKind = (_key, kind) => {
+    setPendingPhotos((prev) => prev.map((x) => (x._key === _key ? { ...x, kind } : x)));
+  };
+
+  const handleDeleteServerPhoto = async (photo) => {
+    const cid = client?.id;
+    if (!cid || !photo?.id) return;
+    setPhotoDeletingId(photo.id);
+    try {
+      await deleteClientPhoto(cid, photo.id, null);
+      setServerPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+      toast.success('Фото удалено');
+    } catch (err) {
+      toast.error(
+        err?.response?.data?.error?.message ??
+          err?.response?.data?.message ??
+          err?.message ??
+          'Не удалось удалить фото'
+      );
+    } finally {
+      setPhotoDeletingId(null);
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const built = buildActualPaymentsPayload(installments);
@@ -454,6 +542,8 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       paymentsPayload.actualPayments = built.payload;
     }
 
+    const photoUploads = pendingPhotos.map(({ file, kind }) => ({ file, kind })).filter((x) => x.file);
+
     onSave({
       fio,
       phone,
@@ -468,6 +558,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       gender: gender || undefined,
       comment: commentValue,
       ...trainingPayload,
+      ...(photoUploads.length > 0 ? { photoUploads } : {}),
     });
   };
 
@@ -719,6 +810,107 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               <div />
             </div>
           </div>
+
+          <div className="client-form-modal__section">
+            <h3 className="client-form-modal__section-title">Фото для сверки</h3>
+            <p className="client-form-modal__photos-hint">
+              Чеки и наличные — неограниченное число снимков. Новые файлы отправляются на сервер при нажатии «Сохранить» (сначала карточка, затем фото).
+            </p>
+            <div className="client-form-modal__row client-form-modal__row--photos-toolbar">
+              <label className="client-form-modal__label">
+                <span className="client-form-modal__label-text">Тип для новых фото</span>
+                <Select
+                  value={defaultPhotoKind}
+                  onChange={setDefaultPhotoKind}
+                  options={CLIENT_PHOTO_KIND_OPTIONS}
+                  className="client-form-modal__select"
+                />
+              </label>
+              <div className="client-form-modal__photos-add-wrap">
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="client-form-modal__photos-file-input"
+                  onChange={handlePhotoFilesChange}
+                />
+                <button
+                  type="button"
+                  className="client-form-modal__photos-add-btn"
+                  onClick={() => photoInputRef.current?.click()}
+                >
+                  <ImagePlus size={18} strokeWidth={1.75} aria-hidden />
+                  Добавить фото
+                </button>
+              </div>
+            </div>
+
+            {client?.id ? (
+              photosLoading ? (
+                <p className="client-form-modal__photos-loading">Загрузка фото…</p>
+              ) : serverPhotos.length > 0 ? (
+                <ul className="client-form-modal__photos-grid" aria-label="Сохранённые фото">
+                  {serverPhotos.map((ph) => (
+                    <li key={ph.id} className="client-form-modal__photos-item">
+                      <a
+                        href={ph.url || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="client-form-modal__photos-thumb-link"
+                      >
+                        <img src={ph.url} alt="" className="client-form-modal__photos-thumb" />
+                      </a>
+                      <span className="client-form-modal__photos-kind">{getClientPhotoKindLabel(ph.kind)}</span>
+                      <button
+                        type="button"
+                        className="client-form-modal__photos-remove"
+                        onClick={() => handleDeleteServerPhoto(ph)}
+                        disabled={photoDeletingId === ph.id}
+                        aria-label="Удалить фото"
+                        title="Удалить"
+                      >
+                        <Trash2 size={16} strokeWidth={1.75} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="client-form-modal__photos-empty">Пока нет загруженных фото</p>
+              )
+            ) : null}
+
+            {pendingPhotos.length > 0 ? (
+              <div className="client-form-modal__photos-pending">
+                <span className="client-form-modal__photos-pending-title">Будут загружены при сохранении</span>
+                <ul className="client-form-modal__photos-grid" aria-label="Очередь загрузки">
+                  {pendingPhotos.map((row) => (
+                    <li key={row._key} className="client-form-modal__photos-item client-form-modal__photos-item--pending">
+                      <span className="client-form-modal__photos-thumb-wrap">
+                        <img src={row.previewUrl} alt="" className="client-form-modal__photos-thumb" />
+                      </span>
+                      <Select
+                        value={row.kind}
+                        onChange={(v) => updatePendingPhotoKind(row._key, v)}
+                        options={CLIENT_PHOTO_KIND_OPTIONS}
+                        className="client-form-modal__select client-form-modal__photos-pending-kind"
+                      />
+                      <button
+                        type="button"
+                        className="client-form-modal__photos-remove"
+                        onClick={() => removePendingPhoto(row._key)}
+                        aria-label="Убрать из очереди"
+                        title="Убрать"
+                      >
+                        <Trash2 size={16} strokeWidth={1.75} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+
           <details
             className="client-form-modal__more"
             key={isMobileFormLayout ? 'extra-mobile' : 'extra-desktop'}

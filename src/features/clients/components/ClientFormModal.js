@@ -64,6 +64,8 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const [isMobileFormLayout, setIsMobileFormLayout] = useState(
     () => typeof window !== 'undefined' && window.matchMedia(MOBILE_FORM_MQ).matches,
   );
+  /** На странице клиентов: укороченные подсказки только на мобильной вёрстке */
+  const compactHints = fullscreen && isMobileFormLayout;
 
   useModalEffect(true, onClose);
 
@@ -635,7 +637,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                   disabled={!trainerId || scheduleSlotsLoading}
                   className="client-form-modal__select"
                 />
-                {!fullscreen && (
+                {!compactHints && (
                   <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
                     {trainingSlotHint}
                   </span>
@@ -667,7 +669,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                   autoComplete="off"
                   inputMode="numeric"
                 />
-                {!fullscreen && (
+                {!compactHints && (
                   <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
                     {discountPct > 0
                       ? 'Та же сумма, что «Цена» в карточке. Ниже — договорная до скидки. Частичные взносы отдельно.'
@@ -680,9 +682,9 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
             <div className="client-form-modal__installments">
               <div className="client-form-modal__installments-header">
                 <span className="client-form-modal__installments-title">Частичные оплаты</span>
-                {!fullscreen && <span className="client-form-modal__optional">необязательно</span>}
+                {!compactHints && <span className="client-form-modal__optional">необязательно</span>}
               </div>
-              {!fullscreen && (
+              {!compactHints && (
                 <p className="client-form-modal__installments-hint">
                   Несколько платежей (например, долями): у каждой строки — сумма и день фактической оплаты. Попадает в отчёт «Записи по дням».
                 </p>
@@ -735,7 +737,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                 <div className="client-form-modal__installments-header">
                   <span className="client-form-modal__installments-title">Разовые доплаты</span>
                 </div>
-                {!fullscreen && (
+                {!compactHints && (
                   <p className="client-form-modal__installments-hint">
                     Доплаты по месяцам (как на вкладке «Разовый»). Добавление и удаление строки доплаты сразу уходит на сервер. Поле суммы к оплате / абонемента подстраиваем только в форме; чтобы записать на сервер, нажмите «Сохранить» внизу окна.
                   </p>
@@ -827,7 +829,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
 
           <div className="client-form-modal__section">
             <h3 className="client-form-modal__section-title">Фото для сверки</h3>
-            {!fullscreen && (
+            {!compactHints && (
               <p className="client-form-modal__photos-hint">
                 Чеки и наличные — неограниченное число снимков. Новые файлы отправляются на сервер при нажатии «Сохранить» (сначала карточка, затем фото).
               </p>
@@ -898,7 +900,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
 
             {pendingPhotos.length > 0 ? (
               <div className="client-form-modal__photos-pending">
-                {!fullscreen && (
+                {!compactHints && (
                   <span className="client-form-modal__photos-pending-title">Будут загружены при сохранении</span>
                 )}
                 <ul className="client-form-modal__photos-grid" aria-label="Очередь загрузки">
@@ -942,7 +944,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                     <span className="client-form-modal__label-text">Пол</span>
                     <Select value={gender} onChange={setGender} options={[{ value: '', label: '—' }, { value: 'male', label: 'М' }, { value: 'female', label: 'Ж' }]} placeholder="—" className="client-form-modal__select" />
                   </label>
-                  {!fullscreen && <p className="client-form-modal__slot-hint-mobile">{trainingSlotHint}</p>}
+                  {!compactHints && <p className="client-form-modal__slot-hint-mobile">{trainingSlotHint}</p>}
                 </div>
               )}
               <div className="client-form-modal__section client-form-modal__section--flush">

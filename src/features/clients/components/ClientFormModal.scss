@@ -784,36 +784,38 @@ textarea.client-form-modal__input {
   width: 100%;
 }
 
-/* Полноэкранный режим (вкладка «Клиенты» на странице клиентов) */
-.client-form-modal__backdrop.client-form-modal__backdrop--fullscreen {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: flex-start;
-  padding: 0;
-}
+/* Полноэкранный режим на мобильной вёрстке (вкладка «Клиенты») */
+@include mixins.mobile {
+  .client-form-modal__backdrop.client-form-modal__backdrop--fullscreen {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 0;
+  }
 
-.client-form-modal.client-form-modal--fullscreen {
-  max-width: 100%;
-  width: 100%;
-  height: 100dvh;
-  max-height: 100dvh;
-  border-radius: 0;
-  margin: 0;
-  padding-top: max(var(--space-4), env(safe-area-inset-top));
-  padding-left: max(var(--space-4), env(safe-area-inset-left));
-  padding-right: max(var(--space-4), env(safe-area-inset-right));
-  padding-bottom: 0;
-  box-shadow: none;
-}
+  .client-form-modal.client-form-modal--fullscreen {
+    max-width: 100%;
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    margin: 0;
+    padding-top: max(var(--space-4), env(safe-area-inset-top));
+    padding-left: max(var(--space-4), env(safe-area-inset-left));
+    padding-right: max(var(--space-4), env(safe-area-inset-right));
+    padding-bottom: 0;
+    box-shadow: none;
+  }
 
-.client-form-modal.client-form-modal--fullscreen .client-form-modal__actions {
-  margin-left: calc(-1 * max(var(--space-4), env(safe-area-inset-left)));
-  margin-right: calc(-1 * max(var(--space-4), env(safe-area-inset-right)));
-  margin-bottom: 0;
-  padding-left: max(var(--space-4), env(safe-area-inset-left));
-  padding-right: max(var(--space-4), env(safe-area-inset-right));
-  padding-bottom: max(20px, env(safe-area-inset-bottom));
-  border-radius: 0;
-  box-shadow: 0 -1px 0 var(--color-border);
+  .client-form-modal.client-form-modal--fullscreen .client-form-modal__actions {
+    margin-left: calc(-1 * max(var(--space-4), env(safe-area-inset-left)));
+    margin-right: calc(-1 * max(var(--space-4), env(safe-area-inset-right)));
+    margin-bottom: 0;
+    padding-left: max(var(--space-4), env(safe-area-inset-left));
+    padding-right: max(var(--space-4), env(safe-area-inset-right));
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+    border-radius: 0;
+    box-shadow: 0 -1px 0 var(--color-border);
+  }
 }

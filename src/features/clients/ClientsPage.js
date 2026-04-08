@@ -637,6 +637,7 @@ const ClientsPage = () => {
           onClose={() => { setFormClient(null); setClientFormError(null); }}
           error={clientFormError}
           saving={clientFormSaving}
+          fullscreen
         />
       )}
       {cardClient && (
@@ -645,10 +646,11 @@ const ClientsPage = () => {
           onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())}
           onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())}
           onClose={() => setCardClient(null)}
+          fullscreen
         />
       )}
       {extendClientObj && (
-        <ExtendModal client={extendClientObj} onSave={handleSaveExtend} onClose={() => { setExtendClientObj(null); setExtendFormError(null); }} error={extendFormError} saving={extendFormSaving} />
+        <ExtendModal client={extendClientObj} onSave={handleSaveExtend} onClose={() => { setExtendClientObj(null); setExtendFormError(null); }} error={extendFormError} saving={extendFormSaving} fullscreen />
       )}
       {confirmDelete && (
         <ConfirmModal title="Удалить клиента?" message={confirmDelete.fio} confirmText="Удалить" onConfirm={handleDeleteClient} onCancel={() => setConfirmDelete(null)} danger />

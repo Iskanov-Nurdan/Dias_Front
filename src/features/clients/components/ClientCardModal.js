@@ -33,7 +33,7 @@ const formatTrainingScheduleLabel = (client) => {
   return dayPart || timePart || '—';
 };
 
-const ClientCardModal = ({ client, onEdit, onDelete, onClose }) => {
+const ClientCardModal = ({ client, onEdit, onDelete, onClose, fullscreen = false }) => {
   useModalEffect(!!client, onClose);
 
   const [cardPhotos, setCardPhotos] = useState([]);
@@ -70,8 +70,14 @@ const ClientCardModal = ({ client, onEdit, onDelete, onClose }) => {
   const discountPct = Number(client.discount ?? client.discount_percent) || 0;
   const priceFinal = priceDisplay != null ? Number(priceDisplay) : (discountPct > 0 ? priceBase * (1 - discountPct / 100) : priceBase);
   const content = (
-    <div className="client-card-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="client-card-modal-title">
-      <div className="client-card-modal" onClick={(e) => e.stopPropagation()}>
+    <div
+      className={`client-card-modal__backdrop${fullscreen ? ' client-card-modal__backdrop--fullscreen' : ''}`}
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="client-card-modal-title"
+    >
+      <div className={`client-card-modal${fullscreen ? ' client-card-modal--fullscreen' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className="client-card-modal__header">
           <h2 id="client-card-modal-title" className="client-card-modal__title">Карточка клиента</h2>
           <button type="button" className="client-card-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>

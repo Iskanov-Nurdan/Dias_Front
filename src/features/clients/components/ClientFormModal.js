@@ -58,7 +58,7 @@ const normalizeTimeInput = (v) => {
 
 const MOBILE_FORM_MQ = '(max-width: 768px)';
 
-const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave, onClose, error, saving }) => {
+const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave, onClose, error, saving, fullscreen = false }) => {
   const toast = useToast();
   const firstInputRef = useRef(null);
   const [isMobileFormLayout, setIsMobileFormLayout] = useState(
@@ -563,8 +563,14 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   };
 
   const content = (
-    <div className="client-form-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="client-form-modal-title">
-      <div className="client-form-modal" onClick={(e) => e.stopPropagation()}>
+    <div
+      className={`client-form-modal__backdrop${fullscreen ? ' client-form-modal__backdrop--fullscreen' : ''}`}
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="client-form-modal-title"
+    >
+      <div className={`client-form-modal${fullscreen ? ' client-form-modal--fullscreen' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className="client-form-modal__header">
           <h2 id="client-form-modal-title" className="client-form-modal__title">{client?.id ? 'Редактировать клиента' : 'Добавить клиента'}</h2>
           <button type="button" className="client-form-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
@@ -629,9 +635,11 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                   disabled={!trainerId || scheduleSlotsLoading}
                   className="client-form-modal__select"
                 />
-                <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
-                  {trainingSlotHint}
-                </span>
+                {!fullscreen && (
+                  <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
+                    {trainingSlotHint}
+                  </span>
+                )}
               </label>
             </div>
             <div className="client-form-modal__row">
@@ -659,22 +667,26 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                   autoComplete="off"
                   inputMode="numeric"
                 />
-                <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
-                  {discountPct > 0
-                    ? 'Та же сумма, что «Цена» в карточке. Ниже — договорная до скидки. Частичные взносы отдельно.'
-                    : 'Общая стоимость по договору — для скидки и отображения. Частичные взносы ниже.'}
-                </span>
+                {!fullscreen && (
+                  <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
+                    {discountPct > 0
+                      ? 'Та же сумма, что «Цена» в карточке. Ниже — договорная до скидки. Частичные взносы отдельно.'
+                      : 'Общая стоимость по договору — для скидки и отображения. Частичные взносы ниже.'}
+                  </span>
+                )}
               </label>
             </div>
 
             <div className="client-form-modal__installments">
               <div className="client-form-modal__installments-header">
                 <span className="client-form-modal__installments-title">Частичные оплаты</span>
-                <span className="client-form-modal__optional">необязательно</span>
+                {!fullscreen && <span className="client-form-modal__optional">необязательно</span>}
               </div>
-              <p className="client-form-modal__installments-hint">
-                Несколько платежей (например, долями): у каждой строки — сумма и день фактической оплаты. Попадает в отчёт «Записи по дням».
-              </p>
+              {!fullscreen && (
+                <p className="client-form-modal__installments-hint">
+                  Несколько платежей (например, долями): у каждой строки — сумма и день фактической оплаты. Попадает в отчёт «Записи по дням».
+                </p>
+              )}
               <div className="client-form-modal__installments-grid client-form-modal__installments-grid--head" aria-hidden>
                 <span>Сумма, сом</span>
                 <span>Дата оплаты</span>
@@ -723,9 +735,11 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                 <div className="client-form-modal__installments-header">
                   <span className="client-form-modal__installments-title">Разовые доплаты</span>
                 </div>
-                <p className="client-form-modal__installments-hint">
-                  Доплаты по месяцам (как на вкладке «Разовый»). Добавление и удаление строки доплаты сразу уходит на сервер. Поле суммы к оплате / абонемента подстраиваем только в форме; чтобы записать на сервер, нажмите «Сохранить» внизу окна.
-                </p>
+                {!fullscreen && (
+                  <p className="client-form-modal__installments-hint">
+                    Доплаты по месяцам (как на вкладке «Разовый»). Добавление и удаление строки доплаты сразу уходит на сервер. Поле суммы к оплате / абонемента подстраиваем только в форме; чтобы записать на сервер, нажмите «Сохранить» внизу окна.
+                  </p>
+                )}
                 {oneTimeLoading && oneTimePayments.length === 0 ? (
                   <p className="client-form-modal__onetime-loading">Загрузка…</p>
                 ) : null}
@@ -813,9 +827,11 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
 
           <div className="client-form-modal__section">
             <h3 className="client-form-modal__section-title">Фото для сверки</h3>
-            <p className="client-form-modal__photos-hint">
-              Чеки и наличные — неограниченное число снимков. Новые файлы отправляются на сервер при нажатии «Сохранить» (сначала карточка, затем фото).
-            </p>
+            {!fullscreen && (
+              <p className="client-form-modal__photos-hint">
+                Чеки и наличные — неограниченное число снимков. Новые файлы отправляются на сервер при нажатии «Сохранить» (сначала карточка, затем фото).
+              </p>
+            )}
             <div className="client-form-modal__row client-form-modal__row--photos-toolbar">
               <label className="client-form-modal__label">
                 <span className="client-form-modal__label-text">Тип для новых фото</span>
@@ -882,7 +898,9 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
 
             {pendingPhotos.length > 0 ? (
               <div className="client-form-modal__photos-pending">
-                <span className="client-form-modal__photos-pending-title">Будут загружены при сохранении</span>
+                {!fullscreen && (
+                  <span className="client-form-modal__photos-pending-title">Будут загружены при сохранении</span>
+                )}
                 <ul className="client-form-modal__photos-grid" aria-label="Очередь загрузки">
                   {pendingPhotos.map((row) => (
                     <li key={row._key} className="client-form-modal__photos-item client-form-modal__photos-item--pending">
@@ -924,7 +942,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                     <span className="client-form-modal__label-text">Пол</span>
                     <Select value={gender} onChange={setGender} options={[{ value: '', label: '—' }, { value: 'male', label: 'М' }, { value: 'female', label: 'Ж' }]} placeholder="—" className="client-form-modal__select" />
                   </label>
-                  <p className="client-form-modal__slot-hint-mobile">{trainingSlotHint}</p>
+                  {!fullscreen && <p className="client-form-modal__slot-hint-mobile">{trainingSlotHint}</p>}
                 </div>
               )}
               <div className="client-form-modal__section client-form-modal__section--flush">

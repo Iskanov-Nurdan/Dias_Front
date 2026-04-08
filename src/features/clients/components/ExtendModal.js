@@ -5,7 +5,7 @@ import { ConfirmModal, SubmitButton } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './ExtendModal.scss';
 
-const ExtendModal = ({ client, onSave, onClose, error, saving }) => {
+const ExtendModal = ({ client, onSave, onClose, error, saving, fullscreen = false }) => {
   const [months, setMonths] = useState(1);
 
   useModalEffect(true, onClose);
@@ -19,8 +19,14 @@ const ExtendModal = ({ client, onSave, onClose, error, saving }) => {
     onSave({ months });
   };
   const content = (
-    <div className="extend-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="extend-modal-title">
-      <div className="extend-modal" onClick={(e) => e.stopPropagation()}>
+    <div
+      className={`extend-modal__backdrop${fullscreen ? ' extend-modal__backdrop--fullscreen' : ''}`}
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="extend-modal-title"
+    >
+      <div className={`extend-modal${fullscreen ? ' extend-modal--fullscreen' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className="extend-modal__header">
           <h2 id="extend-modal-title" className="extend-modal__title">Продлить подписку</h2>
           <button type="button" className="extend-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>

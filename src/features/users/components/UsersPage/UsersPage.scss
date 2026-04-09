@@ -208,10 +208,29 @@
   }
 }
 
+.access-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.access-modal__title-block {
+  min-width: 0;
+}
+
 .access-modal__head h3 {
   font-size: var(--font-h3);
   font-weight: var(--weight-semibold);
   letter-spacing: -0.02em;
+  margin: 0 0 var(--space-1);
+}
+
+.access-modal__subtitle {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  line-height: 1.35;
 }
 
 .access-modal__loading {

@@ -4,7 +4,14 @@ import { API_BASE, WS_URL } from '../config/api';
 export function buildOperationalWsUrl(accessToken, apiBaseUrl = API_BASE, wsBase = WS_URL) {
   const token = encodeURIComponent(accessToken || '');
   if (wsBase && String(wsBase).trim()) {
-    const normalizedBase = String(wsBase).replace(/\/+$/, '');
+    let normalizedBase = String(wsBase).trim().replace(/\/+$/, '');
+    if (
+      typeof window !== 'undefined' &&
+      window.location.protocol === 'https:' &&
+      normalizedBase.startsWith('ws://')
+    ) {
+      normalizedBase = `wss://${normalizedBase.slice('ws://'.length)}`;
+    }
     const base = /\/operational$/i.test(normalizedBase)
       ? normalizedBase
       : `${normalizedBase}/operational`;

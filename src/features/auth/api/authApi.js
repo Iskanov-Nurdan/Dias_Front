@@ -51,6 +51,6 @@ export const logout = async () => {
 
 // GET CURRENT USER
 export const getMe = async () => {
-  const res = await apiClient.get('auth/me/');
+  const res = await apiClient.get('me/');
   return res.data;
 };

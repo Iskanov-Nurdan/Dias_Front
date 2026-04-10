@@ -4,7 +4,10 @@ import { API_BASE, WS_URL } from '../config/api';
 export function buildOperationalWsUrl(accessToken, apiBaseUrl = API_BASE, wsBase = WS_URL) {
   const token = encodeURIComponent(accessToken || '');
   if (wsBase && String(wsBase).trim()) {
-    const base = String(wsBase).replace(/\/$/, '');
+    const normalizedBase = String(wsBase).replace(/\/+$/, '');
+    const base = /\/operational$/i.test(normalizedBase)
+      ? normalizedBase
+      : `${normalizedBase}/operational`;
     const sep = base.includes('?') ? '&' : '?';
     return `${base}${sep}token=${token}`;
   }

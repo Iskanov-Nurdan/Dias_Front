@@ -1,5 +1,5 @@
-const DEFAULT_API_BASE = 'https://api.diass.tw1.ru/api/';
-const DEFAULT_WS_URL = 'ws://api.diass.tw1.ru/ws/';
+const DEFAULT_API_BASE = 'https://diass.tw1.ru/api/';
+const DEFAULT_WS_URL = 'ws://diass.tw1.ru/ws/';
 
 const normalizeBase = (value, fallback) => {
   const raw = String(value || '').trim();

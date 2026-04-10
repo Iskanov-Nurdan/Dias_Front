@@ -374,29 +374,26 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
     setSyncing(false);
   }, [sale]);
 
+  const saleWarehouseBatchId = useMemo(
+    () =>
+      sale?.warehouse_batch_id ??
+      sale?.warehouse_batch?.id ??
+      sale?.batch_id ??
+      sale?.stock_batch_id,
+    [sale?.warehouse_batch_id, sale?.warehouse_batch?.id, sale?.batch_id, sale?.stock_batch_id],
+  );
+  const saleProductRef = useMemo(
+    () => sale?.product_id ?? sale?.product?.id ?? sale?.product,
+    [sale?.product_id, sale?.product],
+  );
   /** Пока в ответе продажи нет warehouse_batch_id — подобрать строку склада по product_id. */
   useEffect(() => {
     if (!sale?.id || !products.length) return;
-    const wb =
-      sale.warehouse_batch_id ??
-      sale.warehouse_batch?.id ??
-      sale.batch_id ??
-      sale.stock_batch_id;
-    if (wb != null && String(wb).trim() !== '') return;
-    const pid = sale.product_id ?? sale.product?.id ?? sale.product;
-    if (pid == null || pid === '') return;
-    const match = products.find((b) => sameWarehouseProductKey(pid, b));
+    if (saleWarehouseBatchId != null && String(saleWarehouseBatchId).trim() !== '') return;
+    if (saleProductRef == null || saleProductRef === '') return;
+    const match = products.find((b) => sameWarehouseProductKey(saleProductRef, b));
     if (match) setProduct(String(match.id));
-  }, [
-    sale?.id,
-    sale?.product_id,
-    sale?.product,
-    sale?.warehouse_batch_id,
-    sale?.warehouse_batch?.id,
-    sale?.batch_id,
-    sale?.stock_batch_id,
-    products,
-  ]);
+  }, [sale?.id, saleProductRef, saleWarehouseBatchId, products]);
 
   const saleFormSnapshot = useMemo(
     () => ({
@@ -427,10 +424,13 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
     () => products.find((p) => String(p.id) === String(product)),
     [products, product],
   );
-
   const meta = useMemo(() => getPackagingMeta(selectedBatch), [selectedBatch]);
   const invForm = useMemo(
     () => (selectedBatch ? resolveInventoryForm(selectedBatch) : 'unpacked'),
+    [selectedBatch],
+  );
+  const selectedBatchPackagingMeta = useMemo(
+    () => getPackagingMeta(selectedBatch),
     [selectedBatch],
   );
 
@@ -450,13 +450,15 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
       setOverridePiecesPerPackage('');
       return;
     }
-    const m = getPackagingMeta(selectedBatch);
-    if (Number.isFinite(m.piecesPerPackage) && m.piecesPerPackage > 0) {
-      setOverridePiecesPerPackage(formatNumberForInput(m.piecesPerPackage));
+    if (
+      Number.isFinite(selectedBatchPackagingMeta.piecesPerPackage) &&
+      selectedBatchPackagingMeta.piecesPerPackage > 0
+    ) {
+      setOverridePiecesPerPackage(formatNumberForInput(selectedBatchPackagingMeta.piecesPerPackage));
     } else {
       setOverridePiecesPerPackage('');
     }
-  }, [selectedBatch, sale?.id]);
+  }, [sale?.id, selectedBatch, selectedBatchPackagingMeta]);
 
   /** Редактирование: в записи продажи нет override, в партии есть кратность — подставить в поле. */
   useEffect(() => {
@@ -466,11 +468,19 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
     const hasOverride =
       sale.override_pieces_per_package != null && String(sale.override_pieces_per_package).trim() !== '';
     if (hasOverride) return;
-    const m = getPackagingMeta(selectedBatch);
-    if (Number.isFinite(m.piecesPerPackage) && m.piecesPerPackage > 0) {
-      setOverridePiecesPerPackage(formatNumberForInput(m.piecesPerPackage));
+    if (
+      Number.isFinite(selectedBatchPackagingMeta.piecesPerPackage) &&
+      selectedBatchPackagingMeta.piecesPerPackage > 0
+    ) {
+      setOverridePiecesPerPackage(formatNumberForInput(selectedBatchPackagingMeta.piecesPerPackage));
     }
-  }, [sale?.id, selectedBatch, sale?.quantity_unit, sale?.override_pieces_per_package]);
+  }, [
+    sale?.id,
+    sale?.quantity_unit,
+    sale?.override_pieces_per_package,
+    selectedBatch,
+    selectedBatchPackagingMeta,
+  ]);
 
   /**
    * Откуда списывать на бэке. Зависит от формы строки склада, не только от единицы продажи:

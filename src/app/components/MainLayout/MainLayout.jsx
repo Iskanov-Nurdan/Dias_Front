@@ -136,9 +136,10 @@ const MainLayout = () => {
     return () => { document.body.style.overflow = ''; };
   }, [mobileOpen]);
 
+  const userAccesses = user?.accesses;
   const accesses = useMemo(() => {
-    return Array.isArray(user?.accesses) ? user.accesses : [];
-  }, [user?.accesses]);
+    return Array.isArray(userAccesses) ? userAccesses : [];
+  }, [userAccesses]);
   const navRows = useMemo(() => {
     const rows = [];
     for (const section of getNavSections()) {

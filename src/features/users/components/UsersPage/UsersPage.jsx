@@ -367,7 +367,7 @@ const UsersPage = () => {
                       <ActionMenu
                         ariaLabel="Действия"
                         items={[
-                          { label: 'Доступы', onClick: () => setAccessModal(u) },
+                          { label: 'Доступы к разделам', onClick: () => setAccessModal(u) },
                           { label: 'Отчёт', onClick: () => setReportModal(u) },
                           { label: 'Удалить', danger: true, onClick: () => setDeleteTarget({ type: 'user', id: u.id, name: u.name }) },
                         ]}
@@ -458,7 +458,8 @@ const AccessModal = ({ user, accessGroups, accessLabels, onSave, onClose, error 
     const load = async () => {
       try {
         const res = await getUser(user.id);
-        const acc = res.data?.accesses || [];
+        const d = res.data;
+        const acc = d?.accesses || [];
         const keys = acc.map((a) => a.access_key ?? a);
         setSelected(new Set(keys));
       } catch {
@@ -506,7 +507,10 @@ const AccessModal = ({ user, accessGroups, accessLabels, onSave, onClose, error 
       />
       <div className="modal modal--access" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head access-modal__head">
-          <h3>Доступы — {user?.name}</h3>
+          <div className="access-modal__title-block">
+            <h3>Доступы к разделам</h3>
+            <p className="access-modal__subtitle">Только для сотрудника «{user?.name}»</p>
+          </div>
           <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
         {loading ? (

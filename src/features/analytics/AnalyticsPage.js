@@ -24,6 +24,18 @@ const getExpenseName = (row) => {
 const now = new Date();
 const defaultQuery = { year: now.getFullYear(), month: now.getMonth() + 1, day: '' };
 
+function scrollToAnalyticsSection(id) {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+const QUICK_NAV = [
+  { id: 'analytics-kpi', label: 'Сводка' },
+  { id: 'analytics-charts', label: 'Графики' },
+  { id: 'analytics-leads', label: 'Лиды' },
+  { id: 'analytics-tables', label: 'Таблицы' },
+  { id: 'analytics-sales', label: 'Продажи' },
+];
+
 const AnalyticsPage = () => {
   const [queryState, setQueryState, resetFilters] = useAnalyticsFilters(defaultQuery);
   const {
@@ -141,6 +153,17 @@ const AnalyticsPage = () => {
   const leadsByTrainer = la.byTrainer ?? [];
   const leadsByTrialStatus = la.byTrialStatus ?? [];
 
+  const periodSummary = useMemo(() => {
+    const y = queryState.year;
+    const m = queryState.month;
+    const d = queryState.day;
+    if (y == null || y === '') return 'Период не выбран';
+    const parts = [String(y)];
+    if (m) parts.push(MONTHS[Number(m)] || String(m));
+    if (d !== '' && d != null) parts.push(`${d} число`);
+    return parts.join(' · ');
+  }, [queryState.year, queryState.month, queryState.day]);
+
   const donutLeadsChannelData = useMemo(() => leadsByChannel.map((x, i) => ({
     label: x.label ?? x.key,
     value: x.count ?? 0,
@@ -199,66 +222,105 @@ const AnalyticsPage = () => {
   );
 
   return (
-    <div className="analytics-page">
-      <header className="analytics-page__header">
-        <div className="analytics-page__header-text">
-          <h1 className="analytics-page__title ui-page-h1">Аналитика</h1>
-          <p className="analytics-page__subtitle">Сводка по выбранному периоду</p>
+    <div className="analytics-page" data-theme="dark">
+      <header className="analytics-page__header analytics-page__header--dashboard">
+        <div className="analytics-page__header-main">
+          <div className="analytics-page__header-text">
+            <h1 className="analytics-page__title ui-page-h1">Аналитика</h1>
+            <p className="analytics-page__subtitle">Дашборд по финансам, клиентам и заявкам</p>
+          </div>
+          <div className="analytics-page__period-chip" title="Текущий период фильтрации">
+            <span className="analytics-page__period-chip-dot" aria-hidden />
+            <span className="analytics-page__period-chip-label">{periodSummary}</span>
+          </div>
         </div>
-        <FilterBar className="analytics-page__filter-bar">
-        <label className="analytics-page__filter">
-          Год
-          <input
-            type="number"
-            value={queryState.year}
-            onChange={(e) => setQueryState((q) => ({ ...q, year: e.target.value }))}
-            className="analytics-page__input"
-            min="2020"
-            max="2030"
-          />
-        </label>
-        <label className="analytics-page__filter analytics-page__filter--month">
-          Месяц
-          <Select
-            value={queryState.month ? String(queryState.month) : ''}
-            onChange={(v) => setQueryState((q) => ({ ...q, month: v ? Number(v) : '' }))}
-            options={[{ value: '', label: 'Месяц' }, ...MONTHS.slice(1).map((m, i) => ({ value: String(i + 1), label: m }))]}
-            placeholder="Месяц"
-            className="analytics-page__select-wrap"
-          />
-        </label>
-        <label className="analytics-page__filter">
-          День
-          <input
-            type="number"
-            placeholder="—"
-            value={queryState.day}
-            onChange={(e) => setQueryState((q) => ({ ...q, day: e.target.value }))}
-            className="analytics-page__input"
-            min="1"
-            max="31"
-          />
-        </label>
-        <button type="button" className="analytics-page__reset" onClick={resetFilters}>Сброс</button>
-        </FilterBar>
+        <div className="analytics-page__filters-card">
+          <span className="analytics-page__filters-label">Период</span>
+          <FilterBar className="analytics-page__filter-bar">
+            <label className="analytics-page__filter">
+              Год
+              <input
+                type="number"
+                value={queryState.year}
+                onChange={(e) => setQueryState((q) => ({ ...q, year: e.target.value }))}
+                className="analytics-page__input"
+                min="2020"
+                max="2030"
+              />
+            </label>
+            <label className="analytics-page__filter analytics-page__filter--month">
+              Месяц
+              <Select
+                value={queryState.month ? String(queryState.month) : ''}
+                onChange={(v) => setQueryState((q) => ({ ...q, month: v ? Number(v) : '' }))}
+                options={[{ value: '', label: 'Все / не задан' }, ...MONTHS.slice(1).map((m, i) => ({ value: String(i + 1), label: m }))]}
+                placeholder="Месяц"
+                className="analytics-page__select-wrap"
+              />
+            </label>
+            <label className="analytics-page__filter">
+              День
+              <input
+                type="number"
+                placeholder="—"
+                value={queryState.day}
+                onChange={(e) => setQueryState((q) => ({ ...q, day: e.target.value }))}
+                className="analytics-page__input"
+                min="1"
+                max="31"
+              />
+            </label>
+            <button type="button" className="analytics-page__reset" onClick={resetFilters}>Сбросить</button>
+          </FilterBar>
+        </div>
       </header>
 
-      {error && <ErrorState message={error} onRetry={loadAll} />}
+      <nav className="analytics-page__quicknav" aria-label="Быстрый переход по разделам">
+        {QUICK_NAV.map(({ id, label }) => (
+          <button
+            key={id}
+            type="button"
+            className="analytics-page__quicknav-btn"
+            onClick={() => scrollToAnalyticsSection(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+
+      {error && (
+        <div className="analytics-page__error-wrap" role="alert">
+          <ErrorState message={error} onRetry={loadAll} />
+        </div>
+      )}
 
       {loading ? (
-        <div className="analytics-page__loading-block">
-          <div className="analytics-page__skeleton-cards">
-            <Skeleton variant="card" className="analytics-page__skeleton-card" />
-            <Skeleton variant="card" className="analytics-page__skeleton-card" />
-            <Skeleton variant="card" className="analytics-page__skeleton-card" />
+        <div className="analytics-page__loading-block" aria-busy="true" aria-label="Загрузка аналитики">
+          <div className="analytics-page__skeleton-kpi-row">
+            {[1, 2, 3].map((k) => (
+              <Skeleton key={k} variant="card" className="analytics-page__skeleton-kpi" />
+            ))}
           </div>
-          <div className="analytics-page__skeleton-table-wrap">
-            <SkeletonTable rows={6} cols={4} />
+          <div className="analytics-page__skeleton-kpi-row analytics-page__skeleton-kpi-row--sm">
+            {[1, 2, 3, 4].map((k) => (
+              <Skeleton key={k} variant="card" className="analytics-page__skeleton-kpi-sm" />
+            ))}
+          </div>
+          <div className="analytics-page__skeleton-chart">
+            <Skeleton variant="card" className="analytics-page__skeleton-chart-inner" />
+          </div>
+          <div className="analytics-page__skeleton-split">
+            <div className="analytics-page__skeleton-table-wrap">
+              <SkeletonTable rows={5} cols={4} />
+            </div>
+            <div className="analytics-page__skeleton-table-wrap">
+              <SkeletonTable rows={5} cols={3} />
+            </div>
           </div>
         </div>
       ) : (
         <>
-          <section className="analytics-page__hero">
+          <section id="analytics-kpi" className="analytics-page__hero">
             <div className="analytics-page__kpis-primary">
               <button type="button" className="analytics-page__card analytics-page__card--income" onClick={() => setDetailModal('income')}>
                 <span className="analytics-page__card-icon" aria-hidden><IconTrendUp /></span>
@@ -274,7 +336,7 @@ const AnalyticsPage = () => {
                 )}
                 {sparklineIncome.length >= 2 && (
                   <div className="analytics-page__card-chart">
-                    <Sparkline values={sparklineIncome} width={140} height={48} color="#059669" />
+                    <Sparkline values={sparklineIncome} width={160} height={52} color="var(--analytics-spark-income, #34d399)" />
                   </div>
                 )}
                 <span className="analytics-page__card-hint">за период · нажмите для детализации</span>
@@ -293,7 +355,7 @@ const AnalyticsPage = () => {
                 )}
                 {sparklineExpense.length >= 2 && (
                   <div className="analytics-page__card-chart">
-                    <Sparkline values={sparklineExpense} width={140} height={48} color="#c53030" />
+                    <Sparkline values={sparklineExpense} width={160} height={52} color="var(--analytics-spark-expense, #fb7185)" />
                   </div>
                 )}
                 <span className="analytics-page__card-hint">за период · нажмите для детализации</span>
@@ -312,7 +374,7 @@ const AnalyticsPage = () => {
                 )}
                 {sparklineProfit.length >= 2 && (
                   <div className="analytics-page__card-chart">
-                    <Sparkline values={sparklineProfit} width={140} height={48} color="#c53030" />
+                    <Sparkline values={sparklineProfit} width={160} height={52} color="var(--analytics-spark-profit, #a78bfa)" />
                   </div>
                 )}
                 <span className="analytics-page__card-hint">за период · нажмите для детализации</span>
@@ -340,11 +402,15 @@ const AnalyticsPage = () => {
             </div>
           </section>
 
+          <div id="analytics-charts" className="analytics-page__charts-region">
           <section className="analytics-page__section analytics-page__section--chart">
-            <h3 className="analytics-page__section-title">Динамика доходов и расходов по дням</h3>
+            <div className="analytics-page__section-head">
+              <h3 className="analytics-page__section-title">Динамика доходов и расходов по дням</h3>
+              <p className="analytics-page__section-desc">Сравнение прихода и расхода по календарным дням выбранного месяца</p>
+            </div>
             <div className="analytics-page__chart-wrap">
               {!queryState.month ? (
-                <p className="analytics-page__empty">Выберите месяц для графика по дням</p>
+                <EmptyState compact message="Выберите месяц, чтобы увидеть график по дням" />
               ) : chartData.length > 0 ? (
                 <>
                   <div className="analytics-page__chart-legend">
@@ -356,12 +422,12 @@ const AnalyticsPage = () => {
                     <svg className="analytics-page__chart" viewBox="0 0 800 280" preserveAspectRatio="xMinYMid meet">
                       <defs>
                         <linearGradient id="chart-income-fill" x1="0" y1="1" x2="0" y2="0">
-                          <stop offset="0%" stopColor="#059669" stopOpacity="0.4" />
-                          <stop offset="100%" stopColor="#059669" stopOpacity="0.06" />
+                          <stop offset="0%" stopColor="var(--analytics-chart-income)" stopOpacity={0.45} />
+                          <stop offset="100%" stopColor="var(--analytics-chart-income)" stopOpacity={0.06} />
                         </linearGradient>
                         <linearGradient id="chart-expense-fill" x1="0" y1="1" x2="0" y2="0">
-                          <stop offset="0%" stopColor="#DC2626" stopOpacity="0.4" />
-                          <stop offset="100%" stopColor="#DC2626" stopOpacity="0.06" />
+                          <stop offset="0%" stopColor="var(--analytics-chart-expense)" stopOpacity={0.45} />
+                          <stop offset="100%" stopColor="var(--analytics-chart-expense)" stopOpacity={0.06} />
                         </linearGradient>
                       </defs>
                       {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -387,8 +453,8 @@ const AnalyticsPage = () => {
                         const expensePath = chartData.map((p, i) => `${i === 0 ? 'M' : 'L'} ${scaleX(p.day)} ${scaleYe(p.expense)}`).join(' ') + ` L ${scaleX(chartData[chartData.length - 1].day)} 240 L 60 240 Z`;
                         return (
                           <g key="areas">
-                            <path d={incomePath} fill="url(#chart-income-fill)" stroke="#059669" strokeWidth="2" strokeLinejoin="round" />
-                            <path d={expensePath} fill="url(#chart-expense-fill)" stroke="#DC2626" strokeWidth="2" strokeLinejoin="round" />
+                            <path d={incomePath} fill="url(#chart-income-fill)" stroke="var(--analytics-chart-income)" strokeWidth="2" strokeLinejoin="round" />
+                            <path d={expensePath} fill="url(#chart-expense-fill)" stroke="var(--analytics-chart-expense)" strokeWidth="2" strokeLinejoin="round" />
                           </g>
                         );
                       })()}
@@ -527,12 +593,15 @@ const AnalyticsPage = () => {
               )}
             </section>
           </div>
+          </div>
 
-          <section className="analytics-page__section analytics-page__section--leads">
-            <h3 className="analytics-page__section-title">Заявки и воронка лидов</h3>
-            <p className="analytics-page__section-hint">
-              {queryState.year ? `Период: ${queryState.year}${queryState.month ? ` / ${queryState.month}` : ''}${queryState.day ? ` / ${queryState.day}` : ''}` : 'Выберите год для фильтрации по периоду'}
-            </p>
+          <section id="analytics-leads" className="analytics-page__section analytics-page__section--leads">
+            <div className="analytics-page__section-head">
+              <h3 className="analytics-page__section-title">Заявки и воронка лидов</h3>
+              <p className="analytics-page__section-desc">
+                {queryState.year ? `Период: ${queryState.year}${queryState.month ? ` / ${queryState.month}` : ''}${queryState.day ? ` / ${queryState.day}` : ''}` : 'Выберите год для фильтрации по периоду'}
+              </p>
+            </div>
             <div className="analytics-page__leads-kpis">
               <div className="analytics-page__card analytics-page__card--static">
                 <span className="analytics-page__card-label">Всего заявок</span>
@@ -698,6 +767,7 @@ const AnalyticsPage = () => {
             </div>
           </section>
 
+          <div id="analytics-tables" className="analytics-page__tables-region">
           <div className="analytics-page__grid analytics-page__grid--two">
             <section className="analytics-page__section analytics-page__section--card">
               <h3 className="analytics-page__section-title">Топ тренеров</h3>
@@ -829,7 +899,9 @@ const AnalyticsPage = () => {
               )}
             </section>
           </div>
+          </div>
 
+          <div id="analytics-sales" className="analytics-page__sales-region">
           <AnalyticsSalesSection
             marginTab={marginTab}
             setMarginTab={setMarginTab}
@@ -842,6 +914,7 @@ const AnalyticsPage = () => {
             productItems={productItems}
             categoryItems={categoryItems}
           />
+          </div>
         </>
       )}
 
@@ -851,7 +924,7 @@ const AnalyticsPage = () => {
             <h3 className="analytics-page__modal-title">
               {detailModal === 'income' ? 'Детализация приходов' : detailModal === 'expense' ? 'Детализация расходов' : 'Детализация прибыли'}
             </h3>
-            {detailLoading && <p>Загрузка...</p>}
+            {detailLoading && <div className="analytics-page__modal-loading">Загрузка детализации…</div>}
             {!detailLoading && detailModal === 'income' && (() => {
               const incomeItems = detailData?.items ?? detailData?.records ?? detailData?.incomeItems ?? [];
               const hasItems = Array.isArray(incomeItems) && incomeItems.length > 0;

@@ -646,6 +646,12 @@ const ClientsPage = () => {
           onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())}
           onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())}
           onClose={() => setCardClient(null)}
+          onClientUpdated={(updated) => {
+            setCardClient(updated);
+            fetchSafe();
+          }}
+          canManageFreeze={isAdmin}
+          onFreezeAccessDenied={showAccessDenied}
           fullscreen
         />
       )}

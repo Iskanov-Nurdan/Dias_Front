@@ -159,6 +159,41 @@ export const deleteClient = async (id, signal) => {
   await apiClient.delete(`/clients/${id}/`, withSignal({}, signal));
 };
 
+/**
+ * Ответы POST/PATCH/DELETE заморозки: либо тело клиента целиком, либо { client: {...} }.
+ * @param {*} data
+ * @returns {object|null}
+ */
+export const unwrapClientPayload = (data) => {
+  if (data == null || typeof data !== 'object') return null;
+  return data.client ?? data.data ?? data;
+};
+
+/**
+ * POST /api/clients/{id}/freeze/ — создать заморозку. Тело: { days, reason }.
+ * Бэкенд: сдвигает date_start вперёд на days, сохраняет baseline и метаданные заморозки.
+ */
+export const createClientFreeze = async (clientId, body, signal) => {
+  const { data } = await apiClient.post(`/clients/${clientId}/freeze/`, body, withSignal({}, signal));
+  return unwrapClientPayload(data);
+};
+
+/**
+ * PATCH /api/clients/{id}/freeze/ — изменить заморозку (те же поля). Пересчёт date_start от baseline, без суммирования с прежним сдвигом.
+ */
+export const updateClientFreeze = async (clientId, body, signal) => {
+  const { data } = await apiClient.patch(`/clients/${clientId}/freeze/`, body, withSignal({}, signal));
+  return unwrapClientPayload(data);
+};
+
+/**
+ * DELETE /api/clients/{id}/freeze/ — снять заморозку, вернуть date_start к исходному до заморозки.
+ */
+export const deleteClientFreeze = async (clientId, signal) => {
+  const { data } = await apiClient.delete(`/clients/${clientId}/freeze/`, withSignal({}, signal));
+  return unwrapClientPayload(data);
+};
+
 /** POST /api/clients/{id}/extend/ — тело: { months }. Бэкенд: новые месяцы — paid=true; строка {id} (текущий период) — поле оплаты не трогать. */
 export const extendClient = async (id, body, signal) => {
   const { data } = await apiClient.post(`/clients/${id}/extend/`, body, withSignal({}, signal));

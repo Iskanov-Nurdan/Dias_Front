@@ -1,10 +1,155 @@
 @use '../../shared/styles/mixins';
 
-// ——— Страница ———
+// ——— Страница (локальная тёмная тема через data-theme на корне) ———
 .analytics-page {
   width: 100%;
   max-width: none;
-  padding-bottom: 48px;
+  padding-bottom: var(--space-12);
+  --analytics-chart-income: #34d399;
+  --analytics-chart-expense: #fb7185;
+  --analytics-spark-income: #34d399;
+  --analytics-spark-expense: #fb7185;
+  --analytics-spark-profit: #a78bfa;
+  --analytics-vbar-accent: #2dd4bf;
+  --analytics-glass-border: rgba(255, 255, 255, 0.06);
+  --analytics-glass-bg: rgba(255, 255, 255, 0.02);
+}
+
+.analytics-page__header--dashboard {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-4);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-2);
+  background: linear-gradient(180deg, var(--color-bg) 70%, transparent 100%);
+  backdrop-filter: blur(8px);
+}
+
+.analytics-page__header-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.analytics-page__period-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--analytics-glass-bg);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  max-width: min(100%, 420px);
+}
+
+.analytics-page__period-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-success), var(--color-primary));
+  box-shadow: 0 0 0 3px rgba(46, 160, 67, 0.2);
+  flex-shrink: 0;
+}
+
+.analytics-page__period-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analytics-page__filters-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.analytics-page__filters-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  width: 100%;
+  flex-basis: 100%;
+  margin: 0 0 -4px;
+}
+
+.analytics-page__quicknav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: var(--space-6);
+  padding: 4px 0;
+  position: sticky;
+  top: 72px;
+  z-index: calc(var(--z-sticky) - 1);
+}
+
+@media (max-width: 768px) {
+  .analytics-page__quicknav {
+    top: 0;
+    position: relative;
+  }
+}
+
+.analytics-page__quicknav-btn {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.analytics-page__quicknav-btn:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.analytics-page__error-wrap {
+  margin-bottom: var(--space-4);
+}
+
+.analytics-page__section-head {
+  margin-bottom: var(--space-4);
+}
+
+.analytics-page__section-desc {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.analytics-page__charts-region,
+.analytics-page__tables-region,
+.analytics-page__sales-region {
+  scroll-margin-top: 96px;
+}
+
+.analytics-page__tables-region {
+  margin-bottom: var(--space-5);
+}
+
+.analytics-page__sales-region {
+  margin-top: var(--space-2);
 }
 
 // ——— Шапка: заголовок + FilterBar (flat, без карточки) ———
@@ -22,10 +167,11 @@
   }
 }
 
-.analytics-page__filter-bar {
+.analytics-page__filters-card .analytics-page__filter-bar {
   flex: 1;
   min-width: 0;
-  justify-content: flex-end;
+  justify-content: flex-start;
+  flex-wrap: wrap;
 }
 
 .analytics-page__header-text {
@@ -140,20 +286,59 @@
 
 // ——— Загрузка (скелетоны) ———
 .analytics-page__loading-block {
-  padding: 24px 0;
+  padding: var(--space-2) 0 var(--space-8);
   background: transparent;
 }
 
-.analytics-page__skeleton-cards {
+.analytics-page__skeleton-kpi-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  margin-bottom: 20px;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
-.analytics-page__skeleton-card {
-  height: 120px;
+.analytics-page__skeleton-kpi {
+  min-height: 148px;
+  border-radius: var(--radius-xl);
+}
+
+.analytics-page__skeleton-kpi-row--sm {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.analytics-page__skeleton-kpi-sm {
+  min-height: 96px;
   border-radius: var(--radius-lg);
+}
+
+@media (max-width: 900px) {
+  .analytics-page__skeleton-kpi-row {
+    grid-template-columns: 1fr;
+  }
+  .analytics-page__skeleton-kpi-row--sm {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.analytics-page__skeleton-chart {
+  margin-bottom: var(--space-5);
+}
+
+.analytics-page__skeleton-chart-inner {
+  min-height: 280px;
+  border-radius: var(--radius-xl);
+}
+
+.analytics-page__skeleton-split {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+@media (max-width: 960px) {
+  .analytics-page__skeleton-split {
+    grid-template-columns: 1fr;
+  }
 }
 
 .analytics-page__skeleton-table-wrap {
@@ -535,9 +720,10 @@
   width: 100%;
   max-width: 32px;
   min-height: 4px;
-  background: linear-gradient(180deg, #0d9488 0%, #14b8a6 100%);
+  background: linear-gradient(180deg, #0f766e 0%, var(--analytics-vbar-accent) 100%);
   border-radius: 6px 6px 0 0;
   transition: height 0.4s ease;
+  box-shadow: 0 -4px 16px rgba(45, 212, 191, 0.15);
 }
 
 .analytics-page__vbar-label {
@@ -586,6 +772,14 @@
 .analytics-page__section--table {
   margin-bottom: 0;
   padding: 24px;
+}
+
+.analytics-page__section-head .analytics-page__section-title {
+  margin: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+  font-size: var(--font-section-title);
+  font-weight: var(--font-weight-section-title);
 }
 
 .analytics-page__section-title {
@@ -919,11 +1113,11 @@
 }
 
 .analytics-page__chart-legend-item--income::before {
-  background: #059669;
+  background: var(--analytics-chart-income);
 }
 
 .analytics-page__chart-legend-item--expense::before {
-  background: #DC2626;
+  background: var(--analytics-chart-expense);
 }
 
 .analytics-page__chart-container {
@@ -972,11 +1166,11 @@
 }
 
 .analytics-page__chart-tooltip-row--income {
-  color: #34d399;
+  color: var(--analytics-chart-income);
 }
 
 .analytics-page__chart-tooltip-row--expense {
-  color: #fca5a5;
+  color: var(--analytics-chart-expense);
 }
 
 .analytics-page__chart-grid {
@@ -1314,4 +1508,29 @@
 
 .analytics-page__modal-close:hover {
   background: var(--color-primary-hover);
+}
+
+.analytics-page__modal-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: var(--space-4) 0;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.analytics-page__modal-loading::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: analytics-modal-spin 0.7s linear infinite;
+}
+
+@keyframes analytics-modal-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

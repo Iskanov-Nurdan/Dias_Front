@@ -241,6 +241,7 @@ export const fetchClientsScheduleStats = async ({ year, month }, signal) => {
 /**
  * GET /api/clients/stats/payment-days/?year=&month=
  * По дням месяца: записались по date_start; оплатили — по строкам частичных оплат (или legacy actual_payment_date), см. бэкенд.
+ * Для колонки «Сумма итога»: сумма платежей за день — поле paid_total_amount или paidTotalAmount (и др. алиасы в paymentDayReportNormalize).
  */
 export const fetchClientsPaymentDayReport = async ({ year, month }, signal) => {
   const params = {};

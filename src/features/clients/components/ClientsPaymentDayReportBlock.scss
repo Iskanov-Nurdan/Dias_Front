@@ -64,7 +64,7 @@
 
 .clients-payment-day-report__table {
   width: 100%;
-  min-width: 360px;
+  min-width: 440px;
   border-collapse: collapse;
 
   th,
@@ -92,9 +92,14 @@
   }
 
   td:nth-child(2),
-  td:nth-child(3) {
+  td:nth-child(3),
+  td:nth-child(4) {
     font-variant-numeric: tabular-nums;
   }
+}
+
+.clients-payment-day-report__amount-cell {
+  white-space: nowrap;
 }
 
 .clients-payment-day-report__count-btn {

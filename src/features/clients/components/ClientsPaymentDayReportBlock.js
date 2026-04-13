@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { EmptyState } from '../../../shared/ui';
+import { formatMoney } from '../../../shared/constants/common';
 import { normalizeClientsPaymentDayReportResponse } from '../lib/paymentDayReportNormalize';
 import PaymentDayClientsModal from './PaymentDayClientsModal';
 import './ClientsPaymentDayReportBlock.scss';
@@ -44,11 +45,17 @@ const ClientsPaymentDayReportBlock = ({
   const totals = useMemo(() => {
     let reg = 0;
     let paid = 0;
+    let amountSum = 0;
+    let hasAmount = false;
     for (const r of rows) {
       reg += r.registeredCount;
       paid += r.paidCount;
+      if (r.paidTotalAmount != null) {
+        hasAmount = true;
+        amountSum += r.paidTotalAmount;
+      }
     }
-    return { registered: reg, paid };
+    return { registered: reg, paid, amountSum, hasAmount };
   }, [rows]);
 
   const renderCountCell = (count, dayIso, dayLabel, kind) => {
@@ -117,8 +124,9 @@ const ClientsPaymentDayReportBlock = ({
       <h3 className="clients-payment-day-report__title">Записи и оплаты по дням</h3>
       <p className="clients-payment-day-report__hint">
         <strong>Записались</strong> — клиенты с датой начала в этот день. <strong>Оплатили</strong> — число <strong>платежей</strong>
-        с этой датой (частичные оплаты в карточке клиента); у одного человека может быть несколько строк в разные дни. Числа в
-        колонках открывают список, строку в списке — карточку клиента.
+        с этой датой (частичные оплаты в карточке клиента); у одного человека может быть несколько строк в разные дни.{' '}
+        <strong>Сумма итога</strong> — сумма этих платежей за день. Числа в колонках «Записались» и «Оплатили» открывают список,
+        строку в списке — карточку клиента.
       </p>
 
       <div className="clients-payment-day-report__table-wrap">
@@ -128,12 +136,13 @@ const ClientsPaymentDayReportBlock = ({
               <th>День</th>
               <th>Записались</th>
               <th>Оплатили</th>
+              <th>Сумма итога</th>
             </tr>
           </thead>
           <tbody>
             {!rows.length ? (
               <tr>
-                <td colSpan={3} className="clients-payment-day-report__empty">
+                <td colSpan={4} className="clients-payment-day-report__empty">
                   <EmptyState compact tableCell message="Нет данных за выбранный период" />
                 </td>
               </tr>
@@ -143,6 +152,7 @@ const ClientsPaymentDayReportBlock = ({
                   <td>{r.dayLabel}</td>
                   <td>{renderCountCell(r.registeredCount, r.dayIso, r.dayLabel, 'registered')}</td>
                   <td>{renderCountCell(r.paidCount, r.dayIso, r.dayLabel, 'paid')}</td>
+                  <td className="clients-payment-day-report__amount-cell">{formatMoney(r.paidTotalAmount)}</td>
                 </tr>
               ))
             )}
@@ -159,6 +169,12 @@ const ClientsPaymentDayReportBlock = ({
           <span>
             Всего оплат по фактической дате:
             <span className="clients-payment-day-report__total-strong">{totals.paid.toLocaleString('ru-RU')}</span>
+          </span>
+          <span>
+            Итого по суммам за месяц:
+            <span className="clients-payment-day-report__total-strong">
+              {totals.hasAmount ? formatMoney(totals.amountSum) : '—'}
+            </span>
           </span>
         </div>
       )}

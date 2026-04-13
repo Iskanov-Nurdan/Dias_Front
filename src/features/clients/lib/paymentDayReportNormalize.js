@@ -24,12 +24,33 @@ const pickCount = (row, camel, snake) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+/** Сумма платежей за день (сом); null если бэкенд поле не отдал */
+const pickPaidTotalAmount = (row) => {
+  if (row == null || typeof row !== 'object') return null;
+  const keys = [
+    'paidTotalAmount',
+    'paid_total_amount',
+    'paymentsTotal',
+    'payments_total',
+    'paidAmountSum',
+    'paid_amount_sum',
+    'paidSum',
+    'paid_sum',
+  ];
+  for (const k of keys) {
+    if (row[k] === undefined || row[k] === null || row[k] === '') continue;
+    const n = Number(row[k]);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+};
+
 const pad2 = (n) => String(n).padStart(2, '0');
 
 /**
  * @param {unknown} raw
  * @param {{ year?: string, month?: string }} [context] — для построения ISO-даты, если в ответе только номер дня
- * @returns {{ rows: Array<{ dayKey: string|number, dayIso: string|null, dayLabel: string, registeredCount: number, paidCount: number }> }}
+ * @returns {{ rows: Array<{ dayKey: string|number, dayIso: string|null, dayLabel: string, registeredCount: number, paidCount: number, paidTotalAmount: number|null }> }}
  */
 export function normalizeClientsPaymentDayReportResponse(raw, context = {}) {
   const list = raw?.items ?? raw?.days ?? raw?.results ?? raw?.data?.items ?? [];
@@ -41,6 +62,7 @@ export function normalizeClientsPaymentDayReportResponse(raw, context = {}) {
       if (dayKey == null) return null;
       const registeredCount = pickCount(row, 'registeredCount', 'registered_count');
       const paidCount = pickCount(row, 'paidCount', 'paid_count');
+      const paidTotalAmount = pickPaidTotalAmount(row);
       let dayIso = null;
       if (typeof dayKey === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dayKey)) {
         dayIso = dayKey;
@@ -80,7 +102,7 @@ export function normalizeClientsPaymentDayReportResponse(raw, context = {}) {
       } else if (typeof dayKey === 'number') {
         dayLabel = String(dayKey);
       }
-      return { dayKey, dayIso, dayLabel, registeredCount, paidCount };
+      return { dayKey, dayIso, dayLabel, registeredCount, paidCount, paidTotalAmount };
     })
     .filter(Boolean);
 

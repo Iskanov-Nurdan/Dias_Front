@@ -531,6 +531,8 @@
     overflow-x: hidden;
     @include mixins.scrollbar;
     min-width: 0;
+    /* Иначе grid-ячейка растягивается по контенту, скролл уезжает на viewport — ломается position:sticky внутри страниц */
+    min-height: 0;
     width: 100%;
     max-width: 100%;
 

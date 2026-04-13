@@ -223,70 +223,72 @@ const AnalyticsPage = () => {
 
   return (
     <div className="analytics-page" data-theme="dark">
-      <header className="analytics-page__header analytics-page__header--dashboard">
-        <div className="analytics-page__header-main">
-          <div className="analytics-page__header-text">
-            <h1 className="analytics-page__title ui-page-h1">Аналитика</h1>
-            <p className="analytics-page__subtitle">Дашборд по финансам, клиентам и заявкам</p>
+      <div className="analytics-page__sticky-top">
+        <header className="analytics-page__header analytics-page__header--dashboard">
+          <div className="analytics-page__header-main">
+            <div className="analytics-page__header-text">
+              <h1 className="analytics-page__title ui-page-h1">Аналитика</h1>
+              <p className="analytics-page__subtitle">Дашборд по финансам, клиентам и заявкам</p>
+            </div>
+            <div className="analytics-page__period-chip" title="Текущий период фильтрации">
+              <span className="analytics-page__period-chip-dot" aria-hidden />
+              <span className="analytics-page__period-chip-label">{periodSummary}</span>
+            </div>
           </div>
-          <div className="analytics-page__period-chip" title="Текущий период фильтрации">
-            <span className="analytics-page__period-chip-dot" aria-hidden />
-            <span className="analytics-page__period-chip-label">{periodSummary}</span>
+          <div className="analytics-page__filters-card">
+            <span className="analytics-page__filters-label">Период</span>
+            <FilterBar className="analytics-page__filter-bar">
+              <label className="analytics-page__filter">
+                Год
+                <input
+                  type="number"
+                  value={queryState.year}
+                  onChange={(e) => setQueryState((q) => ({ ...q, year: e.target.value }))}
+                  className="analytics-page__input"
+                  min="2020"
+                  max="2030"
+                />
+              </label>
+              <label className="analytics-page__filter analytics-page__filter--month">
+                Месяц
+                <Select
+                  value={queryState.month ? String(queryState.month) : ''}
+                  onChange={(v) => setQueryState((q) => ({ ...q, month: v ? Number(v) : '' }))}
+                  options={[{ value: '', label: 'Все / не задан' }, ...MONTHS.slice(1).map((m, i) => ({ value: String(i + 1), label: m }))]}
+                  placeholder="Месяц"
+                  className="analytics-page__select-wrap"
+                />
+              </label>
+              <label className="analytics-page__filter">
+                День
+                <input
+                  type="number"
+                  placeholder="—"
+                  value={queryState.day}
+                  onChange={(e) => setQueryState((q) => ({ ...q, day: e.target.value }))}
+                  className="analytics-page__input"
+                  min="1"
+                  max="31"
+                />
+              </label>
+              <button type="button" className="analytics-page__reset" onClick={resetFilters}>Сбросить</button>
+            </FilterBar>
           </div>
-        </div>
-        <div className="analytics-page__filters-card">
-          <span className="analytics-page__filters-label">Период</span>
-          <FilterBar className="analytics-page__filter-bar">
-            <label className="analytics-page__filter">
-              Год
-              <input
-                type="number"
-                value={queryState.year}
-                onChange={(e) => setQueryState((q) => ({ ...q, year: e.target.value }))}
-                className="analytics-page__input"
-                min="2020"
-                max="2030"
-              />
-            </label>
-            <label className="analytics-page__filter analytics-page__filter--month">
-              Месяц
-              <Select
-                value={queryState.month ? String(queryState.month) : ''}
-                onChange={(v) => setQueryState((q) => ({ ...q, month: v ? Number(v) : '' }))}
-                options={[{ value: '', label: 'Все / не задан' }, ...MONTHS.slice(1).map((m, i) => ({ value: String(i + 1), label: m }))]}
-                placeholder="Месяц"
-                className="analytics-page__select-wrap"
-              />
-            </label>
-            <label className="analytics-page__filter">
-              День
-              <input
-                type="number"
-                placeholder="—"
-                value={queryState.day}
-                onChange={(e) => setQueryState((q) => ({ ...q, day: e.target.value }))}
-                className="analytics-page__input"
-                min="1"
-                max="31"
-              />
-            </label>
-            <button type="button" className="analytics-page__reset" onClick={resetFilters}>Сбросить</button>
-          </FilterBar>
-        </div>
-      </header>
+        </header>
 
-      <nav className="analytics-page__quicknav" aria-label="Быстрый переход по разделам">
-        {QUICK_NAV.map(({ id, label }) => (
-          <button
-            key={id}
-            type="button"
-            className="analytics-page__quicknav-btn"
-            onClick={() => scrollToAnalyticsSection(id)}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
+        <nav className="analytics-page__quicknav" aria-label="Быстрый переход по разделам">
+          {QUICK_NAV.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              className="analytics-page__quicknav-btn"
+              onClick={() => scrollToAnalyticsSection(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+      </div>
 
       {error && (
         <div className="analytics-page__error-wrap" role="alert">

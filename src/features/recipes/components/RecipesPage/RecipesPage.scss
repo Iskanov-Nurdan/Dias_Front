@@ -9,6 +9,20 @@
   color: var(--text-muted, #5c6570);
 }
 
+.recipes-filter-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 0 1rem;
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--accent-muted, rgba(59, 130, 246, 0.08));
+  border: 1px solid var(--border-subtle);
+  font-size: var(--font-body, 0.9375rem);
+}
+
 .page--recipes {
   .page__title {
     margin-bottom: 0.5rem;
@@ -222,7 +236,6 @@
     font-size: 0.85rem;
     color: var(--muted);
     line-height: 1.45;
-
   }
 
   &__locked-profile {
@@ -233,13 +246,6 @@
     border: 1px solid var(--border-subtle);
     font-size: var(--font-body, 0.9375rem);
     line-height: 1.45;
-  }
-
-  &__rest {
-    &--locked {
-      opacity: 0.45;
-      pointer-events: none;
-    }
   }
 
   &__legacy-tag {

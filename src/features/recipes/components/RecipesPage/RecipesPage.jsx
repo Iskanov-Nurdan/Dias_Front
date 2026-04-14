@@ -96,7 +96,7 @@ const RecipesPage = () => {
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [lockedProfileForCreate, setLockedProfileForCreate] = useState(null);
-  const [query, setQuery] = useState({ page: 1, page_size: 50, search: '' });
+  const [query, setQuery] = useState({ page: 1, page_size: 500, search: '' });
   const [plasticProfiles, setPlasticProfiles] = useState([]);
   const [metaModal, setMetaModal] = useState(null);
   const [compositionModal, setCompositionModal] = useState(null);
@@ -131,6 +131,34 @@ const RecipesPage = () => {
   }, [refetch]);
 
   useOperationalRefetch(['recipe', 'recipes'], refetchRecipes, true);
+
+  const filterProfileId = searchParams.get('filter_profile_id');
+  const recipeList = useMemo(() => {
+    let list = recipes || [];
+    if (filterProfileId) {
+      const pid = Number(filterProfileId);
+      if (Number.isFinite(pid)) {
+        list = list.filter((r) => Number(r.profile_id ?? r.profile?.id) === pid);
+      }
+    }
+    return list;
+  }, [recipes, filterProfileId]);
+
+  const filterProfileLabel = useMemo(() => {
+    if (!filterProfileId) return '';
+    const pid = Number(filterProfileId);
+    const p = plasticProfiles.find((x) => Number(x.id) === pid);
+    if (!p) return `id ${filterProfileId}`;
+    return p.code ? `${p.name} (${p.code})` : p.name;
+  }, [filterProfileId, plasticProfiles]);
+
+  const clearProfileFilter = useCallback(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('filter_profile_id');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   useEffect(() => {
     const open = searchParams.get('open');
@@ -214,6 +242,15 @@ const RecipesPage = () => {
         Один рецепт — один профиль (обязательная связь). Удобнее создавать рецепт из раздела «Профили»: профиль подставится сам. Здесь рецепт только задаёт норму на 1 м; списаний и партий не создаёт.
       </p>
 
+      {filterProfileId && (
+        <div className="recipes-filter-banner" role="status">
+          <span>Рецепты профиля: <strong>{filterProfileLabel}</strong></span>
+          <button type="button" className="btn btn--secondary btn--sm" onClick={clearProfileFilter}>
+            Все рецепты
+          </button>
+        </div>
+      )}
+
       <div className="recipes-card">
         <div className="recipes-card__head ds-toolbar ds-toolbar--in-card">
           <div className="ds-toolbar__start recipes-card__head-start">
@@ -242,8 +279,11 @@ const RecipesPage = () => {
         {loading && <Loading />}
         {error && error.status !== 404 && <ErrorState error={error} onRetry={refetchRecipes} />}
         {!loading && (!error || error.status === 404) && (
-          recipes.length === 0 ? (
-            <EmptyState title="Нет рецептов" />
+          recipeList.length === 0 ? (
+            <EmptyState
+              title={filterProfileId ? 'Нет рецептов для этого профиля' : 'Нет рецептов'}
+              description={filterProfileId ? 'Создайте рецепт в разделе «Профили» или нажмите «Добавить рецепт».' : undefined}
+            />
           ) : (
             <div className="recipes-table-wrap">
               <div className="recipes-table recipes-table--main">
@@ -254,7 +294,7 @@ const RecipesPage = () => {
                   <span className="recipes-table__th">Статус</span>
                   <span className="recipes-table__th recipes-table__th--actions">Действия</span>
                 </div>
-                {recipes.map((r) => {
+                {recipeList.map((r) => {
                   const active = r.is_active !== false;
                   return (
                     <div

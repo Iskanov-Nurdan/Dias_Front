@@ -8,10 +8,17 @@
 
 .plastic-profiles__lede {
   margin: 0 0 1rem;
-  max-width: 48rem;
+  max-width: 52rem;
   font-size: 0.9rem;
   line-height: 1.45;
   color: var(--text-muted, #5c6570);
+}
+
+.plastic-profiles-modal__hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.45;
 }
 
 .plastic-profiles-card {
@@ -50,24 +57,41 @@
 .plastic-profiles-table {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  min-width: 480px;
+  gap: 0.35rem;
+  min-width: 920px;
 
   &__header {
     display: grid;
-    grid-template-columns: 1fr auto;
-    gap: var(--space-3);
+    grid-template-columns:
+      minmax(100px, 1.2fr)
+      minmax(72px, 0.5fr)
+      7rem
+      5.5rem
+      minmax(320px, auto);
+    gap: var(--space-2) var(--space-3);
     padding: 0.5rem 0 0.65rem;
     font-size: var(--font-label, 0.8125rem);
     font-weight: 600;
     color: var(--text-secondary, var(--muted));
     border-bottom: 1px solid var(--border);
+    align-items: end;
+  }
+
+  &__block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
   }
 
   &__row {
     display: grid;
-    grid-template-columns: 1fr auto;
-    gap: var(--space-3);
+    grid-template-columns:
+      minmax(100px, 1.2fr)
+      minmax(72px, 0.5fr)
+      7rem
+      5.5rem
+      minmax(320px, auto);
+    gap: var(--space-2) var(--space-3);
     align-items: center;
     padding: var(--space-2) var(--space-3);
     background: var(--card);
@@ -80,9 +104,35 @@
     min-width: 0;
   }
 
+  &__code {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-secondary);
+  }
+
+  &__has {
+    font-size: var(--font-caption);
+  }
+
+  &__status {
+    font-size: var(--font-caption);
+  }
+
+  &__recipes {
+    margin: 0 var(--space-3) var(--space-2);
+    padding: 0.45rem 0.65rem;
+    font-size: var(--font-caption, 0.8125rem);
+    line-height: 1.4;
+    color: var(--text-secondary);
+    background: rgba(17, 24, 39, 0.03);
+    border-radius: 6px;
+    border: 1px solid var(--border-subtle);
+  }
+
   &__actions {
     display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
+    gap: 0.45rem;
   }
 
   &__th--actions {

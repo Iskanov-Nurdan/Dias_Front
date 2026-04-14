@@ -22,7 +22,20 @@ const formatDateTime = (d) => {
 };
 const orderName = (b) => b.order_name || b.order_product || b.product_name || b.product?.name || b.product || b.recipe?.name || '—';
 
-const releasedQty = (b) => b.quantity ?? b.released ?? b.produced ?? 0;
+const releasedQty = (b) => {
+  const pcs = b.pieces ?? b.quantity;
+  if (pcs != null && pcs !== '') return Number(pcs) || 0;
+  return b.released ?? b.produced ?? 0;
+};
+
+const batchTotalMetersHint = (b) => {
+  const tm = parseLocaleNumber(b.total_meters);
+  if (Number.isFinite(tm) && tm > 0) return tm;
+  const pcs = Number(b.pieces ?? b.quantity);
+  const len = parseLocaleNumber(b.length_per_piece);
+  if (Number.isFinite(pcs) && Number.isFinite(len) && pcs > 0 && len > 0) return pcs * len;
+  return null;
+};
 
 /** Подсказка: GET /api/otk/pending/ — recipe_name, recipe_output_quantity (норма). */
 const recipeContextHint = (b) => {
@@ -367,12 +380,16 @@ const OTKPage = () => {
               </div>
               {awaitingList.map((b) => {
                 const qty = releasedQty(b);
+                const m = batchTotalMetersHint(b);
                 return (
                   <div key={b.id} className="otk-table__row">
                     <span className="otk-table__batch-id" title="Номер партии в ОТК">#{b.id}</span>
                     <span>{orderName(b)}</span>
                     <span>{lineLabel(b)}</span>
-                    <span className="otk-table__qty-pill" title={recipeContextHint(b)}>{qty} шт</span>
+                    <span className="otk-table__qty-pill" title={recipeContextHint(b)}>
+                      {qty} шт
+                      {m != null ? ` · ${formatQuantityDisplay(m)} м` : ''}
+                    </span>
                     <span>{shiftParamsLine(b)}</span>
                     <span>{b.operator_name || b.operator?.name || b.operator || b.assigned_to || '—'}</span>
                     <span>{formatDateTime(b.date || b.created_at)}</span>

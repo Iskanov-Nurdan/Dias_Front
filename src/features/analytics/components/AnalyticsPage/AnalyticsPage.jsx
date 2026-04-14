@@ -579,8 +579,8 @@ const DetailModal = ({ type, data, fullData, onClose }) => {
                       <div className="detail-table-cell">{item.client_name}</div>
                       <div className="detail-table-cell">{item.product_name}</div>
                       <div className="detail-table-cell">{item.quantity} шт</div>
-                      <div className="detail-table-cell">{formatMoney(item.price_per_unit)}</div>
-                      <div className="detail-table-cell detail-table-cell--strong">{formatMoney(item.total)}</div>
+                      <div className="detail-table-cell">{formatMoney(item.unit_price ?? item.price_per_unit)}</div>
+                      <div className="detail-table-cell detail-table-cell--strong">{formatMoney(item.total ?? item.total_price)}</div>
                     </div>
                   ))}
                 </div>
@@ -605,16 +605,23 @@ const DetailModal = ({ type, data, fullData, onClose }) => {
                   <div className="detail-table-cell">Сумма</div>
                 </div>
                 <div className="detail-table">
-                  {details.items?.map((item, i) => (
-                    <div key={item.id ?? `${item.date}-${item.material_name}-${i}`} className="detail-table-row">
-                      <div className="detail-table-cell">{item.date}</div>
-                      <div className="detail-table-cell">{item.material_name}</div>
-                      <div className="detail-table-cell">{item.supplier}</div>
-                      <div className="detail-table-cell">{item.quantity} {item.unit}</div>
-                      <div className="detail-table-cell">{formatMoney(item.price_per_unit)}</div>
-                      <div className="detail-table-cell detail-table-cell--strong">{formatMoney(item.total)}</div>
-                    </div>
-                  ))}
+                  {details.items?.map((item, i) => {
+                    const rawD = item.received_at || item.date || item.created_at;
+                    const d = rawD
+                      ? (typeof rawD === 'string' && rawD.length >= 10 ? rawD.slice(0, 10) : rawD)
+                      : '—';
+                    const q = item.quantity_initial ?? item.quantity;
+                    return (
+                      <div key={item.id ?? `${d}-${item.material_name}-${i}`} className="detail-table-row">
+                        <div className="detail-table-cell">{d}</div>
+                        <div className="detail-table-cell">{item.material_name ?? item.name}</div>
+                        <div className="detail-table-cell">{item.supplier_name ?? item.supplier ?? '—'}</div>
+                        <div className="detail-table-cell">{q} {item.unit || 'кг'}</div>
+                        <div className="detail-table-cell">{formatMoney(item.unit_price ?? item.price_per_unit)}</div>
+                        <div className="detail-table-cell detail-table-cell--strong">{formatMoney(item.total_price ?? item.total)}</div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </>
@@ -623,9 +630,14 @@ const DetailModal = ({ type, data, fullData, onClose }) => {
           {type === 'writeoff' && details && !loading && !error && (
             <>
               <div className="detail-row detail-row--big">
-                <span className="detail-row__label">Итого списано (оценка)</span>
+                <span className="detail-row__label">Итого списано (FIFO)</span>
                 <span className="detail-row__value">
-                  {formatMoney(details.total ?? details.total_estimated_value ?? 0)}
+                  {formatMoney(
+                    details.fifo_cost_total
+                    ?? details.total
+                    ?? details.total_estimated_value
+                    ?? 0,
+                  )}
                 </span>
               </div>
               <div className="detail-section">
@@ -647,7 +659,15 @@ const DetailModal = ({ type, data, fullData, onClose }) => {
                       '—';
                     const qty = item.quantity ?? item.qty;
                     const unit = item.unit ? ` ${item.unit}` : '';
-                    const money = item.total ?? item.amount ?? item.cost ?? item.value ?? 0;
+                    const money =
+                      item.fifo_line_total
+                      ?? item.line_total
+                      ?? item.estimated_value
+                      ?? item.total
+                      ?? item.amount
+                      ?? item.cost
+                      ?? item.value
+                      ?? 0;
                     const dt = item.date || item.created_at || item.at || '—';
                     return (
                       <div key={item.id ?? `${dt}-${label}-${i}`} className="detail-table-row">

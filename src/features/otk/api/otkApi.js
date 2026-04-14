@@ -66,6 +66,8 @@ export const acceptBatch = (batchId, data) => {
   const body = {
     otk_accepted: String(accepted),
     otk_defect: String(defect),
+    accepted,
+    rejected: defect,
     otk_status: status,
   };
   if (data.rejectReason != null && String(data.rejectReason).trim() !== '') {

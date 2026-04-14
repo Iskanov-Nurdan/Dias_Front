@@ -7,6 +7,10 @@ import { recipeOutputUnitKindRu } from './erpLabels';
  */
 export function recipeNormativeOutputQuantity(recipe) {
   if (!recipe || typeof recipe !== 'object') return null;
+  const bu = String(recipe.base_unit || '').toLowerCase();
+  if (bu === 'per_meter' || bu === 'meter' || bu === 'm') {
+    return 1;
+  }
   const q = parseLocaleNumber(recipe.output_quantity ?? recipe.yield_quantity);
   if (!Number.isFinite(q) || q <= 0) return null;
   return q;

@@ -7,9 +7,9 @@ export const updateRawMaterial = (id, data) => apiClient.patch(`raw-materials/${
 export const deleteRawMaterial = (id) => apiClient.delete(`raw-materials/${id}/`);
 
 export const getIncoming = (params) => apiClient.get('incoming/', { params });
-export const getIncomingOne = (id) => apiClient.get(`incoming/${id}/`);
 export const createIncoming = (data) => apiClient.post('incoming/', data);
-export const updateIncoming = (id, data) => apiClient.patch(`incoming/${id}/`, data);
-export const deleteIncoming = (id) => apiClient.delete(`incoming/${id}/`);
 
 export const getBalances = () => apiClient.get('materials/balances/');
+
+/** Журнал движения сырья (приходы FIFO-списания и т.д.) — контракт для бэкенда. */
+export const getMaterialMovements = (params) => apiClient.get('materials/movements/', { params });

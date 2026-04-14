@@ -26,6 +26,8 @@ import {
 } from '../../api/linesApi';
 import { apiClient } from '../../../../shared/api';
 import { useOperationalRefetch } from '../../../../shared/realtime';
+import { useAuth } from '../../../auth';
+import ProductionBatchModal from '../ProductionBatchModal';
 import './LinesPage.scss';
 
 const emptyParams = () => ({
@@ -266,6 +268,9 @@ const normalizeSessionDetailPayload = (raw) => {
 
 const LinesPage = () => {
   const toast = useToast();
+  const { user } = useAuth();
+  const canCreateProductionBatch =
+    Boolean(user?.is_superuser) || (Array.isArray(user?.accesses) && user.accesses.includes('production'));
   const [activeTab, setActiveTab] = useState('line');
   const [queryState, setQueryState] = useState({
     page: 1,
@@ -287,6 +292,7 @@ const LinesPage = () => {
   const [historySessionRemoteError, setHistorySessionRemoteError] = useState(null);
   const [submitError, setSubmitError] = useState('');
   const [shiftModal, setShiftModal] = useState(null);
+  const [productionBatchLine, setProductionBatchLine] = useState(null);
 
   const { items: lines, meta, loading, error, refetch } = useServerQuery(
     'lines/',
@@ -886,6 +892,18 @@ const LinesPage = () => {
                               >
                                 Параметры
                               </button>
+                              {canCreateProductionBatch && !l.isPaused && (
+                                <button
+                                  type="button"
+                                  className="btn btn--primary btn--sm"
+                                  onClick={() => {
+                                    setSubmitError('');
+                                    setProductionBatchLine(l);
+                                  }}
+                                >
+                                  Партия профиля
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 className="btn btn--secondary btn--sm"
@@ -1118,6 +1136,19 @@ const LinesPage = () => {
           onSubmit={handleShiftModalSubmit}
           onClose={() => { setShiftModal(null); setSubmitError(''); }}
           error={submitError}
+        />
+      )}
+
+      {productionBatchLine && (
+        <ProductionBatchModal
+          lineId={productionBatchLine.id}
+          lineName={productionBatchLine.name}
+          onClose={() => setProductionBatchLine(null)}
+          onSuccess={() => {
+            toast.show('Партия создана');
+            loadOpeningLines();
+            refetch();
+          }}
         />
       )}
 

@@ -1,0 +1,91 @@
+@use '../../../../shared/styles/mixins' as *;
+
+.page--plastic-profiles {
+  .page__title {
+    margin-bottom: 0.5rem;
+  }
+}
+
+.plastic-profiles__lede {
+  margin: 0 0 1rem;
+  max-width: 48rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--text-muted, #5c6570);
+}
+
+.plastic-profiles-card {
+  @include card-soft;
+  padding: 1.5rem;
+
+  &__head {
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+
+  &__search {
+    flex: 1;
+    min-width: 200px;
+    max-width: 420px;
+    min-height: var(--input-height);
+    padding: 0 var(--space-3);
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-md);
+    color: var(--text);
+    font-size: var(--font-body);
+    font-family: inherit;
+
+    &:focus {
+      @include focus-ring;
+    }
+  }
+}
+
+.plastic-profiles-table-wrap {
+  overflow-x: auto;
+  margin-top: 0.25rem;
+}
+
+.plastic-profiles-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 480px;
+
+  &__header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--space-3);
+    padding: 0.5rem 0 0.65rem;
+    font-size: var(--font-label, 0.8125rem);
+    font-weight: 600;
+    color: var(--text-secondary, var(--muted));
+    border-bottom: 1px solid var(--border);
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--space-3);
+    align-items: center;
+    padding: var(--space-2) var(--space-3);
+    background: var(--card);
+    border-radius: var(--radius-md);
+    box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.05);
+  }
+
+  &__name {
+    font-weight: 500;
+    min-width: 0;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  &__th--actions {
+    text-align: right;
+  }
+}

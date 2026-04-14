@@ -149,7 +149,7 @@ const MainLayout = () => {
           type: 'link',
           path: l.path,
           accessKey: l.accessKey,
-          label: ACCESS_LABELS[l.accessKey] || l.accessKey,
+          label: l.label || ACCESS_LABELS[l.accessKey] || l.accessKey,
           Icon: PAGE_ICONS[l.accessKey] || null,
         });
       }

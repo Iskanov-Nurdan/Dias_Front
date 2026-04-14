@@ -35,7 +35,11 @@ function getPackagingMeta(batch) {
     return { unitMeters: NaN, piecesPerPackage: NaN, packageTotalMeters: NaN };
   }
   const unitMeters = parseLocaleNumber(
-    batch.unit_meters ?? batch.unit_length_m ?? batch.piece_length_m ?? batch.piece_meters,
+    batch.length_per_piece
+    ?? batch.unit_meters
+    ?? batch.unit_length_m
+    ?? batch.piece_length_m
+    ?? batch.piece_meters,
   );
   const piecesPerPackage = parseLocaleNumber(
     batch.pieces_per_package ?? batch.pieces_in_package ?? batch.pieces_per_pack,
@@ -622,12 +626,29 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
             if (catalogProductMissing || catalogProductId == null) return;
 
             const qIn = parseLocaleNumber(qtyInput);
+            const lenM = parseLocaleNumber(
+              selectedBatch?.length_per_piece
+              ?? selectedBatch?.unit_meters
+              ?? selectedBatch?.unit_length_m
+              ?? selectedBatch?.piece_length_m
+              ?? selectedBatch?.piece_meters,
+            );
+            const packsInt = saleUnit === 'package' ? Math.floor(Number.isFinite(qIn) ? qIn : 0) : undefined;
             const payload = {
-              ...(client ? { client: Number(client) } : {}),
+              ...(client ? { client_id: Number(client), client: Number(client) } : {}),
               product: catalogProductId,
               ...(selectedBatch?.id != null && String(selectedBatch.id).trim() !== ''
-                ? { warehouse_batch_id: Number(selectedBatch.id) }
+                ? {
+                  warehouse_batch: Number(selectedBatch.id),
+                  warehouse_batch_id: Number(selectedBatch.id),
+                }
                 : {}),
+              sale_mode: saleUnit === 'package' ? 'packages' : 'pieces',
+              sold_pieces: pieces,
+              ...(saleUnit === 'package' && packsInt != null && packsInt >= 0
+                ? { sold_packages: packsInt }
+                : {}),
+              ...(Number.isFinite(lenM) && lenM > 0 ? { length_per_piece: lenM } : {}),
               quantity: pieces,
               quantity_unit: saleUnit,
               quantity_input: Number.isFinite(qIn) ? qIn : pieces,

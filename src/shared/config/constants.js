@@ -29,7 +29,7 @@ export const ACCESS_LABELS = {
   users:      'Сотрудники',
   lines:      'Линии и смены на линиях',
   materials:  'Сырьё и остатки',
-  chemistry:  'Замесы по рецепту',
+  chemistry:  'Химия',
   recipes:    'Рецептуры',
   orders:     'Заказы',
   production: 'Производство',

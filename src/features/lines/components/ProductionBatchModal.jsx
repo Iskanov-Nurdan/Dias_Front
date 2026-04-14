@@ -5,7 +5,11 @@ import {
 } from '../../production/api/productionApi';
 import { fetchLinesWithShiftSnapshot } from '../api/linesApi';
 import { apiClient } from '../../../shared/api';
-import { getApiErrorMessage, parseLocaleNumber, formatNumberForInput } from '../../../shared/lib';
+import {
+  getApiErrorMessage,
+  parseLocaleNumber,
+  parseApiListResponse,
+} from '../../../shared/lib';
 import { Loading, DecimalInput, Select } from '../../../shared/ui';
 
 const isLineEligibleForBatch = (ln) => {
@@ -22,6 +26,7 @@ const isLineEligibleForBatch = (ln) => {
  * Создание партии профиля: POST /api/batches/ (ProductionBatchCreateUpdateSerializer).
  * total_meters считает только бэкенд.
  * lineId опционален: без него показывается выбор линии (только с открытой сменой).
+ * Порядок: линия → профиль → рецепт (фильтр по профилю) → штуки → длина. Без ввода метров и себестоимости.
  */
 const ProductionBatchModal = ({ lineId: lineIdProp, lineName, onClose, onSuccess }) => {
   const needsLinePick = lineIdProp == null || lineIdProp === '';
@@ -48,8 +53,8 @@ const ProductionBatchModal = ({ lineId: lineIdProp, lineName, onClose, onSuccess
       : Promise.resolve([]);
     Promise.all([
       linesPromise,
-      getPlasticProfiles({ page_size: 500 }).then((r) => r.data?.items || []),
-      apiClient.get('recipes/', { params: { page_size: 500 } }).then((r) => r.data?.items || []),
+      getPlasticProfiles({ page_size: 500 }).then((r) => parseApiListResponse(r.data)),
+      apiClient.get('recipes/', { params: { page_size: 500 } }).then((r) => parseApiListResponse(r.data)),
     ])
       .then(([ln, p, rec]) => {
         if (!cancelled) {
@@ -151,7 +156,7 @@ const ProductionBatchModal = ({ lineId: lineIdProp, lineName, onClose, onSuccess
     <div className="modal-overlay" role="presentation" onClick={onClose}>
       <div className="modal modal--wide" onClick={(ev) => ev.stopPropagation()}>
         <div className="modal__head">
-          <h3>Партия профиля{resolvedLineName ? ` — ${resolvedLineName}` : ''}</h3>
+          <h3>Новая партия{resolvedLineName ? ` — ${resolvedLineName}` : ''}</h3>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
             ×
           </button>
@@ -162,7 +167,8 @@ const ProductionBatchModal = ({ lineId: lineIdProp, lineName, onClose, onSuccess
           ) : (
             <form onSubmit={handleSubmit}>
               <p className="production-batch-modal__hint">
-                Нужна открытая смена на линии. Метраж партии считает сервер (штуки × длина).
+                Смена на линии должна быть открыта (без паузы). Укажите только штуки и длину — метраж, списание FIFO
+                и себестоимость считает сервер при создании. Поля «метры» и ручная себестоимость не вводятся.
               </p>
               {needsLinePick && (
                 <>
@@ -188,23 +194,23 @@ const ProductionBatchModal = ({ lineId: lineIdProp, lineName, onClose, onSuccess
               <Select
                 value={profileId === '' ? '' : String(profileId)}
                 onChange={setProfileId}
-                placeholder="Профиль"
+                placeholder="Выберите профиль"
                 options={profiles.map((p) => ({
                   value: String(p.id),
                   label: p.code && p.name ? `${p.name} (${p.code})` : (p.name || `#${p.id}`),
                 }))}
               />
-              <label>Рецепт (на 1 м) *</label>
+              <label>Рецепт (нормы на 1 м, только для выбранного профиля) *</label>
               <Select
                 value={recipeId === '' ? '' : String(recipeId)}
                 onChange={setRecipeId}
-                placeholder={profileId ? 'Рецепт' : 'Сначала профиль'}
+                placeholder={profileId ? 'Выберите рецепт' : 'Сначала выберите профиль'}
                 options={recipesForProfile.map((r) => ({
                   value: String(r.id),
                   label: r.recipe || r.name || r.product || `#${r.id}`,
                 }))}
               />
-              <label>Штук *</label>
+              <label>Количество штук *</label>
               <DecimalInput min={1} value={pieces} onChange={setPieces} required placeholder="Напр. 20" />
               <label>Длина одной штуки, м *</label>
               <DecimalInput
@@ -214,15 +220,6 @@ const ProductionBatchModal = ({ lineId: lineIdProp, lineName, onClose, onSuccess
                 required
                 placeholder="Напр. 6"
               />
-              {pieces && lengthPerPiece && Number(parseLocaleNumber(pieces)) > 0 && Number(parseLocaleNumber(lengthPerPiece)) > 0 && (
-                <p className="production-batch-modal__preview">
-                  Ориентир:{' '}
-                  {formatNumberForInput(
-                    Math.round(Number(parseLocaleNumber(pieces)) * Number(parseLocaleNumber(lengthPerPiece)) * 1000) / 1000,
-                  )}{' '}
-                  м (итог примет сервер)
-                </p>
-              )}
               <label>Комментарий</label>
               <textarea rows={2} value={comment} onChange={(ev) => setComment(ev.target.value)} />
               {error && <p className="modal__error">{error}</p>}

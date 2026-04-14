@@ -104,7 +104,10 @@ const SalesPage = () => {
   const loadClientsAndProducts = useCallback(() => {
     apiClient
       .get('clients/', { params: { page_size: 500 } })
-      .then((res) => setClients(res.data?.items || []))
+      .then((res) => {
+        const raw = res.data?.items || [];
+        setClients(raw.filter((c) => c.is_active !== false && c.active !== false));
+      })
       .catch(() => setClients([]));
     apiClient
       .get('warehouse/batches/', { params: { page_size: 500, status: 'available' } })
@@ -214,10 +217,13 @@ const SalesPage = () => {
         <table className="data-table data-table--fixed data-table--sales data-table--row-actions data-table--clickable">
           <thead>
             <tr>
+              <th>Дата</th>
               <th>Клиент</th>
-              <th>Продукт</th>
+              <th>Профиль / партия</th>
               <th>Количество</th>
-              <th>Сумма</th>
+              <th>Выручка</th>
+              <th>Себестоимость</th>
+              <th>Прибыль</th>
               <th aria-hidden />
             </tr>
           </thead>
@@ -235,8 +241,18 @@ const SalesPage = () => {
                   }
                 }}
               >
+                <td className="data-table__cell--muted sales-table__date-cell">
+                  {(s.sale_date || s.date || s.created_at || '').toString().slice(0, 10) || '—'}
+                </td>
                 <td className="data-table__cell--lead">{s.client_name || s.client?.name || s.client || '—'}</td>
-                <td className="data-table__cell--lead">{s.product_name || s.product?.name || s.product || '—'}</td>
+                <td className="data-table__cell--lead">
+                  {s.profile_name || s.profile?.name || s.product_name || s.product?.name || s.product || '—'}
+                  {s.warehouse_batch_id != null || s.batch_id != null ? (
+                    <span className="sales-table__batch-hint">
+                      №{s.warehouse_batch_id ?? s.batch_id ?? s.warehouse_batch?.id}
+                    </span>
+                  ) : null}
+                </td>
                 <td className="sales-table__qty-cell">
                   <span className="sales-table__qty-line">
                     {s.quantity_unit === 'package' &&
@@ -257,11 +273,25 @@ const SalesPage = () => {
                   </span>
                 </td>
                 <td className="sales-table__price data-table__cell--num">
-                  {s.price != null && s.price !== ''
-                    ? `${formatQuantityDisplay(s.price)} сом`
-                    : s.total != null && s.total !== ''
-                      ? `${formatQuantityDisplay(s.total)} сом`
+                  {s.revenue != null && s.revenue !== ''
+                    ? `${formatQuantityDisplay(s.revenue)} сом`
+                    : s.price != null && s.price !== ''
+                      ? `${formatQuantityDisplay(s.price)} сом`
+                      : s.total != null && s.total !== ''
+                        ? `${formatQuantityDisplay(s.total)} сом`
+                        : '—'}
+                </td>
+                <td className="data-table__cell--num data-table__cell--muted">
+                  {s.cost_total != null && s.cost_total !== ''
+                    ? `${formatQuantityDisplay(s.cost_total)} сом`
+                    : s.cost != null && s.cost !== ''
+                      ? `${formatQuantityDisplay(s.cost)} сом`
                       : '—'}
+                </td>
+                <td className="data-table__cell--num">
+                  {s.profit != null && s.profit !== ''
+                    ? `${formatQuantityDisplay(s.profit)} сом`
+                    : '—'}
                 </td>
                 <td>
                   <ActionMenu
@@ -331,6 +361,7 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
   const [localSubmitting, setLocalSubmitting] = useState(false);
   const [waybillBusy, setWaybillBusy] = useState(false);
   const [syncing, setSyncing] = useState(true);
+  const [saleDate, setSaleDate] = useState('');
 
   useEffect(() => {
     setSyncing(true);
@@ -361,6 +392,10 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
         sale.price != null && sale.price !== '' ? formatNumberForInput(sale.price) : '',
       );
       setComment(sale.comment ?? '');
+      const sd = sale.sale_date || sale.date || sale.created_at;
+      setSaleDate(
+        sd && String(sd).length >= 10 ? String(sd).slice(0, 10) : '',
+      );
       setOverridePiecesPerPackage(
         sale.override_pieces_per_package != null && sale.override_pieces_per_package !== ''
           ? formatNumberForInput(sale.override_pieces_per_package)
@@ -374,6 +409,7 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
       setPrice('');
       setComment('');
       setOverridePiecesPerPackage('');
+      setSaleDate(new Date().toISOString().slice(0, 10));
     }
     setSyncing(false);
   }, [sale]);
@@ -402,8 +438,9 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
       price: String(price ?? '').trim(),
       comment: String(comment ?? '').trim(),
       overridePiecesPerPackage: String(overridePiecesPerPackage ?? '').trim(),
+      saleDate: String(saleDate ?? '').trim(),
     }),
-    [client, product, saleUnit, qtyInput, price, comment, overridePiecesPerPackage],
+    [client, product, saleUnit, qtyInput, price, comment, overridePiecesPerPackage, saleDate],
   );
 
   const isDirtyForm = useDirtyFromBaseline(sale?.id ?? 'new', syncing, saleFormSnapshot);
@@ -662,6 +699,7 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
                 ? { price: parseLocaleNumber(price) }
                 : {}),
               ...(comment.trim() ? { comment: comment.trim() } : {}),
+              ...(saleDate.trim() ? { sale_date: saleDate.trim(), date: saleDate.trim() } : {}),
             };
 
             setLocalSubmitting(true);
@@ -678,6 +716,14 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
             }
           }}
         >
+          <label>Дата продажи</label>
+          <input
+            type="date"
+            value={saleDate}
+            onChange={(e) => setSaleDate(e.target.value)}
+            className="sales-modal__date-input"
+          />
+
           <label>Клиент</label>
           <Select
             value={client === '' || client == null ? '' : String(client)}

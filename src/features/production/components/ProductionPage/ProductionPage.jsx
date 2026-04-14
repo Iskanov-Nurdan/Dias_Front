@@ -1,14 +1,23 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import {
   useServerQuery,
   formatQuantityDisplay,
   parseLocaleNumber,
   formatNumberForInput,
-  otkResultStatusRu,
+  getApiErrorMessage,
 } from '../../../../shared/lib';
-import { Loading, EmptyState, ErrorState, useToast } from '../../../../shared/ui';
+import { Loading, EmptyState, ErrorState, useToast, ConfirmModal } from '../../../../shared/ui';
 import { useOperationalRefetch } from '../../../../shared/realtime';
 import ProductionBatchModal from '../../../lines/components/ProductionBatchModal';
+import ProductionBatchDetailModal from '../ProductionBatchDetailModal/ProductionBatchDetailModal';
+import { submitProductionBatchForOtk } from '../../api/productionApi';
+import {
+  batchProductionLifecycleRu,
+  canSendProductionBatchToOtk,
+  costPerMeterFromBatch,
+  costPerPieceFromBatch,
+  batchTotalMetersDisplay,
+} from '../../lib/batchMeta';
 import './ProductionPage.scss';
 
 const formatDt = (d) => {
@@ -29,19 +38,20 @@ const profileLabel = (b) =>
 const recipeLabel = (b) =>
   b.recipe?.recipe || b.recipe?.name || b.recipe_name || (b.recipe_id != null ? `#${b.recipe_id}` : '—');
 
-const batchTotalMeters = (b) => {
-  const tm = parseLocaleNumber(b.total_meters);
-  if (Number.isFinite(tm) && tm > 0) return tm;
-  const pcs = Number(b.pieces ?? b.quantity);
-  const len = parseLocaleNumber(b.length_per_piece);
-  if (Number.isFinite(pcs) && Number.isFinite(len) && pcs > 0 && len > 0) return pcs * len;
-  return null;
+const moneyCell = (n) => {
+  if (n == null || !Number.isFinite(n)) return '—';
+  return `${formatNumberForInput(n)}`;
 };
 
 const ProductionPage = () => {
   const toast = useToast();
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [detailId, setDetailId] = useState(null);
+  const [otkTarget, setOtkTarget] = useState(null);
+  const [otkError, setOtkError] = useState('');
+  const [otkBusy, setOtkBusy] = useState(false);
+  const otkSubmitLock = useRef(false);
 
   const query = useMemo(
     () => ({ page: 1, page_size: 100, ordering: '-created_at' }),
@@ -75,6 +85,24 @@ const ProductionPage = () => {
     toast.show('Партия создана');
   }, [refetch, toast]);
 
+  const handleOtkConfirm = useCallback(async () => {
+    if (!otkTarget?.id || otkSubmitLock.current) return;
+    otkSubmitLock.current = true;
+    setOtkError('');
+    setOtkBusy(true);
+    try {
+      await submitProductionBatchForOtk(otkTarget.id);
+      toast.show('Партия передана в ОТК');
+      setOtkTarget(null);
+      refetch();
+    } catch (e) {
+      setOtkError(getApiErrorMessage(e, 'Не удалось передать в ОТК'));
+    } finally {
+      setOtkBusy(false);
+      otkSubmitLock.current = false;
+    }
+  }, [otkTarget, refetch, toast]);
+
   return (
     <div className="page page--production">
       <div className="production-card">
@@ -88,7 +116,10 @@ const ProductionPage = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="ds-toolbar__end">
+          <div className="ds-toolbar__end production-card__toolbar-actions">
+            <button type="button" className="btn btn--secondary" onClick={() => refetch()}>
+              Обновить
+            </button>
             <button type="button" className="btn btn--primary" onClick={() => setModalOpen(true)}>
               Новая партия
             </button>
@@ -96,7 +127,9 @@ const ProductionPage = () => {
         </div>
 
         <p className="production-card__lede">
-          Партии производства (ProductionBatch): штуки и длина одной штуки — метраж считает сервер.
+          ProductionBatch — единственная точка списания сырья и химии (FIFO) и расчёта себестоимости. Вводятся только
+          линия (с открытой сменой), профиль, рецепт по профилю, штуки и длина штуки. Метраж и стоимость не вводятся
+          вручную. RecipeRun не списывает остатки.
         </p>
 
         {loading && <Loading />}
@@ -104,39 +137,72 @@ const ProductionPage = () => {
         {!loading && !error && filtered.length === 0 ? (
           <EmptyState title="Нет партий" />
         ) : !loading && !error ? (
-          <div className="production-table">
-            <div className="production-table__header">
-              <span className="production-table__th">Дата</span>
-              <span className="production-table__th">Линия</span>
-              <span className="production-table__th">Профиль</span>
-              <span className="production-table__th">Рецепт</span>
-              <span className="production-table__th production-table__th--num">Шт</span>
-              <span className="production-table__th production-table__th--num">Длина, м</span>
-              <span className="production-table__th production-table__th--num">Метраж</span>
-              <span className="production-table__th">ОТК</span>
+          <div className="production-table-wrap">
+            <div className="production-table">
+              <div className="production-table__header">
+                <span className="production-table__th">Создано</span>
+                <span className="production-table__th">Профиль</span>
+                <span className="production-table__th">Рецепт</span>
+                <span className="production-table__th">Линия</span>
+                <span className="production-table__th production-table__th--num">Шт</span>
+                <span className="production-table__th production-table__th--num">Длина, м</span>
+                <span className="production-table__th production-table__th--num">Метры</span>
+                <span className="production-table__th production-table__th--num">₽/м</span>
+                <span className="production-table__th production-table__th--num">₽/шт</span>
+                <span className="production-table__th">Статус</span>
+                <span className="production-table__th production-table__th--actions">Действия</span>
+              </div>
+              {filtered.map((b) => {
+                const tm = batchTotalMetersDisplay(b);
+                const pcs = b.pieces ?? b.quantity;
+                const lp = b.length_per_piece;
+                const life = batchProductionLifecycleRu(b);
+                const cpm = costPerMeterFromBatch(b);
+                const cpp = costPerPieceFromBatch(b);
+                const canOtk = canSendProductionBatchToOtk(b);
+                return (
+                  <div key={b.id} className="production-table__row">
+                    <span className="production-table__cell-clip production-table__cell--muted">
+                      {formatDt(b.created_at)}
+                    </span>
+                    <span className="production-table__cell-clip">{profileLabel(b)}</span>
+                    <span className="production-table__cell-clip">{recipeLabel(b)}</span>
+                    <span className="production-table__cell-clip">{lineLabel(b)}</span>
+                    <span className="production-table__num">{pcs != null ? formatQuantityDisplay(pcs) : '—'}</span>
+                    <span className="production-table__num">
+                      {lp != null ? formatNumberForInput(parseLocaleNumber(lp)) : '—'}
+                    </span>
+                    <span className="production-table__num">
+                      {tm != null ? formatNumberForInput(tm) : '—'}
+                    </span>
+                    <span className="production-table__num">{moneyCell(cpm)}</span>
+                    <span className="production-table__num">{moneyCell(cpp)}</span>
+                    <span className="production-table__cell-clip">{life.label}</span>
+                    <span className="production-table__actions">
+                      <button
+                        type="button"
+                        className="btn btn--ghost btn--sm"
+                        onClick={() => setDetailId(b.id)}
+                      >
+                        Детали
+                      </button>
+                      {canOtk ? (
+                        <button
+                          type="button"
+                          className="btn btn--primary btn--sm production-table__otk-btn"
+                          onClick={() => {
+                            setOtkError('');
+                            setOtkTarget(b);
+                          }}
+                        >
+                          В ОТК
+                        </button>
+                      ) : null}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-            {filtered.map((b) => {
-              const tm = batchTotalMeters(b);
-              const pcs = b.pieces ?? b.quantity;
-              const lp = b.length_per_piece;
-              const otk = otkResultStatusRu(b);
-              return (
-                <div key={b.id} className="production-table__row">
-                  <span className="production-table__cell-clip">{formatDt(b.created_at)}</span>
-                  <span className="production-table__cell-clip">{lineLabel(b)}</span>
-                  <span className="production-table__cell-clip">{profileLabel(b)}</span>
-                  <span className="production-table__cell-clip">{recipeLabel(b)}</span>
-                  <span className="production-table__num">{pcs != null ? formatQuantityDisplay(pcs) : '—'}</span>
-                  <span className="production-table__num">
-                    {lp != null ? formatNumberForInput(parseLocaleNumber(lp)) : '—'}
-                  </span>
-                  <span className="production-table__num">
-                    {tm != null ? formatNumberForInput(tm) : '—'}
-                  </span>
-                  <span className="production-table__cell-clip">{otk?.label ?? '—'}</span>
-                </div>
-              );
-            })}
           </div>
         ) : null}
       </div>
@@ -147,6 +213,33 @@ const ProductionPage = () => {
           onSuccess={onCreated}
         />
       )}
+
+      {detailId != null && (
+        <ProductionBatchDetailModal
+          batchId={detailId}
+          onClose={() => setDetailId(null)}
+          onSaved={refetch}
+        />
+      )}
+
+      <ConfirmModal
+        open={otkTarget != null}
+        title="Передать партию в ОТК?"
+        message={
+          otkTarget
+            ? `Партия #${otkTarget.id} · ${profileLabel(otkTarget)} · ${recipeLabel(otkTarget)}`
+            : ''
+        }
+        confirmText={otkBusy ? 'Отправка…' : 'Отправить'}
+        onCancel={() => {
+          if (!otkBusy) {
+            setOtkTarget(null);
+            setOtkError('');
+          }
+        }}
+        onConfirm={handleOtkConfirm}
+        error={otkError}
+      />
     </div>
   );
 };

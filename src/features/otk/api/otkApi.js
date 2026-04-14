@@ -1,8 +1,9 @@
 import { apiClient } from '../../../shared/api';
+import { parseApiListResponse } from '../../../shared/lib/apiList';
 
 const isEndpointMissing = (err) => err?.response?.status === 404 || err?.response?.status === 405;
 const normalizeList = (data) => ({
-  items: data?.items ?? [],
+  items: parseApiListResponse(data),
   meta: data?.meta ?? null,
   links: data?.links ?? null,
 });
@@ -78,6 +79,12 @@ export const acceptBatch = (batchId, data) => {
   }
   if (data.inspectorId != null && data.inspectorId !== '') {
     body.otk_inspector = data.inspectorId;
+  }
+  if (data.inspectorName != null && String(data.inspectorName).trim() !== '') {
+    body.otk_inspector_name = String(data.inspectorName).trim();
+  }
+  if (data.checkedAt != null && String(data.checkedAt).trim() !== '') {
+    body.otk_checked_at = String(data.checkedAt).trim();
   }
   return apiClient.post(`batches/${batchId}/otk_accept/`, body);
 };

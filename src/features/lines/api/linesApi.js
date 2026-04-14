@@ -1,4 +1,5 @@
 import { apiClient } from '../../../shared/api';
+import { parseApiListResponse } from '../../../shared/lib/apiList';
 
 /**
  * Список линий (LineViewSet, доступ `lines`). Query `eligible_for_recipe_run=true` — линии с открытой сменой без паузы (SHIFT_AND_AUDIT §7).
@@ -43,7 +44,7 @@ export const getLineHistorySessionDetail = (lineId, openEventId, config = {}) =>
  */
 export const fetchLinesWithShiftSnapshot = async (params = { page_size: 200 }) => {
   const res = await apiClient.get('lines/', { params });
-  return res.data?.items || [];
+  return parseApiListResponse(res.data);
 };
 
 export const fetchLinesHistoryPage = async (queryState, signal) => {

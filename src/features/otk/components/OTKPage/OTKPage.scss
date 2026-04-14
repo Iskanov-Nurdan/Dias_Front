@@ -312,13 +312,14 @@
         }
       }
 
-      > *:nth-child(1)::before { content: '№ ОТК'; }
-      > *:nth-child(2)::before { content: 'Продукт'; }
-      > *:nth-child(3)::before { content: 'Линия'; }
-      > *:nth-child(4)::before { content: 'Выпуск'; }
-      > *:nth-child(5)::before { content: 'Размеры'; }
-      > *:nth-child(6)::before { content: 'Оператор'; }
-      > *:nth-child(7)::before { content: 'Дата'; }
+      > *:nth-child(1)::before { content: '№ партии'; }
+      > *:nth-child(2)::before { content: 'Профиль'; }
+      > *:nth-child(3)::before { content: 'Продукт'; }
+      > *:nth-child(4)::before { content: 'Линия'; }
+      > *:nth-child(5)::before { content: 'Выпуск'; }
+      > *:nth-child(6)::before { content: 'Размеры'; }
+      > *:nth-child(7)::before { content: 'Оператор'; }
+      > *:nth-child(8)::before { content: 'Дата'; }
     }
 
     &--history &__row {
@@ -351,11 +352,12 @@
       }
 
       > *:nth-child(1)::before { content: 'Статус'; }
-      > *:nth-child(2)::before { content: '№ ОТК'; }
-      > *:nth-child(3)::before { content: 'Задание'; }
-      > *:nth-child(4)::before { content: 'Принято'; }
-      > *:nth-child(5)::before { content: 'Брак'; }
-      > *:nth-child(6)::before { content: 'Комментарий'; }
+      > *:nth-child(2)::before { content: '№ партии'; }
+      > *:nth-child(3)::before { content: 'Профиль'; }
+      > *:nth-child(4)::before { content: 'Задание'; }
+      > *:nth-child(5)::before { content: 'Принято'; }
+      > *:nth-child(6)::before { content: 'Брак'; }
+      > *:nth-child(7)::before { content: 'Комментарий'; }
     }
   }
 }
@@ -386,6 +388,24 @@
   .otk-accept-modal__head {
     padding-top: var(--space-3);
     padding-bottom: var(--space-3);
+  }
+}
+
+.otk-accept-distribute {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  margin: 0 0 0.85rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  background: rgba(88, 166, 255, 0.08);
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+
+  &--warn {
+    color: var(--warning);
   }
 }
 

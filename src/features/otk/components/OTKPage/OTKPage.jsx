@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../../../../features/auth';
 import { useDiscardOnClose, useDirtyFromBaseline, useIsMobile } from '../../../../shared/hooks';
 import { Loading, EmptyState, ErrorState, FilterBar, FiltersModal, useToast, DecimalInput, ConfirmModal } from '../../../../shared/ui';
 import {
@@ -101,6 +100,12 @@ const shiftParamsLine = (b) => {
 
 const lineLabel = (b) =>
   b.line_name || b.line?.name || b.production_line || b.line || '—';
+
+const profileLabel = (b) =>
+  b.profile?.name
+  || b.profile_name
+  || b.profile?.code
+  || (b.profile_id != null ? `#${b.profile_id}` : '—');
 
 const updateQuery = (setter) => (patch) => {
   setter((prev) => ({
@@ -217,7 +222,6 @@ const HistoryDetailModal = ({ batch, onClose }) => {
 };
 
 const OTKPage = () => {
-  const { user } = useAuth();
   const toast = useToast();
   const isMobile = useIsMobile();
   const [otkFiltersOpen, setOtkFiltersOpen] = useState(false);
@@ -288,7 +292,9 @@ const OTKPage = () => {
         rejected: data.rejected,
         rejectReason: data.rejectReason,
         comment: data.comment,
-        inspectorId: user?.id || null,
+        inspectorId: data.inspectorId,
+        inspectorName: data.inspectorName,
+        checkedAt: data.checkedAt,
       });
       setAcceptModalBatch(null);
       refetchAll();
@@ -369,8 +375,9 @@ const OTKPage = () => {
           {!loadingAwaiting && !errorAwaiting && awaitingList.length > 0 && (
             <div className="otk-table otk-table--awaiting">
               <div className="otk-table__header">
-                <span className="otk-table__th otk-table__th--id">№ ОТК</span>
-                <span className="otk-table__th">Продукт</span>
+                <span className="otk-table__th otk-table__th--id">№ партии</span>
+                <span className="otk-table__th">Профиль</span>
+                <span className="otk-table__th">Продукт / рецепт</span>
                 <span className="otk-table__th">Линия</span>
                 <span className="otk-table__th">Выпуск</span>
                 <span className="otk-table__th">Размеры</span>
@@ -383,7 +390,8 @@ const OTKPage = () => {
                 const m = batchTotalMetersHint(b);
                 return (
                   <div key={b.id} className="otk-table__row">
-                    <span className="otk-table__batch-id" title="Номер партии в ОТК">#{b.id}</span>
+                    <span className="otk-table__batch-id" title="Номер партии">#{b.id}</span>
+                    <span>{profileLabel(b)}</span>
                     <span>{orderName(b)}</span>
                     <span>{lineLabel(b)}</span>
                     <span className="otk-table__qty-pill" title={recipeContextHint(b)}>
@@ -468,7 +476,8 @@ const OTKPage = () => {
             <div className="otk-table otk-table--history">
               <div className="otk-table__header">
                 <span className="otk-table__th">Статус</span>
-                <span className="otk-table__th otk-table__th--id">№ ОТК</span>
+                <span className="otk-table__th otk-table__th--id">№ партии</span>
+                <span className="otk-table__th">Профиль</span>
                 <span className="otk-table__th">Задание / продукт</span>
                 <span className="otk-table__th">Принято</span>
                 <span className="otk-table__th">Брак</span>
@@ -488,7 +497,8 @@ const OTKPage = () => {
                     <span className={`otk-table__status otk-table__status--${st.color}`}>
                       {st.label}
                     </span>
-                    <span className="otk-table__batch-id" title="Номер партии в ОТК">#{b.id}</span>
+                    <span className="otk-table__batch-id" title="Номер партии">#{b.id}</span>
+                    <span>{profileLabel(b)}</span>
                     <span>{orderName(b)}</span>
                     <span className="otk-table__qty-pill otk-table__qty-pill--white">{b.otk_accepted ?? 0} шт</span>
                     <span className="otk-table__qty-pill otk-table__qty-pill--red">{b.otk_defect ?? 0} шт</span>
@@ -525,6 +535,11 @@ const AcceptModal = ({ batch, onSubmit, onClose, error }) => {
   const [defect, setDefect] = useState('0');
   const [defectReason, setDefectReason] = useState('');
   const [comment, setComment] = useState('');
+  const [inspectorName, setInspectorName] = useState('');
+  const [checkedAt, setCheckedAt] = useState(() => {
+    const t = new Date();
+    return t.toISOString().slice(0, 16);
+  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -538,6 +553,8 @@ const AcceptModal = ({ batch, onSubmit, onClose, error }) => {
       rejected: d,
       rejectReason: defectReason.trim() || undefined,
       comment: comment.trim() || undefined,
+      inspectorName: inspectorName.trim() || undefined,
+      checkedAt: checkedAt.trim() ? new Date(checkedAt).toISOString() : undefined,
     });
   };
 
@@ -578,11 +595,19 @@ const AcceptModal = ({ batch, onSubmit, onClose, error }) => {
     setDefect(value);
   };
 
+  const enteredTotal =
+    Math.max(0, Math.floor(parseLocaleNumber(accepted) || 0))
+    + Math.max(0, Math.floor(parseLocaleNumber(defect) || 0));
+  const remainingDistribute =
+    produced > 0 ? Math.max(0, produced - enteredTotal) : null;
+
   const isDirty = useDirtyFromBaseline(String(batch?.id ?? ''), false, {
     accepted: String(accepted ?? '').trim(),
     defect: String(defect ?? '').trim(),
     defectReason: defectReason.trim(),
     comment: comment.trim(),
+    inspectorName: inspectorName.trim(),
+    checkedAt: String(checkedAt ?? '').trim(),
   });
   const {
     requestClose,
@@ -629,6 +654,20 @@ const AcceptModal = ({ batch, onSubmit, onClose, error }) => {
               <span className="otk-modal-summary__value">{formatQuantityDisplay(produced)}</span>
             </div>
           </div>
+          {produced > 0 && (
+            <div className="otk-accept-distribute" role="status">
+              <span>Всего: <strong>{formatQuantityDisplay(produced)}</strong></span>
+              <span>·</span>
+              <span>
+                Распределено:{' '}
+                <strong>{formatQuantityDisplay(enteredTotal)}</strong>
+              </span>
+              <span>·</span>
+              <span className={remainingDistribute > 0 ? 'otk-accept-distribute--warn' : ''}>
+                Осталось: <strong>{formatQuantityDisplay(remainingDistribute)}</strong>
+              </span>
+            </div>
+          )}
           <div className="otk-accept-form__row">
             <div className="otk-accept-form__field">
               <label htmlFor={`otk-acc-${batch.id}`}>Принято, шт</label>
@@ -677,6 +716,30 @@ const AcceptModal = ({ batch, onSubmit, onClose, error }) => {
                 onChange={(e) => setDefectReason(e.target.value)}
                 placeholder={defectReasonRequired ? 'обязательно при браке' : 'при браке'}
                 autoComplete="off"
+              />
+            </div>
+          </div>
+          <div className="otk-accept-form__row">
+            <div className="otk-accept-form__field">
+              <label htmlFor={`otk-insp-${batch.id}`}>Инспектор</label>
+              <input
+                id={`otk-insp-${batch.id}`}
+                type="text"
+                className="otk-accept-input"
+                value={inspectorName}
+                onChange={(e) => setInspectorName(e.target.value)}
+                placeholder="если нужно указать вручную"
+                autoComplete="off"
+              />
+            </div>
+            <div className="otk-accept-form__field">
+              <label htmlFor={`otk-dt-${batch.id}`}>Дата проверки</label>
+              <input
+                id={`otk-dt-${batch.id}`}
+                type="datetime-local"
+                className="otk-accept-input"
+                value={checkedAt}
+                onChange={(e) => setCheckedAt(e.target.value)}
               />
             </div>
           </div>

@@ -17,3 +17,10 @@ export const getProductionBatch = (id) => apiClient.get(`batches/${id}/`);
 export const createProductionBatch = (data) => apiClient.post('batches/', data);
 export const updateProductionBatch = (id, data) => apiClient.patch(`batches/${id}/`, data);
 export const deleteProductionBatch = (id) => apiClient.delete(`batches/${id}/`);
+
+/**
+ * Передать партию в очередь ОТК (списание и расчёт — только при создании партии на бэке).
+ * Тело пустое; контракт — в промпте для бэкенда.
+ */
+export const submitProductionBatchForOtk = (id) =>
+  apiClient.post(`batches/${id}/submit-for-otk/`, {});

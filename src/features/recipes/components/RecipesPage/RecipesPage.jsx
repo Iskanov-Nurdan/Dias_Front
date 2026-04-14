@@ -7,6 +7,7 @@ import {
   formatNumberForInput,
   parseLocaleNumber,
   getApiErrorMessage,
+  parseApiListResponse,
 } from '../../../../shared/lib';
 import { Loading, EmptyState, ErrorState, ConfirmModal, useToast, DecimalInput, Select } from '../../../../shared/ui';
 import {
@@ -116,7 +117,7 @@ const RecipesPage = () => {
 
   useEffect(() => {
     apiClient.get('plastic-profiles/', { params: { page_size: 500 } })
-      .then((res) => setPlasticProfiles(res.data?.items || []))
+      .then((res) => setPlasticProfiles(parseApiListResponse(res.data)))
       .catch(() => setPlasticProfiles([]));
   }, []);
 
@@ -651,10 +652,10 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
 
   useEffect(() => {
     apiClient.get('raw-materials/', { params: { page_size: 500 } })
-      .then((res) => setRawMaterials(res.data?.items || []))
+      .then((res) => setRawMaterials(parseApiListResponse(res.data)))
       .catch(() => setRawMaterials([]));
     apiClient.get('chemistry/elements/', { params: { page_size: 500 } })
-      .then((res) => setChemistryElements(res.data?.items || []))
+      .then((res) => setChemistryElements(parseApiListResponse(res.data)))
       .catch(() => setChemistryElements([]));
   }, []);
 
@@ -936,10 +937,10 @@ const RecipeDetailModal = ({
 
   useEffect(() => {
     apiClient.get('raw-materials/', { params: { page_size: 500 } })
-      .then((res) => setRawMaterials(res.data?.items || []))
+      .then((res) => setRawMaterials(parseApiListResponse(res.data)))
       .catch(() => setRawMaterials([]));
     apiClient.get('chemistry/elements/', { params: { page_size: 500 } })
-      .then((res) => setChemistryElements(res.data?.items || []))
+      .then((res) => setChemistryElements(parseApiListResponse(res.data)))
       .catch(() => setChemistryElements([]));
   }, []);
 

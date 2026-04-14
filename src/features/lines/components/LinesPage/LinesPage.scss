@@ -570,3 +570,23 @@
   }
 }
 
+.lines-form__check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+
+  input {
+    margin-top: 0.2rem;
+  }
+}
+
+.lines-table__cell-clip {
+  max-width: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+

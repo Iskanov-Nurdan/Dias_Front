@@ -63,6 +63,14 @@ const AnalyticsPage = () => {
   const [month, setMonth] = useState('');
   const [day, setDay] = useState('');
   const [detailModal, setDetailModal] = useState(null);
+  const [lineId, setLineId] = useState('');
+  const [clientId, setClientId] = useState('');
+  const [profileId, setProfileId] = useState('');
+  const [recipeId, setRecipeId] = useState('');
+  const [batchId, setBatchId] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const load = useCallback((signal) => {
     setLoading(true);
@@ -70,7 +78,15 @@ const AnalyticsPage = () => {
     const params = { year };
     if (month) params.month = month;
     if (day) params.day = day;
-    const trendsParams = { year };
+    if (lineId.trim()) params.line_id = lineId.trim();
+    if (clientId.trim()) params.client_id = clientId.trim();
+    if (profileId.trim()) params.profile_id = profileId.trim();
+    if (recipeId.trim()) params.recipe_id = recipeId.trim();
+    if (batchId.trim()) params.batch_id = batchId.trim();
+    if (statusFilter.trim()) params.status = statusFilter.trim();
+    if (dateFrom.trim()) params.date_from = dateFrom.trim();
+    if (dateTo.trim()) params.date_to = dateTo.trim();
+    const trendsParams = { ...params };
     if (month) trendsParams.month = month;
 
     const loadMain = apiClient.get('analytics/summary/', { params, signal });
@@ -87,7 +103,7 @@ const AnalyticsPage = () => {
         }
       })
       .finally(() => setLoading(false));
-  }, [year, month, day]);
+  }, [year, month, day, lineId, clientId, profileId, recipeId, batchId, statusFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -192,7 +208,59 @@ const AnalyticsPage = () => {
             ]}
           />
         </div>
-        <button type="button" className="btn btn--secondary" onClick={() => { setMonth(''); setDay(''); }}>Сброс</button>
+        <button
+          type="button"
+          className="btn btn--secondary"
+          onClick={() => {
+            setMonth('');
+            setDay('');
+            setLineId('');
+            setClientId('');
+            setProfileId('');
+            setRecipeId('');
+            setBatchId('');
+            setStatusFilter('');
+            setDateFrom('');
+            setDateTo('');
+          }}
+        >
+          Сброс
+        </button>
+      </div>
+
+      <div className="analytics-filters analytics-filters--extra">
+        <div className="analytics-filters__group">
+          <label>Линия (id)</label>
+          <input type="text" inputMode="numeric" value={lineId} onChange={(e) => setLineId(e.target.value)} placeholder="опц." />
+        </div>
+        <div className="analytics-filters__group">
+          <label>Клиент (id)</label>
+          <input type="text" inputMode="numeric" value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="опц." />
+        </div>
+        <div className="analytics-filters__group">
+          <label>Профиль (id)</label>
+          <input type="text" inputMode="numeric" value={profileId} onChange={(e) => setProfileId(e.target.value)} placeholder="опц." />
+        </div>
+        <div className="analytics-filters__group">
+          <label>Рецепт (id)</label>
+          <input type="text" inputMode="numeric" value={recipeId} onChange={(e) => setRecipeId(e.target.value)} placeholder="опц." />
+        </div>
+        <div className="analytics-filters__group">
+          <label>Партия (id)</label>
+          <input type="text" inputMode="numeric" value={batchId} onChange={(e) => setBatchId(e.target.value)} placeholder="опц." />
+        </div>
+        <div className="analytics-filters__group">
+          <label>Статус</label>
+          <input type="text" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} placeholder="опц." />
+        </div>
+        <div className="analytics-filters__group">
+          <label>Период с</label>
+          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+        </div>
+        <div className="analytics-filters__group">
+          <label>по</label>
+          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+        </div>
       </div>
 
       {/* ФИНАНСЫ - главные карты */}
@@ -394,6 +462,37 @@ const AnalyticsPage = () => {
           </div>
         </div>
       </div>
+
+      {/* ОТК (если бэкенд отдаёт блок otk) */}
+      {data?.otk && typeof data.otk === 'object' && (
+        <div className="analytics-section">
+          <h2 className="analytics-section__title">ОТК</h2>
+          <div className="analytics-grid analytics-grid--2col">
+            <div className="analytics-block">
+              <div className="analytics-stats">
+                <div className="analytics-stat">
+                  <span className="analytics-stat__number">{formatNumber(data.otk.accepted_total ?? data.otk.accepted ?? 0)}</span>
+                  <span className="analytics-stat__label">Принято, шт</span>
+                </div>
+                <div className="analytics-stat">
+                  <span className="analytics-stat__number">{formatNumber(data.otk.defect_total ?? data.otk.defect ?? data.otk.rejected ?? 0)}</span>
+                  <span className="analytics-stat__label">Брак, шт</span>
+                </div>
+                <div className="analytics-stat">
+                  <span className="analytics-stat__number">
+                    {data.otk.defect_rate_pct != null
+                      ? `${formatNumber(data.otk.defect_rate_pct)}%`
+                      : data.otk.defect_rate != null
+                        ? `${formatNumber(Number(data.otk.defect_rate) * 100)}%`
+                        : '—'}
+                  </span>
+                  <span className="analytics-stat__label">Брак %</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ПРОИЗВОДСТВО */}
       <div className="analytics-section">

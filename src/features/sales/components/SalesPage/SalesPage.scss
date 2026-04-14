@@ -12,26 +12,6 @@
 }
 
 .data-table--sales {
-  th:nth-child(1),
-  td:nth-child(1) {
-    width: 20%;
-  }
-
-  th:nth-child(2),
-  td:nth-child(2) {
-    width: 26%;
-  }
-
-  th:nth-child(3),
-  td:nth-child(3) {
-    width: 28%;
-  }
-
-  th:nth-child(4),
-  td:nth-child(4) {
-    width: 16%;
-  }
-
   @include mobile {
     th:nth-child(n),
     td:nth-child(n) {
@@ -57,17 +37,53 @@
     }
 
     td:nth-child(2)::before {
-      content: 'Продукт';
+      content: 'Клиент';
     }
 
     td:nth-child(3)::before {
-      content: 'Количество';
+      content: 'Профиль';
     }
 
     td:nth-child(4)::before {
-      content: 'Сумма';
+      content: 'Количество';
+    }
+
+    td:nth-child(5)::before {
+      content: 'Выручка';
+    }
+
+    td:nth-child(6)::before {
+      content: 'Себестоимость';
+    }
+
+    td:nth-child(7)::before {
+      content: 'Прибыль';
     }
   }
+}
+
+.sales-table__date-cell {
+  white-space: nowrap;
+  font-size: var(--font-caption);
+}
+
+.sales-table__batch-hint {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--font-caption);
+  color: var(--text-muted);
+}
+
+.sales-modal__date-input {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  height: var(--input-height);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text);
 }
 
 .sales-table__qty-cell {

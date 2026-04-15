@@ -3,10 +3,15 @@ import { apiClient } from '../../../shared/api';
 import {
   parseLocaleNumber,
   formatQuantityDisplay,
-  sumNotPackedQtyMatchingParams,
-  toPackagingNumber,
   formatPacksByPiecesPhrase,
   ruPackagingWord,
+  readBatchPackagingHeight,
+  readBatchPackagingWidth,
+  readBatchPackagingAngleDeg,
+  batchHasFullPackagingGeometry,
+  readWarehouseQuality,
+  readWarehouseDefectReason,
+  warehouseQualityShortLabel,
 } from '../../../shared/lib';
 import { useDiscardOnClose, useDirtyFromBaseline } from '../../../shared/hooks';
 import { DecimalInput, Select, ConfirmModal } from '../../../shared/ui';
@@ -18,34 +23,36 @@ const errorToMessage = (err) => {
   return data.error || data.message || 'Ошибка';
 };
 
+const productName = (b) =>
+  (b.product_name && String(b.product_name).trim())
+  || (typeof b.product?.name === 'string' ? b.product.name : null)
+  || (typeof b.product === 'string' ? b.product : null)
+  || `Продукт #${b.product_id ?? '?'}`;
+
+const lotLabel = (b) => b.batch ?? b.lot ?? (b.id != null ? `#${b.id}` : '—');
+
+const formatDimsReadonly = (b) => {
+  if (!batchHasFullPackagingGeometry(b)) return '—';
+  const h = readBatchPackagingHeight(b);
+  const w = readBatchPackagingWidth(b);
+  const a = readBatchPackagingAngleDeg(b);
+  return `${formatQuantityDisplay(h)} × ${formatQuantityDisplay(w)} × ${formatQuantityDisplay(a)}°`;
+};
+
 const PackFromOtkModal = ({ open, onClose, onSuccess, error: externalError, setExternalError }) => {
-  const [productId, setProductId] = useState('');
-  const [heightM, setHeightM] = useState('');
-  const [widthM, setWidthM] = useState('');
-  const [angleDeg, setAngleDeg] = useState('');
+  const [warehouseBatchId, setWarehouseBatchId] = useState('');
   const [itemsPerPackage, setItemsPerPackage] = useState('');
   const [packagesCount, setPackagesCount] = useState('1');
+  const [comment, setComment] = useState('');
   const [unpackedBatches, setUnpackedBatches] = useState([]);
-  const [productOptions, setProductOptions] = useState([]);
-  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [loadingBatches, setLoadingBatches] = useState(false);
   const [saving, setSaving] = useState(false);
   const [localError, setLocalError] = useState('');
 
-  const hN = useMemo(() => toPackagingNumber(heightM), [heightM]);
-  const wN = useMemo(() => toPackagingNumber(widthM), [widthM]);
-  const aN = useMemo(() => toPackagingNumber(angleDeg), [angleDeg]);
-
-  const paramsReady = Number.isFinite(hN) && hN > 0 && Number.isFinite(wN) && wN >= 0 && Number.isFinite(aN);
-
-  const availableQty = useMemo(() => {
-    if (!productId || !paramsReady) return 0;
-    return sumNotPackedQtyMatchingParams(unpackedBatches, {
-      productId,
-      heightM: hN,
-      widthM: wN,
-      angleDeg: aN,
-    });
-  }, [unpackedBatches, productId, paramsReady, hN, wN, aN]);
+  const selectedBatch = useMemo(
+    () => unpackedBatches.find((x) => String(x.id) === String(warehouseBatchId)),
+    [unpackedBatches, warehouseBatchId],
+  );
 
   const ipp = useMemo(() => {
     const n = parseLocaleNumber(itemsPerPackage);
@@ -57,6 +64,12 @@ const PackFromOtkModal = ({ open, onClose, onSuccess, error: externalError, setE
     return Number.isFinite(n) && n >= 1 ? Math.floor(n) : null;
   }, [packagesCount]);
 
+  const availableQty = useMemo(() => {
+    if (!selectedBatch) return 0;
+    const q = parseLocaleNumber(selectedBatch.quantity ?? selectedBatch.available_quantity);
+    return Number.isFinite(q) && q > 0 ? q : 0;
+  }, [selectedBatch]);
+
   const requiredQty = ipp != null && pk != null ? ipp * pk : null;
 
   const maxPackagesByStock = useMemo(() => {
@@ -64,18 +77,36 @@ const PackFromOtkModal = ({ open, onClose, onSuccess, error: externalError, setE
     return Math.floor(availableQty / ipp);
   }, [ipp, availableQty]);
 
+  const batchOptions = useMemo(() => {
+    const list = [...unpackedBatches].sort((a, b) => {
+      const na = productName(a);
+      const nb = productName(b);
+      const c = na.localeCompare(nb, 'ru');
+      if (c !== 0) return c;
+      return (Number(a.id) || 0) - (Number(b.id) || 0);
+    });
+    return list.map((b) => {
+      const q = parseLocaleNumber(b.quantity ?? b.available_quantity);
+      const qtyStr = Number.isFinite(q) ? `${formatQuantityDisplay(q)} шт` : '—';
+      const qn = readWarehouseQuality(b);
+      const prefix = qn === 'defect' ? 'Брак · ' : '';
+      return {
+        value: String(b.id),
+        label: `${prefix}${productName(b)} · ${lotLabel(b)} · ${qtyStr}`,
+      };
+    });
+  }, [unpackedBatches]);
+
   useEffect(() => {
     if (!open) return;
     setLocalError('');
     setExternalError?.('');
-    setProductId('');
-    setHeightM('');
-    setWidthM('');
-    setAngleDeg('');
+    setWarehouseBatchId('');
     setItemsPerPackage('');
     setPackagesCount('1');
+    setComment('');
     setUnpackedBatches([]);
-    setLoadingProducts(true);
+    setLoadingBatches(true);
     apiClient
       .get('warehouse/batches/', {
         params: {
@@ -87,39 +118,22 @@ const PackFromOtkModal = ({ open, onClose, onSuccess, error: externalError, setE
       .then((res) => {
         const items = res.data?.items ?? [];
         setUnpackedBatches(items);
-        const map = new Map();
-        items.forEach((b) => {
-          const rawProduct = b.product;
-          const primitiveProduct =
-            typeof rawProduct === 'string' || typeof rawProduct === 'number' ? rawProduct : null;
-          const id = b.product_id ?? b.product?.id ?? primitiveProduct;
-          const name =
-            (b.product_name && String(b.product_name).trim()) ||
-            (typeof b.product?.name === 'string' ? b.product.name : null) ||
-            `Продукт #${id ?? '?'}`;
-          if (id == null || String(id).trim() === '') return;
-          const key = String(id).trim();
-          if (!map.has(key)) map.set(key, { id: key, name: String(name) });
-        });
-        const opts = [...map.values()].sort((x, y) => x.name.localeCompare(y.name, 'ru'));
-        setProductOptions(opts);
       })
       .catch(() => {
         setUnpackedBatches([]);
-        setProductOptions([]);
       })
-      .finally(() => setLoadingProducts(false));
+      .finally(() => {
+        setLoadingBatches(false);
+      });
   }, [open, setExternalError]);
 
   const packSnap = {
-    productId: productId === '' || productId == null ? '' : String(productId),
-    heightM: String(heightM ?? '').trim(),
-    widthM: String(widthM ?? '').trim(),
-    angleDeg: String(angleDeg ?? '').trim(),
+    warehouseBatchId: warehouseBatchId === '' || warehouseBatchId == null ? '' : String(warehouseBatchId),
     itemsPerPackage: String(itemsPerPackage ?? '').trim(),
     packagesCount: String(packagesCount ?? '').trim(),
+    comment: String(comment ?? '').trim(),
   };
-  const isDirty = useDirtyFromBaseline(String(open), open ? loadingProducts : true, packSnap);
+  const isDirty = useDirtyFromBaseline(String(open), open ? loadingBatches : true, packSnap);
   const {
     requestClose,
     discardConfirmOpen,
@@ -135,12 +149,9 @@ const PackFromOtkModal = ({ open, onClose, onSuccess, error: externalError, setE
     e.preventDefault();
     setLocalError('');
     setExternalError?.('');
-    if (!productId) {
-      setLocalError('Выберите продукт.');
-      return;
-    }
-    if (!paramsReady) {
-      setLocalError('Укажите высоту, ширину и угол (как в строке склада).');
+    const wid = warehouseBatchId ? Number(warehouseBatchId) : NaN;
+    if (!Number.isFinite(wid) || wid <= 0) {
+      setLocalError('Выберите партию.');
       return;
     }
     if (ipp == null) {
@@ -153,7 +164,7 @@ const PackFromOtkModal = ({ open, onClose, onSuccess, error: externalError, setE
     }
     const need = ipp * pk;
     if (availableQty < 1) {
-      setLocalError('Нет неупакованного остатка с таким продуктом и параметрами.');
+      setLocalError('В партии нет доступного количества.');
       return;
     }
     if (need > availableQty) {
@@ -165,17 +176,12 @@ const PackFromOtkModal = ({ open, onClose, onSuccess, error: externalError, setE
 
     setSaving(true);
     try {
-      const packageTotalM = Math.round(ipp * hN * 1e9) / 1e9;
       await packFromOtk({
-        product_id: String(productId).trim(),
-        shift_height: hN,
-        shift_width: wN,
-        width_meters: wN,
-        angle_deg: aN,
+        warehouse_batch_id: wid,
+        warehouse_batch: wid,
         pieces_per_package: ipp,
         packages_count: pk,
-        unit_meters: hN,
-        package_total_meters: packageTotalM,
+        ...(comment.trim() ? { comment: comment.trim() } : {}),
       });
       onSuccess?.();
       onClose();
@@ -189,13 +195,11 @@ const PackFromOtkModal = ({ open, onClose, onSuccess, error: externalError, setE
   };
 
   const foundLine =
-    productId && paramsReady
-      ? availableQty > 0
-        ? `Доступно неупакованного: ${formatQuantityDisplay(availableQty)} шт`
-        : 'Подходящего неупакованного остатка нет (проверьте продукт и размеры).'
-      : productId && !paramsReady
-        ? 'Введите высоту, ширину и угол — покажем остаток.'
-        : 'Выберите продукт и параметры — покажем остаток.';
+    selectedBatch
+      ? (availableQty > 0
+        ? `Доступно: ${formatQuantityDisplay(availableQty)} шт`
+        : 'Нет доступного количества.')
+      : 'Выберите партию — покажем остаток.';
 
   const compositionPhrase =
     ipp != null && pk != null ? formatPacksByPiecesPhrase(pk, ipp) : null;
@@ -204,6 +208,8 @@ const PackFromOtkModal = ({ open, onClose, onSuccess, error: externalError, setE
     requiredQty != null ? `К списанию: ${formatQuantityDisplay(requiredQty)} шт` : null;
 
   const shortage = requiredQty != null && availableQty > 0 && requiredQty > availableQty;
+
+  const defectReason = selectedBatch ? readWarehouseDefectReason(selectedBatch) : '';
 
   return (
     <div className="modal-overlay" onClick={requestClose}>
@@ -223,27 +229,37 @@ const PackFromOtkModal = ({ open, onClose, onSuccess, error: externalError, setE
         <form className="pack-from-otk-form" onSubmit={handleSubmit}>
           <div className="pack-from-otk-form__grid">
             <div className="pack-from-otk-form__field pack-from-otk-form__field--wide">
-              <label>Продукт *</label>
+              <label>Партия *</label>
               <Select
-                value={productId === '' || productId == null ? '' : String(productId)}
-                onChange={setProductId}
-                disabled={loadingProducts}
-                placeholder="Выберите продукт"
-                options={productOptions.map((p) => ({ value: String(p.id), label: p.name }))}
+                value={warehouseBatchId === '' || warehouseBatchId == null ? '' : String(warehouseBatchId)}
+                onChange={setWarehouseBatchId}
+                disabled={loadingBatches}
+                placeholder={loadingBatches ? 'Загрузка…' : 'Выберите партию'}
+                options={batchOptions}
               />
             </div>
-            <div className="pack-from-otk-form__field">
-              <label>Высота, м *</label>
-              <DecimalInput min={0} value={heightM} onChange={setHeightM} required />
-            </div>
-            <div className="pack-from-otk-form__field">
-              <label>Ширина, м *</label>
-              <DecimalInput min={0} value={widthM} onChange={setWidthM} required />
-            </div>
-            <div className="pack-from-otk-form__field">
-              <label>Угол, ° *</label>
-              <DecimalInput value={angleDeg} onChange={setAngleDeg} required />
-            </div>
+
+            {selectedBatch && (
+              <div className="pack-from-otk-form__readonly-block pack-from-otk-form__field pack-from-otk-form__field--wide">
+                <div className="pack-from-otk-form__readonly-row">
+                  <span className="pack-from-otk-form__readonly-k">Качество</span>
+                  <span className="pack-from-otk-form__readonly-v">
+                    {warehouseQualityShortLabel(readWarehouseQuality(selectedBatch))}
+                  </span>
+                </div>
+                {defectReason ? (
+                  <div className="pack-from-otk-form__readonly-row">
+                    <span className="pack-from-otk-form__readonly-k">Причина брака</span>
+                    <span className="pack-from-otk-form__readonly-v pack-from-otk-form__readonly-v--reason">{defectReason}</span>
+                  </div>
+                ) : null}
+                <div className="pack-from-otk-form__readonly-row">
+                  <span className="pack-from-otk-form__readonly-k">Высота × ширина × угол</span>
+                  <span className="pack-from-otk-form__readonly-v">{formatDimsReadonly(selectedBatch)}</span>
+                </div>
+              </div>
+            )}
+
             <div className="pack-from-otk-form__field pack-from-otk-form__field--wide pack-from-otk-form__field--composition">
               <div className="pack-from-otk-form__composition-head">
                 <span className="pack-from-otk-form__composition-title">Упаковка *</span>
@@ -263,7 +279,7 @@ const PackFromOtkModal = ({ open, onClose, onSuccess, error: externalError, setE
                       <button
                         type="button"
                         className="pack-from-otk-form__max-btn"
-                        disabled={loadingProducts}
+                        disabled={loadingBatches}
                         onClick={() => setPackagesCount(String(maxPackagesByStock))}
                       >
                         Макс.
@@ -294,6 +310,18 @@ const PackFromOtkModal = ({ open, onClose, onSuccess, error: externalError, setE
                 <p className="pack-from-otk-form__composition-readback">{compositionPhrase}</p>
               )}
             </div>
+
+            <div className="pack-from-otk-form__field pack-from-otk-form__field--wide">
+              <label>Комментарий</label>
+              <textarea
+                className="pack-from-otk-form__comment"
+                rows={2}
+                value={comment}
+                onChange={(ev) => setComment(ev.target.value)}
+                placeholder="Необязательно"
+              />
+            </div>
+
             <div className="pack-from-otk-form__field pack-from-otk-form__field--wide">
               <p className="pack-from-otk-form__found" role="status">{foundLine}</p>
               {spendLine && <p className="pack-from-otk-form__subline">{spendLine}</p>}
@@ -314,7 +342,7 @@ const PackFromOtkModal = ({ open, onClose, onSuccess, error: externalError, setE
           {err && <p className="modal__error">{err}</p>}
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={requestClose} disabled={saving}>Отмена</button>
-            <button type="submit" className="btn btn--primary" disabled={saving || loadingProducts}>
+            <button type="submit" className="btn btn--primary" disabled={saving || loadingBatches}>
               {saving ? 'Упаковка…' : 'Упаковать'}
             </button>
           </div>

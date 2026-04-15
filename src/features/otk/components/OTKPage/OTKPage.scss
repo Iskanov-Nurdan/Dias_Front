@@ -28,6 +28,17 @@
   color: var(--text-secondary);
 }
 
+.otk-accept-form__hint {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-caption);
+  line-height: 1.4;
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+
 .otk-nav {
   margin-bottom: 1rem;
   font-size: 0.95rem;

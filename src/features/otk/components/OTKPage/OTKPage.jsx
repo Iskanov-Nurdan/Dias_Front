@@ -344,8 +344,8 @@ const OTKPage = () => {
             filters={[
               { key: 'search', type: 'search', placeholder: 'Поиск' },
               { key: 'otk_status', type: 'select', placeholder: 'Статус', options: [
-                { value: 'accepted', label: 'Принято' },
-                { value: 'rejected', label: 'Забраковано' },
+                { value: 'accepted', label: 'Годный' },
+                { value: 'rejected', label: 'Брак' },
               ] },
               { key: 'ordering', type: 'ordering', placeholder: 'Сортировка', options: [
                 { value: 'otk_checked_at', label: 'Проверка (возр.)' },
@@ -520,6 +520,9 @@ const AcceptModal = ({ batch, onSubmit, onClose, error }) => {
           <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
         <form className="otk-accept-form" onSubmit={handleSubmit} title="Принято + брак = штук к проверке">
+          <p className="otk-accept-form__hint">
+            После сохранения годное и брак поступают на склад отдельными партиями.
+          </p>
           <div className="otk-modal-summary">
             <div className="otk-modal-summary__item">
               <span className="otk-modal-summary__label">Продукт</span>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
 import {
   useServerQuery,
@@ -9,6 +9,9 @@ import {
   inventoryFormBadgeModifier,
   warehouseStockStatusRu,
   getWarehouseQuantityPresentation,
+  readWarehouseQuality,
+  readWarehouseDefectReason,
+  warehouseQualityShortLabel,
 } from '../../../../shared/lib';
 import { buildWarehouseBatchCardRows } from '../warehouseBatchCard';
 import { EmptyState, ErrorState, Loading, useToast, DecimalInput, ConfirmModal, ActionMenu } from '../../../../shared/ui';
@@ -55,6 +58,7 @@ const WarehousePage = () => {
     status: '',
     search: '',
     inventory_form: '',
+    quality: '',
   });
   const [reserveTarget, setReserveTarget] = useState(null);
   const [detailBatch, setDetailBatch] = useState(null);
@@ -66,7 +70,12 @@ const WarehousePage = () => {
 
   useOperationalRefetch(['warehouse_batch', 'production_batch', 'batch'], refetch, true);
 
-  const rows = items || [];
+  const rows = useMemo(() => {
+    const raw = items || [];
+    const q = queryState.quality;
+    if (!q) return raw;
+    return raw.filter((b) => readWarehouseQuality(b) === q);
+  }, [items, queryState.quality]);
 
   const handleReserve = async (batchId, quantity, saleId) => {
     setSubmitError('');
@@ -122,6 +131,17 @@ const WarehousePage = () => {
               ]}
               onChange={(val) => setQueryState((p) => ({ ...p, inventory_form: val, page: 1 }))}
             />
+            <Select
+              className="page--warehouse__select"
+              value={queryState.quality}
+              placeholder="Качество"
+              options={[
+                { value: '', label: 'Все' },
+                { value: 'good', label: 'Годные' },
+                { value: 'defect', label: 'Брак' },
+              ]}
+              onChange={(val) => setQueryState((p) => ({ ...p, quality: val, page: 1 }))}
+            />
           </div>
         </div>
         <div className="ds-toolbar__end page--warehouse__toolbar-primary ds-hide-mobile">
@@ -155,6 +175,7 @@ const WarehousePage = () => {
           <thead>
             <tr>
               <th>Статус</th>
+              <th>Качество</th>
               <th>Продукт</th>
               <th>Количество</th>
               <th>Партия</th>
@@ -169,11 +190,15 @@ const WarehousePage = () => {
               const inv = resolveInventoryForm(b);
               const invMod = inventoryFormBadgeModifier(inv);
               const qtyPres = getWarehouseQuantityPresentation(b);
+              const qKey = readWarehouseQuality(b);
+              const defectReason = readWarehouseDefectReason(b);
+              const isDefect = qKey === 'defect';
               return (
                 <tr
                   key={b.id}
                   tabIndex={0}
                   role="button"
+                  className={isDefect ? 'data-table__row--warehouse-defect' : undefined}
                   onClick={() => setDetailBatch(b)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -192,7 +217,22 @@ const WarehousePage = () => {
                       </span>
                     </div>
                   </td>
-                  <td className="data-table__cell--lead">{productLabel}</td>
+                  <td>
+                    <span
+                      className={`warehouse-quality-badge warehouse-quality-badge--${qKey}`}
+                      title={defectReason || undefined}
+                    >
+                      {warehouseQualityShortLabel(qKey)}
+                    </span>
+                  </td>
+                  <td className="data-table__cell--lead">
+                    <span className="warehouse-table__product-name">{productLabel}</span>
+                    {defectReason ? (
+                      <span className="warehouse-table__defect-hint" title={defectReason}>
+                        {defectReason.length > 48 ? `${defectReason.slice(0, 48)}…` : defectReason}
+                      </span>
+                    ) : null}
+                  </td>
                   <td
                     className="data-table__qty-cell data-table__cell--num"
                     title={qtyPres.title || undefined}
@@ -216,6 +256,8 @@ const WarehousePage = () => {
                             id: b.id,
                             quantity: qty,
                             product: productLabel,
+                            qualityKey: qKey,
+                            defectReason,
                           }),
                         },
                       ]}
@@ -306,6 +348,14 @@ const ReserveModal = ({ batch, onClose, onSubmit, error }) => {
             <label>Продукт</label>
             <input value={batch.product} readOnly />
           </div>
+          {batch.qualityKey === 'defect' && (
+            <p className="warehouse-reserve__quality-note">
+              <span className="warehouse-quality-badge warehouse-quality-badge--defect">Брак</span>
+              {batch.defectReason ? (
+                <span className="warehouse-reserve__defect-reason">{batch.defectReason}</span>
+              ) : null}
+            </p>
+          )}
           <div className="modal__field">
             <label>Количество *</label>
             <DecimalInput min={1} value={quantity} onChange={setQuantity} required />

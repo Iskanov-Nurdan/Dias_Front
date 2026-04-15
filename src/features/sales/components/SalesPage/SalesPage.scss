@@ -74,6 +74,46 @@
   color: var(--text-muted);
 }
 
+.sales-table__product-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.sales-table__product-title {
+  font-weight: var(--weight-medium);
+}
+
+.sales-table__quality-badge {
+  flex-shrink: 0;
+}
+
+/* Совпадает со складом: бейдж качества партии */
+.warehouse-quality-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+
+  &--good {
+    background: var(--success-muted);
+    color: var(--success);
+    border: 1px solid transparent;
+  }
+
+  &--defect {
+    background: var(--danger-muted);
+    color: var(--danger);
+    border: 1px solid var(--danger);
+  }
+}
+
 .sales-modal__date-input {
   width: 100%;
   max-width: 100%;
@@ -145,6 +185,21 @@
     &--open_package {
       border-left-color: var(--warning);
     }
+
+    &--defect {
+      border-left-color: var(--danger);
+    }
+  }
+
+  &__stock-quality {
+    flex-shrink: 0;
+  }
+
+  &__stock-defect-reason {
+    width: 100%;
+    font-size: var(--font-caption);
+    color: var(--text-secondary);
+    line-height: 1.35;
   }
 
   &__piece-pick {

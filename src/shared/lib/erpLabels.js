@@ -22,12 +22,12 @@ export function otkResultStatusRu(batch) {
     return { label: 'Ожидает проверки', tone: 'orange' };
   }
   if (s === 'accepted' || s === 'принято' || s === 'ok') {
-    if (def > 0 && acc > 0) return { label: 'Принято с браком', tone: 'amber' };
-    if (def > 0 && acc <= 0) return { label: 'Забраковано', tone: 'red' };
-    return { label: 'Принято', tone: 'green' };
+    if (def > 0 && acc > 0) return { label: 'Годн. + брак → склад', tone: 'amber' };
+    if (def > 0 && acc <= 0) return { label: 'Брак → склад', tone: 'red' };
+    return { label: 'Годный → склад', tone: 'green' };
   }
   if (s === 'rejected' || s === 'defect' || s === 'брак' || s === 'failed') {
-    return { label: 'Забраковано', tone: 'red' };
+    return { label: 'Брак → склад', tone: 'red' };
   }
   return { label: 'Ожидает проверки', tone: 'orange' };
 }

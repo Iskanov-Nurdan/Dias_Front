@@ -12,6 +12,8 @@ import {
   formatPacksByPiecesPhrase,
   readCatalogProductIdFromWarehouseBatch,
   sameWarehouseProductKey,
+  readWarehouseQuality,
+  readWarehouseDefectReason,
 } from '../../../../shared/lib';
 import {
   ConfirmModal,
@@ -78,6 +80,15 @@ const unitLabel = (u) => {
   if (u === 'package') return 'упак.';
   if (u === 'meter') return 'м'; // старые записи в таблице
   return 'шт';
+};
+
+/** Качество в продаже: только `quality` на записи продажи или на вложенной `warehouse_batch`. */
+const saleWarehouseQualityKey = (s) => {
+  if (!s || typeof s !== 'object') return 'good';
+  if (s.warehouse_batch && typeof s.warehouse_batch === 'object') {
+    return readWarehouseQuality(s.warehouse_batch);
+  }
+  return readWarehouseQuality(s);
 };
 
 const SalesPage = () => {
@@ -243,12 +254,21 @@ const SalesPage = () => {
                 </td>
                 <td className="data-table__cell--lead">{s.client_name || s.client?.name || s.client || '—'}</td>
                 <td className="data-table__cell--lead">
-                  {s.profile_name || s.profile?.name || s.product_name || s.product?.name || s.product || '—'}
-                  {s.warehouse_batch_id != null || s.batch_id != null ? (
-                    <span className="sales-table__batch-hint">
-                      №{s.warehouse_batch_id ?? s.batch_id ?? s.warehouse_batch?.id}
+                  <div className="sales-table__product-cell">
+                    <span className="sales-table__product-title">
+                      {s.profile_name || s.profile?.name || s.product_name || s.product?.name || s.product || '—'}
                     </span>
-                  ) : null}
+                    {saleWarehouseQualityKey(s) === 'defect' ? (
+                      <span className="warehouse-quality-badge warehouse-quality-badge--defect sales-table__quality-badge">
+                        Брак
+                      </span>
+                    ) : null}
+                    {s.warehouse_batch_id != null || s.batch_id != null ? (
+                      <span className="sales-table__batch-hint">
+                        №{s.warehouse_batch_id ?? s.batch_id ?? s.warehouse_batch?.id}
+                      </span>
+                    ) : null}
+                  </div>
                 </td>
                 <td className="sales-table__qty-cell">
                   <span className="sales-table__qty-line">
@@ -460,6 +480,15 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
   const meta = useMemo(() => getPackagingMeta(selectedBatch), [selectedBatch]);
   const invForm = useMemo(
     () => (selectedBatch ? resolveInventoryForm(selectedBatch) : 'unpacked'),
+    [selectedBatch],
+  );
+
+  const batchQualityKey = useMemo(
+    () => (selectedBatch ? readWarehouseQuality(selectedBatch) : 'good'),
+    [selectedBatch],
+  );
+  const batchDefectReason = useMemo(
+    () => (selectedBatch ? readWarehouseDefectReason(selectedBatch) : ''),
     [selectedBatch],
   );
 
@@ -749,15 +778,31 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
                 : inv === 'packed' || inv === 'open_package'
                   ? pres.primary
                   : `${pres.primary} шт`;
-              return { value: String(p.id), label: `${name} — ${suffix}` };
+              const q = readWarehouseQuality(p);
+              const qMark = q === 'defect' ? 'Брак · ' : '';
+              return { value: String(p.id), label: `${qMark}${name} — ${suffix}` };
             })}
           />
 
           {selectedBatch && (
-            <div className={`sales-modal__stock-banner sales-modal__stock-banner--${invForm}`}>
+            <div
+              className={`sales-modal__stock-banner sales-modal__stock-banner--${invForm}${
+                batchQualityKey === 'defect' ? ' sales-modal__stock-banner--defect' : ''
+              }`}
+            >
               <span className="sales-modal__stock-label">Склад:</span>
               <span className="sales-modal__stock-value">{inventoryFormLabel(invForm)}</span>
+              {batchQualityKey === 'defect' ? (
+                <span className="warehouse-quality-badge warehouse-quality-badge--defect sales-modal__stock-quality">
+                  Брак
+                </span>
+              ) : null}
               {packagingHint && <span className="sales-modal__stock-meta">{packagingHint}</span>}
+              {batchQualityKey === 'defect' && batchDefectReason ? (
+                <span className="sales-modal__stock-defect-reason" title={batchDefectReason}>
+                  {batchDefectReason}
+                </span>
+              ) : null}
             </div>
           )}
 

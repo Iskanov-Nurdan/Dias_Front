@@ -1053,3 +1053,135 @@
   }
 }
 
+@include mobile {
+  .page--chemistry {
+    .chemistry-table-wrap {
+      overflow-x: visible;
+    }
+
+    .chemistry-table--catalog-full,
+    .chemistry-table--stock-full,
+    .chemistry-table--batches-full {
+      min-width: 0 !important;
+    }
+
+    .chemistry-table--catalog-full .chemistry-table__header,
+    .chemistry-table--stock-full .chemistry-table__header,
+    .chemistry-table--batches-full .chemistry-table__header {
+      display: none;
+    }
+
+    .chemistry-table--catalog-full .chemistry-table__row,
+    .chemistry-table--stock-full .chemistry-table__row,
+    .chemistry-table--batches-full .chemistry-table__row {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      padding: var(--space-4);
+      margin-bottom: var(--space-3);
+    }
+
+    .chemistry-table--catalog-full .chemistry-table__row > *,
+    .chemistry-table--stock-full .chemistry-table__row > *,
+    .chemistry-table--batches-full .chemistry-table__row > * {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--space-3);
+      width: 100%;
+      padding: var(--space-2) 0;
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: right;
+      min-width: 0;
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    .chemistry-table--catalog-full .chemistry-table__row > *::before,
+    .chemistry-table--stock-full .chemistry-table__row > *::before,
+    .chemistry-table--batches-full .chemistry-table__row > *::before {
+      content: '';
+      font-size: var(--font-caption);
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-align: left;
+      flex: 0 1 46%;
+      min-width: 0;
+    }
+
+    .chemistry-table--catalog-full .chemistry-table__row > *:nth-child(1)::before {
+      content: 'Название';
+    }
+
+    .chemistry-table--catalog-full .chemistry-table__row > *:nth-child(2)::before {
+      content: 'Остаток';
+    }
+
+    .chemistry-table--catalog-full .chemistry-table__row > *:nth-child(3)::before {
+      content: 'Мин. остаток';
+    }
+
+    .chemistry-table--catalog-full .chemistry-table__row > *:nth-child(4)::before {
+      content: 'Статус';
+    }
+
+    .chemistry-table--catalog-full .chemistry-table__row > *:nth-child(5)::before {
+      content: 'Действия';
+    }
+
+    .chemistry-table--stock-full .chemistry-table__row > *:nth-child(1)::before {
+      content: 'Химия';
+    }
+
+    .chemistry-table--stock-full .chemistry-table__row > *:nth-child(2)::before {
+      content: 'Остаток';
+    }
+
+    .chemistry-table--stock-full .chemistry-table__row > *:nth-child(3)::before {
+      content: 'Ед.';
+    }
+
+    .chemistry-table--stock-full .chemistry-table__row > *:nth-child(4)::before {
+      content: 'Статус';
+    }
+
+    .chemistry-table--batches-full .chemistry-table__row > *:nth-child(1)::before {
+      content: 'Дата';
+    }
+
+    .chemistry-table--batches-full .chemistry-table__row > *:nth-child(2)::before {
+      content: 'Химия';
+    }
+
+    .chemistry-table--batches-full .chemistry-table__row > *:nth-child(3)::before {
+      content: 'Произведено';
+    }
+
+    .chemistry-table--batches-full .chemistry-table__row > *:nth-child(4)::before {
+      content: 'Осталось';
+    }
+
+    .chemistry-table--batches-full .chemistry-table__row > *:nth-child(5)::before {
+      content: 'Себест. / кг';
+    }
+
+    .chemistry-table--batches-full .chemistry-table__row > *:nth-child(6)::before {
+      content: 'Себест. всего';
+    }
+
+    .chemistry-table--batches-full .chemistry-table__row > *:nth-child(7)::before {
+      content: 'Комментарий';
+    }
+
+    .chemistry-table__cell-clip,
+    .chemistry-table__name {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+    }
+  }
+}
+

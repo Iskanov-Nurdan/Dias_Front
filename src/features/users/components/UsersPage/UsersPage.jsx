@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useDiscardOnClose, useDirtyFromBaseline, useIsMobile } from '../../../../shared/hooks';
 import { useServerQuery } from '../../../../shared/lib';
 import {
@@ -10,7 +10,6 @@ import {
   ActionMenu,
   useToast,
   Select,
-  FiltersModal,
 } from '../../../../shared/ui';
 import { useAuth } from '../../../auth/model';
 import { createUser, updateUser, deleteUser, updateUserAccess, getUser } from '../../api/usersApi';
@@ -28,15 +27,6 @@ const USERS_FILTERS_PRIMARY = (roleOptions) => [
   { key: 'role', type: 'select', placeholder: 'Роль', options: roleOptions },
 ];
 
-const USERS_FILTERS_ROLE_ONLY = (rolesList) => [
-  {
-    key: 'role',
-    type: 'select',
-    placeholder: 'Роль',
-    options: rolesList.map((r) => ({ value: String(r.id), label: r.name })),
-  },
-];
-
 const USERS_FILTERS_EXTRA = () => [
   { key: 'is_active', type: 'select', placeholder: 'Статус', options: [
     { value: 'true', label: 'Активные' },
@@ -50,6 +40,25 @@ const USERS_FILTERS_EXTRA = () => [
   ]},
 ];
 
+const USERS_FILTERS_ALL = (roleOptions) => [...USERS_FILTERS_PRIMARY(roleOptions), ...USERS_FILTERS_EXTRA()];
+
+const ADMINISTRATOR_ROLE_NAME_LC = 'администратор';
+
+const isProtectedRole = (r) =>
+  Boolean(r) && String(r.name || '').trim().toLowerCase() === ADMINISTRATOR_ROLE_NAME_LC;
+
+const sortRolesForDisplay = (list) => {
+  const copy = [...(list || [])];
+  copy.sort((a, b) => {
+    const pa = isProtectedRole(a);
+    const pb = isProtectedRole(b);
+    if (pa && !pb) return -1;
+    if (!pa && pb) return 1;
+    return String(a.name || '').localeCompare(String(b.name || ''), 'ru');
+  });
+  return copy;
+};
+
 const cleanQuery = (q) => {
   const copy = { ...q };
   Object.keys(copy).forEach((k) => {
@@ -61,7 +70,6 @@ const cleanQuery = (q) => {
 const UsersPage = () => {
   const toast = useToast();
   const isMobile = useIsMobile();
-  const [usersFiltersOpen, setUsersFiltersOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('users');
   const [queryState, setQueryState] = useState({
     page: 1,
@@ -90,7 +98,12 @@ const UsersPage = () => {
     { enabled: true }
   );
 
-  const roleOptions = [{ value: '', label: 'Все' }, ...roles.map((r) => ({ value: String(r.id), label: r.name }))];
+  const sortedRoles = useMemo(() => sortRolesForDisplay(roles), [roles]);
+
+  const roleOptions = useMemo(
+    () => [{ value: '', label: 'Все' }, ...sortedRoles.map((r) => ({ value: String(r.id), label: r.name }))],
+    [sortedRoles],
+  );
 
   const handleFilterChange = useCallback((patch) => {
     setQueryState((prev) => ({ ...prev, ...patch, page: 1 }));
@@ -121,6 +134,8 @@ const UsersPage = () => {
     setSubmitError('');
     try {
       if (roleModal?.id) {
+        const existing = roles.find((x) => x.id === roleModal.id) || roleModal;
+        if (isProtectedRole(existing)) return;
         await updateRole(roleModal.id, data);
       } else {
         await createRole(data);
@@ -161,6 +176,10 @@ const UsersPage = () => {
       if (deleteTarget.type === 'user') {
         await deleteUser(deleteTarget.id);
       } else {
+        if (isProtectedRole({ name: deleteTarget.name })) {
+          setDeleteTarget(null);
+          return;
+        }
         await deleteRole(deleteTarget.id);
       }
       setDeleteTarget(null);
@@ -228,7 +247,7 @@ const UsersPage = () => {
         <ServerList
           loading={rolesLoading}
           error={rolesError}
-          items={roles}
+          items={sortedRoles}
           meta={{ page: 1, total_pages: 1 }}
           onRetry={refetchRoles}
           renderTable={(listItems) => (
@@ -240,13 +259,16 @@ const UsersPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {listItems.map((r) => (
+                {listItems.map((r) => {
+                  const locked = isProtectedRole(r);
+                  return (
                   <tr
                     key={r.id}
-                    tabIndex={0}
-                    role="button"
-                    onClick={() => setRoleModal(r)}
-                    onKeyDown={(e) => {
+                    tabIndex={locked ? undefined : 0}
+                    role={locked ? undefined : 'button'}
+                    className={locked ? 'data-table__row--no-actions' : undefined}
+                    onClick={locked ? undefined : () => setRoleModal(r)}
+                    onKeyDown={locked ? undefined : (e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
                         setRoleModal(r);
@@ -255,15 +277,18 @@ const UsersPage = () => {
                   >
                     <td className="data-table__cell--lead">{r.name}</td>
                     <td>
+                      {!locked && (
                       <ActionMenu
                         ariaLabel="Действия"
                         items={[
                           { label: 'Удалить', danger: true, onClick: () => setDeleteTarget({ type: 'role', id: r.id, name: r.name }) },
                         ]}
                       />
+                      )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -277,60 +302,16 @@ const UsersPage = () => {
           items={users}
           meta={meta}
           onRetry={refetch}
-          renderFilters={() =>
-            isMobile ? (
-              <>
-                <div className="users-page__filters users-page__filters--mobile">
-                  <div className="users-page__filters-mobile-row">
-                    <input
-                      type="search"
-                      className="ds-toolbar__search ds-toolbar__search--full"
-                      placeholder="Поиск"
-                      value={queryState.search}
-                      onChange={(e) => handleFilterChange({ search: e.target.value })}
-                    />
-                    <button
-                      type="button"
-                      className="btn btn--secondary"
-                      onClick={() => setUsersFiltersOpen(true)}
-                    >
-                      Фильтры
-                    </button>
-                  </div>
-                </div>
-                <FiltersModal
-                  open={usersFiltersOpen}
-                  onClose={() => setUsersFiltersOpen(false)}
-                  onReset={() => handleFilterChange({ role: '', is_active: '', ordering: '' })}
-                  title="Фильтры"
-                >
-                  <FilterBar
-                    stack
-                    filters={[...USERS_FILTERS_ROLE_ONLY(roles), ...USERS_FILTERS_EXTRA()]}
-                    queryState={cleanQuery(queryState)}
-                    onChange={handleFilterChange}
-                  />
-                </FiltersModal>
-              </>
-            ) : (
-              <div className="users-page__filters">
-                <FilterBar
-                  variant="row"
-                  filters={USERS_FILTERS_PRIMARY(roleOptions)}
-                  queryState={cleanQuery(queryState)}
-                  onChange={handleFilterChange}
-                />
-                <Collapse title="Ещё фильтры">
-                  <FilterBar
-                    variant="row"
-                    filters={USERS_FILTERS_EXTRA()}
-                    queryState={cleanQuery(queryState)}
-                    onChange={handleFilterChange}
-                  />
-                </Collapse>
-              </div>
-            )
-          }
+          renderFilters={() => (
+            <div className={`users-page__filters users-page__filters--row${isMobile ? ' users-page__filters--mobile' : ''}`}>
+              <FilterBar
+                variant="row"
+                filters={USERS_FILTERS_ALL(roleOptions)}
+                queryState={cleanQuery(queryState)}
+                onChange={handleFilterChange}
+              />
+            </div>
+          )}
           filtersClassName="server-list__filters--tight"
           renderTable={(listItems) => (
             <table className="data-table data-table--fixed data-table--users data-table--row-actions data-table--clickable">
@@ -394,7 +375,7 @@ const UsersPage = () => {
       {userModal && (
         <UserFormModal
           user={userModal?.id ? userModal : null}
-          roles={roles}
+          roles={sortedRoles}
           onSubmit={handleUserSubmit}
           onClose={() => { setUserModal(null); setSubmitError(''); }}
           error={submitError}

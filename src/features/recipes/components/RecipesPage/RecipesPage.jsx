@@ -9,7 +9,7 @@ import {
   getApiErrorMessage,
   parseApiListResponse,
 } from '../../../../shared/lib';
-import { Loading, EmptyState, ErrorState, ConfirmModal, useToast, DecimalInput, Select } from '../../../../shared/ui';
+import { Loading, EmptyState, ErrorState, ConfirmModal, useToast, DecimalInput, Select, ActionMenu } from '../../../../shared/ui';
 import {
   createRecipe,
   updateRecipe,
@@ -232,22 +232,17 @@ const RecipesPage = () => {
   };
 
   const openRecipeView = (e, r) => {
-    if (e.target.closest('button') || e.target.closest('.recipes-table__actions')) return;
+    if (e.target.closest('button') || e.target.closest('.recipes-table__actions') || e.target.closest('.action-menu')) return;
     setViewRecipeId(r.id);
   };
 
   return (
     <div className="page page--recipes">
-      <h1 className="page__title">Рецепты (профиля)</h1>
-      <p className="recipes-page__lede">
-        Сначала создайте профиль (конечный вид изделия), затем рецепт для этого профиля. Рецепт задаёт только норму расхода на 1 м (сырьё и/или химия); списаний и производственных партий не создаёт — факт производства оформляется только как ProductionBatch.
-      </p>
+      <h1 className="page__title">Рецепты</h1>
 
       {!loading && plasticProfiles.length === 0 && (
         <div className="recipes-filter-banner" role="alert">
-          <span>Профилей ещё нет — </span>
-          <Link to="/profiles">перейдите в «Профили»</Link>
-          <span> и создайте профиль, иначе рецепт не к чему привязать.</span>
+          <Link to="/profiles">Создать профиль</Link>
         </div>
       )}
 
@@ -292,10 +287,7 @@ const RecipesPage = () => {
         {error && error.status !== 404 && <ErrorState error={error} onRetry={refetchRecipes} />}
         {!loading && (!error || error.status === 404) && (
           recipeList.length === 0 ? (
-            <EmptyState
-              title={filterProfileId ? 'Нет рецептов для этого профиля' : 'Нет рецептов'}
-              description={filterProfileId ? 'Создайте рецепт в разделе «Профили» или нажмите «Добавить рецепт».' : undefined}
-            />
+            <EmptyState title="Нет рецептов" />
           ) : (
             <div className="recipes-table-wrap">
               <div className="recipes-table recipes-table--main">
@@ -329,49 +321,30 @@ const RecipesPage = () => {
                       <div className="recipes-table__actions" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
-                          className="btn btn--secondary btn--sm"
+                          className="btn btn--primary btn--sm"
                           onClick={() => { setSubmitError(''); setMetaModal(r); }}
                         >
                           Редактировать
                         </button>
-                        <button
-                          type="button"
-                          className="btn btn--secondary btn--sm"
-                          onClick={() => setCompositionModal({ id: r.id, name: recipeDisplayName(r) })}
-                        >
-                          Состав
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn--secondary btn--sm"
-                          onClick={() => setAvailabilityRecipeId(r.id)}
-                        >
-                          Проверить доступность
-                        </button>
-                        {active && (
-                          <button
-                            type="button"
-                            className="btn btn--secondary btn--sm"
-                            onClick={() => { setDeactivateError(''); setDeactivateTarget(r); }}
-                          >
-                            Деактивировать
-                          </button>
-                        )}
-                        {canDeleteRecipe(r) && (
-                          <button
-                            type="button"
-                            className="btn btn--danger btn--sm"
-                            onClick={() => {
-                              setDeleteError('');
-                              setDeleteTarget({
-                                id: r.id,
-                                name: recipeDisplayName(r),
-                              });
-                            }}
-                          >
-                            Удалить
-                          </button>
-                        )}
+                        <ActionMenu
+                          items={[
+                            { label: 'Состав', onClick: () => setCompositionModal({ id: r.id, name: recipeDisplayName(r) }) },
+                            { label: 'Проверка остатков', onClick: () => setAvailabilityRecipeId(r.id) },
+                            ...(active
+                              ? [{ label: 'Деактивировать', onClick: () => { setDeactivateError(''); setDeactivateTarget(r); } }]
+                              : []),
+                            ...(canDeleteRecipe(r)
+                              ? [{
+                                label: 'Удалить',
+                                danger: true,
+                                onClick: () => {
+                                  setDeleteError('');
+                                  setDeleteTarget({ id: r.id, name: recipeDisplayName(r) });
+                                },
+                              }]
+                              : []),
+                          ]}
+                        />
                       </div>
                     </div>
                   );
@@ -616,9 +589,6 @@ const RecipeMetaModal = ({
                 { value: 'inactive', label: 'неактивен' },
               ]}
             />
-            <p className="recipe-modal__hint">
-              Состав задаётся в окне «Состав». Рецепт только хранит норму на 1 м; списание и партия производства — только при создании ProductionBatch.
-            </p>
             {error && <p className="modal__error">{error}</p>}
             <div className="modal__actions">
               <button
@@ -855,9 +825,6 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
           <Loading />
         ) : (
           <div className="modal__body">
-            <p className="recipe-modal__hint">
-              Одна строка состава — один компонент из списка (сырьё или химия). Норма <strong>quantity_per_meter</strong> — кг на 1 м профиля. Рецепт не списывает остатки; списание выполняется при создании партии производства.
-            </p>
             <label>Компонент (сырьё или химия) *</label>
             <div className="recipe-modal__row">
               <div className="recipe-modal__pick-wrap" ref={unifiedPickRef}>
@@ -1088,7 +1055,6 @@ const AvailabilityModal = ({ recipeId, title, onClose }) => {
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <div className="modal__body">
-          <p className="recipe-modal__hint">Оценка «хватает ли сырья и химии на 1 м» по текущим остаткам — только для информации.</p>
           {loading && <Loading />}
           {!loading && err && <p className="modal__error">{err}</p>}
           {!loading && !err && (

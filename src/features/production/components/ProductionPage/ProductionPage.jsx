@@ -6,7 +6,7 @@ import {
   formatNumberForInput,
   getApiErrorMessage,
 } from '../../../../shared/lib';
-import { Loading, EmptyState, ErrorState, useToast, ConfirmModal } from '../../../../shared/ui';
+import { Loading, EmptyState, ErrorState, useToast, ConfirmModal, ActionMenu } from '../../../../shared/ui';
 import { useOperationalRefetch } from '../../../../shared/realtime';
 import ProductionBatchModal from '../../../lines/components/ProductionBatchModal';
 import ProductionBatchDetailModal from '../ProductionBatchDetailModal/ProductionBatchDetailModal';
@@ -117,20 +117,11 @@ const ProductionPage = () => {
             />
           </div>
           <div className="ds-toolbar__end production-card__toolbar-actions">
-            <button type="button" className="btn btn--secondary" onClick={() => refetch()}>
-              Обновить
-            </button>
             <button type="button" className="btn btn--primary" onClick={() => setModalOpen(true)}>
               Новая партия
             </button>
           </div>
         </div>
-
-        <p className="production-card__lede">
-          Партия производства (ProductionBatch) — единственный факт выпуска: здесь же списание сырья и химии (FIFO),
-          расчёт total_meters и себестоимости на стороне сервера. В интерфейсе вводятся только линия (с открытой сменой),
-          профиль, рецепт этого профиля, количество штук и длина одной штуки. Метраж и себестоимость вручную не задаются.
-        </p>
 
         {loading && <Loading />}
         {error && <ErrorState error={error} onRetry={refetch} />}
@@ -179,13 +170,6 @@ const ProductionPage = () => {
                     <span className="production-table__num">{moneyCell(cpp)}</span>
                     <span className="production-table__cell-clip">{life.label}</span>
                     <span className="production-table__actions">
-                      <button
-                        type="button"
-                        className="btn btn--ghost btn--sm"
-                        onClick={() => setDetailId(b.id)}
-                      >
-                        Детали
-                      </button>
                       {canOtk ? (
                         <button
                           type="button"
@@ -198,6 +182,11 @@ const ProductionPage = () => {
                           В ОТК
                         </button>
                       ) : null}
+                      <ActionMenu
+                        items={[
+                          { label: 'Детали', onClick: () => setDetailId(b.id) },
+                        ]}
+                      />
                     </span>
                   </div>
                 );
@@ -225,11 +214,7 @@ const ProductionPage = () => {
       <ConfirmModal
         open={otkTarget != null}
         title="Передать партию в ОТК?"
-        message={
-          otkTarget
-            ? `ProductionBatch #${otkTarget.id} · ${profileLabel(otkTarget)} · ${recipeLabel(otkTarget)}. Дальше по цепочке: ОТК → склад готовой продукции.`
-            : ''
-        }
+        message={otkTarget ? `Партия #${otkTarget.id} · ${profileLabel(otkTarget)} · ${recipeLabel(otkTarget)}` : ''}
         confirmText={otkBusy ? 'Отправка…' : 'Отправить'}
         onCancel={() => {
           if (!otkBusy) {

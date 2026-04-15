@@ -542,9 +542,6 @@ const MaterialsPage = () => {
 
         {mainTab === MAIN_TAB.MOVEMENTS && (
           <>
-            <p className="materials-history__hint">
-              Списание сырья выполняется системой (химия, производство профиля), FIFO со старых партий. Ручного списания здесь нет.
-            </p>
             {movementsLoading && <Loading />}
             {movementsError && movementsError.status !== 404 && (
               <ErrorState error={movementsError} onRetry={refetchMovements} />
@@ -725,9 +722,6 @@ const AddCatalogMaterialModal = ({ units, onSubmit, onClose, error }) => {
               { value: 'inactive', label: 'неактивен' },
             ]}
           />
-          <p className="materials-page__lede" style={{ marginTop: '0.75rem' }}>
-            Остаток появится после оформления прихода. Списание — только через химию и производство (FIFO).
-          </p>
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
             <button type="submit" className="btn btn--primary">Сохранить</button>
@@ -802,10 +796,8 @@ const EditMaterialModal = ({ materialId, initial, unitLocked, onSubmit, onClose,
             onChange={setUnit}
             options={UNITS.map((u) => ({ value: u.value, label: u.label }))}
             disabled={unitLocked}
+            title={unitLocked ? 'Единица заблокирована после приходов' : undefined}
           />
-          {unitLocked && (
-            <p className="materials-page__lede">Единицу нельзя менять: уже были приходы или движения.</p>
-          )}
           <label>Статус *</label>
           <Select
             value={isActive ? 'active' : 'inactive'}
@@ -953,11 +945,7 @@ const ReplenishModal = ({ material, onSubmit, onClose, error }) => {
               )}
             </>
           )}
-          {!pickMode && (
-            <p className="materials-page__lede" style={{ marginBottom: '0.75rem' }}>
-              Сырьё: <strong>{mname}</strong>
-            </p>
-          )}
+          {!pickMode && <p style={{ margin: '0 0 0.5rem', fontWeight: 600 }}>{mname}</p>}
           <label>Количество *</label>
           <DecimalInput min={0} value={quantity} onChange={setQuantity} required placeholder="Напр. 10 или 0,5" />
           <label>Единица</label>
@@ -965,7 +953,7 @@ const ReplenishModal = ({ material, onSubmit, onClose, error }) => {
           <label>Цена за единицу (сом) *</label>
           <DecimalInput min={0} value={pricePerUnit} onChange={setPricePerUnit} required />
           {batchSum != null && Number.isFinite(batchSum) && (
-            <p className="materials-page__lede">Сумма партии: <strong>{formatQuantityDisplay(batchSum)} сом</strong></p>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem' }}>{formatQuantityDisplay(batchSum)} сом</p>
           )}
           <label>Дата прихода *</label>
           <input

@@ -107,12 +107,13 @@ const Select = ({
           role="option"
           aria-selected={opt.value === value}
           className={`dias-select__option ${opt.value === value ? 'dias-select__option--selected' : ''}`}
+          title={typeof opt.label === 'string' ? opt.label : undefined}
           onMouseDown={(e) => {
             e.preventDefault();
             handleSelect(opt);
           }}
         >
-          {opt.label}
+          <span className="dias-select__option-text">{opt.label}</span>
         </li>
       ))}
     </ul>
@@ -146,12 +147,13 @@ const Select = ({
               role="option"
               aria-selected={opt.value === value}
               className={`dias-select-sheet__option ${opt.value === value ? 'dias-select-sheet__option--selected' : ''}`}
+              title={typeof opt.label === 'string' ? opt.label : undefined}
               onMouseDown={(e) => {
                 e.preventDefault();
                 handleSelect(opt);
               }}
             >
-              {opt.label}
+              <span className="dias-select-sheet__option-text">{opt.label}</span>
             </li>
           ))}
         </ul>

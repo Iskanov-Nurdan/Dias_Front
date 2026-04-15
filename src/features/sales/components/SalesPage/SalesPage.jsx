@@ -194,13 +194,8 @@ const SalesPage = () => {
   return (
     <div className="page page--sales">
       <div className="ds-toolbar ds-toolbar--page-head ds-toolbar--stack-mobile">
-        <div className="ds-toolbar__start">
-          <p className="sales-page__lede">
-            Продажа списывает только с <strong>склада готовой продукции</strong> (выбор партии со статусом «доступно»). Цепочка: производство (ProductionBatch) → ОТК → склад → продажа.
-          </p>
-        </div>
-        <div className="ds-toolbar__end ds-hide-mobile">
-          <button type="button" className="btn btn--primary" onClick={() => setModalSale({})}>
+        <div className="ds-toolbar__end" style={{ marginLeft: 'auto' }}>
+          <button type="button" className="btn btn--primary ds-hide-mobile" onClick={() => setModalSale({})}>
             Создать
           </button>
         </div>
@@ -718,9 +713,6 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
             }
           }}
         >
-          <p className="sales-modal__chain-hint" style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', lineHeight: 1.45 }}>
-            Отгрузка только со склада готовой продукции: выберите партию из списка (после производства и ОТК).
-          </p>
           <label>Дата продажи</label>
           <input
             type="date"

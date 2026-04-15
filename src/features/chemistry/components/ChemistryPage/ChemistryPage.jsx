@@ -7,7 +7,7 @@ import {
   parseLocaleNumber,
   getApiErrorMessage,
 } from '../../../../shared/lib';
-import { Loading, EmptyState, ErrorState, useToast, DecimalInput, Select, ConfirmModal } from '../../../../shared/ui';
+import { Loading, EmptyState, ErrorState, useToast, DecimalInput, Select, ConfirmModal, ActionMenu } from '../../../../shared/ui';
 import {
   getChemistryBalances,
   produceChemistry,
@@ -187,9 +187,6 @@ const AddChemistryModal = ({ onClose, onSaved, error: parentError }) => {
               { value: 'inactive', label: 'неактивен' },
             ]}
           />
-          <p className="chemistry-element-form__hint">
-            Состав и остатки появятся позже: сначала задайте <strong>Состав</strong>, затем <strong>Выпуск</strong>.
-          </p>
           {(localError || parentError) && <p className="modal__error">{localError || parentError}</p>}
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>Отмена</button>
@@ -270,16 +267,10 @@ const EditChemistryModal = ({
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <form className="modal__body chemistry-element-form" onSubmit={handleSubmit}>
-          <p className="chemistry-element-form__hint">
-            Изменение состава — в отдельном окне «Состав»; на уже выпущенные партии не влияет.
-          </p>
           <label>Название *</label>
           <input value={name} onChange={(ev) => setName(ev.target.value)} required />
           <label>Единица *</label>
           <Select value={unit} onChange={setUnit} options={UNITS} disabled={unitLocked} />
-          {unitLocked && (
-            <p className="chemistry-element-form__hint">Единицу нельзя менять после выпуска партий.</p>
-          )}
           <label>Минимальный остаток</label>
           <DecimalInput min={0} value={minBalance} onChange={setMinBalance} />
           <label>Комментарий</label>
@@ -380,9 +371,6 @@ const CompositionModal = ({
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <form className="modal__body chemistry-element-form" onSubmit={handleSubmit}>
-          <p className="chemistry-element-form__hint">
-            Только <strong>сырьё</strong> (не другая химия). <code>quantity_per_unit</code> — кг сырья на 1 кг химии.
-          </p>
           {detailLoading ? (
             <Loading />
           ) : (
@@ -492,7 +480,7 @@ const ProduceChemistryModal = ({ initialChemistryId, onClose, onSuccess }) => {
     <div className="modal-overlay" role="presentation" onClick={onClose}>
       <div className="modal modal--wide" onClick={(ev) => ev.stopPropagation()}>
         <div className="modal__head">
-          <h3>Выпуск полуфабриката (химия)</h3>
+          <h3>Выпуск</h3>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <form className="modal__body" onSubmit={handleSubmit}>
@@ -507,9 +495,6 @@ const ProduceChemistryModal = ({ initialChemistryId, onClose, onSuccess }) => {
           <DecimalInput min={0} value={qty} onChange={setQty} required placeholder="Сколько выпустить" />
           <label>Комментарий</label>
           <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Опционально" />
-          <p className="chemistry-element-form__hint">
-            Система проверит остатки сырья, спишет FIFO и создаст партию учёта химии с себестоимостью. Это не партия профиля (ProductionBatch).
-          </p>
           {err && <p className="modal__error">{err}</p>}
           <div className="modal__actions">
             <button type="submit" className="btn btn--primary" disabled={saving || !chemistryId}>
@@ -675,7 +660,7 @@ const ChemistryPage = () => {
 
   return (
     <div className="page page--chemistry">
-      <h1 className="page__title">Химия (полуфабрикат)</h1>
+      <h1 className="page__title">Химия</h1>
 
       <div className="chemistry-tabs" role="tablist">
         <button
@@ -710,12 +695,6 @@ const ChemistryPage = () => {
       {mainTab === MAIN_TAB.CATALOG && (
         <div className="chemistry-card">
           <div className="chemistry-card__head ds-toolbar ds-toolbar--in-card">
-            <div className="ds-toolbar__start">
-              <p className="chemistry-page__lede chemistry-stock__lede" style={{ margin: 0 }}>
-                Химия производится внутри системы (не покупается как сырьё). Выпуск — единственный источник остатка.
-                Учёт выпуска здесь — полуфабрикат (RecipeRun), не партия профиля ProductionBatch.
-              </p>
-            </div>
             <div className="ds-toolbar__end chemistry-card__toolbar-actions">
               <button type="button" className="btn btn--primary" onClick={() => { setSubmitError(''); setAddOpen(true); }}>
                 Добавить химию
@@ -754,29 +733,21 @@ const ChemistryPage = () => {
                       </span>
                       <span>{active ? 'активен' : 'неактивен'}</span>
                       <div className="chemistry-table__actions chemistry-table__actions--wrap">
-                        <button type="button" className="btn btn--secondary btn--sm" onClick={() => { setSubmitError(''); setEditTarget(row); }}>
-                          Редактировать
-                        </button>
-                        <button type="button" className="btn btn--secondary btn--sm" onClick={() => { setSubmitError(''); setCompositionTarget(row); }}>
-                          Состав
-                        </button>
                         <button type="button" className="btn btn--primary btn--sm" onClick={() => openProduce(row.id)}>
                           Выпуск
                         </button>
-                        {active && (
-                          <button type="button" className="btn btn--secondary btn--sm" onClick={() => setDeactivateTarget(row)}>
-                            Деактивировать
-                          </button>
-                        )}
-                        {canDeleteChemistry(row) && (
-                          <button
-                            type="button"
-                            className="btn btn--danger btn--sm"
-                            onClick={() => setDeleteTarget({ id: row.id, name: row.name })}
-                          >
-                            Удалить
-                          </button>
-                        )}
+                        <ActionMenu
+                          items={[
+                            { label: 'Редактировать', onClick: () => { setSubmitError(''); setEditTarget(row); } },
+                            { label: 'Состав', onClick: () => { setSubmitError(''); setCompositionTarget(row); } },
+                            ...(active
+                              ? [{ label: 'Деактивировать', onClick: () => setDeactivateTarget(row) }]
+                              : []),
+                            ...(canDeleteChemistry(row)
+                              ? [{ label: 'Удалить', danger: true, onClick: () => setDeleteTarget({ id: row.id, name: row.name }) }]
+                              : []),
+                          ]}
+                        />
                       </div>
                     </div>
                   );
@@ -790,11 +761,6 @@ const ChemistryPage = () => {
       {mainTab === MAIN_TAB.STOCK && (
         <div className="chemistry-card chemistry-card--stock">
           <div className="chemistry-card__head ds-toolbar ds-toolbar--in-card">
-            <div className="ds-toolbar__start">
-              <p className="chemistry-page__lede chemistry-stock__lede" style={{ margin: 0 }}>
-                Статус остатка: норма / мало / нет в наличии. Списание химии — только при производстве профиля (FIFO по партиям).
-              </p>
-            </div>
             <div className="ds-toolbar__end chemistry-card__toolbar-actions">
               <button type="button" className="btn btn--primary" onClick={() => openProduce(null)}>Выпуск</button>
             </div>
@@ -833,13 +799,6 @@ const ChemistryPage = () => {
 
       {mainTab === MAIN_TAB.BATCHES && (
         <div className="chemistry-card chemistry-card--stock">
-          <div className="chemistry-card__head ds-toolbar ds-toolbar--in-card">
-            <div className="ds-toolbar__start">
-              <p className="chemistry-page__lede chemistry-stock__lede" style={{ margin: 0 }}>
-                Партии выпуска химии; списание сырья при выпуске — FIFO.
-              </p>
-            </div>
-          </div>
           {batchesLoading && <Loading />}
           {batchesError && <ErrorState error={batchesError} onRetry={refetchBatches} />}
           {!batchesLoading && !batchesError && (!batchItems || batchItems.length === 0) ? (

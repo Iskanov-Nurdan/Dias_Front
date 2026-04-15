@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useDiscardOnClose, useDirtyFromBaseline, useIsMobile } from '../../../../shared/hooks';
+import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
 import {
   useServerQuery,
   formatNumberForInput,
@@ -11,7 +11,7 @@ import {
   getWarehouseQuantityPresentation,
 } from '../../../../shared/lib';
 import { buildWarehouseBatchCardRows } from '../warehouseBatchCard';
-import { EmptyState, ErrorState, Loading, useToast, DecimalInput, ConfirmModal, ActionMenu, FiltersModal } from '../../../../shared/ui';
+import { EmptyState, ErrorState, Loading, useToast, DecimalInput, ConfirmModal, ActionMenu } from '../../../../shared/ui';
 import Select from '../../../../shared/ui/Select/Select';
 import { apiClient } from '../../../../shared/api';
 import { useOperationalRefetch } from '../../../../shared/realtime';
@@ -49,8 +49,6 @@ const WarehouseBatchDetailModal = ({ batch, onClose }) => {
 
 const WarehousePage = () => {
   const toast = useToast();
-  const isMobile = useIsMobile();
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [queryState, setQueryState] = useState({
     page: 1,
     page_size: 20,
@@ -90,10 +88,6 @@ const WarehousePage = () => {
 
   return (
     <div className="page page--warehouse">
-      <p className="page--warehouse__chain-lede" style={{ margin: '0 0 1rem', maxWidth: '52rem', fontSize: '0.95rem', lineHeight: 1.45 }}>
-        Склад готовой продукции принимает выход после производства: <strong>ProductionBatch</strong> → контроль <strong>ОТК</strong> →
-        учёт и упаковка здесь. Производство не ведётся со страницы склада; отгрузка в продажах — только с доступных партий этого склада.
-      </p>
       <div className="page--warehouse__toolbar ds-toolbar ds-toolbar--page-head ds-toolbar--stack-mobile">
         <div className="ds-toolbar__start page--warehouse__filters">
           <input
@@ -103,12 +97,7 @@ const WarehousePage = () => {
             value={queryState.search}
             onChange={(e) => setQueryState((p) => ({ ...p, search: e.target.value, page: 1 }))}
           />
-          {isMobile && (
-            <button type="button" className="btn btn--secondary page--warehouse__filters-btn" onClick={() => setFiltersOpen(true)}>
-              Фильтры
-            </button>
-          )}
-          <div className="page--warehouse__filters-inline ds-hide-mobile">
+          <div className="page--warehouse__filters-inline">
             <Select
               className="page--warehouse__select"
               value={queryState.status}
@@ -135,7 +124,7 @@ const WarehousePage = () => {
             />
           </div>
         </div>
-        <div className="ds-toolbar__end ds-hide-mobile">
+        <div className="ds-toolbar__end page--warehouse__toolbar-primary ds-hide-mobile">
           <button
             type="button"
             className="btn btn--primary"
@@ -145,44 +134,6 @@ const WarehousePage = () => {
           </button>
         </div>
       </div>
-
-      {isMobile && (
-        <FiltersModal
-          open={filtersOpen}
-          onClose={() => setFiltersOpen(false)}
-          onReset={() => setQueryState((p) => ({ ...p, status: '', inventory_form: '', page: 1 }))}
-          title="Фильтры"
-        >
-          <div className="page--warehouse__modal-filters">
-            <label className="page--warehouse__modal-label">Статус</label>
-            <Select
-              className="page--warehouse__select"
-              value={queryState.status}
-              placeholder="Статус"
-              options={[
-                { value: '', label: 'Все статусы' },
-                { value: 'available', label: 'Доступно' },
-                { value: 'reserved', label: 'Резерв' },
-                { value: 'shipped', label: 'Продано' },
-              ]}
-              onChange={(val) => setQueryState((p) => ({ ...p, status: val, page: 1 }))}
-            />
-            <label className="page--warehouse__modal-label">Форма хранения</label>
-            <Select
-              className="page--warehouse__select"
-              value={queryState.inventory_form}
-              placeholder="Форма"
-              options={[
-                { value: '', label: 'Все формы' },
-                { value: 'unpacked', label: 'Не упаковано' },
-                { value: 'packed', label: 'Упаковано' },
-                { value: 'open_package', label: 'Открытая упаковка' },
-              ]}
-              onChange={(val) => setQueryState((p) => ({ ...p, inventory_form: val, page: 1 }))}
-            />
-          </div>
-        </FiltersModal>
-      )}
 
       <div className="ds-sticky-mobile-actions">
         <button

@@ -8,6 +8,16 @@
   backdrop-filter: blur(4px);
   @include flex-center;
   z-index: var(--z-modal);
+  padding: var(--space-4);
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
+  align-items: flex-start;
+
+  @include desktop-only {
+    padding: var(--space-6);
+    align-items: center;
+  }
 }
 
 .modal {
@@ -15,6 +25,12 @@
   --modal-padding-y: var(--space-4);
   --modal-actions-padding-y: var(--space-4);
   --modal-actions-padding-bottom: var(--space-5);
+
+  margin: auto 0;
+
+  @include desktop-only {
+    margin: 0;
+  }
 
   background: var(--card);
   border: none;
@@ -346,7 +362,7 @@
 
 @include mobile {
   .modal-overlay {
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     padding: var(--space-4);
     padding-top: max(var(--space-4), env(safe-area-inset-top, 0px));

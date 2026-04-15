@@ -176,11 +176,6 @@ const ProductionBatchModal = ({ lineId: lineIdProp, lineName, onClose, onSuccess
             <Loading />
           ) : (
             <form onSubmit={handleSubmit}>
-              <p className="production-batch-modal__hint">
-                Партия производства (ProductionBatch) — единственный момент, где фиксируются списание сырья/химии (FIFO),
-                total_meters и себестоимость: всё считает сервер. Вводятся только профиль, рецепт, линия, штуки и длина штуки.
-                Смена на линии должна быть открыта (без паузы).
-              </p>
               {profiles.length === 0 && (
                 <p className="modal__error" role="alert">
                   Нет профилей. Сначала создайте профиль в разделе «Профили», затем рецепт — без них партию не создать.

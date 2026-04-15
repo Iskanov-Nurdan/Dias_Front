@@ -246,6 +246,7 @@
   display: flex;
   align-items: center;
   transition: background 0.14s ease;
+  min-width: 0;
 
   &:active {
     background: var(--select-option-hover);
@@ -258,6 +259,13 @@
   }
 }
 
+.dias-select-sheet__option-text {
+  display: block;
+  min-width: 0;
+  flex: 1;
+  @include text-ellipsis;
+}
+
 .dias-select__option {
   margin: 0;
   padding: 10px 12px;
@@ -268,6 +276,7 @@
   color: var(--select-text);
   cursor: pointer;
   transition: background 0.14s ease, color 0.14s ease;
+  min-width: 0;
 
   &:hover:not(.dias-select__option--selected) {
     background: var(--select-option-hover);
@@ -278,5 +287,11 @@
     color: var(--select-option-selected-text);
     font-weight: var(--weight-normal);
   }
+}
+
+.dias-select__option-text {
+  display: block;
+  min-width: 0;
+  @include text-ellipsis;
 }
 

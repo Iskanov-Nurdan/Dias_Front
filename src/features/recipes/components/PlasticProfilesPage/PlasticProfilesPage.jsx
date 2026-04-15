@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useServerQuery, getApiErrorMessage } from '../../../../shared/lib';
-import { Loading, EmptyState, ErrorState, ConfirmModal, useToast, Select } from '../../../../shared/ui';
+import { Loading, EmptyState, ErrorState, ConfirmModal, useToast, Select, ActionMenu } from '../../../../shared/ui';
 import {
   createPlasticProfile,
   updatePlasticProfile,
@@ -132,10 +132,7 @@ const PlasticProfilesPage = () => {
 
   return (
     <div className="page page--plastic-profiles">
-      <h1 className="page__title">Профили (конечный продукт)</h1>
-      <p className="plastic-profiles__lede">
-        Профиль — конечный вид продукции и первая настройка в цепочке: сначала профиль, затем рецепт (норма на 1 м), затем факт производства — только партия ProductionBatch на линии. Без рецепта партию не создать; на одном профиле может быть несколько рецептов, в партии выбирается один.
-      </p>
+      <h1 className="page__title">Профили</h1>
 
       <div className="plastic-profiles-card">
         <div className="plastic-profiles-card__head ds-toolbar ds-toolbar--in-card">
@@ -188,43 +185,23 @@ const PlasticProfilesPage = () => {
                         >
                           Создать рецепт
                         </button>
-                        <button
-                          type="button"
-                          className="btn btn--secondary btn--sm"
-                          onClick={() => goRecipesFiltered(p.id)}
-                        >
-                          Перейти к рецептам
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn--secondary btn--sm"
-                          onClick={() => { setSubmitError(''); setMetaModal(p); }}
-                        >
-                          Редактировать
-                        </button>
-                        {active && (
-                          <button
-                            type="button"
-                            className="btn btn--secondary btn--sm"
-                            onClick={() => { setDeactivateError(''); setDeactivateTarget(p); }}
-                          >
-                            Деактивировать
-                          </button>
-                        )}
-                        {canDeleteProfile(p) && (
-                          <button
-                            type="button"
-                            className="btn btn--danger btn--sm"
-                            onClick={() => { setDeleteError(''); setDeleteTarget({ id: p.id, name: p.name }); }}
-                          >
-                            Удалить
-                          </button>
-                        )}
+                        <ActionMenu
+                          items={[
+                            { label: 'Рецепты', onClick: () => goRecipesFiltered(p.id) },
+                            { label: 'Редактировать', onClick: () => { setSubmitError(''); setMetaModal(p); } },
+                            ...(active
+                              ? [{ label: 'Деактивировать', onClick: () => { setDeactivateError(''); setDeactivateTarget(p); } }]
+                              : []),
+                            ...(canDeleteProfile(p)
+                              ? [{ label: 'Удалить', danger: true, onClick: () => { setDeleteError(''); setDeleteTarget({ id: p.id, name: p.name }); } }]
+                              : []),
+                          ]}
+                        />
                       </div>
                     </div>
                     {recs.length > 0 && (
-                      <div className="plastic-profiles-table__recipes">
-                        Рецепты: {recs.map((x) => x.title).join(', ')}
+                      <div className="plastic-profiles-table__recipes" title={recs.map((x) => x.title).join(', ')}>
+                        {recs.map((x) => x.title).join(', ')}
                       </div>
                     )}
                   </div>
@@ -335,9 +312,6 @@ const ProfileMetaModal = ({ initial, onSave, onClose, error }) => {
               { value: 'inactive', label: 'неактивен' },
             ]}
           />
-          <p className="plastic-profiles-modal__hint">
-            После сохранения добавьте рецепт — без него производство недоступно.
-          </p>
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
             <button type="submit" className="btn btn--primary" disabled={!canSave}>

@@ -1,3 +1,5 @@
+@use '../../../../shared/styles/mixins' as *;
+
 .page--production {
   .production-card {
     background: var(--ds-surface-card, #fff);
@@ -161,5 +163,114 @@
   .production-detail-modal__actions {
     margin-top: 1rem;
     flex-wrap: wrap;
+  }
+}
+
+@include mobile {
+  .page--production {
+    .production-table-wrap {
+      overflow-x: visible;
+      margin: 0;
+    }
+
+    .production-table {
+      min-width: 0;
+      gap: var(--space-3);
+    }
+
+    .production-table__header {
+      display: none;
+    }
+
+    .production-table__row {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      padding: var(--space-4);
+      margin-bottom: var(--space-3);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      background: var(--card, #fff);
+      border-bottom: none;
+    }
+
+    .production-table__row > * {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--space-3);
+      width: 100%;
+      padding: var(--space-2) 0;
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: right;
+      min-width: 0;
+
+      &:last-child {
+        border-bottom: none;
+        padding-top: var(--space-3);
+      }
+    }
+
+    .production-table__row > *::before {
+      content: '';
+      font-size: var(--font-caption);
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-align: left;
+      flex: 0 1 46%;
+      min-width: 0;
+    }
+
+    .production-table__row > *:nth-child(1)::before {
+      content: 'Создано';
+    }
+
+    .production-table__row > *:nth-child(2)::before {
+      content: 'Профиль';
+    }
+
+    .production-table__row > *:nth-child(3)::before {
+      content: 'Рецепт';
+    }
+
+    .production-table__row > *:nth-child(4)::before {
+      content: 'Линия';
+    }
+
+    .production-table__row > *:nth-child(5)::before {
+      content: 'Шт';
+    }
+
+    .production-table__row > *:nth-child(6)::before {
+      content: 'Длина, м';
+    }
+
+    .production-table__row > *:nth-child(7)::before {
+      content: 'Метры';
+    }
+
+    .production-table__row > *:nth-child(8)::before {
+      content: 'Сом/м';
+    }
+
+    .production-table__row > *:nth-child(9)::before {
+      content: 'Сом/шт';
+    }
+
+    .production-table__row > *:nth-child(10)::before {
+      content: 'Статус';
+    }
+
+    .production-table__row > *:nth-child(11)::before {
+      content: 'Действия';
+    }
+
+    .production-table__cell-clip,
+    .production-table__num {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+    }
   }
 }

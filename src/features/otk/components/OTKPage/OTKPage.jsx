@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useDiscardOnClose, useDirtyFromBaseline, useIsMobile } from '../../../../shared/hooks';
-import { Loading, EmptyState, ErrorState, FilterBar, FiltersModal, useToast, DecimalInput, ConfirmModal } from '../../../../shared/ui';
+import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
+import { Loading, EmptyState, ErrorState, FilterBar, useToast, DecimalInput, ConfirmModal } from '../../../../shared/ui';
 import {
   useServerQuery,
   formatNumberForInput,
   formatQuantityDisplay,
   parseLocaleNumber,
   otkResultStatusRu,
-  recipeOutputUnitKindRu,
 } from '../../../../shared/lib';
 import { getBatchesAwaitingOtk, getOtkHistory, acceptBatch } from '../../api';
 import { useOperationalRefetch } from '../../../../shared/realtime';
@@ -36,24 +35,6 @@ const batchTotalMetersHint = (b) => {
   return null;
 };
 
-/** Справочно: норма рецепта не списывает и не «производит» — факт выпуска только у ProductionBatch. */
-const recipeContextHint = (b) => {
-  const rname = b.recipe_name || b.recipe?.recipe || b.recipe?.name;
-  const ro =
-    b.recipe_output_quantity ??
-    b.recipe_expected_qty ??
-    b.expected_quantity ??
-    b.recipe?.output_quantity;
-  const ukindRaw = b.recipe_output_unit_kind;
-  const ukind = ukindRaw ? `, ед. нормы: ${recipeOutputUnitKindRu(ukindRaw) || ukindRaw}` : '';
-  if (ro != null && ro !== '') {
-    return rname
-      ? `Справочно по рецепту «${rname}»: ${ro}${ukind} (рецепт — только норма; списание уже в партии).`
-      : `Справочно по рецепту: ${ro}${ukind}`;
-  }
-  if (rname) return `Рецепт «${rname}» — норма на 1 м; габариты смены на линии.`;
-  return 'Объём партии — по данным ProductionBatch; габариты — из смены на линии.';
-};
 const errorToMessage = (err) => {
   const data = err?.response?.data;
   if (!data || typeof data !== 'object') return err?.message || 'Ошибка';
@@ -114,39 +95,6 @@ const updateQuery = (setter) => (patch) => {
     page: patch.page !== undefined ? patch.page : 1,
   }));
 };
-
-const OTK_AWAITING_MODAL_FILTERS = [
-  {
-    key: 'ordering',
-    type: 'ordering',
-    placeholder: 'Сортировка',
-    options: [
-      { value: 'date', label: 'Дата (возр.)' },
-      { value: '-date', label: 'Дата (убыв.)' },
-    ],
-  },
-];
-
-const OTK_HISTORY_MODAL_FILTERS = [
-  {
-    key: 'otk_status',
-    type: 'select',
-    placeholder: 'Статус',
-    options: [
-      { value: 'accepted', label: 'Принято' },
-      { value: 'rejected', label: 'Забраковано' },
-    ],
-  },
-  {
-    key: 'ordering',
-    type: 'ordering',
-    placeholder: 'Сортировка',
-    options: [
-      { value: 'otk_checked_at', label: 'Проверка (возр.)' },
-      { value: '-otk_checked_at', label: 'Проверка (убыв.)' },
-    ],
-  },
-];
 
 const Pagination = ({ meta, onChange }) => {
   const page = Number(meta?.page || 1);
@@ -223,8 +171,6 @@ const HistoryDetailModal = ({ batch, onClose }) => {
 
 const OTKPage = () => {
   const toast = useToast();
-  const isMobile = useIsMobile();
-  const [otkFiltersOpen, setOtkFiltersOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('awaiting');
   const [acceptModalBatch, setAcceptModalBatch] = useState(null);
   const [historyDetailBatch, setHistoryDetailBatch] = useState(null);
@@ -248,10 +194,6 @@ const OTKPage = () => {
 
   useEffect(() => {
     if (activeTab !== 'history') setHistoryDetailBatch(null);
-  }, [activeTab]);
-
-  useEffect(() => {
-    setOtkFiltersOpen(false);
   }, [activeTab]);
 
   const {
@@ -330,47 +272,18 @@ const OTKPage = () => {
       {activeTab === 'awaiting' && (
         <div className="otk-card">
           <h2 className="otk-card__title">Ожидают проверки</h2>
-          {isMobile ? (
-            <>
-              <div className="otk-filters-mobile">
-                <input
-                  type="search"
-                  className="ds-toolbar__search ds-toolbar__search--full"
-                  placeholder="Поиск"
-                  value={awaitingQuery.search}
-                  onChange={(e) => onAwaitingQueryChange({ search: e.target.value })}
-                />
-                <button type="button" className="btn btn--secondary" onClick={() => setOtkFiltersOpen(true)}>
-                  Фильтры
-                </button>
-              </div>
-              <FiltersModal
-                open={otkFiltersOpen}
-                onClose={() => setOtkFiltersOpen(false)}
-                onReset={() => onAwaitingQueryChange({ ordering: '' })}
-                title="Сортировка"
-              >
-                <FilterBar
-                  stack
-                  filters={OTK_AWAITING_MODAL_FILTERS}
-                  queryState={awaitingQuery}
-                  onChange={onAwaitingQueryChange}
-                />
-              </FiltersModal>
-            </>
-          ) : (
-            <FilterBar
-              filters={[
-                { key: 'search', type: 'search', placeholder: 'Поиск' },
-                { key: 'ordering', type: 'ordering', placeholder: 'Сортировка', options: [
-                  { value: 'date', label: 'Дата (возр.)' },
-                  { value: '-date', label: 'Дата (убыв.)' },
-                ] },
-              ]}
-              queryState={awaitingQuery}
-              onChange={onAwaitingQueryChange}
-            />
-          )}
+          <FilterBar
+            variant="row"
+            filters={[
+              { key: 'search', type: 'search', placeholder: 'Поиск' },
+              { key: 'ordering', type: 'ordering', placeholder: 'Сортировка', options: [
+                { value: 'date', label: 'Дата (возр.)' },
+                { value: '-date', label: 'Дата (убыв.)' },
+              ] },
+            ]}
+            queryState={awaitingQuery}
+            onChange={onAwaitingQueryChange}
+          />
           {loadingAwaiting && <Loading />}
           {errorAwaiting && <ErrorState error={errorAwaiting} onRetry={refetchAwaiting} />}
           {!loadingAwaiting && !errorAwaiting && awaitingList.length === 0 && (
@@ -398,7 +311,7 @@ const OTKPage = () => {
                     <span>{profileLabel(b)}</span>
                     <span>{orderName(b)}</span>
                     <span>{lineLabel(b)}</span>
-                    <span className="otk-table__qty-pill" title={recipeContextHint(b)}>
+                    <span className="otk-table__qty-pill">
                       {qty} шт
                       {m != null ? ` · ${formatQuantityDisplay(m)} м` : ''}
                     </span>
@@ -426,51 +339,22 @@ const OTKPage = () => {
       {activeTab === 'history' && (
         <div className="otk-card">
           <h2 className="otk-card__title">История</h2>
-          {isMobile ? (
-            <>
-              <div className="otk-filters-mobile">
-                <input
-                  type="search"
-                  className="ds-toolbar__search ds-toolbar__search--full"
-                  placeholder="Поиск"
-                  value={historyQuery.search}
-                  onChange={(e) => onHistoryQueryChange({ search: e.target.value })}
-                />
-                <button type="button" className="btn btn--secondary" onClick={() => setOtkFiltersOpen(true)}>
-                  Фильтры
-                </button>
-              </div>
-              <FiltersModal
-                open={otkFiltersOpen}
-                onClose={() => setOtkFiltersOpen(false)}
-                onReset={() => onHistoryQueryChange({ otk_status: '', ordering: '' })}
-                title="Фильтры"
-              >
-                <FilterBar
-                  stack
-                  filters={OTK_HISTORY_MODAL_FILTERS}
-                  queryState={historyQuery}
-                  onChange={onHistoryQueryChange}
-                />
-              </FiltersModal>
-            </>
-          ) : (
-            <FilterBar
-              filters={[
-                { key: 'search', type: 'search', placeholder: 'Поиск' },
-                { key: 'otk_status', type: 'select', placeholder: 'Статус', options: [
-                  { value: 'accepted', label: 'Принято' },
-                  { value: 'rejected', label: 'Забраковано' },
-                ] },
-                { key: 'ordering', type: 'ordering', placeholder: 'Сортировка', options: [
-                  { value: 'otk_checked_at', label: 'Проверка (возр.)' },
-                  { value: '-otk_checked_at', label: 'Проверка (убыв.)' },
-                ] },
-              ]}
-              queryState={historyQuery}
-              onChange={onHistoryQueryChange}
-            />
-          )}
+          <FilterBar
+            variant="row"
+            filters={[
+              { key: 'search', type: 'search', placeholder: 'Поиск' },
+              { key: 'otk_status', type: 'select', placeholder: 'Статус', options: [
+                { value: 'accepted', label: 'Принято' },
+                { value: 'rejected', label: 'Забраковано' },
+              ] },
+              { key: 'ordering', type: 'ordering', placeholder: 'Сортировка', options: [
+                { value: 'otk_checked_at', label: 'Проверка (возр.)' },
+                { value: '-otk_checked_at', label: 'Проверка (убыв.)' },
+              ] },
+            ]}
+            queryState={historyQuery}
+            onChange={onHistoryQueryChange}
+          />
           {loadingHistory && <Loading />}
           {errorHistory && <ErrorState error={errorHistory} onRetry={refetchHistory} />}
           {!loadingHistory && !errorHistory && historyList.length === 0 && (
@@ -632,13 +516,10 @@ const AcceptModal = ({ batch, onSubmit, onClose, error }) => {
       />
       <div className="modal modal--wide otk-accept-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head otk-accept-modal__head">
-          <h3>Проверка партии (ProductionBatch)</h3>
+          <h3>Проверка партии</h3>
           <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
-        <form className="otk-accept-form" onSubmit={handleSubmit}>
-          <p className="otk-accept-form__chain-hint" style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', opacity: 0.9 }}>
-            ОТК фиксирует результат по уже произведенной партии. Если указано количество к проверке, принято + брак должны в сумме дать это количество штук.
-          </p>
+        <form className="otk-accept-form" onSubmit={handleSubmit} title="Принято + брак = штук к проверке">
           <div className="otk-modal-summary">
             <div className="otk-modal-summary__item">
               <span className="otk-modal-summary__label">Продукт</span>

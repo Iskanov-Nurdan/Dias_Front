@@ -535,3 +535,82 @@
     text-align: right;
   }
 }
+
+@include mobile {
+  .page--recipes {
+    .recipes-table-wrap {
+      overflow-x: visible;
+    }
+
+    .recipes-table,
+    .recipes-table--main {
+      min-width: 0 !important;
+    }
+
+    .recipes-table--main .recipes-table__header {
+      display: none;
+    }
+
+    .recipes-table--main .recipes-table__row {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      padding: var(--space-4);
+      margin-bottom: var(--space-3);
+    }
+
+    .recipes-table--main .recipes-table__row > * {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--space-3);
+      width: 100%;
+      padding: var(--space-2) 0;
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: right;
+      min-width: 0;
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    .recipes-table--main .recipes-table__row > *::before {
+      content: '';
+      font-size: var(--font-caption);
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-align: left;
+      flex: 0 1 46%;
+      min-width: 0;
+    }
+
+    .recipes-table--main .recipes-table__row > *:nth-child(1)::before {
+      content: 'Название';
+    }
+
+    .recipes-table--main .recipes-table__row > *:nth-child(2)::before {
+      content: 'Профиль';
+    }
+
+    .recipes-table--main .recipes-table__row > *:nth-child(3)::before {
+      content: 'Компонентов';
+    }
+
+    .recipes-table--main .recipes-table__row > *:nth-child(4)::before {
+      content: 'Статус';
+    }
+
+    .recipes-table--main .recipes-table__row > *:nth-child(5)::before {
+      content: 'Действия';
+    }
+
+    .recipes-table__name,
+    .recipes-table__profile {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+    }
+  }
+}

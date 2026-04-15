@@ -139,3 +139,84 @@
     text-align: right;
   }
 }
+
+@include mobile {
+  .page--plastic-profiles {
+    .plastic-profiles-table-wrap {
+      overflow-x: visible;
+    }
+
+    .plastic-profiles-table {
+      min-width: 0 !important;
+      gap: var(--space-3);
+    }
+
+    .plastic-profiles-table__header {
+      display: none;
+    }
+
+    .plastic-profiles-table__block {
+      padding-bottom: var(--space-2);
+    }
+
+    .plastic-profiles-table__row {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      padding: var(--space-4);
+    }
+
+    .plastic-profiles-table__row > * {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--space-3);
+      width: 100%;
+      padding: var(--space-2) 0;
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: right;
+      min-width: 0;
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    .plastic-profiles-table__row > *::before {
+      content: '';
+      font-size: var(--font-caption);
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-align: left;
+      flex: 0 1 46%;
+      min-width: 0;
+    }
+
+    .plastic-profiles-table__row > *:nth-child(1)::before {
+      content: 'Название';
+    }
+
+    .plastic-profiles-table__row > *:nth-child(2)::before {
+      content: 'Код';
+    }
+
+    .plastic-profiles-table__row > *:nth-child(3)::before {
+      content: 'Есть рецепт';
+    }
+
+    .plastic-profiles-table__row > *:nth-child(4)::before {
+      content: 'Статус';
+    }
+
+    .plastic-profiles-table__row > *:nth-child(5)::before {
+      content: 'Действия';
+    }
+
+    .plastic-profiles-table__name {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+    }
+  }
+}

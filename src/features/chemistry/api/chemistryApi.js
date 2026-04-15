@@ -14,7 +14,7 @@ export const getChemistryBalances = (params) => apiClient.get('chemistry/balance
 export const getChemistryBatches = (params) => apiClient.get('chemistry/batches/', { params });
 
 /**
- * Производство химии: списание сырья FIFO, партия ChemistryBatch, себестоимость.
+ * Выпуск полуфабриката (химия): списание сырья FIFO, партия учёта химии, себестоимость (не ProductionBatch профиля).
  * POST /api/chemistry/elements/produce/
  */
 export const produceChemistry = (data) => apiClient.post('chemistry/elements/produce/', data);

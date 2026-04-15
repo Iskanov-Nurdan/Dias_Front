@@ -127,9 +127,9 @@ const ProductionPage = () => {
         </div>
 
         <p className="production-card__lede">
-          ProductionBatch — единственная точка списания сырья и химии (FIFO) и расчёта себестоимости. Вводятся только
-          линия (с открытой сменой), профиль, рецепт по профилю, штуки и длина штуки. Метраж и стоимость не вводятся
-          вручную. RecipeRun не списывает остатки.
+          Партия производства (ProductionBatch) — единственный факт выпуска: здесь же списание сырья и химии (FIFO),
+          расчёт total_meters и себестоимости на стороне сервера. В интерфейсе вводятся только линия (с открытой сменой),
+          профиль, рецепт этого профиля, количество штук и длина одной штуки. Метраж и себестоимость вручную не задаются.
         </p>
 
         {loading && <Loading />}
@@ -147,8 +147,8 @@ const ProductionPage = () => {
                 <span className="production-table__th production-table__th--num">Шт</span>
                 <span className="production-table__th production-table__th--num">Длина, м</span>
                 <span className="production-table__th production-table__th--num">Метры</span>
-                <span className="production-table__th production-table__th--num">₽/м</span>
-                <span className="production-table__th production-table__th--num">₽/шт</span>
+                <span className="production-table__th production-table__th--num">Сом/м</span>
+                <span className="production-table__th production-table__th--num">Сом/шт</span>
                 <span className="production-table__th">Статус</span>
                 <span className="production-table__th production-table__th--actions">Действия</span>
               </div>
@@ -227,7 +227,7 @@ const ProductionPage = () => {
         title="Передать партию в ОТК?"
         message={
           otkTarget
-            ? `Партия #${otkTarget.id} · ${profileLabel(otkTarget)} · ${recipeLabel(otkTarget)}`
+            ? `ProductionBatch #${otkTarget.id} · ${profileLabel(otkTarget)} · ${recipeLabel(otkTarget)}. Дальше по цепочке: ОТК → склад готовой продукции.`
             : ''
         }
         confirmText={otkBusy ? 'Отправка…' : 'Отправить'}

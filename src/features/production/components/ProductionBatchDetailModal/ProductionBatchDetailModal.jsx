@@ -24,7 +24,7 @@ const recipeLabel = (b) =>
 
 const money = (n) => {
   if (n == null || !Number.isFinite(n)) return '—';
-  return `${formatNumberForInput(n)} ₽`;
+  return `${formatNumberForInput(n)} сом`;
 };
 
 const ProductionBatchDetailModal = ({ batchId, onClose, onSaved }) => {
@@ -125,7 +125,7 @@ const ProductionBatchDetailModal = ({ batchId, onClose, onSaved }) => {
     <div className="modal-overlay" role="presentation" onClick={onClose}>
       <div className="modal modal--wide production-detail-modal" onClick={(ev) => ev.stopPropagation()}>
         <div className="modal__head">
-          <h3>Партия #{batchId}</h3>
+          <h3>ProductionBatch #{batchId}</h3>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
             ×
           </button>
@@ -173,6 +173,9 @@ const ProductionBatchDetailModal = ({ batchId, onClose, onSaved }) => {
                   </div>
                 ) : null}
               </div>
+              <p className="production-detail-modal__hint" style={{ margin: '0.75rem 0 0', fontSize: '0.9rem', opacity: 0.9 }}>
+                Итоговые метры (total_meters) и себестоимость рассчитываются на сервере при создании партии и не вводятся вручную.
+              </p>
 
               {!edit ? (
                 <div className="production-detail-modal__readonly">

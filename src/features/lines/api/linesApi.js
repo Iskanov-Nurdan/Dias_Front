@@ -2,7 +2,16 @@ import { apiClient } from '../../../shared/api';
 import { parseApiListResponse } from '../../../shared/lib/apiList';
 
 /**
- * Список линий (LineViewSet, доступ `lines`). Query `eligible_for_recipe_run=true` — линии с открытой сменой без паузы (SHIFT_AND_AUDIT §7).
+ * Фильтр для выбора линии под **ProductionBatch**: открытая смена на линии, без паузы.
+ * На бэке могут поддерживаться оба ключа; при появлении только одного — оставьте нужный в объекте.
+ */
+export const LINES_QUERY_OPEN_SHIFT_FOR_PRODUCTION_BATCH = Object.freeze({
+  eligible_for_production_batch: true,
+  eligible_for_recipe_run: true,
+});
+
+/**
+ * Список линий (LineViewSet, доступ `lines`).
  */
 export const getLines = (params) => apiClient.get('lines/', { params });
 export const getLine = (id) => apiClient.get(`lines/${id}/`);
@@ -39,8 +48,8 @@ export const getLineHistorySessionDetail = (lineId, openEventId, config = {}) =>
 };
 
 /**
- * Список линий с shift_is_open, shift_is_paused, shift_snapshot (§3 SHIFT_AND_AUDIT).
- * Для выбора линии под замес передавайте `eligible_for_recipe_run: true` — фильтр на бэке.
+ * Список линий с shift_is_open, shift_is_paused, shift_snapshot.
+ * Для модалки ProductionBatch передавайте `...LINES_QUERY_OPEN_SHIFT_FOR_PRODUCTION_BATCH` в params.
  */
 export const fetchLinesWithShiftSnapshot = async (params = { page_size: 200 }) => {
   const res = await apiClient.get('lines/', { params });

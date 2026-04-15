@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
 import {
   useServerQuery,
@@ -240,8 +240,16 @@ const RecipesPage = () => {
     <div className="page page--recipes">
       <h1 className="page__title">Рецепты (профиля)</h1>
       <p className="recipes-page__lede">
-        Один рецепт — один профиль (обязательная связь). Удобнее создавать рецепт из раздела «Профили»: профиль подставится сам. Здесь рецепт только задаёт норму на 1 м; списаний и партий не создаёт.
+        Сначала создайте профиль (конечный вид изделия), затем рецепт для этого профиля. Рецепт задаёт только норму расхода на 1 м (сырьё и/или химия); списаний и производственных партий не создаёт — факт производства оформляется только как ProductionBatch.
       </p>
+
+      {!loading && plasticProfiles.length === 0 && (
+        <div className="recipes-filter-banner" role="alert">
+          <span>Профилей ещё нет — </span>
+          <Link to="/profiles">перейдите в «Профили»</Link>
+          <span> и создайте профиль, иначе рецепт не к чему привязать.</span>
+        </div>
+      )}
 
       {filterProfileId && (
         <div className="recipes-filter-banner" role="status">
@@ -267,7 +275,10 @@ const RecipesPage = () => {
             <button
               type="button"
               className="btn btn--primary"
+              disabled={!plasticProfiles.length}
+              title={!plasticProfiles.length ? 'Сначала создайте профиль в разделе «Профили»' : undefined}
               onClick={() => {
+                if (!plasticProfiles.length) return;
                 setSubmitError('');
                 setLockedProfileForCreate(null);
                 setMetaModal({});
@@ -560,6 +571,11 @@ const RecipeMetaModal = ({
           <Loading />
         ) : (
           <form onSubmit={handleSubmit}>
+            {!isEdit && (!plasticProfiles || plasticProfiles.length === 0) && (
+              <p className="modal__error" role="alert">
+                Нет ни одного профиля. Создайте профиль в разделе «Профили», затем вернитесь сюда.
+              </p>
+            )}
             {profileLocked ? (
               <p className="recipe-modal__locked-profile">
                 <strong>Профиль:</strong> {lockedSummary}
@@ -601,14 +617,14 @@ const RecipeMetaModal = ({
               ]}
             />
             <p className="recipe-modal__hint">
-              Состав задаётся в окне «Состав». Рецепт не списывает материалы и не создаёт партии.
+              Состав задаётся в окне «Состав». Рецепт только хранит норму на 1 м; списание и партия производства — только при создании ProductionBatch.
             </p>
             {error && <p className="modal__error">{error}</p>}
             <div className="modal__actions">
               <button
                 type="submit"
                 className="btn btn--primary"
-                disabled={!canSubmit}
+                disabled={!canSubmit || (!isEdit && (!plasticProfiles || plasticProfiles.length === 0))}
                 title={!canSubmit ? 'Укажите профиль и название' : undefined}
               >
                 {isEdit ? 'Сохранить' : 'Создать'}
@@ -636,11 +652,11 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
   const unifiedOptions = useMemo(() => {
     const raw = rawMaterials.map((i) => ({
       value: `raw:${i.id}`,
-      label: `[Сырьё] ${i.name || `#${i.id}`}`,
+      label: `Сырьё: ${i.name || `#${i.id}`}`,
     }));
     const chem = chemistryElements.map((i) => ({
       value: `chem:${i.id}`,
-      label: `[Химия] ${i.name || `#${i.id}`}`,
+      label: `Химия: ${i.name || `#${i.id}`}`,
     }));
     return [...raw, ...chem].sort((a, b) => a.label.localeCompare(b.label, 'ru'));
   }, [rawMaterials, chemistryElements]);
@@ -840,9 +856,9 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
         ) : (
           <div className="modal__body">
             <p className="recipe-modal__hint">
-              Один список компонентов: сырьё и химия. Поле <strong>quantity_per_meter</strong> — кг на 1 м профиля.
+              Одна строка состава — один компонент из списка (сырьё или химия). Норма <strong>quantity_per_meter</strong> — кг на 1 м профиля. Рецепт не списывает остатки; списание выполняется при создании партии производства.
             </p>
-            <label>Добавить компонент</label>
+            <label>Компонент (сырьё или химия) *</label>
             <div className="recipe-modal__row">
               <div className="recipe-modal__pick-wrap" ref={unifiedPickRef}>
                 <Select
@@ -851,8 +867,8 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
                     setUnifiedPick(v);
                     setLineError('');
                   }}
-                  placeholder="Компонент"
-                  aria-label="Компонент рецепта"
+                  placeholder="Выберите: Сырьё: … или Химия: …"
+                  aria-label="Компонент рецепта: сырьё или химия"
                   options={unifiedOptions}
                 />
               </div>

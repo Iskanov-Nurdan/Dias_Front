@@ -11,9 +11,9 @@ const normalizeList = (data) => ({
 const BATCH_ID_CHUNK = 40;
 
 /**
- * Партии по списку id (для связки замес → ОТК).
+ * Партии по списку id (для догрузки карточек в очереди ОТК; ожидаются партии ProductionBatch).
  * Ожидается фильтр DRF/django-filter: `id__in` со списком через запятую.
- * Если бэк не поддерживает — расширяют `GET chemistry/recipe-runs/` или меняют query-параметр.
+ * Если бэк не поддерживает — согласовать фильтр очереди ОТК с бэкендом.
  */
 export const fetchBatchesByIds = async (ids, signal) => {
   const uniq = [...new Set((ids || []).map((id) => Number(id)).filter((n) => Number.isFinite(n) && n > 0))];

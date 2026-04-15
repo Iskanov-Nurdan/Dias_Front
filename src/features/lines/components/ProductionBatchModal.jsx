@@ -3,7 +3,10 @@ import {
   getPlasticProfiles,
   createProductionBatch,
 } from '../../production/api/productionApi';
-import { fetchLinesWithShiftSnapshot } from '../api/linesApi';
+import {
+  fetchLinesWithShiftSnapshot,
+  LINES_QUERY_OPEN_SHIFT_FOR_PRODUCTION_BATCH,
+} from '../api/linesApi';
 import { apiClient } from '../../../shared/api';
 import {
   getApiErrorMessage,
@@ -26,7 +29,7 @@ const isLineEligibleForBatch = (ln) => {
  * Создание партии профиля: POST /api/batches/ (ProductionBatchCreateUpdateSerializer).
  * total_meters считает только бэкенд.
  * lineId опционален: без него показывается выбор линии (только с открытой сменой).
- * Порядок: линия → профиль → рецепт (фильтр по профилю) → штуки → длина. Без ввода метров и себестоимости.
+ * Порядок полей в форме: профиль → рецепт → линия (если выбирается) → штуки → длина. Без ввода total_meters и себестоимости.
  */
 const ProductionBatchModal = ({ lineId: lineIdProp, lineName, onClose, onSuccess }) => {
   const needsLinePick = lineIdProp == null || lineIdProp === '';
@@ -49,7 +52,10 @@ const ProductionBatchModal = ({ lineId: lineIdProp, lineName, onClose, onSuccess
     let cancelled = false;
     setLoadingMeta(true);
     const linesPromise = needsLinePick
-      ? fetchLinesWithShiftSnapshot({ page_size: 200, eligible_for_recipe_run: true }).catch(() => [])
+      ? fetchLinesWithShiftSnapshot({
+        page_size: 200,
+        ...LINES_QUERY_OPEN_SHIFT_FOR_PRODUCTION_BATCH,
+      }).catch(() => [])
       : Promise.resolve([]);
     Promise.all([
       linesPromise,
@@ -108,6 +114,10 @@ const ProductionBatchModal = ({ lineId: lineIdProp, lineName, onClose, onSuccess
     const len = parseLocaleNumber(lengthPerPiece);
     const rid = recipeId ? Number(recipeId) : NaN;
     const prid = profileId ? Number(profileId) : NaN;
+    if (!profiles.length) {
+      setError('Сначала создайте профиль (раздел «Профили»).');
+      return;
+    }
     if (!Number.isFinite(prid) || prid <= 0) {
       setError('Выберите профиль');
       return;
@@ -167,9 +177,37 @@ const ProductionBatchModal = ({ lineId: lineIdProp, lineName, onClose, onSuccess
           ) : (
             <form onSubmit={handleSubmit}>
               <p className="production-batch-modal__hint">
-                Смена на линии должна быть открыта (без паузы). Укажите только штуки и длину — метраж, списание FIFO
-                и себестоимость считает сервер при создании. Поля «метры» и ручная себестоимость не вводятся.
+                Партия производства (ProductionBatch) — единственный момент, где фиксируются списание сырья/химии (FIFO),
+                total_meters и себестоимость: всё считает сервер. Вводятся только профиль, рецепт, линия, штуки и длина штуки.
+                Смена на линии должна быть открыта (без паузы).
               </p>
+              {profiles.length === 0 && (
+                <p className="modal__error" role="alert">
+                  Нет профилей. Сначала создайте профиль в разделе «Профили», затем рецепт — без них партию не создать.
+                </p>
+              )}
+              <label>Профиль *</label>
+              <Select
+                value={profileId === '' ? '' : String(profileId)}
+                onChange={setProfileId}
+                placeholder={profiles.length ? 'Выберите профиль' : 'Сначала создайте профиль'}
+                disabled={!profiles.length}
+                options={profiles.map((p) => ({
+                  value: String(p.id),
+                  label: p.code && p.name ? `${p.name} (${p.code})` : (p.name || `#${p.id}`),
+                }))}
+              />
+              <label>Рецепт (норма на 1 м, только для выбранного профиля) *</label>
+              <Select
+                value={recipeId === '' ? '' : String(recipeId)}
+                onChange={setRecipeId}
+                placeholder={profileId ? 'Выберите рецепт' : 'Сначала выберите профиль'}
+                disabled={!profileId}
+                options={recipesForProfile.map((r) => ({
+                  value: String(r.id),
+                  label: r.recipe || r.name || r.product || `#${r.id}`,
+                }))}
+              />
               {needsLinePick && (
                 <>
                   <label>Линия *</label>
@@ -190,26 +228,6 @@ const ProductionBatchModal = ({ lineId: lineIdProp, lineName, onClose, onSuccess
                   )}
                 </>
               )}
-              <label>Профиль *</label>
-              <Select
-                value={profileId === '' ? '' : String(profileId)}
-                onChange={setProfileId}
-                placeholder="Выберите профиль"
-                options={profiles.map((p) => ({
-                  value: String(p.id),
-                  label: p.code && p.name ? `${p.name} (${p.code})` : (p.name || `#${p.id}`),
-                }))}
-              />
-              <label>Рецепт (нормы на 1 м, только для выбранного профиля) *</label>
-              <Select
-                value={recipeId === '' ? '' : String(recipeId)}
-                onChange={setRecipeId}
-                placeholder={profileId ? 'Выберите рецепт' : 'Сначала выберите профиль'}
-                options={recipesForProfile.map((r) => ({
-                  value: String(r.id),
-                  label: r.recipe || r.name || r.product || `#${r.id}`,
-                }))}
-              />
               <label>Количество штук *</label>
               <DecimalInput min={1} value={pieces} onChange={setPieces} required placeholder="Напр. 20" />
               <label>Длина одной штуки, м *</label>
@@ -224,7 +242,11 @@ const ProductionBatchModal = ({ lineId: lineIdProp, lineName, onClose, onSuccess
               <textarea rows={2} value={comment} onChange={(ev) => setComment(ev.target.value)} />
               {error && <p className="modal__error">{error}</p>}
               <div className="modal__actions">
-                <button type="submit" className="btn btn--primary" disabled={saving}>
+                <button
+                  type="submit"
+                  className="btn btn--primary"
+                  disabled={saving || !profiles.length}
+                >
                   {saving ? 'Создание…' : 'Создать партию'}
                 </button>
                 <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>

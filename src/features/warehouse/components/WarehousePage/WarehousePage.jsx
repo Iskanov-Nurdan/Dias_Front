@@ -66,7 +66,7 @@ const WarehousePage = () => {
 
   const { items, loading, error, refetch } = useServerQuery('warehouse/batches/', queryState, { enabled: true });
 
-  useOperationalRefetch('warehouse_batch', refetch, true);
+  useOperationalRefetch(['warehouse_batch', 'production_batch', 'batch'], refetch, true);
 
   const rows = items || [];
 
@@ -90,6 +90,10 @@ const WarehousePage = () => {
 
   return (
     <div className="page page--warehouse">
+      <p className="page--warehouse__chain-lede" style={{ margin: '0 0 1rem', maxWidth: '52rem', fontSize: '0.95rem', lineHeight: 1.45 }}>
+        Склад готовой продукции принимает выход после производства: <strong>ProductionBatch</strong> → контроль <strong>ОТК</strong> →
+        учёт и упаковка здесь. Производство не ведётся со страницы склада; отгрузка в продажах — только с доступных партий этого склада.
+      </p>
       <div className="page--warehouse__toolbar ds-toolbar ds-toolbar--page-head ds-toolbar--stack-mobile">
         <div className="ds-toolbar__start page--warehouse__filters">
           <input

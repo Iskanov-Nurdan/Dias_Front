@@ -28,7 +28,7 @@
 ## 3. Обновление данных в реальном времени
 
 - `useOperationalRefetch(resources, refetch)` подписывается на WS (`OperationalRealtimeContext`): при `event: "change"` и совпадении `resource` вызывается `refetch()`.
-- Типичные `resource`: `production_batch`, `line`, `line_history`, `shift`, `sale`, `warehouse_batch`, `material_balance`, `chemistry`, … — как шлёт бэкенд (в т.ч. устаревшие имена вроде `recipe_run`, если бэк их шлёт).
+- Типичные `resource`: `production_batch`, `batch`, `line`, `line_history`, `shift`, `sale`, `warehouse_batch`, `material_balance`, `chemistry`, … — как шлёт бэкенд. Факт производства в UI — только `ProductionBatch` / `batch`.
 
 ---
 
@@ -67,7 +67,7 @@
 | GET | `lines/history/` | общая лента (`page`, `page_size`, …) |
 | GET | `lines/{lineId}/history/session/` | `open_event_id` — таймлайн сессии |
 
-Фильтр линий с открытой сменой без паузы: `eligible_for_recipe_run=true` на `GET lines/` (выбор линии для партии профиля в модалке на линии и на странице `/production`).
+Фильтр линий с открытой сменой без паузы для создания **ProductionBatch**: на `GET lines/` передаётся объект `LINES_QUERY_OPEN_SHIFT_FOR_PRODUCTION_BATCH` (`eligible_for_production_batch` и/или `eligible_for_recipe_run` — в зависимости от версии бэка), см. `src/features/lines/api/linesApi.js`.
 
 ### 4.4 Смены и аудит (`src/features/shifts/api/shiftsApi.js`)
 

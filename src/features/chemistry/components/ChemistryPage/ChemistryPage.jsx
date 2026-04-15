@@ -188,7 +188,7 @@ const AddChemistryModal = ({ onClose, onSaved, error: parentError }) => {
             ]}
           />
           <p className="chemistry-element-form__hint">
-            Состав и остатки появятся позже: сначала задайте <strong>Состав</strong>, затем <strong>Произвести</strong>.
+            Состав и остатки появятся позже: сначала задайте <strong>Состав</strong>, затем <strong>Выпуск</strong>.
           </p>
           {(localError || parentError) && <p className="modal__error">{localError || parentError}</p>}
           <div className="modal__actions">
@@ -492,7 +492,7 @@ const ProduceChemistryModal = ({ initialChemistryId, onClose, onSuccess }) => {
     <div className="modal-overlay" role="presentation" onClick={onClose}>
       <div className="modal modal--wide" onClick={(ev) => ev.stopPropagation()}>
         <div className="modal__head">
-          <h3>Произвести химию</h3>
+          <h3>Выпуск полуфабриката (химия)</h3>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <form className="modal__body" onSubmit={handleSubmit}>
@@ -504,16 +504,16 @@ const ProduceChemistryModal = ({ initialChemistryId, onClose, onSuccess }) => {
             options={activeOptions}
           />
           <label>Количество (в единицах карточки: кг / г) *</label>
-          <DecimalInput min={0} value={qty} onChange={setQty} required placeholder="Сколько произвести" />
+          <DecimalInput min={0} value={qty} onChange={setQty} required placeholder="Сколько выпустить" />
           <label>Комментарий</label>
           <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Опционально" />
           <p className="chemistry-element-form__hint">
-            Система проверит остатки сырья, спишет FIFO и создаст партию химии с себестоимостью.
+            Система проверит остатки сырья, спишет FIFO и создаст партию учёта химии с себестоимостью. Это не партия профиля (ProductionBatch).
           </p>
           {err && <p className="modal__error">{err}</p>}
           <div className="modal__actions">
             <button type="submit" className="btn btn--primary" disabled={saving || !chemistryId}>
-              {saving ? 'Выполняется…' : 'Произвести'}
+              {saving ? 'Выполняется…' : 'Выпустить'}
             </button>
             <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
           </div>
@@ -713,6 +713,7 @@ const ChemistryPage = () => {
             <div className="ds-toolbar__start">
               <p className="chemistry-page__lede chemistry-stock__lede" style={{ margin: 0 }}>
                 Химия производится внутри системы (не покупается как сырьё). Выпуск — единственный источник остатка.
+                Учёт выпуска здесь — полуфабрикат (RecipeRun), не партия профиля ProductionBatch.
               </p>
             </div>
             <div className="ds-toolbar__end chemistry-card__toolbar-actions">
@@ -720,7 +721,7 @@ const ChemistryPage = () => {
                 Добавить химию
               </button>
               <button type="button" className="btn btn--secondary" onClick={() => openProduce(null)}>
-                Произвести
+                Выпуск
               </button>
             </div>
           </div>
@@ -760,7 +761,7 @@ const ChemistryPage = () => {
                           Состав
                         </button>
                         <button type="button" className="btn btn--primary btn--sm" onClick={() => openProduce(row.id)}>
-                          Произвести
+                          Выпуск
                         </button>
                         {active && (
                           <button type="button" className="btn btn--secondary btn--sm" onClick={() => setDeactivateTarget(row)}>
@@ -795,7 +796,7 @@ const ChemistryPage = () => {
               </p>
             </div>
             <div className="ds-toolbar__end chemistry-card__toolbar-actions">
-              <button type="button" className="btn btn--primary" onClick={() => openProduce(null)}>Произвести</button>
+              <button type="button" className="btn btn--primary" onClick={() => openProduce(null)}>Выпуск</button>
             </div>
           </div>
           {balLoading && <Loading />}
@@ -940,7 +941,7 @@ const ChemistryPage = () => {
           onClose={() => { setProduceOpen(false); setProducePrefillId(null); }}
           onSuccess={() => {
             refetchAll();
-            toast.show('Партия создана');
+            toast.show('Выпуск полуфабриката учтён');
           }}
         />
       )}

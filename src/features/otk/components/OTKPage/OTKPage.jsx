@@ -36,7 +36,7 @@ const batchTotalMetersHint = (b) => {
   return null;
 };
 
-/** Подсказка: GET /api/otk/pending/ — recipe_name, recipe_output_quantity (норма). */
+/** Справочно: норма рецепта не списывает и не «производит» — факт выпуска только у ProductionBatch. */
 const recipeContextHint = (b) => {
   const rname = b.recipe_name || b.recipe?.recipe || b.recipe?.name;
   const ro =
@@ -48,11 +48,11 @@ const recipeContextHint = (b) => {
   const ukind = ukindRaw ? `, ед. нормы: ${recipeOutputUnitKindRu(ukindRaw) || ukindRaw}` : '';
   if (ro != null && ro !== '') {
     return rname
-      ? `Норма по рецепту «${rname}»: ${ro}${ukind}`
-      : `Норма по рецепту (справочно): ${ro}${ukind}`;
+      ? `Справочно по рецепту «${rname}»: ${ro}${ukind} (рецепт — только норма; списание уже в партии).`
+      : `Справочно по рецепту: ${ro}${ukind}`;
   }
-  if (rname) return `Рецептура: ${rname}. Габариты — при открытии смены на линии.`;
-  return 'Объём партии — по данным выпуска; габариты линии — в смене.';
+  if (rname) return `Рецепт «${rname}» — норма на 1 м; габариты смены на линии.`;
+  return 'Объём партии — по данным ProductionBatch; габариты — из смены на линии.';
 };
 const errorToMessage = (err) => {
   const data = err?.response?.data;
@@ -281,7 +281,11 @@ const OTKPage = () => {
     refetchHistory();
   }, [refetchAwaiting, refetchHistory]);
 
-  useOperationalRefetch(['production_batch', 'recipe_run'], refetchAll, true);
+  useOperationalRefetch(
+    ['production_batch', 'batch', 'warehouse_batch', 'recipe_run'],
+    refetchAll,
+    true,
+  );
 
   const handleAcceptSubmit = async (data) => {
     if (!acceptModalBatch?.id) return;
@@ -628,10 +632,13 @@ const AcceptModal = ({ batch, onSubmit, onClose, error }) => {
       />
       <div className="modal modal--wide otk-accept-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head otk-accept-modal__head">
-          <h3>Проверка партии</h3>
+          <h3>Проверка партии (ProductionBatch)</h3>
           <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
         <form className="otk-accept-form" onSubmit={handleSubmit}>
+          <p className="otk-accept-form__chain-hint" style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', opacity: 0.9 }}>
+            ОТК фиксирует результат по уже произведенной партии. Если указано количество к проверке, принято + брак должны в сумме дать это количество штук.
+          </p>
           <div className="otk-modal-summary">
             <div className="otk-modal-summary__item">
               <span className="otk-modal-summary__label">Продукт</span>

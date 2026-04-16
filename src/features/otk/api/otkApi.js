@@ -1,8 +1,9 @@
 import { apiClient } from '../../../shared/api';
+import { parseApiListResponse } from '../../../shared/lib/apiList';
 
 const isEndpointMissing = (err) => err?.response?.status === 404 || err?.response?.status === 405;
 const normalizeList = (data) => ({
-  items: data?.items ?? [],
+  items: parseApiListResponse(data),
   meta: data?.meta ?? null,
   links: data?.links ?? null,
 });
@@ -10,9 +11,9 @@ const normalizeList = (data) => ({
 const BATCH_ID_CHUNK = 40;
 
 /**
- * Партии по списку id (для связки замес → ОТК).
+ * Партии по списку id (для догрузки карточек в очереди ОТК; ожидаются партии ProductionBatch).
  * Ожидается фильтр DRF/django-filter: `id__in` со списком через запятую.
- * Если бэк не поддерживает — расширяют `GET chemistry/recipe-runs/` или меняют query-параметр.
+ * Если бэк не поддерживает — согласовать фильтр очереди ОТК с бэкендом.
  */
 export const fetchBatchesByIds = async (ids, signal) => {
   const uniq = [...new Set((ids || []).map((id) => Number(id)).filter((n) => Number.isFinite(n) && n > 0))];
@@ -66,6 +67,8 @@ export const acceptBatch = (batchId, data) => {
   const body = {
     otk_accepted: String(accepted),
     otk_defect: String(defect),
+    accepted,
+    rejected: defect,
     otk_status: status,
   };
   if (data.rejectReason != null && String(data.rejectReason).trim() !== '') {
@@ -76,6 +79,12 @@ export const acceptBatch = (batchId, data) => {
   }
   if (data.inspectorId != null && data.inspectorId !== '') {
     body.otk_inspector = data.inspectorId;
+  }
+  if (data.inspectorName != null && String(data.inspectorName).trim() !== '') {
+    body.otk_inspector_name = String(data.inspectorName).trim();
+  }
+  if (data.checkedAt != null && String(data.checkedAt).trim() !== '') {
+    body.otk_checked_at = String(data.checkedAt).trim();
   }
   return apiClient.post(`batches/${batchId}/otk_accept/`, body);
 };

@@ -196,6 +196,74 @@
     align-items: center;
   }
 
+  &--catalog {
+    min-width: 960px;
+  }
+
+  &--catalog &__header,
+  &--catalog &__row {
+    grid-template-columns:
+      minmax(120px, 1.2fr)
+      3.5rem
+      minmax(7rem, auto)
+      minmax(6rem, auto)
+      5.5rem
+      minmax(80px, 1fr)
+      minmax(280px, auto);
+    align-items: center;
+  }
+
+  &--stock-view {
+    min-width: 720px;
+  }
+
+  &--stock-view &__header,
+  &--stock-view &__row {
+    grid-template-columns:
+      minmax(120px, 1.4fr)
+      minmax(7rem, auto)
+      3.5rem
+      minmax(6rem, auto)
+      minmax(8rem, auto);
+    align-items: center;
+  }
+
+  &--batches-full {
+    min-width: 1100px;
+  }
+
+  &--batches-full &__header,
+  &--batches-full &__row {
+    grid-template-columns:
+      100px
+      minmax(100px, 1fr)
+      minmax(5.5rem, auto)
+      minmax(5.5rem, auto)
+      minmax(5rem, auto)
+      minmax(5rem, auto)
+      minmax(80px, 1fr)
+      minmax(72px, 0.9fr)
+      minmax(80px, 1fr);
+    align-items: start;
+    font-size: var(--font-caption, 0.8125rem);
+  }
+
+  &--movements {
+    min-width: 800px;
+  }
+
+  &--movements &__header,
+  &--movements &__row {
+    grid-template-columns:
+      100px
+      minmax(100px, 1fr)
+      minmax(5rem, auto)
+      minmax(5rem, auto)
+      3rem
+      minmax(80px, 1fr);
+    align-items: start;
+  }
+
   &--history &__header,
   &--history &__row {
     grid-template-columns: 100px 1fr 120px 1fr;
@@ -290,6 +358,242 @@
 
   &__th--min {
     text-align: center;
+  }
+
+  &__inactive {
+    font-weight: normal;
+    color: var(--text-muted, #5c6570);
+    font-size: 0.88em;
+  }
+
+  &__comment {
+    color: var(--text-secondary, var(--muted));
+    font-size: var(--font-caption, 0.8125rem);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__card-status {
+    font-size: var(--font-caption, 0.8125rem);
+    color: var(--text-secondary);
+  }
+
+  &__stock-status {
+    font-size: var(--font-caption, 0.8125rem);
+    font-weight: 500;
+
+    &--ok {
+      color: var(--success, #2d7a4a);
+    }
+
+    &--low {
+      color: var(--warning, #b45309);
+    }
+
+    &--empty {
+      color: var(--danger, #b42318);
+    }
+  }
+}
+
+.materials-card__toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.materials-input-readonly {
+  width: 100%;
+  min-height: var(--input-height);
+  padding: 0 var(--space-3);
+  background: var(--bg-muted, rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-size: var(--font-body);
+}
+
+.materials-edit__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+  font-weight: normal;
+}
+
+@include mobile {
+  .page--materials {
+    .materials-table-wrap {
+      overflow-x: visible;
+    }
+
+    .materials-table--catalog,
+    .materials-table--stock-view,
+    .materials-table--batches-full,
+    .materials-table--movements {
+      min-width: 0 !important;
+    }
+
+    .materials-table--catalog .materials-table__header,
+    .materials-table--stock-view .materials-table__header,
+    .materials-table--batches-full .materials-table__header,
+    .materials-table--movements .materials-table__header {
+      display: none;
+    }
+
+    .materials-table--catalog .materials-table__row,
+    .materials-table--stock-view .materials-table__row,
+    .materials-table--batches-full .materials-table__row,
+    .materials-table--movements .materials-table__row {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      padding: var(--space-4);
+      margin-bottom: var(--space-3);
+    }
+
+    .materials-table--catalog .materials-table__row > *,
+    .materials-table--stock-view .materials-table__row > *,
+    .materials-table--batches-full .materials-table__row > *,
+    .materials-table--movements .materials-table__row > * {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--space-3);
+      width: 100%;
+      padding: var(--space-2) 0;
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: right;
+      min-width: 0;
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    .materials-table--catalog .materials-table__row > *::before,
+    .materials-table--stock-view .materials-table__row > *::before,
+    .materials-table--batches-full .materials-table__row > *::before,
+    .materials-table--movements .materials-table__row > *::before {
+      content: '';
+      font-size: var(--font-caption);
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-align: left;
+      flex: 0 1 46%;
+      min-width: 0;
+    }
+
+    .materials-table--catalog .materials-table__row > *:nth-child(1)::before {
+      content: 'Название';
+    }
+
+    .materials-table--catalog .materials-table__row > *:nth-child(2)::before {
+      content: 'Единица';
+    }
+
+    .materials-table--catalog .materials-table__row > *:nth-child(3)::before {
+      content: 'Остаток';
+    }
+
+    .materials-table--catalog .materials-table__row > *:nth-child(4)::before {
+      content: 'Мин. остаток';
+    }
+
+    .materials-table--catalog .materials-table__row > *:nth-child(5)::before {
+      content: 'Статус';
+    }
+
+    .materials-table--catalog .materials-table__row > *:nth-child(6)::before {
+      content: 'Комментарий';
+    }
+
+    .materials-table--catalog .materials-table__row > *:nth-child(7)::before {
+      content: 'Действия';
+    }
+
+    .materials-table--stock-view .materials-table__row > *:nth-child(1)::before {
+      content: 'Сырьё';
+    }
+
+    .materials-table--stock-view .materials-table__row > *:nth-child(2)::before {
+      content: 'Остаток';
+    }
+
+    .materials-table--stock-view .materials-table__row > *:nth-child(3)::before {
+      content: 'Единица';
+    }
+
+    .materials-table--stock-view .materials-table__row > *:nth-child(4)::before {
+      content: 'Мин. остаток';
+    }
+
+    .materials-table--stock-view .materials-table__row > *:nth-child(5)::before {
+      content: 'Статус';
+    }
+
+    .materials-table--batches-full .materials-table__row > *:nth-child(1)::before {
+      content: 'Дата';
+    }
+
+    .materials-table--batches-full .materials-table__row > *:nth-child(2)::before {
+      content: 'Сырьё';
+    }
+
+    .materials-table--batches-full .materials-table__row > *:nth-child(3)::before {
+      content: 'Пришло';
+    }
+
+    .materials-table--batches-full .materials-table__row > *:nth-child(4)::before {
+      content: 'Осталось';
+    }
+
+    .materials-table--batches-full .materials-table__row > *:nth-child(5)::before {
+      content: 'Цена за ед.';
+    }
+
+    .materials-table--batches-full .materials-table__row > *:nth-child(6)::before {
+      content: 'Сумма';
+    }
+
+    .materials-table--batches-full .materials-table__row > *:nth-child(7)::before {
+      content: 'Поставщик';
+    }
+
+    .materials-table--batches-full .materials-table__row > *:nth-child(8)::before {
+      content: 'Документ';
+    }
+
+    .materials-table--batches-full .materials-table__row > *:nth-child(9)::before {
+      content: 'Комментарий';
+    }
+
+    .materials-table--movements .materials-table__row > *:nth-child(1)::before {
+      content: 'Дата';
+    }
+
+    .materials-table--movements .materials-table__row > *:nth-child(2)::before {
+      content: 'Сырьё';
+    }
+
+    .materials-table--movements .materials-table__row > *:nth-child(3)::before {
+      content: 'Тип';
+    }
+
+    .materials-table--movements .materials-table__row > *:nth-child(4)::before {
+      content: 'Количество';
+    }
+
+    .materials-table--movements .materials-table__row > *:nth-child(5)::before {
+      content: 'Ед.';
+    }
+
+    .materials-table--movements .materials-table__row > *:nth-child(6)::before {
+      content: 'Комментарий';
+    }
   }
 }
 

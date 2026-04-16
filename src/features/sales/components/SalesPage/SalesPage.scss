@@ -12,26 +12,6 @@
 }
 
 .data-table--sales {
-  th:nth-child(1),
-  td:nth-child(1) {
-    width: 20%;
-  }
-
-  th:nth-child(2),
-  td:nth-child(2) {
-    width: 26%;
-  }
-
-  th:nth-child(3),
-  td:nth-child(3) {
-    width: 28%;
-  }
-
-  th:nth-child(4),
-  td:nth-child(4) {
-    width: 16%;
-  }
-
   @include mobile {
     th:nth-child(n),
     td:nth-child(n) {
@@ -57,17 +37,93 @@
     }
 
     td:nth-child(2)::before {
-      content: 'Продукт';
+      content: 'Клиент';
     }
 
     td:nth-child(3)::before {
-      content: 'Количество';
+      content: 'Профиль';
     }
 
     td:nth-child(4)::before {
-      content: 'Сумма';
+      content: 'Количество';
+    }
+
+    td:nth-child(5)::before {
+      content: 'Выручка';
+    }
+
+    td:nth-child(6)::before {
+      content: 'Себестоимость';
+    }
+
+    td:nth-child(7)::before {
+      content: 'Прибыль';
     }
   }
+}
+
+.sales-table__date-cell {
+  white-space: nowrap;
+  font-size: var(--font-caption);
+}
+
+.sales-table__batch-hint {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--font-caption);
+  color: var(--text-muted);
+}
+
+.sales-table__product-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.sales-table__product-title {
+  font-weight: var(--weight-medium);
+}
+
+.sales-table__quality-badge {
+  flex-shrink: 0;
+}
+
+/* Совпадает со складом: бейдж качества партии */
+.warehouse-quality-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+
+  &--good {
+    background: var(--success-muted);
+    color: var(--success);
+    border: 1px solid transparent;
+  }
+
+  &--defect {
+    background: var(--danger-muted);
+    color: var(--danger);
+    border: 1px solid var(--danger);
+  }
+}
+
+.sales-modal__date-input {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  height: var(--input-height);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text);
 }
 
 .sales-table__qty-cell {
@@ -129,6 +185,21 @@
     &--open_package {
       border-left-color: var(--warning);
     }
+
+    &--defect {
+      border-left-color: var(--danger);
+    }
+  }
+
+  &__stock-quality {
+    flex-shrink: 0;
+  }
+
+  &__stock-defect-reason {
+    width: 100%;
+    font-size: var(--font-caption);
+    color: var(--text-secondary);
+    line-height: 1.35;
   }
 
   &__piece-pick {

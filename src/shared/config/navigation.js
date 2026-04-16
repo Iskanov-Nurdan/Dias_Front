@@ -7,6 +7,7 @@ export const ACCESS_ROUTE_MAP = {
   materials: '/materials',
   lines: '/lines',
   chemistry: '/chemistry',
+  production: '/production',
   otk: '/otk',
   warehouse: '/warehouse',
   analytics: '/analytics',
@@ -19,10 +20,11 @@ export const ACCESS_ROUTE_MAP = {
 /** Первый экран после входа. */
 export const HOME_ACCESS_PRIORITY = [
   'my_shift',
-  'lines',
-  'recipes',
   'materials',
   'chemistry',
+  'recipes',
+  'lines',
+  'production',
   'otk',
   'warehouse',
   'analytics',
@@ -53,7 +55,7 @@ export function getDefaultHomePath(accesses) {
 }
 
 /**
- * Структура бокового меню: группы отражают производственный цикл (ERP).
+ * Структура бокового меню: цепочка Сырьё → Химия → Рецепты → Линии → Производство → ОТК → Склад → Сбыт.
  */
 export function getNavSections() {
   const sections = [
@@ -62,22 +64,24 @@ export function getNavSections() {
       links: [{ path: '/my-shift', accessKey: 'my_shift' }],
     },
     {
-      label: 'Нормативы и сырьё',
+      label: 'Подготовка',
       links: [
-        { path: '/recipes', accessKey: 'recipes' },
         { path: '/materials', accessKey: 'materials' },
+        { path: '/chemistry', accessKey: 'chemistry' },
+        { path: '/profiles', accessKey: 'recipes', label: 'Профили' },
+        { path: '/recipes', accessKey: 'recipes', label: 'Рецепты' },
       ],
     },
     {
       label: 'Производство',
       links: [
         { path: '/lines', accessKey: 'lines' },
-        { path: '/chemistry', accessKey: 'chemistry' },
+        { path: '/production', accessKey: 'production' },
         { path: '/otk', accessKey: 'otk' },
       ],
     },
     {
-      label: 'Готовая продукция',
+      label: 'Склад',
       links: [{ path: '/warehouse', accessKey: 'warehouse' }],
     },
   ];

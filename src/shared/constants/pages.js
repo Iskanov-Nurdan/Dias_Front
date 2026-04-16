@@ -29,7 +29,7 @@ export const PAGE_LABELS = {
   [PAGE_IDS.USERS]: 'Сотрудники',
   [PAGE_IDS.LINES]: 'Линии и смены на линиях',
   [PAGE_IDS.MATERIALS]: 'Сырьё и остатки',
-  [PAGE_IDS.CHEMISTRY]: 'Замесы по рецепту',
+  [PAGE_IDS.CHEMISTRY]: 'Химия (полуфабрикат)',
   [PAGE_IDS.RECIPES]: 'Рецептуры',
   [PAGE_IDS.OTK]: 'ОТК',
   [PAGE_IDS.WAREHOUSE]: 'Склад готовой продукции',

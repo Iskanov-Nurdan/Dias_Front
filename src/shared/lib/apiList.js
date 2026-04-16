@@ -1,10 +1,11 @@
 /**
  * Достаёт массив записей из ответа списка API.
- * Контракт бэка (StandardResultsSetPagination): только **`items`** + `meta` + `links` — см. docs/DIAS_BACKEND_CONTRACT.md.
+ * Поддержка: `{ items }` (контракт фронта), `{ results }` (Django REST PageNumberPagination), сырой массив.
  */
 export function parseApiListResponse(data) {
   if (Array.isArray(data)) return data;
   if (!data || typeof data !== 'object') return [];
   if (Array.isArray(data.items)) return data.items;
+  if (Array.isArray(data.results)) return data.results;
   return [];
 }

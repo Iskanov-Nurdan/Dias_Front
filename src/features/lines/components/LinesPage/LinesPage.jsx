@@ -10,6 +10,7 @@ import {
   DecimalInput,
   Select,
   Pagination,
+  Collapse,
 } from '../../../../shared/ui';
 import {
   createLine,
@@ -26,6 +27,8 @@ import {
 } from '../../api/linesApi';
 import { apiClient } from '../../../../shared/api';
 import { useOperationalRefetch } from '../../../../shared/realtime';
+import { useAuth } from '../../../auth';
+import ProductionBatchModal from '../ProductionBatchModal';
 import './LinesPage.scss';
 
 const emptyParams = () => ({
@@ -33,7 +36,28 @@ const emptyParams = () => ({
   height: '',
   width: '',
   angle_deg: '',
+  session_title: '',
 });
+
+const lineIsActive = (line) => {
+  if (line == null) return true;
+  if (line.is_active === false) return false;
+  if (line.active === false) return false;
+  if (line.status === 'inactive' || line.status === 'disabled') return false;
+  return true;
+};
+
+const shiftOpenerLabel = (line, snap) => {
+  const s = snap || line?.shift_snapshot || {};
+  return (
+    s.opened_by_name
+    || s.opened_by?.name
+    || s.opened_by_display
+    || line?.shift_opened_by_name
+    || line?.shift_operator_name
+    || '—'
+  );
+};
 
 const eventToForm = (ev) => ({
   comment: ev?.comment ?? '',
@@ -266,6 +290,9 @@ const normalizeSessionDetailPayload = (raw) => {
 
 const LinesPage = () => {
   const toast = useToast();
+  const { user } = useAuth();
+  const canCreateProductionBatch =
+    Boolean(user?.is_superuser) || (Array.isArray(user?.accesses) && user.accesses.includes('production'));
   const [activeTab, setActiveTab] = useState('line');
   const [queryState, setQueryState] = useState({
     page: 1,
@@ -287,6 +314,7 @@ const LinesPage = () => {
   const [historySessionRemoteError, setHistorySessionRemoteError] = useState(null);
   const [submitError, setSubmitError] = useState('');
   const [shiftModal, setShiftModal] = useState(null);
+  const [productionBatchLine, setProductionBatchLine] = useState(null);
 
   const { items: lines, meta, loading, error, refetch } = useServerQuery(
     'lines/',
@@ -410,6 +438,7 @@ const LinesPage = () => {
             isPaused,
             pauseReason,
             lastOpenEv,
+            shiftOpener: shiftOpenerLabel(line, snap),
             lastCloseEv: line.shift_last_closed_at
               ? { action: 'close', date: String(line.shift_last_closed_at).slice(0, 10), time: '' }
               : null,
@@ -451,6 +480,7 @@ const LinesPage = () => {
                 isPaused,
                 pauseReason,
                 lastOpenEv,
+                shiftOpener: shiftOpenerLabel(line, shiftSnapshot),
                 lastCloseEv,
                 shiftSnapshot,
               };
@@ -463,6 +493,7 @@ const LinesPage = () => {
                 isPaused: false,
                 pauseReason: '',
                 lastOpenEv: null,
+                shiftOpener: '—',
                 lastCloseEv: null,
                 shiftSnapshot: null,
               };
@@ -591,8 +622,12 @@ const LinesPage = () => {
         setSubmitError('Укажите числа: высота, ширина, градус');
         return;
       }
+      const sessionTitle = String(form?.session_title ?? '').trim();
       try {
-        await openShift(line.id, payload);
+        await openShift(line.id, {
+          ...payload,
+          ...(sessionTitle ? { session_title: sessionTitle } : {}),
+        });
         setShiftModal(null);
         await loadOpeningLines();
         refetch();
@@ -755,11 +790,21 @@ const LinesPage = () => {
                 <div className="lines-table">
                   <div className="lines-table__header">
                     <span className="lines-table__th">НАЗВАНИЕ</span>
+                    <span className="lines-table__th">КОД</span>
+                    <span className="lines-table__th">СТАТУС</span>
                     <span className="lines-table__th lines-table__th--actions">ДЕЙСТВИЯ</span>
                   </div>
                   {lines.map((line) => (
                     <div key={line.id} className="lines-table__row">
                       <span className="lines-table__name">{line.name}</span>
+                      <span className="lines-table__muted">{line.code ?? line.line_code ?? '—'}</span>
+                      <span>
+                        <span
+                          className={`lines-table__badge ${lineIsActive(line) ? 'lines-table__badge--open' : 'lines-table__badge--closed'}`}
+                        >
+                          {lineIsActive(line) ? 'Активна' : 'Неактивна'}
+                        </span>
+                      </span>
                       <div className="lines-table__actions">
                         <button
                           type="button"
@@ -805,8 +850,10 @@ const LinesPage = () => {
                   <div className="lines-table lines-table--opening">
                     <div className="lines-table__header">
                       <span className="lines-table__th">ЛИНИЯ</span>
-                      <span className="lines-table__th">СТАТУС</span>
+                      <span className="lines-table__th">СТАТУС ЛИНИИ</span>
+                      <span className="lines-table__th">СМЕНА</span>
                       <span className="lines-table__th">ПАРАМЕТРЫ</span>
+                      <span className="lines-table__th">ОТКРЫЛ</span>
                       <span className="lines-table__th">ПОСЛ. ОТКРЫТИЕ</span>
                       <span className="lines-table__th">ПОСЛ. ЗАКРЫТИЕ</span>
                       <span className="lines-table__th lines-table__th--actions">ДЕЙСТВИЯ</span>
@@ -814,6 +861,13 @@ const LinesPage = () => {
                     {linesWithStatus.map((l) => (
                       <div key={l.id} className="lines-table__row">
                         <span className="lines-table__name">{l.name}</span>
+                        <span>
+                          <span
+                            className={`lines-table__badge ${lineIsActive(l) ? 'lines-table__badge--open' : 'lines-table__badge--closed'}`}
+                          >
+                            {lineIsActive(l) ? 'Активна' : 'Неактивна'}
+                          </span>
+                        </span>
                         <span>
                           <span
                             className={`lines-table__badge ${
@@ -830,6 +884,9 @@ const LinesPage = () => {
                         </span>
                         <span className="lines-table__params" title="Текущие параметры смены">
                           {l.isOpen ? formatParamsShort(l.shiftSnapshot) : '—'}
+                        </span>
+                        <span className="lines-table__cell-clip" title="Кто открыл смену">
+                          {l.isOpen ? l.shiftOpener : '—'}
                         </span>
                         <span className="lines-table__date">
                           {formatDateTime(l.lastOpenEv?.date, l.lastOpenEv?.time)}
@@ -886,6 +943,18 @@ const LinesPage = () => {
                               >
                                 Параметры
                               </button>
+                              {canCreateProductionBatch && !l.isPaused && (
+                                <button
+                                  type="button"
+                                  className="btn btn--primary btn--sm"
+                                  onClick={() => {
+                                    setSubmitError('');
+                                    setProductionBatchLine(l);
+                                  }}
+                                >
+                                  Партия производства
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 className="btn btn--secondary btn--sm"
@@ -906,7 +975,10 @@ const LinesPage = () => {
                             <button
                               type="button"
                               className="btn btn--open btn--sm"
+                              disabled={!lineIsActive(l)}
+                              title={!lineIsActive(l) ? 'Сначала активируйте линию в справочнике' : undefined}
                               onClick={() => {
+                                if (!lineIsActive(l)) return;
                                 setSubmitError('');
                                 setShiftModal({
                                   type: 'open',
@@ -1121,6 +1193,19 @@ const LinesPage = () => {
         />
       )}
 
+      {productionBatchLine && (
+        <ProductionBatchModal
+          lineId={productionBatchLine.id}
+          lineName={productionBatchLine.name}
+          onClose={() => setProductionBatchLine(null)}
+          onSuccess={() => {
+            toast.show('Партия создана');
+            loadOpeningLines();
+            refetch();
+          }}
+        />
+      )}
+
       <ConfirmModal
         open={!!deleteTarget}
         title="Удалить линию?"
@@ -1297,9 +1382,22 @@ const LineHistorySessionModal = ({
 
 const LineFormModal = ({ line, onSubmit, onClose, error }) => {
   const [name, setName] = useState(line?.name ?? '');
+  const [code, setCode] = useState(line?.code ?? line?.line_code ?? '');
+  const [notes, setNotes] = useState(line?.notes ?? line?.comment ?? '');
+  const [isActive, setIsActive] = useState(lineIsActive(line));
+
+  useEffect(() => {
+    setName(line?.name ?? '');
+    setCode(line?.code ?? line?.line_code ?? '');
+    setNotes(line?.notes ?? line?.comment ?? '');
+    setIsActive(lineIsActive(line));
+  }, [line?.id, line]);
 
   const isDirty = useDirtyFromBaseline(line?.id != null ? String(line.id) : 'new', false, {
     name: name.trim(),
+    code: String(code ?? '').trim(),
+    notes: String(notes ?? '').trim(),
+    isActive,
   });
   const {
     requestClose,
@@ -1318,19 +1416,39 @@ const LineFormModal = ({ line, onSubmit, onClose, error }) => {
         onConfirm={confirmDiscardAndClose}
         onCancel={cancelDiscard}
       />
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
-          <h3>{line ? 'Редактировать линию' : 'Создать линию'}</h3>
+          <h3>{line ? 'Редактировать линию' : 'Добавить линию'}</h3>
           <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            onSubmit({ name });
+            onSubmit({
+              name: name.trim(),
+              code: String(code ?? '').trim() || undefined,
+              notes: String(notes ?? '').trim() || undefined,
+              comment: String(notes ?? '').trim() || undefined,
+              is_active: isActive,
+            });
           }}
         >
-          <label>Название</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} required />
+          <label>Название линии *</label>
+          <input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Например: Линия 1" />
+          <label>Код / номер линии</label>
+          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Внутренний код" autoComplete="off" />
+          <label className="lines-form__check">
+            <input
+              type="checkbox"
+              checked={isActive}
+              onChange={(e) => setIsActive(e.target.checked)}
+            />
+            Линия активна (на неактивной нельзя открыть смену)
+          </label>
+          <Collapse title="Комментарий">
+            <label>Комментарий</label>
+            <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Заметки" />
+          </Collapse>
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={requestClose}>Отмена</button>
@@ -1451,6 +1569,7 @@ const ShiftParamsModal = ({
     width: String(form.width ?? '').trim(),
     angle_deg: String(form.angle_deg ?? '').trim(),
     comment: String(form.comment ?? '').trim(),
+    session_title: String(form.session_title ?? '').trim(),
   });
   const {
     requestClose,
@@ -1483,8 +1602,20 @@ const ShiftParamsModal = ({
         >
           {type === 'open' && (
             <p className="lines-shift-form__hint">
-              Высота, ширина и градус относятся к настройке линии на эту смену. Норма количества по изделию задаётся в рецептуре.
+              Высота, ширина и градус — текущие параметры линии на эту смену. Норма расхода на метр — в рецепте профиля; факт производства оформляется отдельно партией (ProductionBatch).
             </p>
+          )}
+          {type === 'open' && (
+            <>
+              <label>Название смены / сессии</label>
+              <input
+                type="text"
+                value={form.session_title ?? ''}
+                onChange={(e) => setField('session_title', e.target.value)}
+                placeholder="Необязательно"
+                autoComplete="off"
+              />
+            </>
           )}
           <label>Высота *</label>
           <DecimalInput

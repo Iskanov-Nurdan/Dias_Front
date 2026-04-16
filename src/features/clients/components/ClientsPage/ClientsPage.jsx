@@ -9,9 +9,17 @@ import {
   Loading,
   ActionMenu,
   useToast,
+  Badge,
 } from '../../../../shared/ui';
 import { apiClient } from '../../../../shared/api';
 import './ClientsPage.scss';
+
+const clientCanDelete = (c) => {
+  const n = Number(c?.sales_count ?? c?.sales_total_count ?? 0);
+  if (Number.isFinite(n) && n > 0) return false;
+  if (c?.has_sales === true) return false;
+  return true;
+};
 
 const ClientsPage = () => {
   const toast = useToast();
@@ -82,7 +90,7 @@ const ClientsPage = () => {
   return (
     <div className="page page--clients">
       <header className="ds-page-top">
-        <p className="ds-page-top__desc">Контакты для документов и отгрузок.</p>
+        <p className="ds-page-top__desc">Справочник покупателей для продаж и документов.</p>
       </header>
       <div className="ds-toolbar ds-toolbar--stack-mobile">
         <div className="ds-toolbar__start">
@@ -116,6 +124,10 @@ const ClientsPage = () => {
             <tr>
               <th>Клиент</th>
               <th>Телефон</th>
+              <th>Контакт</th>
+              <th className="data-table__cell--num">Продаж</th>
+              <th className="data-table__cell--num">Сумма</th>
+              <th>Статус</th>
               <th aria-hidden />
             </tr>
           </thead>
@@ -135,12 +147,28 @@ const ClientsPage = () => {
               >
                 <td className="data-table__cell--lead">{c.name || c.title || `#${c.id}`}</td>
                 <td className="data-table__cell--muted">{c.phone || c.phone_number || '—'}</td>
+                <td className="data-table__cell--muted">{c.contact_person || c.contact_name || '—'}</td>
+                <td className="data-table__cell--num">{c.sales_count ?? c.orders_count ?? '—'}</td>
+                <td className="data-table__cell--num">
+                  {c.sales_total != null && c.sales_total !== ''
+                    ? `${formatQuantityDisplay(c.sales_total)} сом`
+                    : '—'}
+                </td>
+                <td>
+                  {c.is_active === false || c.active === false ? (
+                    <Badge variant="default">Неактивен</Badge>
+                  ) : (
+                    <Badge variant="success">Активен</Badge>
+                  )}
+                </td>
                 <td>
                   <ActionMenu
                     ariaLabel="Действия"
                     items={[
                       { label: 'История', onClick: () => handleOpenHistory(c) },
-                      { label: 'Удалить', danger: true, onClick: () => setDeleteTarget({ id: c.id, name: c.name || `#${c.id}` }) },
+                      ...(clientCanDelete(c)
+                        ? [{ label: 'Удалить', danger: true, onClick: () => setDeleteTarget({ id: c.id, name: c.name || `#${c.id}` }) }]
+                        : []),
                     ]}
                   />
                 </td>
@@ -182,30 +210,49 @@ const ClientsPage = () => {
   );
 };
 
+const clientIsActive = (c) => {
+  if (c == null) return true;
+  if (c.is_active === false) return false;
+  if (c.active === false) return false;
+  return true;
+};
+
 const ClientModal = ({ client, onClose, onSubmit, error }) => {
   const [name, setName] = useState(client?.name || '');
   const [phone, setPhone] = useState(client?.phone || client?.phone_number || '');
+  const [contactPerson, setContactPerson] = useState(client?.contact_person || client?.contact_name || '');
+  const [messenger, setMessenger] = useState(client?.messenger || client?.whatsapp_telegram || '');
+  const [email, setEmail] = useState(client?.email || '');
   const [phoneAlt, setPhoneAlt] = useState(client?.phone_alt || client?.second_phone || '');
   const [address, setAddress] = useState(client?.address || '');
   const [clientType, setClientType] = useState(client?.client_type || client?.type || '');
   const [comment, setComment] = useState(client?.comment || client?.notes || '');
+  const [isActive, setIsActive] = useState(clientIsActive(client));
 
   useEffect(() => {
     setName(client?.name || '');
     setPhone(client?.phone || client?.phone_number || '');
+    setContactPerson(client?.contact_person || client?.contact_name || '');
+    setMessenger(client?.messenger || client?.whatsapp_telegram || '');
+    setEmail(client?.email || '');
     setPhoneAlt(client?.phone_alt || client?.second_phone || '');
     setAddress(client?.address || '');
     setClientType(client?.client_type || client?.type || '');
     setComment(client?.comment || client?.notes || '');
+    setIsActive(clientIsActive(client));
   }, [client?.id, client]);
 
   const isDirty = useDirtyFromBaseline(client?.id ?? 'new', false, {
     name: name.trim(),
     phone: phone.trim(),
+    contactPerson: contactPerson.trim(),
+    messenger: messenger.trim(),
+    email: email.trim(),
     phoneAlt: phoneAlt.trim(),
     address: address.trim(),
     clientType: clientType.trim(),
     comment: comment.trim(),
+    isActive,
   });
   const {
     requestClose,
@@ -235,18 +282,38 @@ const ClientModal = ({ client, onClose, onSubmit, error }) => {
             onSubmit({
               name: name.trim(),
               phone: phone.trim() || undefined,
+              contact_person: contactPerson.trim() || undefined,
+              messenger: messenger.trim() || undefined,
+              whatsapp_telegram: messenger.trim() || undefined,
+              email: email.trim() || undefined,
               phone_alt: phoneAlt.trim() || undefined,
               address: address.trim() || undefined,
               client_type: clientType.trim() || undefined,
               notes: comment.trim() || undefined,
+              comment: comment.trim() || undefined,
+              is_active: isActive,
             });
           }}
         >
-          <label>Название *</label>
+          <label>Название / компания *</label>
           <input value={name} onChange={(e) => setName(e.target.value)} required placeholder="ФИО или организация" />
+          <label>Контактное лицо</label>
+          <input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} placeholder="ФИО" />
           <label>Телефон</label>
           <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+996 …" />
-          <Collapse title="Подробнее">
+          <label>WhatsApp / Telegram</label>
+          <input value={messenger} onChange={(e) => setMessenger(e.target.value)} placeholder="@username или номер" />
+          <label>Email</label>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="необязательно" />
+          <label className="clients-form__check">
+            <input
+              type="checkbox"
+              checked={isActive}
+              onChange={(e) => setIsActive(e.target.checked)}
+            />
+            Клиент активен (неактивного нельзя выбрать в новых продажах)
+          </label>
+          <Collapse title="Ещё">
             <label>Доп. телефон</label>
             <input value={phoneAlt} onChange={(e) => setPhoneAlt(e.target.value)} placeholder="Необязательно" />
             <label>Адрес</label>

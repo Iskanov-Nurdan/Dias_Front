@@ -28,6 +28,17 @@
   color: var(--text-secondary);
 }
 
+.otk-accept-form__hint {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-caption);
+  line-height: 1.4;
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+
 .otk-nav {
   margin-bottom: 1rem;
   font-size: 0.95rem;
@@ -312,13 +323,14 @@
         }
       }
 
-      > *:nth-child(1)::before { content: '№ ОТК'; }
-      > *:nth-child(2)::before { content: 'Продукт'; }
-      > *:nth-child(3)::before { content: 'Линия'; }
-      > *:nth-child(4)::before { content: 'Выпуск'; }
-      > *:nth-child(5)::before { content: 'Размеры'; }
-      > *:nth-child(6)::before { content: 'Оператор'; }
-      > *:nth-child(7)::before { content: 'Дата'; }
+      > *:nth-child(1)::before { content: '№ партии'; }
+      > *:nth-child(2)::before { content: 'Профиль'; }
+      > *:nth-child(3)::before { content: 'Продукт'; }
+      > *:nth-child(4)::before { content: 'Линия'; }
+      > *:nth-child(5)::before { content: 'Выпуск'; }
+      > *:nth-child(6)::before { content: 'Размеры'; }
+      > *:nth-child(7)::before { content: 'Оператор'; }
+      > *:nth-child(8)::before { content: 'Дата'; }
     }
 
     &--history &__row {
@@ -351,11 +363,12 @@
       }
 
       > *:nth-child(1)::before { content: 'Статус'; }
-      > *:nth-child(2)::before { content: '№ ОТК'; }
-      > *:nth-child(3)::before { content: 'Задание'; }
-      > *:nth-child(4)::before { content: 'Принято'; }
-      > *:nth-child(5)::before { content: 'Брак'; }
-      > *:nth-child(6)::before { content: 'Комментарий'; }
+      > *:nth-child(2)::before { content: '№ партии'; }
+      > *:nth-child(3)::before { content: 'Профиль'; }
+      > *:nth-child(4)::before { content: 'Задание'; }
+      > *:nth-child(5)::before { content: 'Принято'; }
+      > *:nth-child(6)::before { content: 'Брак'; }
+      > *:nth-child(7)::before { content: 'Комментарий'; }
     }
   }
 }
@@ -386,6 +399,24 @@
   .otk-accept-modal__head {
     padding-top: var(--space-3);
     padding-bottom: var(--space-3);
+  }
+}
+
+.otk-accept-distribute {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  margin: 0 0 0.85rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  background: rgba(88, 166, 255, 0.08);
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+
+  &--warn {
+    color: var(--warning);
   }
 }
 
@@ -529,6 +560,152 @@
   &--sm {
     padding: 0.4rem 0.75rem;
     font-size: 0.85rem;
+  }
+}
+
+@include mobile {
+  .page--otk {
+    .otk-table--awaiting .otk-table__header {
+      display: none;
+    }
+
+    .otk-table--awaiting .otk-table__row {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      padding: var(--space-4);
+      margin-bottom: var(--space-3);
+    }
+
+    .otk-table--awaiting .otk-table__row > * {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--space-3);
+      width: 100%;
+      padding: var(--space-2) 0;
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: right;
+      min-width: 0;
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    .otk-table--awaiting .otk-table__row > *::before {
+      content: '';
+      font-size: var(--font-caption);
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-align: left;
+      flex: 0 1 46%;
+      min-width: 0;
+    }
+
+    .otk-table--awaiting .otk-table__row > *:nth-child(1)::before {
+      content: '№ партии';
+    }
+
+    .otk-table--awaiting .otk-table__row > *:nth-child(2)::before {
+      content: 'Профиль';
+    }
+
+    .otk-table--awaiting .otk-table__row > *:nth-child(3)::before {
+      content: 'Продукт / рецепт';
+    }
+
+    .otk-table--awaiting .otk-table__row > *:nth-child(4)::before {
+      content: 'Линия';
+    }
+
+    .otk-table--awaiting .otk-table__row > *:nth-child(5)::before {
+      content: 'Выпуск';
+    }
+
+    .otk-table--awaiting .otk-table__row > *:nth-child(6)::before {
+      content: 'Размеры';
+    }
+
+    .otk-table--awaiting .otk-table__row > *:nth-child(7)::before {
+      content: 'Оператор';
+    }
+
+    .otk-table--awaiting .otk-table__row > *:nth-child(8)::before {
+      content: 'Дата';
+    }
+
+    .otk-table--awaiting .otk-table__row > *:nth-child(9)::before {
+      content: 'Действия';
+    }
+
+    .otk-table--history .otk-table__header {
+      display: none;
+    }
+
+    .otk-table--history .otk-table__row {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      padding: var(--space-4);
+      margin-bottom: var(--space-3);
+    }
+
+    .otk-table--history .otk-table__row > * {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--space-3);
+      width: 100%;
+      padding: var(--space-2) 0;
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: right;
+      min-width: 0;
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    .otk-table--history .otk-table__row > *::before {
+      content: '';
+      font-size: var(--font-caption);
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-align: left;
+      flex: 0 1 46%;
+      min-width: 0;
+    }
+
+    .otk-table--history .otk-table__row > *:nth-child(1)::before {
+      content: 'Статус';
+    }
+
+    .otk-table--history .otk-table__row > *:nth-child(2)::before {
+      content: '№ партии';
+    }
+
+    .otk-table--history .otk-table__row > *:nth-child(3)::before {
+      content: 'Профиль';
+    }
+
+    .otk-table--history .otk-table__row > *:nth-child(4)::before {
+      content: 'Задание / продукт';
+    }
+
+    .otk-table--history .otk-table__row > *:nth-child(5)::before {
+      content: 'Принято';
+    }
+
+    .otk-table--history .otk-table__row > *:nth-child(6)::before {
+      content: 'Брак';
+    }
+
+    .otk-table--history .otk-table__row > *:nth-child(7)::before {
+      content: 'Комментарий';
+    }
   }
 }
 

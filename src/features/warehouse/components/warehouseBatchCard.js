@@ -7,6 +7,9 @@ import {
   resolveWarehousePackStructure,
   formatPacksByPiecesPhrase,
   describeOpenPackageComposition,
+  readWarehouseQuality,
+  readWarehouseDefectReason,
+  warehouseQualityShortLabel,
 } from '../../../shared/lib';
 
 const fmt = (v) => {
@@ -28,6 +31,9 @@ const shortDate = (d) => {
  */
 export function buildWarehouseBatchCardRows(b) {
   if (!b || typeof b !== 'object') return [];
+
+  const qKey = readWarehouseQuality(b);
+  const defectReason = readWarehouseDefectReason(b);
 
   const inv = resolveInventoryForm(b);
   const qty = b.quantity ?? b.available_quantity;
@@ -57,6 +63,8 @@ export function buildWarehouseBatchCardRows(b) {
       : null);
 
   return [
+    { label: 'Качество', value: warehouseQualityShortLabel(qKey) },
+    ...(defectReason ? [{ label: 'Причина брака', value: defectReason }] : []),
     { label: 'Номер партии / лот', value: fmt(b.batch ?? b.lot ?? (b.id != null ? String(b.id) : '')) },
     { label: 'Продукт', value: fmt(b.product_name ?? b.product?.name ?? b.product) },
     { label: 'Количество на складе', value: qtyStr },
@@ -81,6 +89,6 @@ export function buildWarehouseBatchCardRows(b) {
     { label: 'ОТК: комментарий', value: fmt(otkComment) },
     { label: 'ОТК: кто проверил', value: fmt(otkInspector) },
     { label: 'ОТК: дата проверки', value: shortDate(otkAt) },
-    { label: 'Источник (выпуск)', value: fmt(source) },
+    { label: 'Источник (ProductionBatch)', value: fmt(source) },
   ];
 }

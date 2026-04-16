@@ -12,6 +12,8 @@ import {
   formatPacksByPiecesPhrase,
   readCatalogProductIdFromWarehouseBatch,
   sameWarehouseProductKey,
+  readWarehouseQuality,
+  readWarehouseDefectReason,
 } from '../../../../shared/lib';
 import {
   ConfirmModal,
@@ -35,7 +37,11 @@ function getPackagingMeta(batch) {
     return { unitMeters: NaN, piecesPerPackage: NaN, packageTotalMeters: NaN };
   }
   const unitMeters = parseLocaleNumber(
-    batch.unit_meters ?? batch.unit_length_m ?? batch.piece_length_m ?? batch.piece_meters,
+    batch.length_per_piece
+    ?? batch.unit_meters
+    ?? batch.unit_length_m
+    ?? batch.piece_length_m
+    ?? batch.piece_meters,
   );
   const piecesPerPackage = parseLocaleNumber(
     batch.pieces_per_package ?? batch.pieces_in_package ?? batch.pieces_per_pack,
@@ -76,6 +82,15 @@ const unitLabel = (u) => {
   return 'шт';
 };
 
+/** Качество в продаже: только `quality` на записи продажи или на вложенной `warehouse_batch`. */
+const saleWarehouseQualityKey = (s) => {
+  if (!s || typeof s !== 'object') return 'good';
+  if (s.warehouse_batch && typeof s.warehouse_batch === 'object') {
+    return readWarehouseQuality(s.warehouse_batch);
+  }
+  return readWarehouseQuality(s);
+};
+
 const SalesPage = () => {
   const toast = useToast();
   const [queryState] = useState({ page: 1, page_size: 20 });
@@ -100,7 +115,10 @@ const SalesPage = () => {
   const loadClientsAndProducts = useCallback(() => {
     apiClient
       .get('clients/', { params: { page_size: 500 } })
-      .then((res) => setClients(res.data?.items || []))
+      .then((res) => {
+        const raw = res.data?.items || [];
+        setClients(raw.filter((c) => c.is_active !== false && c.active !== false));
+      })
       .catch(() => setClients([]));
     apiClient
       .get('warehouse/batches/', { params: { page_size: 500, status: 'available' } })
@@ -187,11 +205,8 @@ const SalesPage = () => {
   return (
     <div className="page page--sales">
       <div className="ds-toolbar ds-toolbar--page-head ds-toolbar--stack-mobile">
-        <div className="ds-toolbar__start">
-          <p className="sales-page__lede">Отгрузки и накладные.</p>
-        </div>
-        <div className="ds-toolbar__end ds-hide-mobile">
-          <button type="button" className="btn btn--primary" onClick={() => setModalSale({})}>
+        <div className="ds-toolbar__end" style={{ marginLeft: 'auto' }}>
+          <button type="button" className="btn btn--primary ds-hide-mobile" onClick={() => setModalSale({})}>
             Создать
           </button>
         </div>
@@ -210,10 +225,13 @@ const SalesPage = () => {
         <table className="data-table data-table--fixed data-table--sales data-table--row-actions data-table--clickable">
           <thead>
             <tr>
+              <th>Дата</th>
               <th>Клиент</th>
-              <th>Продукт</th>
+              <th>Профиль / партия</th>
               <th>Количество</th>
-              <th>Сумма</th>
+              <th>Выручка</th>
+              <th>Себестоимость</th>
+              <th>Прибыль</th>
               <th aria-hidden />
             </tr>
           </thead>
@@ -231,8 +249,27 @@ const SalesPage = () => {
                   }
                 }}
               >
+                <td className="data-table__cell--muted sales-table__date-cell">
+                  {(s.sale_date || s.date || s.created_at || '').toString().slice(0, 10) || '—'}
+                </td>
                 <td className="data-table__cell--lead">{s.client_name || s.client?.name || s.client || '—'}</td>
-                <td className="data-table__cell--lead">{s.product_name || s.product?.name || s.product || '—'}</td>
+                <td className="data-table__cell--lead">
+                  <div className="sales-table__product-cell">
+                    <span className="sales-table__product-title">
+                      {s.profile_name || s.profile?.name || s.product_name || s.product?.name || s.product || '—'}
+                    </span>
+                    {saleWarehouseQualityKey(s) === 'defect' ? (
+                      <span className="warehouse-quality-badge warehouse-quality-badge--defect sales-table__quality-badge">
+                        Брак
+                      </span>
+                    ) : null}
+                    {s.warehouse_batch_id != null || s.batch_id != null ? (
+                      <span className="sales-table__batch-hint">
+                        №{s.warehouse_batch_id ?? s.batch_id ?? s.warehouse_batch?.id}
+                      </span>
+                    ) : null}
+                  </div>
+                </td>
                 <td className="sales-table__qty-cell">
                   <span className="sales-table__qty-line">
                     {s.quantity_unit === 'package' &&
@@ -253,11 +290,25 @@ const SalesPage = () => {
                   </span>
                 </td>
                 <td className="sales-table__price data-table__cell--num">
-                  {s.price != null && s.price !== ''
-                    ? `${formatQuantityDisplay(s.price)} сом`
-                    : s.total != null && s.total !== ''
-                      ? `${formatQuantityDisplay(s.total)} сом`
+                  {s.revenue != null && s.revenue !== ''
+                    ? `${formatQuantityDisplay(s.revenue)} сом`
+                    : s.price != null && s.price !== ''
+                      ? `${formatQuantityDisplay(s.price)} сом`
+                      : s.total != null && s.total !== ''
+                        ? `${formatQuantityDisplay(s.total)} сом`
+                        : '—'}
+                </td>
+                <td className="data-table__cell--num data-table__cell--muted">
+                  {s.cost_total != null && s.cost_total !== ''
+                    ? `${formatQuantityDisplay(s.cost_total)} сом`
+                    : s.cost != null && s.cost !== ''
+                      ? `${formatQuantityDisplay(s.cost)} сом`
                       : '—'}
+                </td>
+                <td className="data-table__cell--num">
+                  {s.profit != null && s.profit !== ''
+                    ? `${formatQuantityDisplay(s.profit)} сом`
+                    : '—'}
                 </td>
                 <td>
                   <ActionMenu
@@ -327,6 +378,7 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
   const [localSubmitting, setLocalSubmitting] = useState(false);
   const [waybillBusy, setWaybillBusy] = useState(false);
   const [syncing, setSyncing] = useState(true);
+  const [saleDate, setSaleDate] = useState('');
 
   useEffect(() => {
     setSyncing(true);
@@ -357,6 +409,10 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
         sale.price != null && sale.price !== '' ? formatNumberForInput(sale.price) : '',
       );
       setComment(sale.comment ?? '');
+      const sd = sale.sale_date || sale.date || sale.created_at;
+      setSaleDate(
+        sd && String(sd).length >= 10 ? String(sd).slice(0, 10) : '',
+      );
       setOverridePiecesPerPackage(
         sale.override_pieces_per_package != null && sale.override_pieces_per_package !== ''
           ? formatNumberForInput(sale.override_pieces_per_package)
@@ -370,6 +426,7 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
       setPrice('');
       setComment('');
       setOverridePiecesPerPackage('');
+      setSaleDate(new Date().toISOString().slice(0, 10));
     }
     setSyncing(false);
   }, [sale]);
@@ -404,8 +461,9 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
       price: String(price ?? '').trim(),
       comment: String(comment ?? '').trim(),
       overridePiecesPerPackage: String(overridePiecesPerPackage ?? '').trim(),
+      saleDate: String(saleDate ?? '').trim(),
     }),
-    [client, product, saleUnit, qtyInput, price, comment, overridePiecesPerPackage],
+    [client, product, saleUnit, qtyInput, price, comment, overridePiecesPerPackage, saleDate],
   );
 
   const isDirtyForm = useDirtyFromBaseline(sale?.id ?? 'new', syncing, saleFormSnapshot);
@@ -431,6 +489,15 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
   );
   const selectedBatchPackagingMeta = useMemo(
     () => getPackagingMeta(selectedBatch),
+    [selectedBatch],
+  );
+
+  const batchQualityKey = useMemo(
+    () => (selectedBatch ? readWarehouseQuality(selectedBatch) : 'good'),
+    [selectedBatch],
+  );
+  const batchDefectReason = useMemo(
+    () => (selectedBatch ? readWarehouseDefectReason(selectedBatch) : ''),
     [selectedBatch],
   );
 
@@ -641,12 +708,29 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
             if (catalogProductMissing || catalogProductId == null) return;
 
             const qIn = parseLocaleNumber(qtyInput);
+            const lenM = parseLocaleNumber(
+              selectedBatch?.length_per_piece
+              ?? selectedBatch?.unit_meters
+              ?? selectedBatch?.unit_length_m
+              ?? selectedBatch?.piece_length_m
+              ?? selectedBatch?.piece_meters,
+            );
+            const packsInt = saleUnit === 'package' ? Math.floor(Number.isFinite(qIn) ? qIn : 0) : undefined;
             const payload = {
-              ...(client ? { client: Number(client) } : {}),
+              ...(client ? { client_id: Number(client), client: Number(client) } : {}),
               product: catalogProductId,
               ...(selectedBatch?.id != null && String(selectedBatch.id).trim() !== ''
-                ? { warehouse_batch_id: Number(selectedBatch.id) }
+                ? {
+                  warehouse_batch: Number(selectedBatch.id),
+                  warehouse_batch_id: Number(selectedBatch.id),
+                }
                 : {}),
+              sale_mode: saleUnit === 'package' ? 'packages' : 'pieces',
+              sold_pieces: pieces,
+              ...(saleUnit === 'package' && packsInt != null && packsInt >= 0
+                ? { sold_packages: packsInt }
+                : {}),
+              ...(Number.isFinite(lenM) && lenM > 0 ? { length_per_piece: lenM } : {}),
               quantity: pieces,
               quantity_unit: saleUnit,
               quantity_input: Number.isFinite(qIn) ? qIn : pieces,
@@ -660,6 +744,7 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
                 ? { price: parseLocaleNumber(price) }
                 : {}),
               ...(comment.trim() ? { comment: comment.trim() } : {}),
+              ...(saleDate.trim() ? { sale_date: saleDate.trim(), date: saleDate.trim() } : {}),
             };
 
             setLocalSubmitting(true);
@@ -676,6 +761,14 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
             }
           }}
         >
+          <label>Дата продажи</label>
+          <input
+            type="date"
+            value={saleDate}
+            onChange={(e) => setSaleDate(e.target.value)}
+            className="sales-modal__date-input"
+          />
+
           <label>Клиент</label>
           <Select
             value={client === '' || client == null ? '' : String(client)}
@@ -704,15 +797,31 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
                 : inv === 'packed' || inv === 'open_package'
                   ? pres.primary
                   : `${pres.primary} шт`;
-              return { value: String(p.id), label: `${name} — ${suffix}` };
+              const q = readWarehouseQuality(p);
+              const qMark = q === 'defect' ? 'Брак · ' : '';
+              return { value: String(p.id), label: `${qMark}${name} — ${suffix}` };
             })}
           />
 
           {selectedBatch && (
-            <div className={`sales-modal__stock-banner sales-modal__stock-banner--${invForm}`}>
+            <div
+              className={`sales-modal__stock-banner sales-modal__stock-banner--${invForm}${
+                batchQualityKey === 'defect' ? ' sales-modal__stock-banner--defect' : ''
+              }`}
+            >
               <span className="sales-modal__stock-label">Склад:</span>
               <span className="sales-modal__stock-value">{inventoryFormLabel(invForm)}</span>
+              {batchQualityKey === 'defect' ? (
+                <span className="warehouse-quality-badge warehouse-quality-badge--defect sales-modal__stock-quality">
+                  Брак
+                </span>
+              ) : null}
               {packagingHint && <span className="sales-modal__stock-meta">{packagingHint}</span>}
+              {batchQualityKey === 'defect' && batchDefectReason ? (
+                <span className="sales-modal__stock-defect-reason" title={batchDefectReason}>
+                  {batchDefectReason}
+                </span>
+              ) : null}
             </div>
           )}
 

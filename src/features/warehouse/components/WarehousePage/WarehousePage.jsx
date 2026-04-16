@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useDiscardOnClose, useDirtyFromBaseline, useIsMobile } from '../../../../shared/hooks';
+import React, { useState, useMemo } from 'react';
+import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
 import {
   useServerQuery,
   formatNumberForInput,
@@ -9,9 +9,12 @@ import {
   inventoryFormBadgeModifier,
   warehouseStockStatusRu,
   getWarehouseQuantityPresentation,
+  readWarehouseQuality,
+  readWarehouseDefectReason,
+  warehouseQualityShortLabel,
 } from '../../../../shared/lib';
 import { buildWarehouseBatchCardRows } from '../warehouseBatchCard';
-import { EmptyState, ErrorState, Loading, useToast, DecimalInput, ConfirmModal, ActionMenu, FiltersModal } from '../../../../shared/ui';
+import { EmptyState, ErrorState, Loading, useToast, DecimalInput, ConfirmModal, ActionMenu } from '../../../../shared/ui';
 import Select from '../../../../shared/ui/Select/Select';
 import { apiClient } from '../../../../shared/api';
 import { useOperationalRefetch } from '../../../../shared/realtime';
@@ -49,14 +52,13 @@ const WarehouseBatchDetailModal = ({ batch, onClose }) => {
 
 const WarehousePage = () => {
   const toast = useToast();
-  const isMobile = useIsMobile();
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [queryState, setQueryState] = useState({
     page: 1,
     page_size: 20,
     status: '',
     search: '',
     inventory_form: '',
+    quality: '',
   });
   const [reserveTarget, setReserveTarget] = useState(null);
   const [detailBatch, setDetailBatch] = useState(null);
@@ -66,9 +68,14 @@ const WarehousePage = () => {
 
   const { items, loading, error, refetch } = useServerQuery('warehouse/batches/', queryState, { enabled: true });
 
-  useOperationalRefetch('warehouse_batch', refetch, true);
+  useOperationalRefetch(['warehouse_batch', 'production_batch', 'batch'], refetch, true);
 
-  const rows = items || [];
+  const rows = useMemo(() => {
+    const raw = items || [];
+    const q = queryState.quality;
+    if (!q) return raw;
+    return raw.filter((b) => readWarehouseQuality(b) === q);
+  }, [items, queryState.quality]);
 
   const handleReserve = async (batchId, quantity, saleId) => {
     setSubmitError('');
@@ -99,12 +106,7 @@ const WarehousePage = () => {
             value={queryState.search}
             onChange={(e) => setQueryState((p) => ({ ...p, search: e.target.value, page: 1 }))}
           />
-          {isMobile && (
-            <button type="button" className="btn btn--secondary page--warehouse__filters-btn" onClick={() => setFiltersOpen(true)}>
-              Фильтры
-            </button>
-          )}
-          <div className="page--warehouse__filters-inline ds-hide-mobile">
+          <div className="page--warehouse__filters-inline">
             <Select
               className="page--warehouse__select"
               value={queryState.status}
@@ -129,9 +131,20 @@ const WarehousePage = () => {
               ]}
               onChange={(val) => setQueryState((p) => ({ ...p, inventory_form: val, page: 1 }))}
             />
+            <Select
+              className="page--warehouse__select"
+              value={queryState.quality}
+              placeholder="Качество"
+              options={[
+                { value: '', label: 'Все' },
+                { value: 'good', label: 'Годные' },
+                { value: 'defect', label: 'Брак' },
+              ]}
+              onChange={(val) => setQueryState((p) => ({ ...p, quality: val, page: 1 }))}
+            />
           </div>
         </div>
-        <div className="ds-toolbar__end ds-hide-mobile">
+        <div className="ds-toolbar__end page--warehouse__toolbar-primary ds-hide-mobile">
           <button
             type="button"
             className="btn btn--primary"
@@ -141,44 +154,6 @@ const WarehousePage = () => {
           </button>
         </div>
       </div>
-
-      {isMobile && (
-        <FiltersModal
-          open={filtersOpen}
-          onClose={() => setFiltersOpen(false)}
-          onReset={() => setQueryState((p) => ({ ...p, status: '', inventory_form: '', page: 1 }))}
-          title="Фильтры"
-        >
-          <div className="page--warehouse__modal-filters">
-            <label className="page--warehouse__modal-label">Статус</label>
-            <Select
-              className="page--warehouse__select"
-              value={queryState.status}
-              placeholder="Статус"
-              options={[
-                { value: '', label: 'Все статусы' },
-                { value: 'available', label: 'Доступно' },
-                { value: 'reserved', label: 'Резерв' },
-                { value: 'shipped', label: 'Продано' },
-              ]}
-              onChange={(val) => setQueryState((p) => ({ ...p, status: val, page: 1 }))}
-            />
-            <label className="page--warehouse__modal-label">Форма хранения</label>
-            <Select
-              className="page--warehouse__select"
-              value={queryState.inventory_form}
-              placeholder="Форма"
-              options={[
-                { value: '', label: 'Все формы' },
-                { value: 'unpacked', label: 'Не упаковано' },
-                { value: 'packed', label: 'Упаковано' },
-                { value: 'open_package', label: 'Открытая упаковка' },
-              ]}
-              onChange={(val) => setQueryState((p) => ({ ...p, inventory_form: val, page: 1 }))}
-            />
-          </div>
-        </FiltersModal>
-      )}
 
       <div className="ds-sticky-mobile-actions">
         <button
@@ -200,6 +175,7 @@ const WarehousePage = () => {
           <thead>
             <tr>
               <th>Статус</th>
+              <th>Качество</th>
               <th>Продукт</th>
               <th>Количество</th>
               <th>Партия</th>
@@ -214,11 +190,15 @@ const WarehousePage = () => {
               const inv = resolveInventoryForm(b);
               const invMod = inventoryFormBadgeModifier(inv);
               const qtyPres = getWarehouseQuantityPresentation(b);
+              const qKey = readWarehouseQuality(b);
+              const defectReason = readWarehouseDefectReason(b);
+              const isDefect = qKey === 'defect';
               return (
                 <tr
                   key={b.id}
                   tabIndex={0}
                   role="button"
+                  className={isDefect ? 'data-table__row--warehouse-defect' : undefined}
                   onClick={() => setDetailBatch(b)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -237,7 +217,22 @@ const WarehousePage = () => {
                       </span>
                     </div>
                   </td>
-                  <td className="data-table__cell--lead">{productLabel}</td>
+                  <td>
+                    <span
+                      className={`warehouse-quality-badge warehouse-quality-badge--${qKey}`}
+                      title={defectReason || undefined}
+                    >
+                      {warehouseQualityShortLabel(qKey)}
+                    </span>
+                  </td>
+                  <td className="data-table__cell--lead">
+                    <span className="warehouse-table__product-name">{productLabel}</span>
+                    {defectReason ? (
+                      <span className="warehouse-table__defect-hint" title={defectReason}>
+                        {defectReason.length > 48 ? `${defectReason.slice(0, 48)}…` : defectReason}
+                      </span>
+                    ) : null}
+                  </td>
                   <td
                     className="data-table__qty-cell data-table__cell--num"
                     title={qtyPres.title || undefined}
@@ -261,6 +256,8 @@ const WarehousePage = () => {
                             id: b.id,
                             quantity: qty,
                             product: productLabel,
+                            qualityKey: qKey,
+                            defectReason,
                           }),
                         },
                       ]}
@@ -351,6 +348,14 @@ const ReserveModal = ({ batch, onClose, onSubmit, error }) => {
             <label>Продукт</label>
             <input value={batch.product} readOnly />
           </div>
+          {batch.qualityKey === 'defect' && (
+            <p className="warehouse-reserve__quality-note">
+              <span className="warehouse-quality-badge warehouse-quality-badge--defect">Брак</span>
+              {batch.defectReason ? (
+                <span className="warehouse-reserve__defect-reason">{batch.defectReason}</span>
+              ) : null}
+            </p>
+          )}
           <div className="modal__field">
             <label>Количество *</label>
             <DecimalInput min={1} value={quantity} onChange={setQuantity} required />

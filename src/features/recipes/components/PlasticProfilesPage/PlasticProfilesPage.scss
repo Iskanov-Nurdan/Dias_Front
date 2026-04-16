@@ -1,0 +1,222 @@
+@use '../../../../shared/styles/mixins' as *;
+
+.page--plastic-profiles {
+  .page__title {
+    margin-bottom: 0.5rem;
+  }
+}
+
+.plastic-profiles__lede {
+  margin: 0 0 1rem;
+  max-width: 52rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--text-muted, #5c6570);
+}
+
+.plastic-profiles-modal__hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.plastic-profiles-card {
+  @include card-soft;
+  padding: 1.5rem;
+
+  &__head {
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+
+  &__search {
+    flex: 1;
+    min-width: 200px;
+    max-width: 420px;
+    min-height: var(--input-height);
+    padding: 0 var(--space-3);
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-md);
+    color: var(--text);
+    font-size: var(--font-body);
+    font-family: inherit;
+
+    &:focus {
+      @include focus-ring;
+    }
+  }
+}
+
+.plastic-profiles-table-wrap {
+  overflow-x: auto;
+  margin-top: 0.25rem;
+}
+
+.plastic-profiles-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 920px;
+
+  &__header {
+    display: grid;
+    grid-template-columns:
+      minmax(100px, 1.2fr)
+      minmax(72px, 0.5fr)
+      7rem
+      5.5rem
+      minmax(320px, auto);
+    gap: var(--space-2) var(--space-3);
+    padding: 0.5rem 0 0.65rem;
+    font-size: var(--font-label, 0.8125rem);
+    font-weight: 600;
+    color: var(--text-secondary, var(--muted));
+    border-bottom: 1px solid var(--border);
+    align-items: end;
+  }
+
+  &__block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns:
+      minmax(100px, 1.2fr)
+      minmax(72px, 0.5fr)
+      7rem
+      5.5rem
+      minmax(320px, auto);
+    gap: var(--space-2) var(--space-3);
+    align-items: center;
+    padding: var(--space-2) var(--space-3);
+    background: var(--card);
+    border-radius: var(--radius-md);
+    box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.05);
+  }
+
+  &__name {
+    font-weight: 500;
+    min-width: 0;
+  }
+
+  &__code {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-secondary);
+  }
+
+  &__has {
+    font-size: var(--font-caption);
+  }
+
+  &__status {
+    font-size: var(--font-caption);
+  }
+
+  &__recipes {
+    margin: 0 var(--space-3) var(--space-2);
+    padding: 0.45rem 0.65rem;
+    font-size: var(--font-caption, 0.8125rem);
+    line-height: 1.4;
+    color: var(--text-secondary);
+    background: rgba(17, 24, 39, 0.03);
+    border-radius: 6px;
+    border: 1px solid var(--border-subtle);
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.45rem;
+  }
+
+  &__th--actions {
+    text-align: right;
+  }
+}
+
+@include mobile {
+  .page--plastic-profiles {
+    .plastic-profiles-table-wrap {
+      overflow-x: visible;
+    }
+
+    .plastic-profiles-table {
+      min-width: 0 !important;
+      gap: var(--space-3);
+    }
+
+    .plastic-profiles-table__header {
+      display: none;
+    }
+
+    .plastic-profiles-table__block {
+      padding-bottom: var(--space-2);
+    }
+
+    .plastic-profiles-table__row {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      padding: var(--space-4);
+    }
+
+    .plastic-profiles-table__row > * {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--space-3);
+      width: 100%;
+      padding: var(--space-2) 0;
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: right;
+      min-width: 0;
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    .plastic-profiles-table__row > *::before {
+      content: '';
+      font-size: var(--font-caption);
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-align: left;
+      flex: 0 1 46%;
+      min-width: 0;
+    }
+
+    .plastic-profiles-table__row > *:nth-child(1)::before {
+      content: 'Название';
+    }
+
+    .plastic-profiles-table__row > *:nth-child(2)::before {
+      content: 'Код';
+    }
+
+    .plastic-profiles-table__row > *:nth-child(3)::before {
+      content: 'Есть рецепт';
+    }
+
+    .plastic-profiles-table__row > *:nth-child(4)::before {
+      content: 'Статус';
+    }
+
+    .plastic-profiles-table__row > *:nth-child(5)::before {
+      content: 'Действия';
+    }
+
+    .plastic-profiles-table__name {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+    }
+  }
+}

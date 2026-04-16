@@ -22,43 +22,14 @@ export function otkResultStatusRu(batch) {
     return { label: 'Ожидает проверки', tone: 'orange' };
   }
   if (s === 'accepted' || s === 'принято' || s === 'ok') {
-    if (def > 0 && acc > 0) return { label: 'Принято с браком', tone: 'amber' };
-    if (def > 0 && acc <= 0) return { label: 'Забраковано', tone: 'red' };
-    return { label: 'Принято', tone: 'green' };
+    if (def > 0 && acc > 0) return { label: 'Годн. + брак → склад', tone: 'amber' };
+    if (def > 0 && acc <= 0) return { label: 'Брак → склад', tone: 'red' };
+    return { label: 'Годный → склад', tone: 'green' };
   }
   if (s === 'rejected' || s === 'defect' || s === 'брак' || s === 'failed') {
-    return { label: 'Забраковано', tone: 'red' };
+    return { label: 'Брак → склад', tone: 'red' };
   }
   return { label: 'Ожидает проверки', tone: 'orange' };
-}
-
-/** Статус производственного запуска / замеса (если бэк отдаёт поле status) */
-export function productionRunStatusRu(status) {
-  const s = String(status || '').toLowerCase();
-  if (s === 'draft' || s === 'черновик') return 'Черновик';
-  if (s === 'in_progress' || s === 'running' || s === 'в_работе' || s === 'в работе') return 'В работе';
-  if (s === 'done' || s === 'completed' || s === 'завершено' || s === 'finished') return 'Завершено';
-  if (s === 'cancelled' || s === 'canceled' || s === 'отменено') return 'Отменено';
-  if (!s) return '—';
-  return String(status);
-}
-
-/**
- * Подпись для списка замесов: сначала статус запуска (если бэк прислал),
- * иначе — по связанной партии ОТК (часто в списке нет run.status, но есть production_batch).
- */
-export function recipeRunListStatusRu(run) {
-  const fromRun = productionRunStatusRu(run?.status ?? run?.run_status);
-  if (fromRun !== '—') return fromRun;
-  const pb = run?.production_batch;
-  if (pb != null && typeof pb === 'object') {
-    return otkResultStatusRu(pb).label;
-  }
-  const flatOtk = run?.production_batch_otk_status ?? run?.otk_status;
-  if (flatOtk != null && String(flatOtk).trim() !== '') {
-    return otkResultStatusRu({ otk_status: flatOtk, ...run }).label;
-  }
-  return '—';
 }
 
 /** Подпись единицы нормативного выпуска рецепта (API-ключ → русский текст) */

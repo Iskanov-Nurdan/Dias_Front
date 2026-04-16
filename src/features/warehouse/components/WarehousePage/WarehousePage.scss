@@ -80,25 +80,86 @@
     }
   }
 
+  .data-table__row--warehouse-defect {
+    background: rgba(198, 40, 40, 0.04);
+  }
+
+  .warehouse-quality-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-size: 10px;
+    font-weight: var(--weight-semibold);
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+
+    &--good {
+      background: var(--success-muted);
+      color: var(--success);
+    }
+
+    &--defect {
+      background: var(--danger-muted);
+      color: var(--danger);
+      border: 1px solid var(--danger);
+    }
+  }
+
+  .warehouse-table__product-name {
+    display: block;
+    font-weight: var(--weight-medium);
+  }
+
+  .warehouse-table__defect-hint {
+    display: block;
+    margin-top: 2px;
+    font-size: var(--font-caption);
+    color: var(--text-muted);
+    line-height: 1.3;
+    max-width: 100%;
+  }
+
+  .warehouse-reserve__quality-note {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-2);
+  }
+
+  .warehouse-reserve__defect-reason {
+    font-size: var(--font-caption);
+    color: var(--text-secondary);
+    flex: 1;
+    min-width: 0;
+  }
+
   .data-table--warehouse {
     th:nth-child(1),
     td:nth-child(1) {
-      width: 22%;
+      width: 18%;
     }
 
     th:nth-child(2),
     td:nth-child(2) {
-      width: 32%;
+      width: 10%;
     }
 
     th:nth-child(3),
     td:nth-child(3) {
-      width: 22%;
+      width: 28%;
     }
 
     th:nth-child(4),
     td:nth-child(4) {
-      width: 14%;
+      width: 18%;
+    }
+
+    th:nth-child(5),
+    td:nth-child(5) {
+      width: 12%;
     }
 
     .data-table__qty-cell {
@@ -146,19 +207,23 @@
     }
 
     .data-table--warehouse td:nth-child(2)::before {
+      content: 'Качество';
+    }
+
+    .data-table--warehouse td:nth-child(3)::before {
       display: none;
     }
 
-    .data-table--warehouse td:nth-child(2) {
+    .data-table--warehouse td:nth-child(3) {
       font-size: var(--font-body);
       font-weight: var(--weight-medium);
     }
 
-    .data-table--warehouse td:nth-child(3)::before {
+    .data-table--warehouse td:nth-child(4)::before {
       content: 'Количество';
     }
 
-    .data-table--warehouse td:nth-child(4)::before {
+    .data-table--warehouse td:nth-child(5)::before {
       content: 'Партия';
     }
   }
@@ -409,6 +474,50 @@
   .modal__actions {
     margin-top: 0 !important;
   }
+}
+
+.pack-from-otk-form__readonly-block {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-hover);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pack-from-otk-form__readonly-row {
+  display: grid;
+  grid-template-columns: minmax(100px, 140px) 1fr;
+  gap: var(--space-2);
+  font-size: var(--font-caption);
+  align-items: start;
+}
+
+.pack-from-otk-form__readonly-k {
+  color: var(--text-muted);
+}
+
+.pack-from-otk-form__readonly-v {
+  color: var(--text);
+  word-break: break-word;
+
+  &--reason {
+    font-size: var(--font-body);
+    color: var(--text-secondary);
+  }
+}
+
+.pack-from-otk-form__comment {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 3rem;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  font-family: inherit;
+  font-size: var(--font-body);
+  resize: vertical;
 }
 
 .warehouse-detail-modal {

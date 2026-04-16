@@ -9,7 +9,8 @@ import { UsersPage } from '../../features/users';
 import { AnalyticsPage } from '../../features/analytics';
 import { MaterialsPage } from '../../features/materials';
 import { ChemistryPage } from '../../features/chemistry';
-import { RecipesPage } from '../../features/recipes';
+import { RecipesPage, PlasticProfilesPage } from '../../features/recipes';
+import { ProductionPage } from '../../features/production';
 import { OTKPage } from '../../features/otk';
 import { WarehousePage } from '../../features/warehouse';
 import { SalesPage } from '../../features/sales';
@@ -46,9 +47,11 @@ const AppRoutes = () => (
       <Route index element={<DefaultHomeRedirect />} />
       <Route path="users" element={<ProtectedRoute requiredAccess="users"><UsersPage /></ProtectedRoute>} />
       <Route path="lines" element={<ProtectedRoute requiredAccess="lines"><LinesPage /></ProtectedRoute>} />
+      <Route path="production" element={<ProtectedRoute requiredAccess="production"><ProductionPage /></ProtectedRoute>} />
       <Route path="materials" element={<ProtectedRoute requiredAccess="materials"><MaterialsPage /></ProtectedRoute>} />
       <Route path="chemistry" element={<ProtectedRoute requiredAccess="chemistry"><ChemistryPage /></ProtectedRoute>} />
       <Route path="recipes" element={<ProtectedRoute requiredAccess="recipes"><RecipesPage /></ProtectedRoute>} />
+      <Route path="profiles" element={<ProtectedRoute requiredAccess="recipes"><PlasticProfilesPage /></ProtectedRoute>} />
       <Route path="otk" element={<ProtectedRoute requiredAccess="otk"><OTKPage /></ProtectedRoute>} />
       <Route path="warehouse" element={<ProtectedRoute requiredAccess="warehouse"><WarehousePage /></ProtectedRoute>} />
       <Route path="analytics" element={<ProtectedRoute requiredAccess="analytics"><AnalyticsPage /></ProtectedRoute>} />

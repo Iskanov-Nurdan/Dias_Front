@@ -83,6 +83,27 @@ const unitLabel = (u) => {
   return 'шт';
 };
 
+function batchProductTitle(batch) {
+  if (!batch) return '';
+  const s = (v) => (v != null && String(v).trim() ? String(v).trim() : '');
+  return (
+    s(batch.profile_name)
+    || s(batch.product_name)
+    || s(batch.product?.name)
+    || (typeof batch.product === 'string' ? s(batch.product) : '')
+    || ''
+  );
+}
+
+function formatBatchSelectOptionLabel(p) {
+  const q = readWarehouseQuality(p);
+  const base = batchProductTitle(p) || `Партия ${p.id}`;
+  const pres = getWarehouseQuantityPresentation(p);
+  const detail = [pres.primary, pres.secondary].filter(Boolean).join(' · ');
+  const prefix = q === 'defect' ? 'Брак · ' : '';
+  return `${prefix}${base}${detail ? ` — ${detail}` : ''}`;
+}
+
 /** Качество в продаже: только `quality` на записи продажи или на вложенной `warehouse_batch`. */
 const saleWarehouseQualityKey = (s) => {
   if (!s || typeof s !== 'object') return 'good';
@@ -228,7 +249,7 @@ const SalesPage = () => {
             <tr>
               <th>Дата</th>
               <th>Клиент</th>
-              <th>Профиль / партия</th>
+              <th>Партия</th>
               <th>Количество</th>
               <th>Выручка</th>
               <th>Себестоимость</th>
@@ -257,7 +278,7 @@ const SalesPage = () => {
                 <td className="data-table__cell--lead">
                   <div className="sales-table__product-cell">
                     <span className="sales-table__product-title">
-                      {s.profile_name || s.profile?.name || s.product_name || s.product?.name || s.product || '—'}
+                      {batchProductTitle(s) || '—'}
                     </span>
                     {saleWarehouseQualityKey(s) === 'defect' ? (
                       <span className="warehouse-quality-badge warehouse-quality-badge--defect sales-table__quality-badge">
@@ -631,15 +652,15 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
   if (phase === 'success' && savedId) {
     return (
       <div className="modal-overlay" onClick={onClose}>
-        <div className="modal sales-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal sales-modal sales-modal--success" onClick={(e) => e.stopPropagation()}>
           <div className="modal__head">
-            <h3>Продажа создана</h3>
+            <h3>Готово</h3>
             <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
               ×
             </button>
           </div>
-          <div className="modal__body">
-            <p className="sales-modal__success-text">Продажа создана.</p>
+          <div className="modal__body sales-modal__success-body">
+            <p className="sales-modal__success-text">Продажа записана.</p>
           </div>
           <div className="modal__actions sales-modal__success-actions">
             <button type="button" className="btn btn--secondary" onClick={onClose}>
@@ -659,6 +680,13 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
     );
   }
 
+  const priceNum = parseLocaleNumber(price);
+  const qtyForTotal = saleUnit === 'package' ? parseLocaleNumber(qtyInput) : derived.pieces;
+  const lineTotal =
+    Number.isFinite(priceNum) && priceNum >= 0 && Number.isFinite(qtyForTotal) && qtyForTotal > 0
+      ? priceNum * qtyForTotal
+      : NaN;
+
   return (
     <div className="modal-overlay" onClick={requestClose}>
       <ConfirmModal
@@ -669,14 +697,15 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
         onConfirm={confirmDiscardAndClose}
         onCancel={cancelDiscard}
       />
-      <div className="modal modal--wide sales-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal sales-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
-          <h3>{sale ? 'Редактировать' : 'Создать'}</h3>
+          <h3>Продажа</h3>
           <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">
             ×
           </button>
         </div>
         <form
+          id="sales-modal-form"
           className="sales-modal__form"
           onSubmit={async (e) => {
             e.preventDefault();
@@ -743,217 +772,221 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
             }
           }}
         >
-          <label>Дата продажи</label>
-          <input
-            type="date"
-            value={saleDate}
-            onChange={(e) => setSaleDate(e.target.value)}
-            className="sales-modal__date-input"
-          />
+          <div className="sales-modal__fields">
+            <label className="sales-modal__label" htmlFor="sales-modal-date">Дата продажи</label>
+            <input
+              id="sales-modal-date"
+              type="date"
+              value={saleDate}
+              onChange={(e) => setSaleDate(e.target.value)}
+              className="sales-modal__date-input"
+            />
 
-          <label>Клиент</label>
-          <Select
-            value={client === '' || client == null ? '' : String(client)}
-            onChange={setClient}
-            placeholder="Клиент"
-            options={[
-              { value: '', label: 'Без клиента' },
-              ...clients.map((c) => ({
-                value: String(c.id),
-                label: c.name || `#${c.id}`,
-              })),
-            ]}
-          />
+            <label className="sales-modal__label">Клиент</label>
+            <Select
+              value={client === '' || client == null ? '' : String(client)}
+              onChange={setClient}
+              placeholder="Клиент"
+              options={[
+                { value: '', label: 'Без клиента' },
+                ...clients.map((c) => ({
+                  value: String(c.id),
+                  label: c.name || `#${c.id}`,
+                })),
+              ]}
+            />
 
-          <label>Партия склада *</label>
-          <Select
-            value={product === '' || product == null ? '' : String(product)}
-            onChange={setProduct}
-            placeholder="Партия"
-            options={products.map((p) => {
-              const name = p.product_name || p.product?.name || p.product || `#${p.id}`;
-              const inv = resolveInventoryForm(p);
-              const pres = getWarehouseQuantityPresentation(p);
-              const suffix = pres.secondary
-                ? `${pres.primary} · ${pres.secondary}`
-                : inv === 'packed' || inv === 'open_package'
-                  ? pres.primary
-                  : `${pres.primary} шт`;
-              const q = readWarehouseQuality(p);
-              const qMark = q === 'defect' ? 'Брак · ' : '';
-              return { value: String(p.id), label: `${qMark}${name} — ${suffix}` };
-            })}
-          />
+            <label className="sales-modal__label">Партия *</label>
+            <Select
+              value={product === '' || product == null ? '' : String(product)}
+              onChange={setProduct}
+              placeholder="Выберите партию"
+              options={products.map((p) => ({
+                value: String(p.id),
+                label: formatBatchSelectOptionLabel(p),
+              }))}
+            />
 
-          {selectedBatch && (
-            <div
-              className={`sales-modal__stock-banner sales-modal__stock-banner--${invForm}${
-                batchQualityKey === 'defect' ? ' sales-modal__stock-banner--defect' : ''
-              }`}
-            >
-              <span className="sales-modal__stock-label">Склад:</span>
-              <span className="sales-modal__stock-value">{inventoryFormLabel(invForm)}</span>
-              {batchQualityKey === 'defect' ? (
-                <span className="warehouse-quality-badge warehouse-quality-badge--defect sales-modal__stock-quality">
-                  Брак
+            {selectedBatch && (
+              <div
+                className={`sales-modal__batch-strip sales-modal__batch-strip--${invForm}${
+                  batchQualityKey === 'defect' ? ' sales-modal__batch-strip--defect' : ''
+                }`}
+              >
+                <div className="sales-modal__batch-strip__top">
+                  <span className="sales-modal__batch-strip__name">
+                  {batchProductTitle(selectedBatch) || `Партия ${selectedBatch.id}`}
                 </span>
-              ) : null}
-              {packagingHint && <span className="sales-modal__stock-meta">{packagingHint}</span>}
-              {batchQualityKey === 'defect' && batchDefectReason ? (
-                <span className="sales-modal__stock-defect-reason" title={batchDefectReason}>
-                  {batchDefectReason}
-                </span>
-              ) : null}
-            </div>
-          )}
-
-          <fieldset className="sales-modal__units">
-            <legend>Единица *</legend>
-            <label className="sales-modal__radio">
-              <input
-                type="radio"
-                name="saleUnit"
-                value="package"
-                checked={saleUnit === 'package'}
-                onChange={() => setSaleUnit('package')}
-                disabled={invForm !== 'packed'}
-              />
-              Упаковки
-            </label>
-            <label className="sales-modal__radio">
-              <input
-                type="radio"
-                name="saleUnit"
-                value="piece"
-                checked={saleUnit === 'piece'}
-                onChange={() => setSaleUnit('piece')}
-                disabled={invForm === 'packed'}
-              />
-              Штуки
-            </label>
-          </fieldset>
-
-          {saleUnit === 'piece' ? (
-            <>
-              <label>Количество, шт *</label>
-              <IntegerInput min={0} value={qtyInput} onChange={setQtyInput} required className="input" />
-            </>
-          ) : (
-            <div className="sales-modal__pack-composition">
-              <div className="sales-modal__pack-head">
-                <span className="sales-modal__pack-title">Упаковки *</span>
+                  {batchQualityKey === 'defect' ? (
+                    <span className="warehouse-quality-badge warehouse-quality-badge--defect">Брак</span>
+                  ) : (
+                    <span className="warehouse-quality-badge warehouse-quality-badge--good">Годный</span>
+                  )}
+                  <span className="sales-modal__batch-strip__form">{inventoryFormLabel(invForm)}</span>
+                </div>
+                <div className="sales-modal__batch-strip__avail">
+                  Доступно{' '}
+                  {Number.isFinite(availPieces) ? `${formatQuantityDisplay(availPieces)} шт` : '—'}
+                  {invForm === 'packed' && maxPacksByStock != null && maxPacksByStock >= 1
+                    ? ` · до ${formatQuantityDisplay(maxPacksByStock)} упак.`
+                    : ''}
+                </div>
+                {batchQualityKey === 'defect' && batchDefectReason ? (
+                  <p className="sales-modal__batch-strip__reason">{batchDefectReason}</p>
+                ) : null}
+                {packagingHint ? (
+                  <p className="sales-modal__batch-strip__hint">{packagingHint}</p>
+                ) : null}
               </div>
-              <div className="sales-modal__pack-equation" aria-label="Расчёт отгрузки упаковками">
-                <div className="sales-modal__pack-cell">
-                  <label htmlFor="sale-modal-packs">Упаковок</label>
-                  <div className="sales-modal__pack-input-row">
+            )}
+
+            {selectedBatch && (
+              <div className="sales-modal__unit-line">
+                <span className="sales-modal__unit-line__k">Единица</span>
+                <span className="sales-modal__unit-line__v">
+                  {invForm === 'packed' ? 'Упаковки' : 'Штуки'}
+                </span>
+              </div>
+            )}
+
+            {selectedBatch && saleUnit === 'piece' && (
+              <div className="sales-modal__block">
+                <label className="sales-modal__label" htmlFor="sale-modal-qty-piece">Количество *</label>
+                <div className="sales-modal__inline-qty">
+                  <IntegerInput
+                    id="sale-modal-qty-piece"
+                    min={0}
+                    value={qtyInput}
+                    onChange={setQtyInput}
+                    required
+                    className="input sales-modal__inline-qty-input"
+                  />
+                  {Number.isFinite(availPieces) && availPieces >= 1 ? (
+                    <button
+                      type="button"
+                      className="sales-modal__max-btn"
+                      onClick={() => setQtyInput(String(Math.floor(availPieces)))}
+                    >
+                      Макс.
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            )}
+
+            {selectedBatch && saleUnit === 'package' && (
+              <div className="sales-modal__block sales-modal__block--pack">
+                <div className="sales-modal__pack-grid">
+                  <div>
+                    <label className="sales-modal__label" htmlFor="sale-modal-packs">Упаковок *</label>
+                    <div className="sales-modal__inline-qty">
+                      <IntegerInput
+                        id="sale-modal-packs"
+                        min={1}
+                        value={qtyInput}
+                        onChange={setQtyInput}
+                        className="input sales-modal__inline-qty-input"
+                      />
+                      {maxPacksByStock != null && maxPacksByStock >= 1 ? (
+                        <button
+                          type="button"
+                          className="sales-modal__max-btn"
+                          onClick={() => setQtyInput(String(maxPacksByStock))}
+                        >
+                          Макс.
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="sales-modal__label" htmlFor="sale-modal-ipp">Штук в упаковке *</label>
                     <IntegerInput
-                      id="sale-modal-packs"
+                      id="sale-modal-ipp"
                       min={1}
-                      value={qtyInput}
-                      onChange={setQtyInput}
+                      value={overridePiecesPerPackage}
+                      onChange={setOverridePiecesPerPackage}
                       className="input"
                     />
-                    {maxPacksByStock != null && maxPacksByStock >= 1 && (
-                      <button
-                        type="button"
-                        className="sales-modal__pack-max"
-                        onClick={() => setQtyInput(String(maxPacksByStock))}
-                      >
-                        Макс.
-                      </button>
-                    )}
+                  </div>
+                  <div className="sales-modal__pack-grid__total">
+                    <span className="sales-modal__pack-grid__total-k">Итого шт</span>
+                    <span className="sales-modal__pack-grid__total-v">
+                      {Number.isFinite(derived.pieces) && derived.pieces > 0
+                        ? formatQuantityDisplay(derived.pieces)
+                        : '—'}
+                    </span>
                   </div>
                 </div>
-                <span className="sales-modal__pack-op" aria-hidden>×</span>
-                <div className="sales-modal__pack-cell">
-                  <label htmlFor="sale-modal-ipp">Штук в каждой</label>
-                  <IntegerInput
-                    id="sale-modal-ipp"
-                    min={1}
-                    value={overridePiecesPerPackage}
-                    onChange={setOverridePiecesPerPackage}
-                    className="input"
-                  />
-                  <span className="sales-modal__pack-cell-note">
-                    {Number.isFinite(meta.piecesPerPackage) && meta.piecesPerPackage > 0
-                      ? 'По умолчанию из партии.'
-                      : 'Укажите штук в упаковке.'}
-                  </span>
-                </div>
-                <span className="sales-modal__pack-op" aria-hidden>=</span>
-                <div className="sales-modal__pack-total" role="status">
-                  <span className="sales-modal__pack-total-label">Итого, шт</span>
-                  <span className="sales-modal__pack-total-value">
-                    {Number.isFinite(derived.pieces) && derived.pieces > 0
-                      ? formatQuantityDisplay(derived.pieces)
-                      : '—'}
-                  </span>
-                  {Number.isFinite(availPieces) && availPieces >= 0 && (
-                    <span className="sales-modal__pack-total-avail">
-                      из {formatQuantityDisplay(availPieces)}
-                    </span>
-                  )}
-                </div>
+                {(() => {
+                  const pk = parseLocaleNumber(qtyInput);
+                  const ippOk = Number.isFinite(effPiecesPerPackage) && effPiecesPerPackage > 0;
+                  if (!(Number.isFinite(pk) && pk >= 1 && ippOk)) return null;
+                  const phrase = formatPacksByPiecesPhrase(Math.floor(pk), Math.floor(effPiecesPerPackage));
+                  return phrase ? <p className="sales-modal__pack-phrase">{phrase}</p> : null;
+                })()}
               </div>
-              {(() => {
-                const pk = parseLocaleNumber(qtyInput);
-                const ippOk = Number.isFinite(effPiecesPerPackage) && effPiecesPerPackage > 0;
-                if (!(Number.isFinite(pk) && pk >= 1 && ippOk)) return null;
-                const phrase = formatPacksByPiecesPhrase(Math.floor(pk), Math.floor(effPiecesPerPackage));
-                return phrase ? <p className="sales-modal__pack-readback">{phrase}</p> : null;
-              })()}
-            </div>
-          )}
-
-          {saleUnit === 'piece' &&
-            Number.isFinite(derived.pieces) &&
-            derived.pieces >= 0 &&
-            !derived.error && (
-              <p className="sales-modal__computed">
-                К списанию: {formatQuantityDisplay(derived.pieces)} шт
-                {Number.isFinite(availPieces) && availPieces >= 0 && (
-                  <> · на складе {formatQuantityDisplay(availPieces)}</>
-                )}
-              </p>
             )}
-          {derived.error && <p className="modal__error">{derived.error}</p>}
-          {stockExceeded && (
-            <p className="modal__error">Недостаточно на складе (макс. {formatQuantityDisplay(availPieces)} шт).</p>
-          )}
 
-          <label>Цена</label>
-          <DecimalInput min={0} value={price} onChange={setPrice} placeholder="0" />
+            {saleUnit === 'piece' &&
+              selectedBatch &&
+              Number.isFinite(derived.pieces) &&
+              derived.pieces >= 0 &&
+              !derived.error && (
+                <p className="sales-modal__hint-line">
+                  Списание: {formatQuantityDisplay(derived.pieces)} шт
+                  {Number.isFinite(availPieces) && availPieces >= 0 ? (
+                    <> · макс. {formatQuantityDisplay(availPieces)}</>
+                  ) : null}
+                </p>
+              )}
+            {derived.error ? <p className="modal__error">{derived.error}</p> : null}
+            {stockExceeded ? (
+              <p className="modal__error">
+                Недостаточно на складе (макс. {formatQuantityDisplay(availPieces)} шт).
+              </p>
+            ) : null}
 
-          <Collapse title="Комментарий">
-            <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="" />
-          </Collapse>
+            <div className="sales-modal__block">
+              <label className="sales-modal__label" htmlFor="sale-modal-price">Цена</label>
+              <DecimalInput id="sale-modal-price" min={0} value={price} onChange={setPrice} placeholder="" />
+              {Number.isFinite(lineTotal) && lineTotal > 0 ? (
+                <p className="sales-modal__hint-line">
+                  Сумма: {formatQuantityDisplay(lineTotal)} сом
+                </p>
+              ) : null}
+            </div>
 
-          {catalogProductMissing && (
-            <p className="modal__error" role="alert">
-              У этой партии нет привязки к продукту в каталоге — выберите другую строку.
-            </p>
-          )}
-          {error && <p className="modal__error">{error}</p>}
-          <div className="modal__actions">
-            <button type="button" className="btn btn--ghost" onClick={requestClose} disabled={localSubmitting}>
-              Отмена
-            </button>
-            <button
-              type="submit"
-              className="btn btn--primary"
-              disabled={
-                localSubmitting ||
-                !!derived.error ||
-                stockExceeded ||
-                catalogProductMissing ||
-                !(Number.isFinite(derived.pieces) && derived.pieces > 0)
-              }
-            >
-              {localSubmitting ? 'Сохранение…' : 'Сохранить'}
-            </button>
+            <Collapse title="Комментарий">
+              <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="" />
+            </Collapse>
+
+            {catalogProductMissing ? (
+              <p className="modal__error" role="alert">
+                Для этой партии нет продукта в каталоге — выберите другую.
+              </p>
+            ) : null}
+            {error ? <p className="modal__error">{error}</p> : null}
           </div>
         </form>
+        <div className="modal__actions sales-modal__footer">
+          <button type="button" className="btn btn--secondary" onClick={requestClose} disabled={localSubmitting}>
+            Отмена
+          </button>
+          <button
+            type="submit"
+            form="sales-modal-form"
+            className="btn btn--primary"
+            disabled={
+              localSubmitting ||
+              !!derived.error ||
+              stockExceeded ||
+              catalogProductMissing ||
+              !(Number.isFinite(derived.pieces) && derived.pieces > 0)
+            }
+          >
+            {localSubmitting ? 'Сохранение…' : 'Сохранить'}
+          </button>
+        </div>
       </div>
     </div>
   );

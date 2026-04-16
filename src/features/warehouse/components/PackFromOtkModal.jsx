@@ -14,7 +14,7 @@ import {
   warehouseQualityShortLabel,
 } from '../../../shared/lib';
 import { useDiscardOnClose, useDirtyFromBaseline } from '../../../shared/hooks';
-import { DecimalInput, Select, ConfirmModal } from '../../../shared/ui';
+import { IntegerInput, Select, ConfirmModal } from '../../../shared/ui';
 import { packFromOtk } from '../api/warehouseApi';
 
 const errorToMessage = (err) => {
@@ -268,12 +268,13 @@ const PackFromOtkModal = ({ open, onClose, onSuccess, error: externalError, setE
                 <div className="pack-from-otk-form__equation-cell">
                   <label htmlFor="pack-from-otk-packages-count">Упаковок</label>
                   <div className="pack-from-otk-form__equation-input-row">
-                    <DecimalInput
+                    <IntegerInput
                       id="pack-from-otk-packages-count"
                       min={1}
                       value={packagesCount}
                       onChange={setPackagesCount}
                       required
+                      className="input"
                     />
                     {maxPackagesByStock != null && maxPackagesByStock >= 1 && (
                       <button
@@ -290,12 +291,13 @@ const PackFromOtkModal = ({ open, onClose, onSuccess, error: externalError, setE
                 <span className="pack-from-otk-form__equation-op" aria-hidden>×</span>
                 <div className="pack-from-otk-form__equation-cell">
                   <label htmlFor="pack-from-otk-items-per-pack">Штук в каждой</label>
-                  <DecimalInput
+                  <IntegerInput
                     id="pack-from-otk-items-per-pack"
                     min={1}
                     value={itemsPerPackage}
                     onChange={setItemsPerPackage}
                     required
+                    className="input"
                   />
                 </div>
                 <span className="pack-from-otk-form__equation-op" aria-hidden>=</span>

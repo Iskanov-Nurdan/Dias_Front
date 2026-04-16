@@ -11,6 +11,7 @@ import {
   Select,
   Pagination,
   Collapse,
+  ActionMenu,
 } from '../../../../shared/ui';
 import {
   createLine,
@@ -273,6 +274,18 @@ const formatParamsTriple = (ev) => {
   ) return '—';
   const deg = a != null && a !== '' ? `${a}°` : '—';
   return `${h ?? '—'} × ${w ?? '—'} × ${deg}`;
+};
+
+const historyActor = (ev) => {
+  if (!ev) return '—';
+  return (
+    ev.opened_by_name
+    || ev.opened_by?.name
+    || ev.user_name
+    || ev.actor_name
+    || ev.created_by_name
+    || '—'
+  );
 };
 
 /** Нормализует ответ бэка к { open, close, updates, pauseResume }. */
@@ -733,6 +746,111 @@ const LinesPage = () => {
     return `${h} × ${w} × ${a}°`;
   };
 
+  const renderOpeningRowActions = (l) => {
+    const pushShift = (type, more = {}) => {
+      setSubmitError('');
+      setShiftModal({
+        type,
+        line: l,
+        modalKey: Date.now(),
+        ...more,
+      });
+    };
+
+    if (!l.isOpen) {
+      return (
+        <div className="lines-table__actions lines-table__actions--compact">
+          <button
+            type="button"
+            className="btn btn--open btn--sm"
+            disabled={!lineIsActive(l)}
+            title={!lineIsActive(l) ? 'Сначала активируйте линию' : undefined}
+            onClick={() => {
+              if (!lineIsActive(l)) return;
+              pushShift('open', { initial: emptyParams() });
+            }}
+          >
+            Открыть
+          </button>
+        </div>
+      );
+    }
+
+    const secondaryParams = (
+      <button
+        type="button"
+        className="btn btn--secondary btn--sm"
+        onClick={() => pushShift('params', { initial: eventToForm(l.shiftSnapshot) })}
+      >
+        Параметры
+      </button>
+    );
+
+    if (l.isPaused) {
+      const menuItems = [
+        {
+          label: 'Закрыть смену',
+          onClick: () => pushShift('close', { initial: eventToForm(l.shiftSnapshot) }),
+        },
+      ];
+      return (
+        <div className="lines-table__actions lines-table__actions--compact">
+          <button
+            type="button"
+            className="btn btn--primary btn--sm"
+            onClick={() => pushShift('resume')}
+          >
+            Возобновить
+          </button>
+          {secondaryParams}
+          <ActionMenu items={menuItems} ariaLabel="Ещё" />
+        </div>
+      );
+    }
+
+    const menuItems = [
+      {
+        label: 'Остановить',
+        onClick: () => pushShift('pause'),
+      },
+    ];
+    if (canCreateProductionBatch) {
+      menuItems.push({
+        label: 'Закрыть смену',
+        onClick: () => pushShift('close', { initial: eventToForm(l.shiftSnapshot) }),
+      });
+    }
+
+    const primary = canCreateProductionBatch ? (
+      <button
+        type="button"
+        className="btn btn--primary btn--sm"
+        onClick={() => {
+          setSubmitError('');
+          setProductionBatchLine(l);
+        }}
+      >
+        Партия
+      </button>
+    ) : (
+      <button
+        type="button"
+        className="btn btn--primary btn--sm"
+        onClick={() => pushShift('close', { initial: eventToForm(l.shiftSnapshot) })}
+      >
+        Закрыть
+      </button>
+    );
+
+    return (
+      <div className="lines-table__actions lines-table__actions--compact">
+        {primary}
+        {secondaryParams}
+        <ActionMenu items={menuItems} ariaLabel="Ещё" />
+      </div>
+    );
+  };
+
   return (
     <div className="page page--lines">
       <div className="lines-tabs">
@@ -761,19 +879,21 @@ const LinesPage = () => {
 
       {activeTab === 'line' && (
         <div className="lines-card">
-          <div className="lines-card__head">
-            <h2 className="lines-card__title">Линии</h2>
-            <div className="lines-card__actions">
+          <div className="lines-toolbar">
+            <div className="lines-toolbar__left">
               <input
                 type="text"
-                className="lines-card__search"
-                placeholder="Поиск по названию..."
+                className="lines-toolbar__search"
+                placeholder="Поиск…"
                 value={queryState.search || ''}
                 onChange={(e) => handleFilterChange({ search: e.target.value })}
+                aria-label="Поиск"
               />
+            </div>
+            <div className="lines-toolbar__right">
               <button
                 type="button"
-                className="btn btn--primary"
+                className="btn btn--primary btn--sm"
                 onClick={() => { setSubmitError(''); setLineModal({}); }}
               >
                 Создать
@@ -787,12 +907,12 @@ const LinesPage = () => {
               {lines.length === 0 ? (
                 <EmptyState title="Нет данных" />
               ) : (
-                <div className="lines-table">
+                <div className="lines-table lines-table--lines">
                   <div className="lines-table__header">
-                    <span className="lines-table__th">НАЗВАНИЕ</span>
-                    <span className="lines-table__th">КОД</span>
-                    <span className="lines-table__th">СТАТУС</span>
-                    <span className="lines-table__th lines-table__th--actions">ДЕЙСТВИЯ</span>
+                    <span className="lines-table__th">Название</span>
+                    <span className="lines-table__th">Код</span>
+                    <span className="lines-table__th">Статус</span>
+                    <span className="lines-table__th lines-table__th--actions">Действия</span>
                   </div>
                   {lines.map((line) => (
                     <div key={line.id} className="lines-table__row">
@@ -800,12 +920,12 @@ const LinesPage = () => {
                       <span className="lines-table__muted">{line.code ?? line.line_code ?? '—'}</span>
                       <span>
                         <span
-                          className={`lines-table__badge ${lineIsActive(line) ? 'lines-table__badge--open' : 'lines-table__badge--closed'}`}
+                          className={`lines-table__badge lines-table__badge--compact ${lineIsActive(line) ? 'lines-table__badge--open' : 'lines-table__badge--closed'}`}
                         >
-                          {lineIsActive(line) ? 'Активна' : 'Неактивна'}
+                          {lineIsActive(line) ? 'Активна' : 'Выкл'}
                         </span>
                       </span>
-                      <div className="lines-table__actions">
+                      <div className="lines-table__actions lines-table__actions--compact">
                         <button
                           type="button"
                           className="btn btn--secondary btn--sm"
@@ -813,13 +933,16 @@ const LinesPage = () => {
                         >
                           Редактировать
                         </button>
-                        <button
-                          type="button"
-                          className="btn btn--danger btn--sm"
-                          onClick={() => setDeleteTarget({ id: line.id, name: line.name })}
-                        >
-                          Удалить
-                        </button>
+                        <ActionMenu
+                          ariaLabel="Ещё"
+                          items={[
+                            {
+                              label: 'Удалить',
+                              danger: true,
+                              onClick: () => setDeleteTarget({ id: line.id, name: line.name }),
+                            },
+                          ]}
+                        />
                       </div>
                     </div>
                   ))}
@@ -839,7 +962,6 @@ const LinesPage = () => {
 
       {activeTab === 'opening' && (
         <div className="lines-card">
-          <h2 className="lines-card__title">Открытие / закрытие линии</h2>
           {linesWithStatusLoading && <Loading />}
           {!linesWithStatusLoading && (
             <>
@@ -849,149 +971,44 @@ const LinesPage = () => {
                 <div className="lines-table-scroll">
                   <div className="lines-table lines-table--opening">
                     <div className="lines-table__header">
-                      <span className="lines-table__th">ЛИНИЯ</span>
-                      <span className="lines-table__th">СТАТУС ЛИНИИ</span>
-                      <span className="lines-table__th">СМЕНА</span>
-                      <span className="lines-table__th">ПАРАМЕТРЫ</span>
-                      <span className="lines-table__th">ОТКРЫЛ</span>
-                      <span className="lines-table__th">ПОСЛ. ОТКРЫТИЕ</span>
-                      <span className="lines-table__th">ПОСЛ. ЗАКРЫТИЕ</span>
-                      <span className="lines-table__th lines-table__th--actions">ДЕЙСТВИЯ</span>
+                      <span className="lines-table__th">Линия</span>
+                      <span className="lines-table__th">Статус</span>
+                      <span className="lines-table__th">Смена</span>
+                      <span className="lines-table__th">Параметры</span>
+                      <span className="lines-table__th">Открыто</span>
+                      <span className="lines-table__th lines-table__th--actions">Действия</span>
                     </div>
                     {linesWithStatus.map((l) => (
                       <div key={l.id} className="lines-table__row">
                         <span className="lines-table__name">{l.name}</span>
                         <span>
                           <span
-                            className={`lines-table__badge ${lineIsActive(l) ? 'lines-table__badge--open' : 'lines-table__badge--closed'}`}
+                            className={`lines-table__badge lines-table__badge--compact ${lineIsActive(l) ? 'lines-table__badge--open' : 'lines-table__badge--closed'}`}
                           >
-                            {lineIsActive(l) ? 'Активна' : 'Неактивна'}
+                            {lineIsActive(l) ? 'Активна' : 'Выкл'}
                           </span>
                         </span>
                         <span>
                           <span
-                            className={`lines-table__badge ${
+                            className={`lines-table__badge lines-table__badge--compact ${
                               !l.isOpen
                                 ? 'lines-table__badge--closed'
                                 : l.isPaused
                                   ? 'lines-table__badge--paused'
                                   : 'lines-table__badge--open'
                             }`}
-                            title={l.isPaused && l.pauseReason ? `Причина: ${l.pauseReason}` : undefined}
+                            title={l.isPaused && l.pauseReason ? l.pauseReason : undefined}
                           >
-                            {!l.isOpen ? 'Смена закрыта' : l.isPaused ? 'Смена остановлена' : 'Смена открыта'}
+                            {!l.isOpen ? 'Закрыта' : l.isPaused ? 'Пауза' : 'Открыта'}
                           </span>
                         </span>
-                        <span className="lines-table__params" title="Текущие параметры смены">
+                        <span className="lines-table__params lines-table__params--compact" title={l.isOpen ? l.shiftOpener : undefined}>
                           {l.isOpen ? formatParamsShort(l.shiftSnapshot) : '—'}
                         </span>
-                        <span className="lines-table__cell-clip" title="Кто открыл смену">
-                          {l.isOpen ? l.shiftOpener : '—'}
-                        </span>
-                        <span className="lines-table__date">
+                        <span className="lines-table__date lines-table__date--compact">
                           {formatDateTime(l.lastOpenEv?.date, l.lastOpenEv?.time)}
                         </span>
-                        <span className="lines-table__date">
-                          {formatDateTime(l.lastCloseEv?.date, l.lastCloseEv?.time)}
-                        </span>
-                        <div className="lines-table__actions lines-table__actions--wrap">
-                          {l.isOpen ? (
-                            <>
-                              {l.isPaused ? (
-                                <button
-                                  type="button"
-                                  className="btn btn--primary btn--sm"
-                                  onClick={() => {
-                                    setSubmitError('');
-                                    setShiftModal({
-                                      type: 'resume',
-                                      line: l,
-                                      modalKey: Date.now(),
-                                    });
-                                  }}
-                                >
-                                  Возобновить
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  className="btn btn--secondary btn--sm"
-                                  onClick={() => {
-                                    setSubmitError('');
-                                    setShiftModal({
-                                      type: 'pause',
-                                      line: l,
-                                      modalKey: Date.now(),
-                                    });
-                                  }}
-                                >
-                                  Остановить
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                className="btn btn--secondary btn--sm"
-                                onClick={() => {
-                                  setSubmitError('');
-                                  setShiftModal({
-                                    type: 'params',
-                                    line: l,
-                                    initial: eventToForm(l.shiftSnapshot),
-                                    modalKey: Date.now(),
-                                  });
-                                }}
-                              >
-                                Параметры
-                              </button>
-                              {canCreateProductionBatch && !l.isPaused && (
-                                <button
-                                  type="button"
-                                  className="btn btn--primary btn--sm"
-                                  onClick={() => {
-                                    setSubmitError('');
-                                    setProductionBatchLine(l);
-                                  }}
-                                >
-                                  Партия производства
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                className="btn btn--secondary btn--sm"
-                                onClick={() => {
-                                  setSubmitError('');
-                                  setShiftModal({
-                                    type: 'close',
-                                    line: l,
-                                    initial: eventToForm(l.shiftSnapshot),
-                                    modalKey: Date.now(),
-                                  });
-                                }}
-                              >
-                                Закрыть смену
-                              </button>
-                            </>
-                          ) : (
-                            <button
-                              type="button"
-                              className="btn btn--open btn--sm"
-                              disabled={!lineIsActive(l)}
-                              title={!lineIsActive(l) ? 'Сначала активируйте линию в справочнике' : undefined}
-                              onClick={() => {
-                                if (!lineIsActive(l)) return;
-                                setSubmitError('');
-                                setShiftModal({
-                                  type: 'open',
-                                  line: l,
-                                  initial: emptyParams(),
-                                  modalKey: Date.now(),
-                                });
-                              }}
-                            >
-                              Открыть смену
-                            </button>
-                          )}
-                        </div>
+                        {renderOpeningRowActions(l)}
                       </div>
                     ))}
                   </div>
@@ -1007,21 +1024,21 @@ const LinesPage = () => {
 
       {activeTab === 'history' && (
         <div className="lines-card">
-          <h2 className="lines-card__title">История</h2>
-          <div className="lines-card__head">
-            <label className="lines-card__label">
-              Линия:
+          <div className="lines-toolbar">
+            <div className="lines-toolbar__left">
               <Select
-                className="lines-card__select"
+                className="lines-toolbar__select dias-select"
                 value={historyFilterLineId != null ? String(historyFilterLineId) : ''}
                 onChange={(v) => setHistoryFilterLineId(v ? Number(v) : null)}
                 placeholder="Все линии"
+                aria-label="Фильтр по линии"
                 options={[
                   { value: '', label: 'Все линии' },
                   ...lines.map((l) => ({ value: String(l.id), label: l.name })),
                 ]}
               />
-            </label>
+            </div>
+            <div className="lines-toolbar__right" aria-hidden="true" />
           </div>
           {error && <ErrorState error={error} onRetry={refetch} />}
           {historyFilterLineId == null && historyFeedError && (
@@ -1033,38 +1050,22 @@ const LinesPage = () => {
             && (historyFilterLineId != null || lines.length > 0 || historyFeedMeta != null) && (
             <>
               {historySourceItems.length === 0 ? (
-                <EmptyState
-                  title="Нет данных"
-                  description={lines.length === 0 ? 'Создайте линию на вкладке «Линия»' : undefined}
-                />
+                <EmptyState title="Нет данных" />
               ) : (
                 <>
                   <div className="lines-table-scroll">
-                    <div className="lines-table lines-table--history-rich">
+                    <div className="lines-table lines-table--history-compact">
                       <div className="lines-table__header">
-                        <span className="lines-table__th">Открыто</span>
-                        <span className="lines-table__th">Закрыто</span>
+                        <span className="lines-table__th">Дата</span>
                         <span className="lines-table__th">Линия</span>
-                        <span className="lines-table__th">Высота</span>
-                        <span className="lines-table__th">Ширина</span>
-                        <span className="lines-table__th">Градус</span>
-                        <span className="lines-table__th">Комментарий</span>
-                        <span className="lines-table__th">Смена</span>
+                        <span className="lines-table__th">Событие</span>
+                        <span className="lines-table__th">Параметры</span>
+                        <span className="lines-table__th">Кто</span>
                       </div>
                       {historyViewRows.map((row) => {
                         if (row.kind === 'session') {
                           const { open: o, close: c, paramUpdates } = row;
-                          const { height, width, angle_deg } = sessionParams(o, c);
-                          const parts = [formatEvComment(o), formatEvComment(c)].filter(Boolean);
-                          if (paramUpdates.length) {
-                            parts.push(
-                              paramUpdates.length === 1
-                                ? 'Параметры обновлялись'
-                                : `Параметры обновлялись (${paramUpdates.length})`
-                            );
-                          }
-                          const comment = parts.length ? parts.join(' · ') : '—';
-                          const shiftTitle = c?.session_title || o?.session_title || '—';
+                          const p = sessionParams(o, c);
                           return (
                             <div
                               key={`sess-${row.lineKey}-${o?.id}-${c?.id ?? 'open'}`}
@@ -1089,20 +1090,17 @@ const LinesPage = () => {
                                 }
                               }}
                             >
-                              <span className="lines-table__date">
+                              <span className="lines-table__date lines-table__date--compact">
                                 {formatDateTime(o?.date, o?.time)}
                               </span>
-                              <span className="lines-table__date">
-                                {c ? formatDateTime(c.date, c.time) : (
-                                  <span className="lines-table__session-open">Открыта</span>
-                                )}
+                              <span className="lines-table__name lines-table__name--clip">{sessionLineName(o, c)}</span>
+                              <span>
+                                <span className={`lines-table__badge lines-table__badge--compact ${c ? 'lines-table__badge--closed' : 'lines-table__badge--open'}`}>
+                                  {c ? 'Смена' : 'Открыта'}
+                                </span>
                               </span>
-                              <span className="lines-table__name">{sessionLineName(o, c)}</span>
-                              <span>{height != null && height !== '' ? height : '—'}</span>
-                              <span>{width != null && width !== '' ? width : '—'}</span>
-                              <span>{angle_deg != null && angle_deg !== '' ? `${angle_deg}°` : '—'}</span>
-                              <span className="lines-table__comment">{comment}</span>
-                              <span className="lines-table__muted">{shiftTitle}</span>
+                              <span className="lines-table__params lines-table__params--compact">{formatParamsTriple(p)}</span>
+                              <span className="lines-table__cell-clip" title={historyActor(o)}>{historyActor(o)}</span>
                             </div>
                           );
                         }
@@ -1122,21 +1120,17 @@ const LinesPage = () => {
                               }
                             }}
                           >
-                            <span className="lines-table__date">
+                            <span className="lines-table__date lines-table__date--compact">
                               {formatDateTime(h.date, h.time)}
                             </span>
-                            <span className="lines-table__muted">—</span>
-                            <span className="lines-table__name">
-                              {h.line_name || h.line || '—'}
-                              <span className={`lines-table__badge lines-table__badge--inline lines-table__badge--action-${badgeAction}`}>
+                            <span className="lines-table__name lines-table__name--clip">{h.line_name || h.line || '—'}</span>
+                            <span>
+                              <span className={`lines-table__badge lines-table__badge--compact lines-table__badge--action-${badgeAction}`}>
                                 {actionLabel(h.action)}
                               </span>
                             </span>
-                            <span>{h.height != null && h.height !== '' ? h.height : '—'}</span>
-                            <span>{h.width != null && h.width !== '' ? h.width : '—'}</span>
-                            <span>{h.angle_deg != null && h.angle_deg !== '' ? `${h.angle_deg}°` : '—'}</span>
-                            <span className="lines-table__comment">{h.comment || '—'}</span>
-                            <span className="lines-table__muted">{h.session_title || '—'}</span>
+                            <span className="lines-table__params lines-table__params--compact">{formatParamsTriple(h)}</span>
+                            <span className="lines-table__cell-clip" title={historyActor(h)}>{historyActor(h)}</span>
                           </div>
                         );
                       })}
@@ -1314,9 +1308,7 @@ const LineHistorySessionModal = ({
             <p className="lines-history-detail__warn">{remoteError}</p>
           )}
           {!hasRemote && !remoteLoading && !remoteError && (
-            <p className="lines-history-detail__hint">
-              Показаны данные с текущей страницы ленты; после ответа сервера подставляется полный таймлайн.
-            </p>
+            <p className="lines-history-detail__hint">Загружается полная история…</p>
           )}
           <p className="lines-history-detail__line">{lineTitle}</p>
 
@@ -1427,7 +1419,6 @@ const LineFormModal = ({ line, onSubmit, onClose, error }) => {
             onSubmit({
               name: name.trim(),
               code: String(code ?? '').trim() || undefined,
-              notes: String(notes ?? '').trim() || undefined,
               comment: String(notes ?? '').trim() || undefined,
               is_active: isActive,
             });
@@ -1600,11 +1591,6 @@ const ShiftParamsModal = ({
             onSubmit(form);
           }}
         >
-          {type === 'open' && (
-            <p className="lines-shift-form__hint">
-              Высота, ширина и градус — текущие параметры линии на эту смену. Норма расхода на метр — в рецепте профиля; факт производства оформляется отдельно партией (ProductionBatch).
-            </p>
-          )}
           {type === 'open' && (
             <>
               <label>Название смены / сессии</label>

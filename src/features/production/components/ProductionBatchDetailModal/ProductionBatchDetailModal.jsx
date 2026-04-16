@@ -5,7 +5,7 @@ import {
   submitProductionBatchForOtk,
 } from '../../api/productionApi';
 import { getApiErrorMessage, formatNumberForInput, parseLocaleNumber } from '../../../../shared/lib';
-import { Loading, DecimalInput, useToast } from '../../../../shared/ui';
+import { Loading, DecimalInput, IntegerInput, useToast } from '../../../../shared/ui';
 import {
   batchProductionLifecycleRu,
   batchMetaEditable,
@@ -77,7 +77,7 @@ const ProductionBatchDetailModal = ({ batchId, onClose, onSaved }) => {
     e.preventDefault();
     if (!batch) return;
     setErr('');
-    const p = Math.floor(Number(parseLocaleNumber(pieces)));
+    const p = parseInt(String(pieces).trim(), 10);
     const len = parseLocaleNumber(lengthPerPiece);
     if (!Number.isFinite(p) || p <= 0) {
       setErr('Укажите количество штук > 0');
@@ -125,7 +125,7 @@ const ProductionBatchDetailModal = ({ batchId, onClose, onSaved }) => {
     <div className="modal-overlay" role="presentation" onClick={onClose}>
       <div className="modal modal--wide production-detail-modal" onClick={(ev) => ev.stopPropagation()}>
         <div className="modal__head">
-          <h3>ProductionBatch #{batchId}</h3>
+          <h3>Партия №{batchId}</h3>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
             ×
           </button>
@@ -174,7 +174,7 @@ const ProductionBatchDetailModal = ({ batchId, onClose, onSaved }) => {
                 ) : null}
               </div>
               <p className="production-detail-modal__hint" style={{ margin: '0.75rem 0 0', fontSize: '0.9rem', opacity: 0.9 }}>
-                Итоговые метры (total_meters) и себестоимость рассчитываются на сервере при создании партии и не вводятся вручную.
+                Метраж и себестоимость считаются на сервере при создании партии.
               </p>
 
               {!edit ? (
@@ -197,7 +197,7 @@ const ProductionBatchDetailModal = ({ batchId, onClose, onSaved }) => {
               ) : (
                 <form className="production-detail-modal__form" onSubmit={handleSave}>
                   <label>Штук *</label>
-                  <DecimalInput min={1} value={pieces} onChange={setPieces} required />
+                  <IntegerInput min={1} value={pieces} onChange={setPieces} required className="input" />
                   <label>Длина одной штуки, м *</label>
                   <DecimalInput min={0} value={lengthPerPiece} onChange={setLengthPerPiece} required />
                   <label>Комментарий</label>

@@ -55,16 +55,17 @@ export function getDefaultHomePath(accesses) {
 }
 
 /**
- * Структура бокового меню: цепочка Сырьё → Химия → Рецепты → Линии → Производство → ОТК → Склад → Сбыт.
+ * Группы ссылок для сайдбара (порядок = порядок пунктов; заголовки секций в UI не показываются).
  */
 export function getNavSections() {
   const sections = [
     {
-      label: 'Смена',
+      links: [{ path: '/analytics', accessKey: 'analytics' }],
+    },
+    {
       links: [{ path: '/my-shift', accessKey: 'my_shift' }],
     },
     {
-      label: 'Подготовка',
       links: [
         { path: '/materials', accessKey: 'materials' },
         { path: '/chemistry', accessKey: 'chemistry' },
@@ -73,7 +74,6 @@ export function getNavSections() {
       ],
     },
     {
-      label: 'Производство',
       links: [
         { path: '/lines', accessKey: 'lines' },
         { path: '/production', accessKey: 'production' },
@@ -81,14 +81,12 @@ export function getNavSections() {
       ],
     },
     {
-      label: 'Склад',
       links: [{ path: '/warehouse', accessKey: 'warehouse' }],
     },
   ];
 
   if (STAGE2_TABS_ENABLED) {
     sections.push({
-      label: 'Сбыт',
       links: [
         { path: '/clients', accessKey: 'clients' },
         { path: '/sales', accessKey: 'sales' },
@@ -98,14 +96,9 @@ export function getNavSections() {
 
   sections.push(
     {
-      label: 'Отчёты',
-      links: [
-        { path: '/analytics', accessKey: 'analytics' },
-        { path: '/shifts', accessKey: 'shifts' },
-      ],
+      links: [{ path: '/shifts', accessKey: 'shifts' }],
     },
     {
-      label: 'Администрирование',
       links: [{ path: '/users', accessKey: 'users' }],
     },
   );

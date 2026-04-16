@@ -13,7 +13,7 @@ import {
   parseLocaleNumber,
   parseApiListResponse,
 } from '../../../shared/lib';
-import { Loading, DecimalInput, Select } from '../../../shared/ui';
+import { Loading, DecimalInput, IntegerInput, Select } from '../../../shared/ui';
 
 const isLineEligibleForBatch = (ln) => {
   if (!ln || typeof ln !== 'object') return false;
@@ -110,7 +110,7 @@ const ProductionBatchModal = ({ lineId: lineIdProp, lineName, onClose, onSuccess
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    const p = Math.floor(Number(parseLocaleNumber(pieces)));
+    const p = parseInt(String(pieces).trim(), 10);
     const len = parseLocaleNumber(lengthPerPiece);
     const rid = recipeId ? Number(recipeId) : NaN;
     const prid = profileId ? Number(profileId) : NaN;
@@ -145,10 +145,13 @@ const ProductionBatchModal = ({ lineId: lineIdProp, lineName, onClose, onSuccess
     }
     setSaving(true);
     try {
+      const d = new Date();
+      const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       await createProductionBatch({
         profile: prid,
         recipe: rid,
         line: lid,
+        date,
         pieces: p,
         length_per_piece: len,
         ...(comment.trim() ? { comment: comment.trim() } : {}),
@@ -224,7 +227,7 @@ const ProductionBatchModal = ({ lineId: lineIdProp, lineName, onClose, onSuccess
                 </>
               )}
               <label>Количество штук *</label>
-              <DecimalInput min={1} value={pieces} onChange={setPieces} required placeholder="Напр. 20" />
+              <IntegerInput min={1} value={pieces} onChange={setPieces} required placeholder="Напр. 20" className="input" />
               <label>Длина одной штуки, м *</label>
               <DecimalInput
                 min={0}

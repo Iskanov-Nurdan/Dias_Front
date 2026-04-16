@@ -25,21 +25,21 @@ export const ACCESS_KEYS = [
 ];
 
 export const ACCESS_LABELS = {
-  analytics:  'Отчёты и аналитика',
+  analytics:  'Аналитика',
   users:      'Сотрудники',
-  lines:      'Линии и смены на линиях',
-  materials:  'Сырьё и остатки',
+  lines:      'Линии',
+  materials:  'Сырьё',
   chemistry:  'Химия',
-  recipes:    'Рецептуры',
+  recipes:    'Рецепты',
   orders:     'Заказы',
   production: 'Производство',
   otk:        'ОТК',
-  warehouse:  'Склад готовой продукции',
+  warehouse:  'Склад',
   clients:    'Клиенты',
   sales:      'Продажи',
   shipments:  'Отгрузки',
   my_shift:   'Моя смена',
-  shifts:     'Журнал смен',
+  shifts:     'Смены',
 };
 
 /** Группы для UI модалки доступов (все ключи из ACCESS_KEYS по одному разу). */

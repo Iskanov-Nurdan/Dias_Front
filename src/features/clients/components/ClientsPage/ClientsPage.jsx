@@ -89,9 +89,6 @@ const ClientsPage = () => {
 
   return (
     <div className="page page--clients">
-      <header className="ds-page-top">
-        <p className="ds-page-top__desc">Справочник покупателей для продаж и документов.</p>
-      </header>
       <div className="ds-toolbar ds-toolbar--stack-mobile">
         <div className="ds-toolbar__start">
           <input

@@ -39,16 +39,7 @@ const SidebarContent = memo(({ collapsed, inDrawer, navRows, currentPath, displa
 
     <div className="main-layout__nav-wrap">
       <nav className="main-layout__nav" aria-label="Главное меню">
-        {navRows.map((row, idx) => {
-          if (row.type === 'section') {
-            if (collapsed && !inDrawer) return null;
-            return (
-              <div key={`sec-${row.label}-${idx}`} className="main-layout__nav-section">
-                {row.label}
-              </div>
-            );
-          }
-          const item = row;
+        {navRows.map((item) => {
           const isActive = currentPath === item.path || currentPath.startsWith(`${item.path}/`);
           const IconComp = item.Icon;
           return (
@@ -144,11 +135,8 @@ const MainLayout = () => {
     const rows = [];
     for (const section of getNavSections()) {
       const links = section.links.filter((l) => accesses.includes(l.accessKey));
-      if (links.length === 0) continue;
-      rows.push({ type: 'section', label: section.label });
       for (const l of links) {
         rows.push({
-          type: 'link',
           path: l.path,
           accessKey: l.accessKey,
           label: l.label || ACCESS_LABELS[l.accessKey] || l.accessKey,
@@ -168,9 +156,8 @@ const MainLayout = () => {
   const roleName = user?.role_name || user?.role?.name || 'Администратор';
 
   const currentPage = navRows.find(
-    (row) =>
-      row.type === 'link' &&
-      (location.pathname === row.path || location.pathname.startsWith(`${row.path}/`)),
+    (item) =>
+      location.pathname === item.path || location.pathname.startsWith(`${item.path}/`),
   );
   const pageTitle = currentPage?.label || 'DIAS LINE';
 

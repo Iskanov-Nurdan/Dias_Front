@@ -25,14 +25,14 @@ export const PAGE_ROUTES = {
 };
 
 export const PAGE_LABELS = {
-  [PAGE_IDS.ANALYTICS]: 'Отчёты и аналитика',
+  [PAGE_IDS.ANALYTICS]: 'Аналитика',
   [PAGE_IDS.USERS]: 'Сотрудники',
-  [PAGE_IDS.LINES]: 'Линии и смены на линиях',
-  [PAGE_IDS.MATERIALS]: 'Сырьё и остатки',
-  [PAGE_IDS.CHEMISTRY]: 'Химия (полуфабрикат)',
-  [PAGE_IDS.RECIPES]: 'Рецептуры',
+  [PAGE_IDS.LINES]: 'Линии',
+  [PAGE_IDS.MATERIALS]: 'Сырьё',
+  [PAGE_IDS.CHEMISTRY]: 'Химия',
+  [PAGE_IDS.RECIPES]: 'Рецепты',
   [PAGE_IDS.OTK]: 'ОТК',
-  [PAGE_IDS.WAREHOUSE]: 'Склад готовой продукции',
+  [PAGE_IDS.WAREHOUSE]: 'Склад',
   [PAGE_IDS.CLIENTS]: 'Клиенты',
   [PAGE_IDS.SALES]: 'Продажи',
 };

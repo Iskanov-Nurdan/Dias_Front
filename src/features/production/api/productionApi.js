@@ -9,7 +9,7 @@ export const deletePlasticProfile = (id) => apiClient.delete(`plastic-profiles/$
 
 /**
  * Партии производства (ProductionBatch): POST /api/batches/
- * Обязательные: profile, recipe, line, pieces, length_per_piece
+ * Обязательные: profile, recipe, line, date, pieces, length_per_piece
  * total_meters и себестоимость только на сервере — не отправлять с клиента.
  */
 export const getProductionBatches = (params) => apiClient.get('batches/', { params });

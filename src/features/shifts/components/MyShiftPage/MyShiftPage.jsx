@@ -358,7 +358,7 @@ const MyShiftPage = () => {
       {/* Header */}
       <div className="my-shift__header">
         <div>
-          <h1 className="my-shift__greeting">Привет, {displayName}!</h1>
+          <p className="my-shift__greeting">Привет, {displayName}!</p>
           {roleName && <p className="my-shift__role">{roleName}</p>}
           <p className="my-shift__date">{today}</p>
         </div>
@@ -412,9 +412,6 @@ const MyShiftPage = () => {
             <div className="my-shift__start-card">
               <div className="my-shift__start-icon"><PlayIcon /></div>
               <h2 className="my-shift__start-title">Начать рабочий день</h2>
-              <p className="my-shift__start-desc">
-                Откройте смену, чтобы зафиксировать начало работы. Вы сможете добавлять заметки о выполненных задачах в течение смены.
-              </p>
               <button
                 type="button"
                 className="btn btn--primary btn--lg my-shift__open-btn"
@@ -457,13 +454,6 @@ const MyShiftPage = () => {
                   ) : null}
                 </div>
                 <div className="my-shift__active-actions">
-                  <button
-                    type="button"
-                    className="btn btn--secondary my-shift__complaint-btn"
-                    onClick={() => setComplaintModalOpen(true)}
-                  >
-                    Добавить жалобу
-                  </button>
                   <button
                     type="button"
                     className="btn btn--danger my-shift__close-btn"

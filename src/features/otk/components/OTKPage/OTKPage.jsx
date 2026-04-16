@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
-import { Loading, EmptyState, ErrorState, FilterBar, useToast, DecimalInput, ConfirmModal } from '../../../../shared/ui';
+import { Loading, EmptyState, ErrorState, FilterBar, useToast, IntegerInput, ConfirmModal } from '../../../../shared/ui';
 import {
   useServerQuery,
-  formatNumberForInput,
   formatQuantityDisplay,
   parseLocaleNumber,
   otkResultStatusRu,
@@ -419,7 +418,7 @@ const OTKPage = () => {
 
 const AcceptModal = ({ batch, onSubmit, onClose, error }) => {
   const produced = Number(releasedQty(batch)) || 0;
-  const [accepted, setAccepted] = useState(produced > 0 ? formatNumberForInput(produced) : '');
+  const [accepted, setAccepted] = useState(produced > 0 ? String(produced) : '');
   const [defect, setDefect] = useState('0');
   const [defectReason, setDefectReason] = useState('');
   const [comment, setComment] = useState('');
@@ -431,8 +430,8 @@ const AcceptModal = ({ batch, onSubmit, onClose, error }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const a = Math.max(0, Math.floor(parseLocaleNumber(accepted) || 0));
-    const d = Math.max(0, Math.floor(parseLocaleNumber(defect) || 0));
+    const a = Math.max(0, parseInt(String(accepted).trim(), 10) || 0);
+    const d = Math.max(0, parseInt(String(defect).trim(), 10) || 0);
     if (a + d <= 0) return;
     if (produced > 0 && a + d !== produced) return;
     if (d > 0 && !defectReason.trim()) return;
@@ -446,46 +445,46 @@ const AcceptModal = ({ batch, onSubmit, onClose, error }) => {
     });
   };
 
-  const defectQty = Math.max(0, Math.floor(parseLocaleNumber(defect) || 0));
+  const defectQty = Math.max(0, parseInt(String(defect).trim(), 10) || 0);
   const defectReasonRequired = defectQty > 0;
-  const acceptedQty = Math.max(0, Math.floor(parseLocaleNumber(accepted) || 0));
+  const acceptedQty = Math.max(0, parseInt(String(accepted).trim(), 10) || 0);
   const invalidTotal = produced > 0 && acceptedQty + defectQty !== produced;
 
   const handleAcceptedChange = (value) => {
-    const n = parseLocaleNumber(value);
+    const n = parseInt(String(value).trim(), 10);
     if (value === '' || value === '-' || !Number.isFinite(n) || n < 0) {
       setAccepted(value);
       return;
     }
     if (produced > 0) {
-      const safeAccepted = Math.min(Math.floor(n), produced);
-      setAccepted(formatNumberForInput(safeAccepted));
+      const safeAccepted = Math.min(n, produced);
+      setAccepted(String(safeAccepted));
       const autoDefect = Math.max(produced - safeAccepted, 0);
-      setDefect(formatNumberForInput(autoDefect));
+      setDefect(String(autoDefect));
       return;
     }
     setAccepted(value);
   };
 
   const handleDefectChange = (value) => {
-    const n = parseLocaleNumber(value);
+    const n = parseInt(String(value).trim(), 10);
     if (value === '' || value === '-' || !Number.isFinite(n) || n < 0) {
       setDefect(value);
       return;
     }
     if (produced > 0) {
-      const safeDefect = Math.min(Math.floor(n), produced);
-      setDefect(formatNumberForInput(safeDefect));
+      const safeDefect = Math.min(n, produced);
+      setDefect(String(safeDefect));
       const autoAccepted = Math.max(produced - safeDefect, 0);
-      setAccepted(formatNumberForInput(autoAccepted));
+      setAccepted(String(autoAccepted));
       return;
     }
     setDefect(value);
   };
 
   const enteredTotal =
-    Math.max(0, Math.floor(parseLocaleNumber(accepted) || 0))
-    + Math.max(0, Math.floor(parseLocaleNumber(defect) || 0));
+    Math.max(0, parseInt(String(accepted || '').trim(), 10) || 0)
+    + Math.max(0, parseInt(String(defect || '').trim(), 10) || 0);
   const remainingDistribute =
     produced > 0 ? Math.max(0, produced - enteredTotal) : null;
 
@@ -519,10 +518,7 @@ const AcceptModal = ({ batch, onSubmit, onClose, error }) => {
           <h3>Проверка партии</h3>
           <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
-        <form className="otk-accept-form" onSubmit={handleSubmit} title="Принято + брак = штук к проверке">
-          <p className="otk-accept-form__hint">
-            После сохранения годное и брак поступают на склад отдельными партиями.
-          </p>
+        <form className="otk-accept-form" onSubmit={handleSubmit}>
           <div className="otk-modal-summary">
             <div className="otk-modal-summary__item">
               <span className="otk-modal-summary__label">Продукт</span>
@@ -562,22 +558,24 @@ const AcceptModal = ({ batch, onSubmit, onClose, error }) => {
           <div className="otk-accept-form__row">
             <div className="otk-accept-form__field">
               <label htmlFor={`otk-acc-${batch.id}`}>Принято, шт</label>
-              <DecimalInput
+              <IntegerInput
                 id={`otk-acc-${batch.id}`}
                 min={0}
                 max={produced > 0 ? produced : undefined}
                 value={accepted}
                 onChange={handleAcceptedChange}
+                className="otk-accept-input"
               />
             </div>
             <div className="otk-accept-form__field">
               <label htmlFor={`otk-def-${batch.id}`}>Брак, шт</label>
-              <DecimalInput
+              <IntegerInput
                 id={`otk-def-${batch.id}`}
                 min={0}
                 max={produced > 0 ? produced : undefined}
                 value={defect}
                 onChange={handleDefectChange}
+                className="otk-accept-input"
               />
             </div>
           </div>

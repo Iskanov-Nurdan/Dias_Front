@@ -132,8 +132,6 @@ const PlasticProfilesPage = () => {
 
   return (
     <div className="page page--plastic-profiles">
-      <h1 className="page__title">Профили</h1>
-
       <div className="plastic-profiles-card">
         <div className="plastic-profiles-card__head ds-toolbar ds-toolbar--in-card">
           <div className="ds-toolbar__start">
@@ -178,15 +176,9 @@ const PlasticProfilesPage = () => {
                       <span className="plastic-profiles-table__has">{hasRecipe ? 'да' : 'нет'}</span>
                       <span className="plastic-profiles-table__status">{active ? 'активен' : 'неактивен'}</span>
                       <div className="plastic-profiles-table__actions">
-                        <button
-                          type="button"
-                          className="btn btn--primary btn--sm"
-                          onClick={() => goCreateRecipe(p.id)}
-                        >
-                          Создать рецепт
-                        </button>
                         <ActionMenu
                           items={[
+                            { label: 'Создать рецепт', onClick: () => goCreateRecipe(p.id) },
                             { label: 'Рецепты', onClick: () => goRecipesFiltered(p.id) },
                             { label: 'Редактировать', onClick: () => { setSubmitError(''); setMetaModal(p); } },
                             ...(active

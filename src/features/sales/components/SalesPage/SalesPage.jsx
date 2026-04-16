@@ -24,6 +24,7 @@ import {
   ActionMenu,
   useToast,
   DecimalInput,
+  IntegerInput,
   Select,
 } from '../../../../shared/ui';
 import { apiClient } from '../../../../shared/api';
@@ -835,7 +836,7 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
           {saleUnit === 'piece' ? (
             <>
               <label>Количество, шт *</label>
-              <DecimalInput min={0} value={qtyInput} onChange={setQtyInput} required />
+              <IntegerInput min={0} value={qtyInput} onChange={setQtyInput} required className="input" />
             </>
           ) : (
             <div className="sales-modal__pack-composition">
@@ -846,11 +847,12 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
                 <div className="sales-modal__pack-cell">
                   <label htmlFor="sale-modal-packs">Упаковок</label>
                   <div className="sales-modal__pack-input-row">
-                    <DecimalInput
+                    <IntegerInput
                       id="sale-modal-packs"
-                      min={0}
+                      min={1}
                       value={qtyInput}
                       onChange={setQtyInput}
+                      className="input"
                     />
                     {maxPacksByStock != null && maxPacksByStock >= 1 && (
                       <button
@@ -866,11 +868,12 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
                 <span className="sales-modal__pack-op" aria-hidden>×</span>
                 <div className="sales-modal__pack-cell">
                   <label htmlFor="sale-modal-ipp">Штук в каждой</label>
-                  <DecimalInput
+                  <IntegerInput
                     id="sale-modal-ipp"
                     min={1}
                     value={overridePiecesPerPackage}
                     onChange={setOverridePiecesPerPackage}
+                    className="input"
                   />
                   <span className="sales-modal__pack-cell-note">
                     {Number.isFinite(meta.piecesPerPackage) && meta.piecesPerPackage > 0

@@ -660,8 +660,6 @@ const ChemistryPage = () => {
 
   return (
     <div className="page page--chemistry">
-      <h1 className="page__title">Химия</h1>
-
       <div className="chemistry-tabs" role="tablist">
         <button
           type="button"
@@ -698,9 +696,6 @@ const ChemistryPage = () => {
             <div className="ds-toolbar__end chemistry-card__toolbar-actions">
               <button type="button" className="btn btn--primary" onClick={() => { setSubmitError(''); setAddOpen(true); }}>
                 Добавить химию
-              </button>
-              <button type="button" className="btn btn--secondary" onClick={() => openProduce(null)}>
-                Выпуск
               </button>
             </div>
           </div>
@@ -760,11 +755,6 @@ const ChemistryPage = () => {
 
       {mainTab === MAIN_TAB.STOCK && (
         <div className="chemistry-card chemistry-card--stock">
-          <div className="chemistry-card__head ds-toolbar ds-toolbar--in-card">
-            <div className="ds-toolbar__end chemistry-card__toolbar-actions">
-              <button type="button" className="btn btn--primary" onClick={() => openProduce(null)}>Выпуск</button>
-            </div>
-          </div>
           {balLoading && <Loading />}
           {!balLoading && balances.length === 0 ? (
             <EmptyState title="Нет остатков" />

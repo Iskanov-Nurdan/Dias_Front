@@ -47,10 +47,7 @@ const DecimalInput = ({
 
   const handleFocus = (e) => {
     setFocused(true);
-    const n = parseLocaleNumber(strVal);
-    if (strVal !== '' && Number.isFinite(n)) {
-      onChange?.(formatNumberForInput(n));
-    }
+    /** Не перезаписываем значение при фокусе — иначе теряются ведущие нули и промежуточный ввод (0.80, 0.001). */
     onFocus?.(e);
   };
 

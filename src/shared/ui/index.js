@@ -11,6 +11,7 @@ export { default as Pagination } from './Pagination/Pagination';
 export { default as Select } from './Select/Select';
 export { default as FiltersModal } from './FiltersModal/FiltersModal';
 export { default as DecimalInput } from './DecimalInput/DecimalInput';
+export { default as IntegerInput } from './IntegerInput/IntegerInput';
 export { default as Button } from './Button/Button';
 export { default as Field } from './Field/Field';
 export { default as Card } from './Card/Card';

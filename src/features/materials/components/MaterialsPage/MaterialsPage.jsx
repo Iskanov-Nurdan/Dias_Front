@@ -264,8 +264,6 @@ const MaterialsPage = () => {
 
   return (
     <div className="page page--materials">
-      <h1 className="page__title">Склад сырья</h1>
-
       <div className="materials-tabs" role="tablist" aria-label="Разделы склада сырья">
         <button
           type="button"

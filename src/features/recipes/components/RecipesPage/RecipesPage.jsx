@@ -19,6 +19,7 @@ import {
 } from '../../api/recipesApi';
 import { apiClient } from '../../../../shared/api';
 import { useOperationalRefetch } from '../../../../shared/realtime';
+import { buildRecipeAvailabilityRows, formatAvailabilityCell } from '../../lib/recipeAvailabilityRows';
 import './RecipesPage.scss';
 
 const TYPE_RAW = 'raw';
@@ -238,8 +239,6 @@ const RecipesPage = () => {
 
   return (
     <div className="page page--recipes">
-      <h1 className="page__title">Рецепты</h1>
-
       {!loading && plasticProfiles.length === 0 && (
         <div className="recipes-filter-banner" role="alert">
           <Link to="/profiles">Создать профиль</Link>
@@ -319,15 +318,9 @@ const RecipesPage = () => {
                       <span className="recipes-table__count">{componentCount(r)}</span>
                       <span className="recipes-table__status">{active ? 'активен' : 'неактивен'}</span>
                       <div className="recipes-table__actions" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          className="btn btn--primary btn--sm"
-                          onClick={() => { setSubmitError(''); setMetaModal(r); }}
-                        >
-                          Редактировать
-                        </button>
                         <ActionMenu
                           items={[
+                            { label: 'Редактировать', onClick: () => { setSubmitError(''); setMetaModal(r); } },
                             { label: 'Состав', onClick: () => setCompositionModal({ id: r.id, name: recipeDisplayName(r) }) },
                             { label: 'Проверка остатков', onClick: () => setAvailabilityRecipeId(r.id) },
                             ...(active
@@ -714,7 +707,7 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
       return;
     }
     if (!Number.isFinite(q) || q <= 0) {
-      setLineError('Укажите quantity_per_meter (кг/м) больше 0.');
+      setLineError('Укажите норму на 1 м (кг/м) больше 0.');
       return;
     }
     const [kind, idStr] = String(unifiedPick).split(':');
@@ -1001,7 +994,7 @@ const RecipeDetailModal = ({
               <div className="recipe-view-modal__actions">
                 <button type="button" className="btn btn--secondary btn--sm" onClick={onEdit}>Редактировать</button>
                 <button type="button" className="btn btn--secondary btn--sm" onClick={onComposition}>Состав</button>
-                <button type="button" className="btn btn--secondary btn--sm" onClick={onAvailability}>Проверить доступность</button>
+                <button type="button" className="btn btn--secondary btn--sm" onClick={onAvailability}>Проверка остатков</button>
               </div>
             </>
           )}
@@ -1036,29 +1029,65 @@ const AvailabilityModal = ({ recipeId, title, onClose }) => {
     return () => { cancelled = true; };
   }, [recipeId]);
 
-  const text = useMemo(() => {
-    if (payload == null) return '';
-    if (typeof payload === 'string') return payload;
-    if (payload.detail && typeof payload.detail === 'string') return payload.detail;
-    try {
-      return JSON.stringify(payload, null, 2);
-    } catch {
-      return String(payload);
-    }
-  }, [payload]);
+  const { rows, message, ok } = useMemo(() => buildRecipeAvailabilityRows(payload), [payload]);
 
   return (
     <div className="modal-overlay" role="presentation" onClick={onClose}>
       <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
-          <h3>Доступность: {title || '—'}</h3>
+          <h3>Проверка остатков: {title || '—'}</h3>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <div className="modal__body">
           {loading && <Loading />}
           {!loading && err && <p className="modal__error">{err}</p>}
           {!loading && !err && (
-            <pre className="recipe-availability__pre">{text || '—'}</pre>
+            <>
+              {ok === true && (
+                <p className="recipe-availability__banner recipe-availability__banner--ok">По данным сервера материалов достаточно.</p>
+              )}
+              {ok === false && rows.length === 0 && (
+                <p className="recipe-availability__banner recipe-availability__banner--bad">Недостаточно материалов на выпуск.</p>
+              )}
+              {message && (
+                <p className="recipe-availability__note">{message}</p>
+              )}
+              {rows.length > 0 ? (
+                <div className="recipe-availability__table-wrap">
+                  <table className="recipe-availability__table">
+                    <thead>
+                      <tr>
+                        <th>Компонент</th>
+                        <th>Тип</th>
+                        <th className="recipe-availability__num">Норма на 1 м</th>
+                        <th className="recipe-availability__num">Остаток</th>
+                        <th>Хватает</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row) => (
+                        <tr key={row.key}>
+                          <td>{row.name}</td>
+                          <td>{row.type}</td>
+                          <td className="recipe-availability__num">
+                            {formatAvailabilityCell(row.required)}
+                            {row.required != null ? ` ${row.unit}` : ''}
+                          </td>
+                          <td className="recipe-availability__num">{formatAvailabilityCell(row.available)}</td>
+                          <td>
+                            {row.enough === true && <span className="recipe-availability__pill recipe-availability__pill--ok">Да</span>}
+                            {row.enough === false && <span className="recipe-availability__pill recipe-availability__pill--no">Нет</span>}
+                            {row.enough == null && <span className="recipe-availability__muted">—</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : !message && ok == null ? (
+                <p className="recipe-availability__empty">Сервер не вернул список компонентов. Обратитесь к администратору или проверьте ответ API.</p>
+              ) : null}
+            </>
           )}
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose}>Закрыть</button>

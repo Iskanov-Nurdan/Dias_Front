@@ -369,18 +369,87 @@
   }
 }
 
-.recipe-availability__pre {
+.recipe-availability__table-wrap {
   margin: 0;
-  padding: 0.75rem 1rem;
-  max-height: 50vh;
+  max-height: 55vh;
   overflow: auto;
-  font-size: 0.82rem;
-  line-height: 1.45;
-  background: var(--bg, #f8fafc);
   border: 1px solid var(--border);
   border-radius: 8px;
-  white-space: pre-wrap;
-  word-break: break-word;
+}
+
+.recipe-availability__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+
+  th,
+  td {
+    padding: 0.5rem 0.65rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    font-weight: 600;
+    background: var(--bg-muted, #f1f5f9);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+}
+
+.recipe-availability__num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.recipe-availability__banner {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+
+  &--ok {
+    background: color-mix(in srgb, var(--success, #16a34a) 12%, transparent);
+    color: var(--text);
+  }
+
+  &--bad {
+    background: color-mix(in srgb, var(--danger, #dc2626) 12%, transparent);
+    color: var(--text);
+  }
+}
+
+.recipe-availability__note {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text-muted, var(--muted));
+}
+
+.recipe-availability__empty {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted, var(--muted));
+}
+
+.recipe-availability__pill {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+
+  &--ok {
+    background: color-mix(in srgb, var(--success, #16a34a) 18%, transparent);
+  }
+
+  &--no {
+    background: color-mix(in srgb, var(--danger, #dc2626) 18%, transparent);
+  }
+}
+
+.recipe-availability__muted {
+  color: var(--text-muted, var(--muted));
 }
 
 .modal.recipe-view-modal {

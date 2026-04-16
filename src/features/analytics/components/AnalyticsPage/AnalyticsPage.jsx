@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, LabelList } from 'recharts';
 import './AnalyticsPage.scss';
 import { apiClient } from '../../../../shared/api';
+import { parseApiListResponse } from '../../../../shared/lib';
 import { getRevenueDetails, getExpenseDetails, getWriteoffDetails } from '../../api';
 import { Loading, ErrorState, Select } from '../../../../shared/ui';
 
@@ -71,6 +72,56 @@ const AnalyticsPage = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [lineOptions, setLineOptions] = useState([{ value: '', label: 'Все линии' }]);
+  const [clientOptions, setClientOptions] = useState([{ value: '', label: 'Все клиенты' }]);
+  const [profileOptions, setProfileOptions] = useState([{ value: '', label: 'Все профили' }]);
+  const [recipeOptions, setRecipeOptions] = useState([{ value: '', label: 'Все рецепты' }]);
+  const [batchOptions, setBatchOptions] = useState([{ value: '', label: 'Все партии' }]);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      apiClient.get('lines/', { params: { page_size: 200 } }).then((r) => parseApiListResponse(r.data)).catch(() => []),
+      apiClient.get('clients/', { params: { page_size: 200 } }).then((r) => r.data?.items || []).catch(() => []),
+      apiClient.get('plastic-profiles/', { params: { page_size: 200 } }).then((r) => parseApiListResponse(r.data)).catch(() => []),
+      apiClient.get('recipes/', { params: { page_size: 200 } }).then((r) => parseApiListResponse(r.data)).catch(() => []),
+      apiClient.get('batches/', { params: { page_size: 100, ordering: '-id' } }).then((r) => parseApiListResponse(r.data)).catch(() => []),
+    ]).then(([lines, clients, profiles, recipes, batches]) => {
+      if (cancelled) return;
+      setLineOptions([
+        { value: '', label: 'Все линии' },
+        ...lines.map((l) => ({ value: String(l.id), label: l.name || `#${l.id}` })),
+      ]);
+      setClientOptions([
+        { value: '', label: 'Все клиенты' },
+        ...clients.map((c) => ({ value: String(c.id), label: c.name || `#${c.id}` })),
+      ]);
+      setProfileOptions([
+        { value: '', label: 'Все профили' },
+        ...profiles.map((p) => ({
+          value: String(p.id),
+          label: p.code ? `${p.name || ''} (${p.code})`.trim() : (p.name || `#${p.id}`),
+        })),
+      ]);
+      setRecipeOptions([
+        { value: '', label: 'Все рецепты' },
+        ...recipes.map((r) => ({
+          value: String(r.id),
+          label: r.recipe || r.name || r.product || `#${r.id}`,
+        })),
+      ]);
+      setBatchOptions([
+        { value: '', label: 'Все партии' },
+        ...batches.map((b) => ({
+          value: String(b.id),
+          label: `#${b.id} · ${b.profile_name || b.profile?.name || b.recipe_name || b.recipe?.recipe || 'партия'}`,
+        })),
+      ]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const load = useCallback((signal) => {
     setLoading(true);
@@ -230,28 +281,38 @@ const AnalyticsPage = () => {
 
       <div className="analytics-filters analytics-filters--extra">
         <div className="analytics-filters__group">
-          <label>Линия (id)</label>
-          <input type="text" inputMode="numeric" value={lineId} onChange={(e) => setLineId(e.target.value)} placeholder="опц." />
+          <label>Линия</label>
+          <Select value={lineId} onChange={setLineId} options={lineOptions} placeholder="Все" />
         </div>
         <div className="analytics-filters__group">
-          <label>Клиент (id)</label>
-          <input type="text" inputMode="numeric" value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="опц." />
+          <label>Клиент</label>
+          <Select value={clientId} onChange={setClientId} options={clientOptions} placeholder="Все" />
         </div>
         <div className="analytics-filters__group">
-          <label>Профиль (id)</label>
-          <input type="text" inputMode="numeric" value={profileId} onChange={(e) => setProfileId(e.target.value)} placeholder="опц." />
+          <label>Профиль</label>
+          <Select value={profileId} onChange={setProfileId} options={profileOptions} placeholder="Все" />
         </div>
         <div className="analytics-filters__group">
-          <label>Рецепт (id)</label>
-          <input type="text" inputMode="numeric" value={recipeId} onChange={(e) => setRecipeId(e.target.value)} placeholder="опц." />
+          <label>Рецепт</label>
+          <Select value={recipeId} onChange={setRecipeId} options={recipeOptions} placeholder="Все" />
         </div>
         <div className="analytics-filters__group">
-          <label>Партия (id)</label>
-          <input type="text" inputMode="numeric" value={batchId} onChange={(e) => setBatchId(e.target.value)} placeholder="опц." />
+          <label>Партия</label>
+          <Select value={batchId} onChange={setBatchId} options={batchOptions} placeholder="Все" />
         </div>
         <div className="analytics-filters__group">
           <label>Статус</label>
-          <input type="text" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} placeholder="опц." />
+          <Select
+            value={statusFilter}
+            onChange={setStatusFilter}
+            placeholder="Все"
+            options={[
+              { value: '', label: 'Все' },
+              { value: 'available', label: 'Доступно' },
+              { value: 'reserved', label: 'Резерв' },
+              { value: 'shipped', label: 'Отгружено' },
+            ]}
+          />
         </div>
         <div className="analytics-filters__group">
           <label>Период с</label>
@@ -273,7 +334,7 @@ const AnalyticsPage = () => {
             <div className="analytics-card__icon">📈</div>
             <div className="analytics-card__label">Приход</div>
             <div className="analytics-card__value">{formatMoney(finances.revenue)}</div>
-            <div className="analytics-card__hint">за период - нажмите для детализации</div>
+            <div className="analytics-card__hint">Нажмите для деталей</div>
           </div>
           <div 
             className="analytics-card analytics-card--expense analytics-card--clickable"
@@ -282,7 +343,7 @@ const AnalyticsPage = () => {
             <div className="analytics-card__icon">📉</div>
             <div className="analytics-card__label">Расход</div>
             <div className="analytics-card__value">{formatMoney(finances.expenses)}</div>
-            <div className="analytics-card__hint">за период - нажмите для детализации</div>
+            <div className="analytics-card__hint">Нажмите для деталей</div>
           </div>
           <div 
             className="analytics-card analytics-card--profit analytics-card--clickable"
@@ -291,7 +352,7 @@ const AnalyticsPage = () => {
             <div className="analytics-card__icon">💰</div>
             <div className="analytics-card__label">Прибыль</div>
             <div className="analytics-card__value">{formatMoney(finances.profit)}</div>
-            <div className="analytics-card__hint">за период - нажмите для детализации</div>
+            <div className="analytics-card__hint">Нажмите для деталей</div>
           </div>
           <div
             className="analytics-card analytics-card--writeoff analytics-card--clickable"
@@ -308,7 +369,7 @@ const AnalyticsPage = () => {
                   0,
               )}
             </div>
-            <div className="analytics-card__hint">за период — детализация с бэка</div>
+            <div className="analytics-card__hint">Нажмите для деталей</div>
           </div>
         </div>
       </div>
@@ -317,7 +378,7 @@ const AnalyticsPage = () => {
       {trendsData.length > 0 && (
         <div className="analytics-section">
           <h2 className="analytics-section__title">Динамика доходов и расходов по дням</h2>
-          <p className="analytics-section__hint">▲ рост к предыдущему дню · ▼ снижение · ◆ без изменений. Карточки выше — итого за выбранный период.</p>
+          <p className="analytics-section__hint">▲ ▼ ◆ — к предыдущему дню.</p>
           <div className="analytics-chart-container analytics-chart-container--large">
             <ResponsiveContainer width="100%" height={450}>
               <AreaChart data={trendsData} margin={{ top: 64, right: 30, left: 20, bottom: 20 }}>

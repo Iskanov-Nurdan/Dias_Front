@@ -464,6 +464,24 @@ const AnalyticsPage = () => {
                 ]}
               />
             </div>
+            <div className="analytics-filters__group analytics-filters__group--toolbar-wide">
+              <label>Профиль</label>
+              <Select
+                value={profileId === '' || profileId == null ? '' : String(profileId)}
+                onChange={setProfileId}
+                options={profileOptions}
+                placeholder="Все профили"
+              />
+            </div>
+            <div className="analytics-filters__group analytics-filters__group--toolbar-wide">
+              <label>Партия</label>
+              <Select
+                value={batchId === '' || batchId == null ? '' : String(batchId)}
+                onChange={setBatchId}
+                options={batchOptions}
+                placeholder="Все партии"
+              />
+            </div>
           </div>
           <div className="analytics-toolbar__actions">
             <button

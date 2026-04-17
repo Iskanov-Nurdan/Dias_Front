@@ -32,6 +32,38 @@ export function getActivitySummary(a) {
   );
 }
 
+/** Исправление типичной ошибки в шаблонах бэка («жалоба» в вин. падеже после глагола). */
+function fixComplaintAccusativeRu(s) {
+  if (!s || typeof s !== 'string') return s;
+  return s
+    .replace(/\bСоздал\s+жалоба\b/g, 'Создал жалобу')
+    .replace(/\bИзменил\s+жалоба\b/g, 'Изменил жалобу')
+    .replace(/\bУдалил\s+жалоба\b/g, 'Удалил жалобу')
+    .replace(/\bВосстановил\s+жалоба\b/g, 'Восстановил жалобу')
+    .replace(/\bПросмотрел\s+жалоба\b/g, 'Просмотрел жалобу');
+}
+
+/** Убираем хвосты вида «: #1 — 4», « №10» — клиенту не показываем внутренние id. */
+function stripOperatorSummaryTechnicalTail(s) {
+  let t = String(s).trim();
+  if (!t) return t;
+  if (/жалоб|смен/i.test(t)) {
+    t = t.replace(/\s*[:：]\s*#.*$/u, '');
+  }
+  t = t.replace(/\s+#\d+(\s*[—–-]\s*#?\d+)*\s*$/u, '');
+  t = t.replace(/\s+№\s*\d+\s*$/u, '');
+  return t.trim();
+}
+
+/** Сводка целиком похожа на тех. строку (модель #pk) — не показываем оператору. */
+function operatorSummaryLooksTechnical(s) {
+  if (!s) return true;
+  const t = String(s).trim();
+  if (/^[a-z][a-z0-9_.]*\s*[#№]\s*\d+$/i.test(t)) return true;
+  if (/\w+\.\w+\s*#\d+/i.test(t)) return true;
+  return false;
+}
+
 /** Текст для списка/карточки без технических fallback (sales.client #4). */
 export function getActivitySummaryForOperator(a) {
   if (!a) return '';
@@ -40,7 +72,12 @@ export function getActivitySummaryForOperator(a) {
     (a.description && String(a.description).trim()) ||
     (a.object_repr && String(a.object_repr).trim()) ||
     '';
-  if (fromApi) return fromApi;
+  if (fromApi) {
+    let s = fixComplaintAccusativeRu(fromApi);
+    s = stripOperatorSummaryTechnicalTail(s);
+    if (operatorSummaryLooksTechnical(s)) s = '';
+    if (s) return s;
+  }
   const section = getActivityModule(a);
   if (section) return `Изменение в разделе «${section}»`;
   return 'Запись в журнале';

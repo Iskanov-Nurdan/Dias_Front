@@ -159,7 +159,7 @@
       margin-bottom: var(--space-2);
     }
 
-    input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']),
+    input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not(.dias-select__value-input):not(.dias-select-sheet__field-search),
     textarea,
     select,
     .dias-select {
@@ -167,7 +167,7 @@
     }
   }
 
-  input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']),
+  input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not(.dias-select__value-input):not(.dias-select-sheet__field-search),
   textarea {
     display: block;
     width: 100%;

@@ -9,6 +9,7 @@ export { default as Skeleton, SkeletonTable } from './Skeleton/Skeleton';
 export { default as Badge } from './Badge/Badge';
 export { default as Pagination } from './Pagination/Pagination';
 export { default as Select } from './Select/Select';
+export { SearchableSelect } from './Select/SearchableSelect';
 export { default as FiltersModal } from './FiltersModal/FiltersModal';
 export { default as DecimalInput } from './DecimalInput/DecimalInput';
 export { default as IntegerInput } from './IntegerInput/IntegerInput';

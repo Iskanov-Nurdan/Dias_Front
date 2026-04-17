@@ -26,6 +26,11 @@
     background 0.2s ease;
   text-align: left;
   position: relative;
+  cursor: pointer;
+
+  &--editing {
+    cursor: text;
+  }
 
   &:hover:not(.dias-select--disabled):not(.dias-select--invalid) {
     border-color: var(--select-border-hover);
@@ -51,8 +56,12 @@
     cursor: not-allowed;
   }
 
-  &:focus-visible:not(.dias-select--invalid) {
+  &:focus-within:not(.dias-select--disabled):not(.dias-select--invalid):not(.dias-select--open) {
     @include select-focus-ring;
+  }
+
+  .dias-select__trigger:focus {
+    outline: none;
   }
 
   @include mobile {
@@ -67,6 +76,92 @@
 
     &--placeholder {
       color: var(--placeholder);
+    }
+  }
+
+  &__trigger {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    cursor: inherit;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    min-height: calc(var(--input-height) - 2px);
+
+    @include mobile {
+      min-height: calc(48px - 2px);
+    }
+  }
+
+  &__value-input {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    margin-bottom: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    font: inherit;
+    color: var(--select-text);
+    text-align: left;
+    min-height: calc(var(--input-height) - 2px);
+    cursor: text;
+    box-sizing: border-box;
+
+    &::placeholder {
+      color: var(--placeholder);
+    }
+
+    &:focus,
+    &:focus-visible {
+      outline: none;
+      border: none;
+      box-shadow: none;
+    }
+
+    @include mobile {
+      min-height: calc(48px - 2px);
+    }
+  }
+
+  &--has-clear {
+    padding-right: 68px;
+  }
+
+  &__clear {
+    position: absolute;
+    right: 36px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    user-select: none;
+
+    &:hover {
+      background: var(--bg-hover);
+      color: var(--text);
     }
   }
 
@@ -101,20 +196,41 @@
   }
 }
 
-.dias-select__dropdown {
-  z-index: var(--z-dropdown);
+.dias-select__dropdown-shell {
+  z-index: var(--z-select-portal);
+  pointer-events: auto;
+}
+
+.dias-select__dropdown-inner {
   background: var(--select-dropdown-bg);
   border-radius: var(--select-dropdown-radius);
   box-shadow: var(--select-dropdown-shadow);
+  overflow: hidden;
+  animation: diasSelectDropdownIn 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+  min-width: 0;
+}
+
+.dias-select__dropdown-inner--list-only {
   padding: var(--space-2);
+  max-height: min(320px, calc(70vh - 24px));
+}
+
+.dias-select__dropdown-list {
   list-style: none;
   margin: 0;
-  max-height: min(288px, 70vh);
+  padding: 0;
+  max-height: min(288px, 58vh);
   overflow-y: auto;
   @include scrollbar;
-  animation: diasSelectDropdownIn 0.22s cubic-bezier(0.32, 0.72, 0, 1);
-  min-width: 160px;
-  border: none;
+}
+
+.dias-select__empty {
+  margin: 0;
+  padding: var(--space-4) var(--space-3);
+  font-size: var(--select-font-size);
+  line-height: var(--select-line-height);
+  color: var(--text-muted);
+  text-align: center;
 }
 
 @keyframes diasSelectDropdownIn {
@@ -131,7 +247,7 @@
 .dias-select-sheet-root {
   position: fixed;
   inset: 0;
-  z-index: var(--z-dropdown);
+  z-index: var(--z-select-portal);
   display: flex;
   align-items: flex-end;
   justify-content: stretch;
@@ -194,6 +310,39 @@
   flex-shrink: 0;
 }
 
+.dias-select-sheet__header--field {
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-3) var(--space-4);
+}
+
+.dias-select-sheet__field-search {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: var(--font-body);
+  line-height: var(--leading-normal);
+  font-family: inherit;
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+
+  &:focus {
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 3px var(--input-focus-ring);
+  }
+
+  &::placeholder {
+    color: var(--placeholder);
+  }
+}
+
 .dias-select-sheet__title {
   font-size: var(--font-label);
   font-weight: var(--weight-semibold);
@@ -226,11 +375,20 @@
 .dias-select-sheet__list {
   list-style: none;
   margin: 0;
-  padding: var(--space-2) var(--space-3) var(--space-4);
+  padding: 0 var(--space-3) var(--space-4);
   overflow-y: auto;
   flex: 1;
   min-height: 0;
   @include scrollbar;
+}
+
+.dias-select-sheet__empty {
+  margin: 0;
+  padding: var(--space-6) var(--space-3);
+  font-size: var(--font-body);
+  line-height: var(--leading-normal);
+  color: var(--text-muted);
+  text-align: center;
 }
 
 .dias-select-sheet__option {
@@ -257,13 +415,19 @@
     color: var(--select-option-selected-text);
     font-weight: var(--weight-medium);
   }
+
+  &--active:not(&--selected) {
+    background: var(--select-option-hover);
+  }
 }
 
 .dias-select-sheet__option-text {
   display: block;
   min-width: 0;
   flex: 1;
-  @include text-ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .dias-select__option {
@@ -287,11 +451,17 @@
     color: var(--select-option-selected-text);
     font-weight: var(--weight-normal);
   }
+
+  &--active:not(&--selected) {
+    background: var(--select-option-hover);
+  }
 }
 
 .dias-select__option-text {
   display: block;
   min-width: 0;
-  @include text-ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 

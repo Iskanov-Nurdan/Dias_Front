@@ -113,21 +113,165 @@ const saleWarehouseQualityKey = (s) => {
   return readWarehouseQuality(s);
 };
 
+const saleStorageFormLabel = (s) => {
+  const pseudo = {
+    inventory_form: s.inventory_form ?? s.stock_form,
+    packaging_state: s.packaging_state,
+    packaging_status: s.packaging_status,
+  };
+  return inventoryFormLabel(resolveInventoryForm(pseudo));
+};
+
+function saleRowRevenueText(s) {
+  if (s.revenue != null && s.revenue !== '') return `${formatQuantityDisplay(s.revenue)} сом`;
+  if (s.price != null && s.price !== '') return `${formatQuantityDisplay(s.price)} сом`;
+  if (s.total != null && s.total !== '') return `${formatQuantityDisplay(s.total)} сом`;
+  return '—';
+}
+
+function saleRowCostText(s) {
+  if (s.cost_total != null && s.cost_total !== '') return `${formatQuantityDisplay(s.cost_total)} сом`;
+  if (s.cost != null && s.cost !== '') return `${formatQuantityDisplay(s.cost)} сом`;
+  return '—';
+}
+
+function saleRowProfitText(s) {
+  if (s.profit != null && s.profit !== '') return `${formatQuantityDisplay(s.profit)} сом`;
+  return '—';
+}
+
+function saleQtySummaryLine(s) {
+  if (!s) return '—';
+  if (
+    s.quantity_unit === 'package' &&
+    s.quantity_input != null &&
+    String(s.quantity_input).trim() !== ''
+  ) {
+    return `${formatQuantityDisplay(s.quantity_input)} ${unitLabel(s.quantity_unit)} · ${formatQuantityDisplay(s.quantity)} шт · ${saleStorageFormLabel(s)}`;
+  }
+  return `${formatQuantityDisplay(s.quantity)} ${s.quantity_unit ? unitLabel(s.quantity_unit) : 'шт'} · ${saleStorageFormLabel(s)}`;
+}
+
+/** Поля для локального HTML накладной (совпадают с модалкой «Накладная»). */
+function buildWaybillDraftSnapshot(sale) {
+  if (!sale?.id) return { id: sale?.id };
+  const dateStr =
+    (sale.sale_date || sale.date || sale.created_at || '').toString().slice(0, 10) || '—';
+  const clientStr = sale.client_name || sale.client?.name || sale.client || '—';
+  const productTitle = batchProductTitle(sale) || '—';
+  const batchNo =
+    sale.warehouse_batch_id != null || sale.batch_id != null
+      ? `№${sale.warehouse_batch_id ?? sale.batch_id ?? sale.warehouse_batch?.id}`
+      : null;
+  const defect = saleWarehouseQualityKey(sale) === 'defect';
+  const batchParts = [productTitle];
+  if (batchNo) batchParts.push(batchNo);
+  if (defect) batchParts.push('Брак');
+  return {
+    id: sale.id,
+    date_display: dateStr,
+    client_display: clientStr,
+    batch_display: batchParts.join(' '),
+    quantity_display: saleQtySummaryLine(sale),
+    revenue_display: saleRowRevenueText(sale),
+    cost_display: saleRowCostText(sale),
+    profit_display: saleRowProfitText(sale),
+    comment: sale.comment,
+  };
+}
+
+const SaleWaybillModal = ({ sale, onClose, onDownloadPdf, downloading }) => {
+  if (!sale?.id) return null;
+  const dateStr = (sale.sale_date || sale.date || sale.created_at || '').toString().slice(0, 10) || '—';
+  const clientStr = sale.client_name || sale.client?.name || sale.client || '—';
+  const productTitle = batchProductTitle(sale) || '—';
+  const batchNo =
+    sale.warehouse_batch_id != null || sale.batch_id != null
+      ? `№${sale.warehouse_batch_id ?? sale.batch_id ?? sale.warehouse_batch?.id}`
+      : null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose} role="presentation">
+      <div className="modal sales-modal sales-modal--waybill" onClick={(e) => e.stopPropagation()}>
+        <div className="modal__head">
+          <h3>Накладная</h3>
+          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
+            ×
+          </button>
+        </div>
+        <div className="modal__body sales-waybill__body">
+          <p className="sales-waybill__intro">Продажа №{sale.id}</p>
+          <dl className="sales-waybill__dl">
+            <div className="sales-waybill__row">
+              <dt>Дата</dt>
+              <dd>{dateStr}</dd>
+            </div>
+            <div className="sales-waybill__row">
+              <dt>Клиент</dt>
+              <dd>{clientStr}</dd>
+            </div>
+            <div className="sales-waybill__row">
+              <dt>Партия</dt>
+              <dd>
+                {productTitle}
+                {batchNo ? <span className="sales-waybill__batch-no"> {batchNo}</span> : null}
+                {saleWarehouseQualityKey(sale) === 'defect' ? (
+                  <span className="warehouse-quality-badge warehouse-quality-badge--defect sales-waybill__defect-badge">
+                    Брак
+                  </span>
+                ) : null}
+              </dd>
+            </div>
+            <div className="sales-waybill__row">
+              <dt>Количество</dt>
+              <dd>{saleQtySummaryLine(sale)}</dd>
+            </div>
+            <div className="sales-waybill__row">
+              <dt>Выручка</dt>
+              <dd>{saleRowRevenueText(sale)}</dd>
+            </div>
+            <div className="sales-waybill__row">
+              <dt>Себестоимость</dt>
+              <dd>{saleRowCostText(sale)}</dd>
+            </div>
+            <div className="sales-waybill__row">
+              <dt>Прибыль</dt>
+              <dd>{saleRowProfitText(sale)}</dd>
+            </div>
+            {sale.comment ? (
+              <div className="sales-waybill__row">
+                <dt>Комментарий</dt>
+                <dd>{sale.comment}</dd>
+              </div>
+            ) : null}
+          </dl>
+        </div>
+        <div className="modal__actions sales-waybill__actions">
+          <button type="button" className="btn btn--secondary" onClick={onClose}>
+            Закрыть
+          </button>
+          <button
+            type="button"
+            className="btn btn--primary"
+            disabled={downloading}
+            onClick={() => onDownloadPdf(sale)}
+          >
+            {downloading ? 'Формирование…' : 'Скачать PDF'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SalesPage = () => {
   const toast = useToast();
   const [queryState] = useState({ page: 1, page_size: 20 });
   const [clients, setClients] = useState([]);
   const [products, setProducts] = useState([]);
 
-  const saleStorageFormLabel = (s) => {
-    const pseudo = {
-      inventory_form: s.inventory_form ?? s.stock_form,
-      packaging_state: s.packaging_state,
-      packaging_status: s.packaging_status,
-    };
-    return inventoryFormLabel(resolveInventoryForm(pseudo));
-  };
   const [modalSale, setModalSale] = useState(null);
+  const [waybillSale, setWaybillSale] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [submitError, setSubmitError] = useState('');
   const [waybillLoadingId, setWaybillLoadingId] = useState(null);
@@ -206,14 +350,7 @@ const SalesPage = () => {
       if (!saleRow?.id) return;
       setWaybillLoadingId(saleRow.id);
       try {
-        const { source } = await downloadSaleWaybill(saleRow.id, {
-          id: saleRow.id,
-          client_name: saleRow.client_name || saleRow.client?.name,
-          product_name: saleRow.product_name || saleRow.product?.name,
-          quantity: saleRow.quantity,
-          price: saleRow.price ?? saleRow.total,
-          comment: saleRow.comment,
-        });
+        const { source } = await downloadSaleWaybill(saleRow.id, buildWaybillDraftSnapshot(saleRow));
         toast.show(source === 'server' ? 'Накладная скачана' : 'Скачан черновик накладной');
       } catch (e) {
         toast.show(e?.userMessage || e?.message || 'Не удалось скачать накладную', 'error');
@@ -228,14 +365,28 @@ const SalesPage = () => {
     <div className="page page--sales">
       <div className="ds-toolbar ds-toolbar--page-head ds-toolbar--stack-mobile">
         <div className="ds-toolbar__end" style={{ marginLeft: 'auto' }}>
-          <button type="button" className="btn btn--primary ds-hide-mobile" onClick={() => setModalSale({})}>
+          <button
+            type="button"
+            className="btn btn--primary ds-hide-mobile"
+            onClick={() => {
+              setWaybillSale(null);
+              setModalSale({});
+            }}
+          >
             Создать
           </button>
         </div>
       </div>
 
       <div className="ds-sticky-mobile-actions">
-        <button type="button" className="btn btn--primary" onClick={() => setModalSale({})}>
+        <button
+          type="button"
+          className="btn btn--primary"
+          onClick={() => {
+            setWaybillSale(null);
+            setModalSale({});
+          }}
+        >
           Создать
         </button>
       </div>
@@ -263,11 +414,12 @@ const SalesPage = () => {
                 key={s.id}
                 tabIndex={0}
                 role="button"
-                onClick={() => setModalSale(s)}
+                aria-label={`Накладная, продажа №${s.id}`}
+                onClick={() => setWaybillSale(s)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    setModalSale(s);
+                    setWaybillSale(s);
                   }
                 }}
               >
@@ -337,9 +489,15 @@ const SalesPage = () => {
                     ariaLabel="Действия"
                     items={[
                       {
-                        label: waybillLoadingId === s.id ? '…' : 'Накладная',
-                        disabled: waybillLoadingId === s.id,
-                        onClick: () => onDownloadWaybill(s),
+                        label: 'Редактировать',
+                        onClick: () => {
+                          setWaybillSale(null);
+                          setModalSale(s);
+                        },
+                      },
+                      {
+                        label: 'Накладная',
+                        onClick: () => setWaybillSale(s),
                       },
                       {
                         label: 'Удалить',
@@ -357,6 +515,15 @@ const SalesPage = () => {
       )}
       {submitError && !modalSale && !deleteTarget && (
         <p className="modal__error sales-page__error">{submitError}</p>
+      )}
+
+      {waybillSale && (
+        <SaleWaybillModal
+          sale={waybillSale}
+          onClose={() => setWaybillSale(null)}
+          onDownloadPdf={onDownloadWaybill}
+          downloading={waybillLoadingId === waybillSale.id}
+        />
       )}
 
       {modalSale !== null && (

@@ -20,35 +20,34 @@ const formatDateTime = (dt) => {
 const complaintText = (c) =>
   c.body ?? c.text ?? c.reason ?? c.content ?? c.message ?? '—';
 
-/** ShiftComplaintListSerializer: author { id, name, username } (username = email на бэке). */
+/** Только имя; логин/email/id — не для общего списка жалоб. */
 const authorLabel = (c) => {
   const a = c.author;
   if (a && typeof a === 'object') {
-    return a.name || a.username || a.email || (a.id != null ? `#${a.id}` : null) || '—';
+    const n = a.name != null ? String(a.name).trim() : '';
+    if (n) return n;
+    return 'Сотрудник';
   }
-  return (
+  const name =
     c.author_name
     ?? c.created_by_name
     ?? c.user_name
     ?? c.created_by?.name
-    ?? c.user?.name
-    ?? c.user?.username
-    ?? '—'
-  );
+    ?? c.user?.name;
+  if (name != null && String(name).trim() !== '') return String(name).trim();
+  return 'Сотрудник';
 };
 
-const mentionsLabel = (c) => {
-  const m = c.mentioned_users ?? c.mentions ?? c.mentioned ?? [];
-  if (!Array.isArray(m) || !m.length) return null;
-  return m
-    .map((x) => {
-      if (typeof x === 'object' && x !== null) {
-        return x.name || x.username || x.email || (x.id != null ? `#${x.id}` : null);
-      }
-      return x;
-    })
-    .filter(Boolean)
-    .join(', ');
+/** Дата смены для человека; внутренний shift_id не показываем. */
+const shiftContextLine = (c) => {
+  const sh = c.shift;
+  if (sh && typeof sh === 'object') {
+    const t = sh.opened_at || sh.started_at || sh.opened;
+    if (t) return `Смена: ${formatDateTime(t)}`;
+  }
+  const t2 = c.shift_opened_at ?? c.shift_started_at;
+  if (t2) return `Смена: ${formatDateTime(t2)}`;
+  return null;
 };
 
 const ComplaintsInbox = ({ className = '', reloadToken = 0 }) => {
@@ -95,7 +94,7 @@ const ComplaintsInbox = ({ className = '', reloadToken = 0 }) => {
       ) : (
         <ul className="complaints-inbox__list">
           {items.map((c) => {
-            const ment = mentionsLabel(c);
+            const shiftLine = shiftContextLine(c);
             return (
               <li key={c.id} className="complaints-inbox__item">
                 <div className="complaints-inbox__meta">
@@ -103,14 +102,7 @@ const ComplaintsInbox = ({ className = '', reloadToken = 0 }) => {
                   <span className="complaints-inbox__author">{authorLabel(c)}</span>
                 </div>
                 <p className="complaints-inbox__text">{complaintText(c)}</p>
-                {c.shift_id != null && c.shift_id !== '' ? (
-                  <p className="complaints-inbox__shift">Смена: №{c.shift_id}</p>
-                ) : null}
-                {ment ? (
-                  <p className="complaints-inbox__mentions">
-                    Упомянуты: {ment}
-                  </p>
-                ) : null}
+                {shiftLine ? <p className="complaints-inbox__shift">{shiftLine}</p> : null}
               </li>
             );
           })}

@@ -413,7 +413,7 @@ button {
   }
 }
 
-input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']),
+input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not(.dias-select__value-input):not(.dias-select-sheet__field-search),
 textarea {
   font-family: inherit;
   font-size: var(--font-body);

@@ -23,11 +23,20 @@
     @include mixins.xs {
       margin-bottom: 16px;
     }
+
+    @include mixins.mobile {
+      flex-direction: column;
+      align-items: stretch;
+    }
   }
 
   &__filter-item {
     flex: 0 0 auto;
     min-width: 0;
+
+    @include mixins.mobile {
+      width: 100%;
+    }
   }
 
   &__filter-item &__input {
@@ -43,6 +52,12 @@
       outline: none;
       border-color: var(--color-primary);
       box-shadow: 0 0 0 3px var(--color-primary-light);
+    }
+
+    @include mixins.mobile {
+      max-width: none;
+      min-width: 0;
+      font-size: 16px;
     }
   }
 
@@ -62,6 +77,10 @@
     min-width: 120px !important;
     max-width: 160px !important;
     box-sizing: border-box;
+
+    @include mixins.mobile {
+      max-width: none !important;
+    }
   }
 
   &__save-error {
@@ -126,6 +145,31 @@
     box-shadow: var(--shadow-card);
     background: var(--color-bg-card);
     @include mixins.scrollbar;
+
+    @include mixins.mobile {
+      overflow-x: visible;
+      border: none;
+      box-shadow: none;
+      background: transparent;
+    }
+  }
+
+  &__cell-value {
+    min-width: 0;
+    flex: 1 1 auto;
+    text-align: right;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+
+    &--percent {
+      display: flex;
+      justify-content: flex-end;
+    }
+  }
+
+  &__skeleton-cell {
+    padding: var(--space-4) !important;
+    vertical-align: middle;
   }
 
   &__table {
@@ -199,6 +243,75 @@
     tbody tr:last-child td {
       border-bottom: none;
     }
+
+    @include mixins.mobile {
+      display: block;
+      background: transparent;
+
+      thead {
+        display: none;
+      }
+
+      tbody {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+      }
+
+      tr {
+        display: block;
+        padding: var(--space-4);
+        background: var(--color-bg-card);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-card);
+      }
+
+      td {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: var(--space-3);
+        padding: var(--space-2) 0;
+        border-bottom: none;
+        text-align: left !important;
+
+        &::before {
+          content: attr(data-label);
+          font-size: 11px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          color: var(--color-text-muted);
+          flex-shrink: 0;
+        }
+
+        &.salary-page__actions {
+          flex-direction: column;
+          align-items: stretch;
+          padding-top: var(--space-3);
+          margin-top: var(--space-2);
+          border-top: 1px solid var(--color-border);
+
+          &::before {
+            display: none;
+          }
+        }
+
+        &.salary-page__skeleton-cell,
+        &.salary-page__empty-cell {
+          justify-content: center;
+
+          &::before {
+            display: none;
+          }
+        }
+      }
+
+      .salary-page__cell-value {
+        text-align: right;
+      }
+    }
   }
 
   &__loading-cell,
@@ -241,6 +354,12 @@
     display: flex;
     gap: 8px;
     justify-content: flex-end;
+    flex-wrap: wrap;
+
+    @include mixins.mobile {
+      width: 100%;
+      justify-content: stretch;
+    }
   }
 
   &__save-btn {
@@ -254,6 +373,12 @@
     cursor: pointer;
     transition: border-color var(--transition-fast), color var(--transition-fast);
     white-space: nowrap;
+
+    @include mixins.mobile {
+      width: 100%;
+      min-height: 44px;
+      white-space: normal;
+    }
     &:hover:not(:disabled) {
       border-color: var(--color-primary);
       color: var(--color-primary);

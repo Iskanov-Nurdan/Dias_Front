@@ -12,6 +12,17 @@
 
   &__filter-bar {
     margin-bottom: var(--space-5);
+
+    @include mixins.mobile {
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-3);
+
+      .filter-bar__action {
+        margin-left: 0;
+        width: 100%;
+      }
+    }
   }
 
   &__add {
@@ -29,12 +40,20 @@
     &:hover {
       background: var(--color-primary-hover);
     }
+
+    @include mixins.mobile {
+      width: 100%;
+      min-height: 44px;
+    }
   }
 
   &__date-range {
     display: flex;
     align-items: center;
     gap: 12px;
+    flex-wrap: wrap;
+    min-width: 0;
+    width: 100%;
   }
 
   &__date-label {
@@ -58,10 +77,18 @@
     border-radius: var(--input-radius);
     font-size: 14px;
     min-width: 140px;
+    max-width: 100%;
     &:focus {
       outline: none;
       border-color: var(--color-primary);
       box-shadow: 0 0 0 3px rgba(197, 48, 48, 0.12);
+    }
+
+    @include mixins.mobile {
+      min-width: 0;
+      flex: 1 1 auto;
+      width: 100%;
+      font-size: 16px;
     }
   }
 
@@ -118,6 +145,14 @@
     color: var(--color-text);
   }
 
+  &__cell-value {
+    min-width: 0;
+    flex: 1 1 auto;
+    text-align: right;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
   &__table-wrap {
     overflow-x: auto;
     border-radius: var(--radius-xl);
@@ -125,6 +160,13 @@
     box-shadow: var(--shadow-sm);
     background: var(--color-surface);
     @include mixins.scrollbar;
+
+    @include mixins.mobile {
+      overflow-x: visible;
+      border: none;
+      box-shadow: none;
+      background: transparent;
+    }
   }
 
   &__table {
@@ -161,6 +203,75 @@
     }
     tbody tr:last-child td {
       border-bottom: none;
+    }
+
+    @include mixins.mobile {
+      display: block;
+      background: transparent;
+
+      thead {
+        display: none;
+      }
+
+      tbody {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+      }
+
+      tr {
+        display: block;
+        padding: var(--space-4);
+        background: var(--color-surface);
+        border: 1px solid rgba(226, 232, 240, 0.6);
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-sm);
+      }
+
+      td {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: var(--space-3);
+        padding: var(--space-2) 0;
+        border-bottom: none;
+
+        &::before {
+          content: attr(data-label);
+          font-size: 11px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          color: var(--color-text-muted);
+          flex-shrink: 0;
+        }
+
+        &.sales-page__actions-cell {
+          flex-direction: column;
+          align-items: stretch;
+          padding-top: var(--space-3);
+          margin-top: var(--space-2);
+          border-top: 1px solid var(--color-border);
+
+          &::before {
+            display: none;
+          }
+
+          .sales-page__cancel-btn {
+            width: 100%;
+            min-height: 44px;
+          }
+        }
+
+        &.sales-page__skeleton-cell,
+        &.sales-page__empty-cell {
+          justify-content: center;
+
+          &::before {
+            display: none;
+          }
+        }
+      }
     }
   }
 

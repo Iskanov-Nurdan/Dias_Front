@@ -276,9 +276,15 @@
   &__virtual-cell {
     padding: 14px 0;
     text-align: left;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 
     &:last-child {
       text-align: right;
+      overflow: visible;
+      white-space: normal;
     }
   }
 

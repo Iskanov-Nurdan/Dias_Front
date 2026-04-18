@@ -3,7 +3,7 @@ import { fetchSalary, saveSalary } from './api';
 import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
 import { MONTHS } from '../../shared/constants/common';
-import { ErrorState, EmptyState, Select, Skeleton, FilterBar } from '../../shared/ui';
+import { ErrorState, EmptyState, Select, SkeletonTable, FilterBar } from '../../shared/ui';
 import './SalaryPage.scss';
 
 const SalaryPage = () => {
@@ -127,13 +127,11 @@ const SalaryPage = () => {
           </thead>
           <tbody>
             {loading ? (
-              Array.from({ length: 5 }, (_, i) => (
-                <tr key={`sk-${i}`}>
-                  {Array.from({ length: 10 }, (_, j) => (
-                    <td key={j}><Skeleton variant="text" /></td>
-                  ))}
-                </tr>
-              ))
+              <tr>
+                <td colSpan={10} className="salary-page__skeleton-cell">
+                  <SkeletonTable rows={6} cols={3} />
+                </td>
+              </tr>
             ) : items.length === 0 ? (
               <tr><td colSpan={10} className="salary-page__empty-cell"><EmptyState compact tableCell message="Нет данных за период" /></td></tr>
             ) : items.map((row, index) => {
@@ -154,26 +152,28 @@ const SalaryPage = () => {
                 const format = (v) => (typeof v === 'number' && !Number.isNaN(v) ? `${Number(v).toLocaleString('ru-RU')} сом` : (v ?? '—'));
                 return (
                   <tr key={trainerId} className={`salary-page__row salary-page__row--${saved ? 'saved' : 'pending'}`}>
-                    <td className="salary-page__td-name">{row.trainerName ?? row.trainer?.fio ?? row.fio ?? '—'}</td>
-                    <td className="salary-page__td-num">{totalCount ?? '—'}</td>
-                    <td className="salary-page__td-num">{paidCount ?? '—'}</td>
-                    <td className={`salary-page__td-num ${hasUnpaid ? 'salary-page__td-num--unpaid' : ''}`}>{unpaidCount !== undefined && unpaidCount !== null ? unpaidCount : '—'}</td>
-                    <td className="salary-page__td-money">{format(income)}</td>
-                    <td className="salary-page__percent-cell">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={percent === '' ? '' : percent}
-                        onChange={(e) => setTrainerPercent(row, e.target.value)}
-                        className="salary-page__percent-input"
-                        placeholder="0"
-                        aria-label="Процент тренеру"
-                      />
+                    <td className="salary-page__td-name" data-label="Тренер"><span className="salary-page__cell-value">{row.trainerName ?? row.trainer?.fio ?? row.fio ?? '—'}</span></td>
+                    <td className="salary-page__td-num" data-label="Всего"><span className="salary-page__cell-value">{totalCount ?? '—'}</span></td>
+                    <td className="salary-page__td-num" data-label="Оплатили"><span className="salary-page__cell-value">{paidCount ?? '—'}</span></td>
+                    <td className={`salary-page__td-num ${hasUnpaid ? 'salary-page__td-num--unpaid' : ''}`} data-label="Не оплатили"><span className="salary-page__cell-value">{unpaidCount !== undefined && unpaidCount !== null ? unpaidCount : '—'}</span></td>
+                    <td className="salary-page__td-money" data-label="Доход"><span className="salary-page__cell-value">{format(income)}</span></td>
+                    <td className="salary-page__percent-cell" data-label="% тренеру">
+                      <span className="salary-page__cell-value salary-page__cell-value--percent">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={percent === '' ? '' : percent}
+                          onChange={(e) => setTrainerPercent(row, e.target.value)}
+                          className="salary-page__percent-input"
+                          placeholder="0"
+                          aria-label="Процент тренеру"
+                        />
+                      </span>
                     </td>
-                    <td className="salary-page__td-money">{format(trainerShare)}</td>
-                    <td className="salary-page__td-money">{format(clubShare)}</td>
-                    <td className="salary-page__td-money salary-page__td-total">{format(total)}</td>
-                    <td className="salary-page__actions">
+                    <td className="salary-page__td-money" data-label="Тренеру"><span className="salary-page__cell-value">{format(trainerShare)}</span></td>
+                    <td className="salary-page__td-money" data-label="Клубу"><span className="salary-page__cell-value">{format(clubShare)}</span></td>
+                    <td className="salary-page__td-money salary-page__td-total" data-label="К выплате"><span className="salary-page__cell-value">{format(total)}</span></td>
+                    <td className="salary-page__actions" data-label="">
                       {!saved && (
                         <button
                           type="button"

@@ -99,6 +99,8 @@
   color: var(--color-text);
   margin-bottom: 4px;
   line-height: 1.2;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .funnel-board__card-phone {
@@ -106,6 +108,8 @@
   color: var(--color-text-secondary);
   margin-bottom: 8px;
   font-weight: 500;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .funnel-board__card-tag {

@@ -255,7 +255,8 @@
     @include mixins.scrollbar;
 
     @include mixins.mobile {
-      overflow-x: visible;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
       border: none;
       box-shadow: none;
       background: transparent;

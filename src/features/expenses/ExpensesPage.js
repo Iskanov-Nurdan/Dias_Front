@@ -181,17 +181,19 @@ const ExpensesPage = () => {
                     )}
                     {categoriesList.map((c) => (
                   <tr key={c.id} className="expenses-page__category-row">
-                    <td>
-                      <button
-                        type="button"
-                        className="expenses-page__category-link"
-                        onClick={() => setSelectedCategoryId(c.id)}
-                        aria-label={`Открыть расходы по категории ${c.name}`}
-                      >
-                        {c.name}
-                      </button>
+                    <td data-label="Название">
+                      <span className="expenses-page__cell-value">
+                        <button
+                          type="button"
+                          className="expenses-page__category-link"
+                          onClick={() => setSelectedCategoryId(c.id)}
+                          aria-label={`Открыть расходы по категории ${c.name}`}
+                        >
+                          {c.name}
+                        </button>
+                      </span>
                     </td>
-                    <td className="expenses-page__actions">
+                    <td className="expenses-page__actions" data-label="">
                       <button type="button" className="expenses-page__action expenses-page__action--edit" onClick={() => (isAdmin ? setFormCategory(c) : showAccessDenied())}>Изменить</button>
                       <button type="button" className="expenses-page__action expenses-page__action--delete" onClick={() => (isAdmin ? setConfirmDeleteCategory(c) : showAccessDenied())}>Удалить</button>
                     </td>
@@ -226,12 +228,12 @@ const ExpensesPage = () => {
                   <tr><td colSpan={6} className="expenses-page__empty-cell"><EmptyState compact tableCell message="Нет расходов" /></td></tr>
                 ) : expensesItems.map((e) => (
                     <tr key={e.id}>
-                      <td>{e.name ?? '—'}</td>
-                      <td>{e.categoryName ?? e.category?.name ?? '—'}</td>
-                      <td>{formatMoney(e.amount)}</td>
-                      <td>{e.date ? new Date(e.date).toLocaleDateString() : '—'}</td>
-                      <td><Badge variant={e.saved ? 'success' : 'warning'}>{e.saved ? 'Сохранён' : 'Черновик'}</Badge></td>
-                      <td className="expenses-page__actions">
+                      <td data-label="Название"><span className="expenses-page__cell-value">{e.name ?? '—'}</span></td>
+                      <td data-label="Категория"><span className="expenses-page__cell-value">{e.categoryName ?? e.category?.name ?? '—'}</span></td>
+                      <td data-label="Сумма"><span className="expenses-page__cell-value">{formatMoney(e.amount)}</span></td>
+                      <td data-label="Дата"><span className="expenses-page__cell-value">{e.date ? new Date(e.date).toLocaleDateString() : '—'}</span></td>
+                      <td data-label="Статус"><span className="expenses-page__cell-value"><Badge variant={e.saved ? 'success' : 'warning'}>{e.saved ? 'Сохранён' : 'Черновик'}</Badge></span></td>
+                      <td className="expenses-page__actions" data-label="">
                         {!e.saved && (
                           <>
                             <button type="button" className="expenses-page__save-btn" onClick={() => handleSaveExpense(e.id)}>Сохранить</button>

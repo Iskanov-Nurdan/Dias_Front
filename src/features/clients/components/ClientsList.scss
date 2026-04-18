@@ -1,6 +1,14 @@
 @use '../../../shared/styles/mixins';
 
 .clients-list {
+  &__cell-value {
+    min-width: 0;
+    flex: 1 1 auto;
+    text-align: right;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
   &__table-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -33,12 +41,12 @@
 
     @include mixins.desktop-only {
       tbody td:not(.clients-list__actions) {
-        max-width: 220px;
-        @include mixins.text-ellipsis;
+        max-width: 360px;
+        vertical-align: top;
       }
 
       tbody tr {
-        height: var(--table-row-min-height);
+        min-height: var(--table-row-min-height);
       }
     }
 
@@ -65,16 +73,16 @@
         box-shadow: var(--shadow-card);
       }
 
-      td {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 6px 0;
-        border-bottom: none;
-        font-size: 14px;
+        td {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 6px 0;
+          border-bottom: none;
+          font-size: 14px;
 
-        &::before {
+          &::before {
           content: attr(data-label);
           font-size: 11px;
           font-weight: 400;
@@ -88,10 +96,17 @@
           padding-top: 12px;
           margin-top: 8px;
           border-top: 1px solid var(--color-border);
-          justify-content: flex-end;
+          justify-content: stretch;
+          flex-wrap: wrap;
 
           &::before {
             display: none;
+          }
+
+          .clients-list__btn {
+            flex: 1 1 calc(50% - 4px);
+            min-width: 0;
+            justify-content: center;
           }
         }
 
@@ -222,6 +237,9 @@
   }
 
   &__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding: 8px 14px;
     font-size: 13px;
     font-weight: 500;

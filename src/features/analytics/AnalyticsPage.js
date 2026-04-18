@@ -510,6 +510,7 @@ const AnalyticsPage = () => {
                   const monthsData = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => ({ month: m, count: newClientsByMonth[m] ?? 0 }));
                   const maxCount = Math.max(1, ...monthsData.map((d) => d.count));
                   return (
+                    <div className="analytics-page__vbar-chart-scroll">
                     <div className="analytics-page__vbar-chart-inner">
                       {monthsData.map((d) => (
                         <div key={d.month} className="analytics-page__vbar-col">
@@ -523,6 +524,7 @@ const AnalyticsPage = () => {
                           <span className="analytics-page__vbar-value">{d.count}</span>
                         </div>
                       ))}
+                    </div>
                     </div>
                   );
                 })()}

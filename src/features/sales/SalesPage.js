@@ -165,13 +165,13 @@ const SalesPage = () => {
                 const isCancelled = s.status === 'cancelled';
                 return (
                 <tr key={s.id} className={isCancelled ? 'sales-page__row--cancelled' : ''}>
-                  <td>{s.productName ?? s.product?.name ?? '—'}</td>
-                  <td>{s.qty ?? s.quantity ?? 0}</td>
-                  <td>{formatMoney(s.total)}</td>
-                  <td>{s.discountPercent != null ? `${s.discountPercent}%` : (s.discount != null ? `${s.discount}%` : '—')}</td>
-                  <td>{s.date ? new Date(s.date).toLocaleDateString() : '—'}</td>
-                  <td><Badge variant={isCancelled ? 'danger' : 'success'}>{isCancelled ? 'Отменена' : 'Активна'}</Badge></td>
-                  <td>
+                  <td data-label="Товар"><span className="sales-page__cell-value">{s.productName ?? s.product?.name ?? '—'}</span></td>
+                  <td data-label="Кол-во"><span className="sales-page__cell-value">{s.qty ?? s.quantity ?? 0}</span></td>
+                  <td data-label="Сумма"><span className="sales-page__cell-value">{formatMoney(s.total)}</span></td>
+                  <td data-label="Скидка"><span className="sales-page__cell-value">{s.discountPercent != null ? `${s.discountPercent}%` : (s.discount != null ? `${s.discount}%` : '—')}</span></td>
+                  <td data-label="Дата"><span className="sales-page__cell-value">{s.date ? new Date(s.date).toLocaleDateString() : '—'}</span></td>
+                  <td data-label="Статус"><span className="sales-page__cell-value"><Badge variant={isCancelled ? 'danger' : 'success'}>{isCancelled ? 'Отменена' : 'Активна'}</Badge></span></td>
+                  <td className="sales-page__actions-cell" data-label="">
                     {!isCancelled && (
                       <button
                         type="button"

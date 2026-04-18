@@ -76,6 +76,15 @@
   }
 }
 
+/** Горизонтальный ряд табов: без переноса, скролл внутри строки */
+@mixin page-tabs-row {
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  @include scrollbar;
+}
+
 /* Breakpoints: xs 320, sm 480, md 768, lg 1024 */
 @mixin xs {
   @media (max-width: 374px) {

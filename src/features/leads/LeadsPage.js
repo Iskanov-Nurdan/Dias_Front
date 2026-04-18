@@ -316,19 +316,21 @@ const LeadsPage = () => {
                 ) : (
                   items.map((lead) => (
                     <tr key={lead.id} role="row" aria-label={`Заявка: ${lead.name ?? '—'}, ${lead.phone ?? '—'}`}>
-                      <td role="cell">{lead.name ?? '—'}</td>
-                      <td role="cell">{lead.phone ?? '—'}</td>
-                      <td role="cell">{CHANNEL_LABELS[(lead.channel ?? '').toLowerCase()] ?? lead.channel ?? '—'}</td>
-                      <td role="cell">
-                        {hasFinalStatus(lead) ? (
-                          <span className={`leads-page__status-badge leads-page__status-badge--${lead.status}`}>
-                            {getStatusLabel(lead.status)}
-                          </span>
-                        ) : (
-                          '—'
-                        )}
+                      <td role="cell" data-label="Имя"><span className="leads-page__cell-value">{lead.name ?? '—'}</span></td>
+                      <td role="cell" data-label="Телефон"><span className="leads-page__cell-value">{lead.phone ?? '—'}</span></td>
+                      <td role="cell" data-label="Канал"><span className="leads-page__cell-value">{CHANNEL_LABELS[(lead.channel ?? '').toLowerCase()] ?? lead.channel ?? '—'}</span></td>
+                      <td role="cell" data-label="Статус">
+                        <span className="leads-page__cell-value">
+                          {hasFinalStatus(lead) ? (
+                            <span className={`leads-page__status-badge leads-page__status-badge--${lead.status}`}>
+                              {getStatusLabel(lead.status)}
+                            </span>
+                          ) : (
+                            '—'
+                          )}
+                        </span>
                       </td>
-                      <td role="cell" className="leads-page__actions">
+                      <td role="cell" className="leads-page__actions leads-page__actions-cell" data-label="">
                         {!hasFinalStatus(lead) ? (
                           <div className="leads-page__action-group">
                             <button

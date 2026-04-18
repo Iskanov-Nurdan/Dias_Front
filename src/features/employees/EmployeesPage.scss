@@ -20,9 +20,11 @@
     gap: 4px;
     margin: 0 0 20px;
     border-bottom: 2px solid var(--color-border);
+    @include mixins.page-tabs-row;
   }
 
   &__tab {
+    flex-shrink: 0;
     padding: 10px 20px;
     border: none;
     background: transparent;

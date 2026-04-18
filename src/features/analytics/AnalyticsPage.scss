@@ -75,6 +75,11 @@
   border: 1px solid var(--color-border);
   background: var(--color-surface-secondary);
   box-shadow: none;
+
+  @include mixins.mobile {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 .analytics-page__filters-label {
@@ -212,6 +217,12 @@
   letter-spacing: 0.05em;
   width: 100px;
   min-width: 100px;
+
+  @include mixins.mobile {
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 100%;
+  }
 }
 
 .analytics-page__input {
@@ -234,6 +245,11 @@
 .analytics-page__filter--month {
   width: 140px;
   min-width: 140px;
+
+  @include mixins.mobile {
+    width: 100%;
+    min-width: 0;
+  }
 }
 
 .analytics-page__select-wrap {
@@ -696,12 +712,20 @@
   padding: 16px 0;
 }
 
+.analytics-page__vbar-chart-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  @include mixins.scrollbar;
+}
+
 .analytics-page__vbar-chart-inner {
   display: grid;
-  grid-template-columns: repeat(12, 1fr);
+  grid-template-columns: repeat(12, minmax(28px, 1fr));
   gap: 8px;
   align-items: flex-end;
   min-height: 180px;
+  min-width: min(100%, 520px);
 }
 
 .analytics-page__vbar-col {
@@ -1217,9 +1241,11 @@
   gap: 4px;
   margin-bottom: 16px;
   border-bottom: 2px solid var(--color-border);
+  @include mixins.page-tabs-row;
 }
 
 .analytics-page__tab {
+  flex-shrink: 0;
   padding: 10px 20px;
   font-size: 14px;
   font-weight: 500;

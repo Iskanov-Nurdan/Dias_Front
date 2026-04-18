@@ -7,6 +7,18 @@
   flex-shrink: 0;
 }
 
+.action-menu__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-dropdown) - 1);
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  appearance: none;
+}
+
 .action-menu__trigger {
   display: inline-flex;
   align-items: center;
@@ -45,16 +57,9 @@
 
 .action-menu__hint {
   display: none;
-  max-width: 4.5rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--font-caption);
-  font-weight: var(--weight-medium);
-  color: var(--text-secondary);
 }
 
-@include lg {
+@media (min-width: 769px) and (max-width: 1023px) {
   .action-menu__trigger {
     width: auto !important;
     min-width: var(--control-height) !important;
@@ -63,11 +68,18 @@
 
   .action-menu__hint {
     display: inline;
+    max-width: 3.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--font-caption);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
   }
 }
 
 .action-menu__dropdown {
-  min-width: 168px;
+  min-width: min(168px, calc(100vw - 24px));
   margin: 0;
   padding: var(--space-1);
   list-style: none;
@@ -75,24 +87,30 @@
   border-radius: var(--radius-lg);
   box-shadow:
     var(--shadow-md),
-    0 0 0 1px rgba(17, 24, 39, 0.05);
+    0 0 0 1px var(--card-border);
 
-  /* Портал в body + position:fixed в JS — не режется overflow таблицы (.data-table { overflow: hidden }) */
   &--portal {
-    max-width: min(320px, calc(100vw - 16px));
     box-sizing: border-box;
-    max-height: min(320px, calc(100vh - 24px));
     overflow-y: auto;
     @include scrollbar;
+  }
+
+  &--sheet {
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    padding-bottom: max(var(--space-2), env(safe-area-inset-bottom, 0px));
+    box-shadow:
+      0 -12px 40px color-mix(in srgb, var(--bg) 75%, transparent),
+      0 0 0 1px var(--card-border);
   }
 }
 
 .action-menu__item {
-  display: block;
+  display: flex;
+  align-items: center;
   width: 100%;
   text-align: left;
   padding: var(--space-3) var(--space-3) !important;
-  min-height: 44px !important;
+  min-height: 48px !important;
   margin: 0 !important;
   border: none !important;
   border-radius: var(--radius-sm) !important;

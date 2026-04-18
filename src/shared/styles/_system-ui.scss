@@ -31,6 +31,18 @@
   -webkit-overflow-scrolling: touch;
 }
 
+@media (min-width: 1201px) {
+  .materials-tabs,
+  .otk-tabs,
+  .chemistry-tabs,
+  .lines-tabs,
+  .my-shift__tabs,
+  .shifts-report__main-tabs,
+  .page--users .page__tabs {
+    justify-content: center;
+  }
+}
+
 .materials-tabs__tab,
 .otk-tabs__tab,
 .chemistry-tabs__tab,
@@ -120,6 +132,7 @@
   .my-shift__tabs,
   .shifts-report__main-tabs,
   .page--users .page__tabs {
+    justify-content: flex-start;
     overflow-x: auto;
     @include scrollbar;
 

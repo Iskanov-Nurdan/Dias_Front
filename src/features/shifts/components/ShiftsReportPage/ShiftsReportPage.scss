@@ -348,4 +348,64 @@
   color: var(--text-muted);
 }
 
+@include lg {
+  .shifts-report__toolbar.ds-toolbar--page-head {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+    padding-bottom: var(--space-2);
 
+    .ds-toolbar__start:empty {
+      display: none;
+    }
+
+    .ds-toolbar__start,
+    .ds-toolbar__end {
+      flex-basis: auto !important;
+      width: auto;
+      margin-left: 0 !important;
+    }
+
+    .ds-toolbar__start:empty + .ds-toolbar__end {
+      grid-column: 1 / -1;
+    }
+
+    .btn {
+      width: 100%;
+      min-height: 44px;
+      justify-content: center;
+    }
+  }
+
+  .shifts-report__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+
+  .shifts-report__filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+    align-items: end;
+    margin-bottom: var(--space-4);
+  }
+
+  .shifts-report__filter-group {
+    flex: none;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  .shifts-report__filter-select.dias-select {
+    max-width: none !important;
+    width: 100%;
+  }
+
+  .shifts-report__filter-clear {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-self: stretch;
+    margin-top: 0;
+  }
+}

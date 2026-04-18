@@ -346,7 +346,7 @@
 
   &__actions {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
     justify-content: flex-end;
@@ -372,6 +372,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    word-break: break-word;
   }
 
   &__card-status {
@@ -423,8 +424,27 @@
   font-weight: normal;
 }
 
-@include mobile {
+@include responsive-tables {
   .page--materials {
+    .materials-tabs {
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-subtle);
+      gap: 0;
+      -webkit-overflow-scrolling: touch;
+      @include scrollbar;
+
+      &::-webkit-scrollbar {
+        height: 4px;
+      }
+    }
+
+    .materials-tabs__tab {
+      flex-shrink: 0;
+    }
+
     .materials-table-wrap {
       overflow-x: visible;
     }
@@ -434,6 +454,12 @@
     .materials-table--batches-full,
     .materials-table--movements {
       min-width: 0 !important;
+    }
+
+    .materials-table__comment {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
     }
 
     .materials-table--catalog .materials-table__header,

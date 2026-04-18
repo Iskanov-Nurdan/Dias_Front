@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useDiscardOnClose, useDirtyFromBaseline, useIsMobile } from '../../../../shared/hooks';
-import { useServerQuery } from '../../../../shared/lib';
+import { useServerQuery, getApiErrorMessage } from '../../../../shared/lib';
 import {
   ServerList,
   FilterBar,
@@ -33,8 +33,8 @@ const USERS_FILTERS_EXTRA = () => [
     { value: 'false', label: 'Неактивные' },
   ]},
   { key: 'ordering', type: 'ordering', placeholder: 'Сортировка', options: [
-    { value: 'id', label: 'ID ↑' },
-    { value: '-id', label: 'ID ↓' },
+    { value: 'id', label: 'Сначала старые записи' },
+    { value: '-id', label: 'Сначала новые записи' },
     { value: 'name', label: 'Имя А–Я' },
     { value: '-name', label: 'Имя Я–А' },
   ]},
@@ -126,7 +126,7 @@ const UsersPage = () => {
       refetchRoles();
       toast.show('Успешно сохранено');
     } catch (err) {
-      setSubmitError(err.response?.data?.error || err.response?.data?.details || 'Ошибка');
+      setSubmitError(getApiErrorMessage(err) ?? 'Ошибка');
     }
   };
 
@@ -145,7 +145,7 @@ const UsersPage = () => {
       refetchRoles();
       toast.show('Успешно сохранено');
     } catch (err) {
-      setSubmitError(err.response?.data?.error || JSON.stringify(err.response?.data?.details || {}) || 'Ошибка');
+      setSubmitError(getApiErrorMessage(err) ?? 'Ошибка');
     }
   };
 
@@ -159,13 +159,7 @@ const UsersPage = () => {
       refetchAuth();
       toast.show('Успешно сохранено');
     } catch (err) {
-      const data = err.response?.data;
-      const msg = data?.error
-        || (data?.access_keys ? data.access_keys.join(', ') : null)
-        || (typeof data?.details === 'object' ? JSON.stringify(data.details) : data?.details)
-        || err.message
-        || 'Ошибка сохранения доступов';
-      setSubmitError(msg);
+      setSubmitError(getApiErrorMessage(err) ?? 'Ошибка сохранения доступов');
     }
   };
 
@@ -187,7 +181,7 @@ const UsersPage = () => {
       refetchRoles();
       toast.show('Успешно удалено');
     } catch (err) {
-      setSubmitError(err.response?.data?.error || 'Ошибка удаления');
+      setSubmitError(getApiErrorMessage(err) ?? 'Ошибка удаления');
     }
   };
 

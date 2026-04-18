@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FiSun, FiMoon } from 'react-icons/fi';
 import { useAuth } from '../../model';
-import { getApiErrorMessage } from '../../../../shared/lib';
+import { getApiErrorMessage, getStoredTheme, toggleStoredTheme, Theme } from '../../../../shared/lib';
 import { Button, Field } from '../../../../shared/ui';
 import './LoginPage.scss';
 
@@ -12,6 +13,11 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [colorTheme, setColorTheme] = useState(getStoredTheme);
+
+  const handleTheme = useCallback(() => {
+    setColorTheme(toggleStoredTheme());
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,6 +39,14 @@ const LoginPage = () => {
 
   return (
     <div className="login-page">
+      <button
+        type="button"
+        className="login-page__theme"
+        onClick={handleTheme}
+        aria-label={colorTheme === Theme.DARK ? 'Светлая тема' : 'Тёмная тема'}
+      >
+        {colorTheme === Theme.DARK ? <FiSun size={20} strokeWidth={2} aria-hidden /> : <FiMoon size={20} strokeWidth={2} aria-hidden />}
+      </button>
       <div className="login-page__panel">
         <div className="login-page__brand">
           <div className="login-page__brand-logo">D</div>

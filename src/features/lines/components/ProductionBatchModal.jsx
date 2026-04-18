@@ -192,7 +192,7 @@ const ProductionBatchModal = ({ lineId: lineIdProp, lineName, onClose, onSuccess
                 disabled={!profiles.length}
                 options={profiles.map((p) => ({
                   value: String(p.id),
-                  label: p.code && p.name ? `${p.name} (${p.code})` : (p.name || `#${p.id}`),
+                  label: p.name || 'Профиль',
                 }))}
               />
               <label>Рецепт (норма на 1 м, только для выбранного профиля) *</label>
@@ -203,7 +203,7 @@ const ProductionBatchModal = ({ lineId: lineIdProp, lineName, onClose, onSuccess
                 disabled={!profileId}
                 options={recipesForProfile.map((r) => ({
                   value: String(r.id),
-                  label: r.recipe || r.name || r.product || `#${r.id}`,
+                  label: r.recipe || r.name || r.product || 'Рецепт',
                 }))}
               />
               {needsLinePick && (

@@ -1,5 +1,13 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { getErrorPayloadMessage } from '../../lib/apiError';
 import './Toast.scss';
+
+const formatToastMessage = (message) => {
+  if (typeof message === 'string') return message;
+  if (message == null || message === '') return 'Готово';
+  if (typeof message === 'object') return getErrorPayloadMessage(message, 'Сообщение недоступно');
+  return String(message);
+};
 
 const ToastContext = createContext(null);
 
@@ -20,7 +28,7 @@ export const ToastProvider = ({ children }) => {
       <div className="toast-container" aria-live="polite">
         {toasts.map((t) => (
           <div key={t.id} className={`toast toast--${t.type}`}>
-            {typeof t.message === 'string' ? t.message : JSON.stringify(t.message)}
+            {formatToastMessage(t.message)}
           </div>
         ))}
       </div>

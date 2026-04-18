@@ -4,7 +4,7 @@
   border-radius: var(--radius-lg);
   box-shadow:
     var(--shadow-sm),
-    0 0 0 1px rgba(17, 24, 39, 0.04);
+    0 0 0 1px var(--card-border);
 
   &--pad {
     padding: var(--space-6);

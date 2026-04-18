@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef, memo, useMemo } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { FiSun, FiMoon } from 'react-icons/fi';
 import { useAuth } from '../../../features/auth';
 import { ACCESS_LABELS } from '../../../shared/config/constants';
 import { NavIcons as Icons, ACCESS_NAV_ICONS as PAGE_ICONS } from '../../../shared/config/navPageIcons';
 import { getNavSections } from '../../../shared/config/navigation';
+import { getStoredTheme, toggleStoredTheme, Theme } from '../../../shared/lib/theme';
 import './MainLayout.scss';
 
 const SIDEBAR_COLLAPSED_KEY = 'dias_sidebar_collapsed';
@@ -95,6 +97,11 @@ const MainLayout = () => {
     () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'
   );
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [colorTheme, setColorTheme] = useState(getStoredTheme);
+
+  const handleToggleTheme = useCallback(() => {
+    setColorTheme(toggleStoredTheme());
+  }, []);
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
@@ -209,6 +216,15 @@ const MainLayout = () => {
             <Icons.Menu />
           </button>
           <h1 className="main-layout__page-title">{pageTitle}</h1>
+          <button
+            type="button"
+            className="main-layout__theme-toggle"
+            onClick={handleToggleTheme}
+            aria-label={colorTheme === Theme.DARK ? 'Светлая тема' : 'Тёмная тема'}
+            title={colorTheme === Theme.DARK ? 'Светлая тема' : 'Тёмная тема'}
+          >
+            {colorTheme === Theme.DARK ? <FiSun size={20} strokeWidth={2} aria-hidden /> : <FiMoon size={20} strokeWidth={2} aria-hidden />}
+          </button>
           <span className="main-layout__header-spacer" aria-hidden="true" />
         </header>
         <main className="main-layout__main" ref={mainRef}>

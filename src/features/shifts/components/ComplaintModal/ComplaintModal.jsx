@@ -22,7 +22,7 @@ function getActiveMention(text, cursorPos) {
   return { start: at, query: afterAt };
 }
 
-const userLabel = (u) => String(u?.name || u?.username || u?.email || `#${u?.id}`).trim();
+const userLabel = (u) => String(u?.name || u?.username || u?.email || 'Сотрудник').trim();
 
 const ComplaintModal = ({ open, onClose, employees, shiftId, onSuccess }) => {
   const [text, setText] = useState('');

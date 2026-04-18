@@ -140,7 +140,7 @@
   }
 }
 
-@include mobile {
+@include responsive-tables {
   .page--plastic-profiles {
     .plastic-profiles-table-wrap {
       overflow-x: visible;

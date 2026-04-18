@@ -164,7 +164,7 @@ export default function ActivityAuditDetailModal({
                     className="activity-audit-detail__meta-row"
                     style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}
                   >
-                    <span className="activity-audit-detail__meta-k">Контекст (payload.meta):</span>
+                    <span className="activity-audit-detail__meta-k">Контекст операции:</span>
                     <pre
                       className="activity-audit-detail__mono"
                       style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: 11, lineHeight: 1.4 }}
@@ -194,7 +194,7 @@ export default function ActivityAuditDetailModal({
               {displayChanges.length === 0 ? (
                 <p className="activity-audit-detail__empty">
                   {isAdmin && payloadMeta
-                    ? 'Список изменений полей пуст; для операций через отдельный endpoint см. контекст выше (meta).'
+                    ? 'Список изменений полей пуст. Дополнительный контекст операции см. в блоке «Контекст» выше.'
                     : 'Подробный список полей для этой записи недоступен.'}
                 </p>
               ) : (

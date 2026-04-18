@@ -97,7 +97,7 @@ function batchProductTitle(batch) {
 
 function formatBatchSelectOptionLabel(p) {
   const q = readWarehouseQuality(p);
-  const base = batchProductTitle(p) || `Партия ${p.id}`;
+  const base = batchProductTitle(p) || p.batch || p.lot || 'Партия';
   const pres = getWarehouseQuantityPresentation(p);
   const detail = [pres.primary, pres.secondary].filter(Boolean).join(' · ');
   const prefix = q === 'defect' ? 'Брак · ' : '';
@@ -503,7 +503,7 @@ const SalesPage = () => {
                         label: 'Удалить',
                         danger: true,
                         onClick: () =>
-                          setDeleteTarget({ id: s.id, name: s.product_name || s.product || `#${s.id}` }),
+                          setDeleteTarget({ id: s.id, name: s.product_name || s.product || 'Продажа' }),
                       },
                     ]}
                   />
@@ -958,7 +958,7 @@ const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownlo
                 { value: '', label: 'Без клиента' },
                 ...clients.map((c) => ({
                   value: String(c.id),
-                  label: c.name || `#${c.id}`,
+                  label: c.name || 'Клиент',
                 })),
               ]}
             />

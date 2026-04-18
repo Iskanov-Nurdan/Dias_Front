@@ -411,17 +411,17 @@
     &--action-pause,
     &--action-paused,
     &--action-shift_pause {
-      background: #fef3c7;
-      color: #92400e;
-      border: 1px solid #fcd34d;
+      background: var(--warning-muted);
+      color: var(--warning);
+      border: 1px solid rgba(251, 191, 36, 0.35);
     }
 
     &--action-resume,
     &--action-resumed,
     &--action-shift_resume {
-      background: #d1fae5;
-      color: #065f46;
-      border: 1px solid #6ee7b7;
+      background: var(--success-muted);
+      color: var(--success);
+      border: 1px solid rgba(52, 211, 153, 0.35);
     }
 
     &--action-x {
@@ -438,7 +438,11 @@
   }
 }
 
-@include mobile {
+@include responsive-tables {
+  .lines-table__actions {
+    flex-wrap: wrap;
+  }
+
   .lines-card__head {
     flex-direction: column;
     align-items: stretch;
@@ -588,8 +592,8 @@
   -webkit-overflow-scrolling: touch;
 }
 
-/* Десктоп: минимальная ширина сетки; на мобилке — карточки без min-width */
-@include desktop-only {
+/* Широкий стол: min-width только от 1201px (ниже — карточки в responsive-tables). */
+@media (min-width: 1201px) {
   .lines-table--opening {
     min-width: 560px;
   }
@@ -733,6 +737,10 @@
     grid-template-columns: repeat(3, 1fr);
     gap: 0.5rem 1rem;
     margin: 0;
+
+    @include lg {
+      grid-template-columns: 1fr;
+    }
 
     dt {
       margin: 0;

@@ -94,7 +94,7 @@
   margin-left: auto;
 }
 
-@include mobile {
+@include lg {
   .ds-toolbar__end {
     flex-basis: 100%;
     margin-left: 0;
@@ -125,12 +125,15 @@
 
   &:focus {
     outline: none;
+  }
+
+  &:focus-visible {
     border-color: var(--input-focus-border);
     box-shadow: 0 0 0 3px var(--input-focus-ring);
   }
 }
 
-@include mobile {
+@include lg {
   .ds-toolbar__search--full {
     flex: 1 1 100%;
     max-width: none;
@@ -201,7 +204,7 @@
   }
 }
 
-@include desktop-only {
+@media (min-width: 1201px) {
   .ds-toolbar--page-head {
     flex-wrap: nowrap;
     align-items: center;
@@ -220,7 +223,7 @@
   border-radius: var(--radius-lg);
   box-shadow:
     var(--shadow-sm),
-    0 0 0 1px rgba(17, 24, 39, 0.04);
+    0 0 0 1px var(--card-border);
 }
 
 .ds-card--pad {

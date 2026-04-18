@@ -13,7 +13,7 @@
   background: var(--select-bg);
   border: 1px solid var(--select-border);
   border-radius: var(--select-radius);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--shadow-sm);
   color: var(--select-text);
   font-size: var(--select-font-size);
   line-height: var(--select-line-height);
@@ -34,12 +34,12 @@
 
   &:hover:not(.dias-select--disabled):not(.dias-select--invalid) {
     border-color: var(--select-border-hover);
-    background: #f9fafb;
+    background: var(--bg-hover);
   }
 
   &--open:not(.dias-select--invalid) {
     @include select-focus-ring;
-    background: #fafbfc;
+    background: var(--select-bg);
   }
 
   &--invalid {
@@ -260,7 +260,7 @@
   border: none;
   padding: 0;
   margin: 0;
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(2px);
   pointer-events: auto;
   cursor: pointer;

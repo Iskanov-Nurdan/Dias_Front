@@ -157,7 +157,7 @@ const ShiftsReportPage = () => {
   const uniqueUsers = new Set(shifts.map((s) => s.user_id || s.user?.id));
   const showEmployeeColumn = !filterUser;
 
-  const userName = (s) => s.user_name || s.user?.name || s.user?.username || `#${s.user_id || s.user}`;
+  const userName = (s) => s.user_name || s.user?.name || s.user?.username || 'Сотрудник';
 
   return (
     <div className="page shifts-report-page">

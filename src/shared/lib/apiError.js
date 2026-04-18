@@ -30,12 +30,29 @@ export const getErrorPayloadMessage = (payload, fallback = 'Произошла �
   if (!payload) return fallback;
   if (typeof payload === 'string') return payload;
   if (typeof payload.message === 'string' && payload.code != null && payload.code !== '') {
-    return `[${payload.code}] ${payload.message}`;
+    return payload.message;
   }
   if (typeof payload.message === 'string') return payload.message;
   const fromErrors = formatDiasErrorsArray(payload.errors);
   if (fromErrors) return fromErrors;
   if (typeof payload.detail === 'string') return payload.detail;
+  if (Array.isArray(payload.detail)) {
+    const joined = payload.detail
+      .map((x) => {
+        if (typeof x === 'string') return x;
+        if (x && typeof x === 'object') {
+          return typeof x.message === 'string'
+            ? x.message
+            : typeof x.msg === 'string'
+              ? x.msg
+              : '';
+        }
+        return '';
+      })
+      .filter(Boolean)
+      .join('; ');
+    if (joined) return joined;
+  }
   if (typeof payload.error === 'string') return payload.error;
   if (payload.error && typeof payload.error === 'object') {
     if (typeof payload.error.message === 'string') return payload.error.message;
@@ -43,12 +60,6 @@ export const getErrorPayloadMessage = (payload, fallback = 'Произошла �
   }
   if (payload.status === 500 || payload.code === 500 || String(payload.code) === 'INTERNAL_ERROR') {
     return 'Ошибка сервера (500). Попробуйте позже.';
-  }
-  try {
-    const s = JSON.stringify(payload);
-    if (s.length < 240) return s;
-  } catch (_) {
-    /* ignore */
   }
   return fallback;
 };
@@ -99,14 +110,16 @@ export const getApiErrorMessage = (err, fallback = 'Произошла ошиб�
     if (fromMissing) return fromMissing;
     const fromPayload = getErrorPayloadMessage(data, null);
     if (fromPayload) return fromPayload;
-    if (data.detail) return typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+    if (data.detail != null && typeof data.detail !== 'string' && !Array.isArray(data.detail)) {
+      return fallback;
+    }
     if (data.message && typeof data.message === 'string') return data.message;
     if (data.non_field_errors) return data.non_field_errors[0];
     const firstKey = Object.keys(data)[0];
     if (firstKey) {
       const val = data[firstKey];
-      if (Array.isArray(val)) return `${firstKey}: ${val[0]}`;
-      if (typeof val === 'string') return `${firstKey}: ${val}`;
+      if (Array.isArray(val) && val[0] != null) return String(val[0]);
+      if (typeof val === 'string') return val;
     }
   }
 

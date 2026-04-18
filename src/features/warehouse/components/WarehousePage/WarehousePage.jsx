@@ -244,7 +244,7 @@ const WarehousePage = () => {
                       )}
                     </div>
                   </td>
-                  <td className="warehouse-table__batch data-table__cell--muted data-table__cell--num">{b.batch || b.lot || `#${b.id}`}</td>
+                  <td className="warehouse-table__batch data-table__cell--muted data-table__cell--num">{b.batch || b.lot || '—'}</td>
                   <td>
                     <ActionMenu
                       ariaLabel="Действия"

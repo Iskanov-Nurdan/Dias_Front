@@ -212,7 +212,7 @@
 
   &__actions {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
     gap: 0.5rem;
@@ -323,7 +323,7 @@
     grid-template-columns: 1fr 1fr auto 40px;
     gap: 1rem;
     padding: 0.5rem 0.75rem;
-    background: #f8fafc;
+    background: var(--table-header-bg);
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: none;
@@ -391,7 +391,7 @@
 
   th {
     font-weight: 600;
-    background: var(--bg-muted, #f1f5f9);
+    background: var(--table-header-bg);
     position: sticky;
     top: 0;
     z-index: 1;
@@ -605,7 +605,7 @@
   }
 }
 
-@include mobile {
+@include responsive-tables {
   .page--recipes {
     .recipes-table-wrap {
       overflow-x: visible;

@@ -103,6 +103,22 @@
         max-width: 220px;
       }
     }
+
+    @include lg {
+      flex-wrap: wrap;
+      overflow-x: visible;
+
+      .filter-bar--row {
+        flex: 1 1 100%;
+        flex-wrap: wrap;
+        min-width: 0;
+
+        .filter-bar__item {
+          flex: 1 1 min(140px, 100%);
+          max-width: 100%;
+        }
+      }
+    }
   }
 }
 

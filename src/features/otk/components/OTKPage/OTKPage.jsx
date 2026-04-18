@@ -82,10 +82,7 @@ const lineLabel = (b) =>
   b.line_name || b.line?.name || b.production_line || b.line || '—';
 
 const profileLabel = (b) =>
-  b.profile?.name
-  || b.profile_name
-  || b.profile?.code
-  || (b.profile_id != null ? `#${b.profile_id}` : '—');
+  b.profile?.name || b.profile_name || '—';
 
 const updateQuery = (setter) => (patch) => {
   setter((prev) => ({
@@ -119,7 +116,7 @@ const HistoryDetailModal = ({ batch, onClose }) => {
     <div className="modal-overlay" onClick={onClose} role="presentation">
       <div className="modal modal--wide otk-history-detail-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
-          <h3>Запись ОТК №{batch.id}</h3>
+          <h3>Проверка · {orderName(batch)}</h3>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <div className="modal__body otk-history-detail-modal__body">
@@ -291,7 +288,6 @@ const OTKPage = () => {
           {!loadingAwaiting && !errorAwaiting && awaitingList.length > 0 && (
             <div className="otk-table otk-table--awaiting">
               <div className="otk-table__header">
-                <span className="otk-table__th otk-table__th--id">№ партии</span>
                 <span className="otk-table__th">Профиль</span>
                 <span className="otk-table__th">Продукт / рецепт</span>
                 <span className="otk-table__th">Линия</span>
@@ -306,7 +302,6 @@ const OTKPage = () => {
                 const m = batchTotalMetersHint(b);
                 return (
                   <div key={b.id} className="otk-table__row">
-                    <span className="otk-table__batch-id" title="Номер партии">#{b.id}</span>
                     <span>{profileLabel(b)}</span>
                     <span>{orderName(b)}</span>
                     <span>{lineLabel(b)}</span>
@@ -363,7 +358,6 @@ const OTKPage = () => {
             <div className="otk-table otk-table--history">
               <div className="otk-table__header">
                 <span className="otk-table__th">Статус</span>
-                <span className="otk-table__th otk-table__th--id">№ партии</span>
                 <span className="otk-table__th">Профиль</span>
                 <span className="otk-table__th">Задание / продукт</span>
                 <span className="otk-table__th">Принято</span>
@@ -384,7 +378,6 @@ const OTKPage = () => {
                     <span className={`otk-table__status otk-table__status--${st.color}`}>
                       {st.label}
                     </span>
-                    <span className="otk-table__batch-id" title="Номер партии">#{b.id}</span>
                     <span>{profileLabel(b)}</span>
                     <span>{orderName(b)}</span>
                     <span className="otk-table__qty-pill otk-table__qty-pill--white">{b.otk_accepted ?? 0} шт</span>

@@ -50,50 +50,9 @@
   }
 }
 
-.materials-tabs {
-  display: flex;
-  gap: 0;
-  margin-bottom: 1.5rem;
-  border-bottom: 1px solid var(--border-subtle);
-
-  &__tab {
-    padding: 0.65rem 1.25rem;
-    background: transparent;
-    border: none;
-    border-bottom: 3px solid transparent;
-    color: var(--text-muted);
-    font-size: 0.95rem;
-    font-weight: 500;
-    cursor: pointer;
-    margin-bottom: -1px;
-    position: relative;
-
-    &:hover {
-      color: var(--text);
-    }
-
-    &--active {
-      color: var(--text);
-      font-weight: 600;
-
-      &::after {
-        content: '';
-        position: absolute;
-        bottom: -1px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: calc(100% + 8px);
-        height: 3px;
-        background: var(--accent);
-        border-radius: 2px;
-      }
-    }
-  }
-}
-
 .materials-card {
   @include card-soft;
-  padding: var(--space-4) var(--space-5);
+  padding: var(--card-padding);
 
   &__head {
     align-items: center;
@@ -426,25 +385,6 @@
 
 @include responsive-tables {
   .page--materials {
-    .materials-tabs {
-      display: flex;
-      flex-wrap: nowrap;
-      overflow-x: auto;
-      margin-bottom: 1.5rem;
-      border-bottom: 1px solid var(--border-subtle);
-      gap: 0;
-      -webkit-overflow-scrolling: touch;
-      @include scrollbar;
-
-      &::-webkit-scrollbar {
-        height: 4px;
-      }
-    }
-
-    .materials-tabs__tab {
-      flex-shrink: 0;
-    }
-
     .materials-table-wrap {
       overflow-x: visible;
     }

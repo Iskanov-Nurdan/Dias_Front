@@ -146,7 +146,10 @@ const ActionMenu = ({ items, align = 'right', ariaLabel = 'Действия' }) 
           setOpen((v) => !v);
         }}
       >
-        <span className="action-menu__dots" aria-hidden>⋯</span>
+        <span className="action-menu__dots" aria-hidden>
+          ⋯
+        </span>
+        <span className="action-menu__hint">{ariaLabel}</span>
       </button>
       {dropdown && createPortal(dropdown, document.body)}
     </div>

@@ -6,15 +6,15 @@
   margin: 0 auto;
 
   .analytics-section {
-    margin-bottom: var(--space-5);
+    margin-bottom: var(--layout-gap);
   }
 }
 
 /* ——— Hero: период + KPI ——— */
 .analytics-hero {
   @include card-soft;
-  padding: var(--space-4) var(--space-4) var(--space-5);
-  margin-bottom: var(--space-5);
+  padding: var(--card-padding);
+  margin-bottom: var(--layout-gap);
   border-radius: var(--radius-lg);
 }
 
@@ -28,8 +28,8 @@
 
 .analytics-finance-shell {
   @include card-soft;
-  padding: var(--space-4) var(--space-5) var(--space-5);
-  margin-bottom: var(--space-5);
+  padding: var(--card-padding);
+  margin-bottom: var(--layout-gap);
   border-radius: var(--radius-lg);
 }
 

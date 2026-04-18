@@ -50,7 +50,7 @@
 
 .recipes-card {
   @include card-soft;
-  padding: 1.5rem;
+  padding: var(--card-padding);
 
   &__head {
     align-items: center;

@@ -54,47 +54,6 @@
   }
 }
 
-.otk-tabs {
-  display: flex;
-  gap: 0;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid var(--border-subtle);
-
-  &__tab {
-    padding: 0.65rem 1.25rem;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    font-size: 0.95rem;
-    font-weight: 500;
-    cursor: pointer;
-    border-bottom: 3px solid transparent;
-    margin-bottom: -1px;
-    position: relative;
-
-    &:hover {
-      color: var(--text);
-    }
-
-    &--active {
-      color: var(--text);
-      font-weight: 600;
-
-      &::after {
-        content: '';
-        position: absolute;
-        bottom: -1px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: calc(100% + 8px);
-        height: 3px;
-        background: var(--accent);
-        border-radius: 2px;
-      }
-    }
-  }
-}
-
 .otk-filters-mobile {
   display: none;
 
@@ -477,21 +436,6 @@
 
 @include responsive-tables {
   .page--otk {
-    .otk-tabs {
-      flex-wrap: nowrap;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      @include scrollbar;
-
-      &::-webkit-scrollbar {
-        height: 4px;
-      }
-    }
-
-    .otk-tabs__tab {
-      flex-shrink: 0;
-    }
-
     .otk-table__actions {
       flex-wrap: wrap;
     }

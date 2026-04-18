@@ -1,0 +1,147 @@
+@use 'variables' as *;
+@use 'mixins' as *;
+
+/* ── ERP: единая навигация вкладок (underline rail) ─────────────────────── */
+
+.users-page__tabs-wrap {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.materials-tabs,
+.otk-tabs,
+.chemistry-tabs,
+.lines-tabs,
+.my-shift__tabs,
+.shifts-report__main-tabs,
+.page--users .page__tabs {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: nowrap;
+  gap: 0;
+  min-height: var(--ds-tab-bar-height);
+  margin: 0 0 var(--ds-tab-bar-margin-bottom);
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background: transparent;
+  box-shadow: none;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+
+.materials-tabs__tab,
+.otk-tabs__tab,
+.chemistry-tabs__tab,
+.lines-tabs__tab,
+.my-shift__tab,
+.shifts-report__main-tab,
+.page--users .page__tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: var(--ds-tab-bar-height);
+  min-height: var(--ds-tab-bar-height);
+  margin: 0 0 -1px;
+  padding: 0 var(--space-4);
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--font-label);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  box-shadow: none;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast),
+    border-color var(--transition-fast);
+
+  svg {
+    flex-shrink: 0;
+    opacity: 0.85;
+  }
+
+  &:hover {
+    color: var(--text);
+    background: var(--bg-hover);
+  }
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+    border-radius: var(--radius-sm);
+  }
+}
+
+.my-shift__tabs .my-shift__tab {
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: normal;
+  text-align: center;
+}
+
+.shifts-report__main-tabs .shifts-report__main-tab {
+  flex: 1 1 min(0, 50%);
+  min-width: 0;
+  white-space: normal;
+}
+
+.materials-tabs__tab--active,
+.otk-tabs__tab--active,
+.chemistry-tabs__tab--active,
+.lines-tabs__tab--active,
+.my-shift__tab--active,
+.shifts-report__main-tab--active,
+.page--users .page__tab--active {
+  color: var(--text);
+  font-weight: var(--weight-semibold);
+  border-bottom-color: var(--accent);
+  background: var(--bg-elevated);
+  box-shadow: none;
+}
+
+@include responsive-tables {
+  .materials-tabs,
+  .otk-tabs,
+  .chemistry-tabs,
+  .lines-tabs,
+  .my-shift__tabs,
+  .shifts-report__main-tabs,
+  .page--users .page__tabs {
+    overflow-x: auto;
+    @include scrollbar;
+
+    &::-webkit-scrollbar {
+      height: 4px;
+    }
+  }
+
+  .materials-tabs__tab,
+  .otk-tabs__tab,
+  .chemistry-tabs__tab,
+  .lines-tabs__tab,
+  .my-shift__tab,
+  .shifts-report__main-tab,
+  .page--users .page__tab {
+    flex-shrink: 0;
+  }
+
+  .my-shift__tabs .my-shift__tab,
+  .shifts-report__main-tabs .shifts-report__main-tab {
+    flex-shrink: 0;
+    flex: 0 0 auto;
+    min-width: min(8.5rem, 100%);
+  }
+}

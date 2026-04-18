@@ -1,3 +1,4 @@
+@use '../../../../shared/styles/variables' as *;
 @use '../../../../shared/styles/mixins' as *;
 
 .page--production {
@@ -6,7 +7,7 @@
     color: var(--text);
     border: 1px solid var(--card-border);
     border-radius: var(--radius-lg);
-    padding: 1rem 1.25rem 1.25rem;
+    padding: var(--card-padding);
     box-shadow: var(--shadow-sm);
   }
 

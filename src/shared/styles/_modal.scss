@@ -21,10 +21,10 @@
 }
 
 .modal {
-  --modal-padding-x: var(--space-5);
-  --modal-padding-y: var(--space-4);
-  --modal-actions-padding-y: var(--space-4);
-  --modal-actions-padding-bottom: var(--space-5);
+  --modal-padding-x: var(--space-4);
+  --modal-padding-y: var(--space-3);
+  --modal-actions-padding-y: var(--space-3);
+  --modal-actions-padding-bottom: var(--space-4);
 
   margin: auto 0;
 
@@ -305,13 +305,15 @@
     display: flex;
     justify-content: flex-end;
     flex-wrap: wrap;
-    gap: var(--space-3);
+    gap: var(--space-2);
     padding: var(--modal-actions-padding-y) var(--modal-padding-x) var(--modal-actions-padding-bottom);
     border-top: 1px solid var(--border-subtle);
     flex-shrink: 0;
     width: 100%;
     box-sizing: border-box;
     margin: 0;
+    margin-top: auto;
+    background: var(--card);
   }
 
   /* Футер внутри form: компенсируем горизонтальный padding формы, чтобы линия и отступы кнопок совпадали с шапкой */
@@ -383,6 +385,16 @@
     max-height: min(85vh, calc(100dvh - var(--space-8)));
     border-radius: var(--radius-lg);
     animation: modalIn 0.16s ease;
+  }
+}
+
+@include lg {
+  .modal:not(.modal--fullscreen) .modal__actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    padding-bottom: max(var(--modal-actions-padding-bottom), env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -8px 28px color-mix(in srgb, var(--bg) 82%, transparent);
   }
 }
 

@@ -93,7 +93,7 @@
 
 .chemistry-card {
   @include card-soft;
-  padding: var(--space-4) var(--space-4);
+  padding: var(--card-padding);
 
   &__head {
     align-items: center;
@@ -909,36 +909,6 @@
   margin-top: 0.35rem;
 }
 
-.chemistry-tabs {
-  display: flex;
-  gap: 0.25rem;
-  margin-bottom: var(--space-3);
-  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
-  padding-bottom: 0;
-
-  &__tab {
-    padding: 0.5rem 1rem;
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid transparent;
-    color: var(--text-muted, #8b949e);
-    font-size: var(--font-body);
-    font-family: inherit;
-    cursor: pointer;
-    margin-bottom: -1px;
-
-    &:hover {
-      color: var(--text);
-    }
-
-    &--active {
-      color: var(--accent, #58a6ff);
-      border-bottom-color: var(--accent, #58a6ff);
-      font-weight: 600;
-    }
-  }
-}
-
 .chemistry-card__toolbar-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1055,26 +1025,6 @@
 
 @include responsive-tables {
   .page--chemistry {
-    .chemistry-tabs {
-      display: flex;
-      flex-wrap: nowrap;
-      overflow-x: auto;
-      margin-bottom: var(--space-3);
-      padding-bottom: 0;
-      border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
-      gap: 0.25rem;
-      -webkit-overflow-scrolling: touch;
-      @include scrollbar;
-
-      &::-webkit-scrollbar {
-        height: 4px;
-      }
-    }
-
-    .chemistry-tabs__tab {
-      flex-shrink: 0;
-    }
-
     .chemistry-table-wrap {
       overflow-x: visible;
     }

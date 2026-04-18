@@ -52,11 +52,13 @@
   --input-height: 40px;
   --control-height: var(--input-height);
 
-  --layout-gap: var(--space-6);
-  --layout-gap-lg: var(--space-8);
+  --layout-gap: var(--space-5);
+  --layout-gap-lg: var(--space-6);
   --grid-unit: 8px;
   --content-max-width: 1184px;
-  --card-padding: var(--space-5);
+  --card-padding: var(--space-4);
+  --ds-tab-bar-height: 40px;
+  --ds-tab-bar-margin-bottom: var(--space-4);
   --field-gap: var(--space-3);
   --field-gap-lg: var(--space-4);
 

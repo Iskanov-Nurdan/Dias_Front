@@ -20,6 +20,7 @@ const normalizeBase = (value, fallback) => {
 export const API_BASE = normalizeBase(
   process.env.REACT_APP_API_URL,
   DEFAULT_API_BASE
+  
 );
 
 export const WS_URL = normalizeBase(

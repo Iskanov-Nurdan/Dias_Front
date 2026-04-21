@@ -27,9 +27,9 @@ const productName = (b) =>
   (b.product_name && String(b.product_name).trim())
   || (typeof b.product?.name === 'string' ? b.product.name : null)
   || (typeof b.product === 'string' ? b.product : null)
-  || `Продукт #${b.product_id ?? '?'}`;
+  || 'Продукт';
 
-const lotLabel = (b) => b.batch ?? b.lot ?? (b.id != null ? `#${b.id}` : '—');
+const lotLabel = (b) => b.batch ?? b.lot ?? '—';
 
 const formatDimsReadonly = (b) => {
   if (!batchHasFullPackagingGeometry(b)) return '—';

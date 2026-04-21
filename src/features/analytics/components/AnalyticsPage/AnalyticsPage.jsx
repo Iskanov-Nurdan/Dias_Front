@@ -262,31 +262,31 @@ const AnalyticsPage = () => {
       if (cancelled) return;
       setLineOptions([
         { value: '', label: 'Все линии' },
-        ...lines.map((l) => ({ value: String(l.id), label: l.name || `#${l.id}` })),
+        ...lines.map((l) => ({ value: String(l.id), label: l.name || 'Линия' })),
       ]);
       setClientOptions([
         { value: '', label: 'Все клиенты' },
-        ...clients.map((c) => ({ value: String(c.id), label: c.name || `#${c.id}` })),
+        ...clients.map((c) => ({ value: String(c.id), label: c.name || 'Клиент' })),
       ]);
       setProfileOptions([
         { value: '', label: 'Все профили' },
         ...profiles.map((p) => ({
           value: String(p.id),
-          label: p.code ? `${p.name || ''} (${p.code})`.trim() : (p.name || `#${p.id}`),
+          label: p.name || 'Профиль',
         })),
       ]);
       setRecipeOptions([
         { value: '', label: 'Все рецепты' },
         ...recipes.map((r) => ({
           value: String(r.id),
-          label: r.recipe || r.name || r.product || `#${r.id}`,
+          label: r.recipe || r.name || r.product || 'Рецепт',
         })),
       ]);
       setBatchOptions([
         { value: '', label: 'Все партии' },
         ...batches.map((b) => ({
           value: String(b.id),
-          label: `#${b.id} · ${b.profile_name || b.profile?.name || b.recipe_name || b.recipe?.recipe || 'партия'}`,
+          label: `${b.profile_name || b.profile?.name || b.recipe_name || b.recipe?.recipe || 'Партия'}`,
         })),
       ]);
     });

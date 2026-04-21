@@ -142,7 +142,7 @@ const ClientsPage = () => {
                 tabIndex={0}
                 role="button"
               >
-                <td className="data-table__cell--lead">{c.name || c.title || `#${c.id}`}</td>
+                <td className="data-table__cell--lead">{c.name || c.title || '—'}</td>
                 <td className="data-table__cell--muted">{c.phone || c.phone_number || '—'}</td>
                 <td className="data-table__cell--muted">{c.contact_person || c.contact_name || '—'}</td>
                 <td className="data-table__cell--num">{c.sales_count ?? c.orders_count ?? '—'}</td>
@@ -164,7 +164,7 @@ const ClientsPage = () => {
                     items={[
                       { label: 'История', onClick: () => handleOpenHistory(c) },
                       ...(clientCanDelete(c)
-                        ? [{ label: 'Удалить', danger: true, onClick: () => setDeleteTarget({ id: c.id, name: c.name || `#${c.id}` }) }]
+                        ? [{ label: 'Удалить', danger: true, onClick: () => setDeleteTarget({ id: c.id, name: c.name || c.title || 'Клиент' }) }]
                         : []),
                     ]}
                   />

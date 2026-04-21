@@ -54,51 +54,10 @@
   }
 }
 
-.otk-tabs {
-  display: flex;
-  gap: 0;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid var(--border-subtle);
-
-  &__tab {
-    padding: 0.65rem 1.25rem;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    font-size: 0.95rem;
-    font-weight: 500;
-    cursor: pointer;
-    border-bottom: 3px solid transparent;
-    margin-bottom: -1px;
-    position: relative;
-
-    &:hover {
-      color: var(--text);
-    }
-
-    &--active {
-      color: var(--text);
-      font-weight: 600;
-
-      &::after {
-        content: '';
-        position: absolute;
-        bottom: -1px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: calc(100% + 8px);
-        height: 3px;
-        background: var(--accent);
-        border-radius: 2px;
-      }
-    }
-  }
-}
-
 .otk-filters-mobile {
   display: none;
 
-  @include mobile {
+  @include lg {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
@@ -112,12 +71,34 @@
   }
 }
 
+@include lg {
+  .otk-card .filter-bar.filter-bar--row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+    align-items: stretch;
+
+    .filter-bar__item {
+      min-width: 0 !important;
+      max-width: none !important;
+    }
+
+    .filter-bar__item:first-child {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .otk-card .filter-bar.filter-bar--row:has(> .filter-bar__item:first-child:nth-last-child(2)) > .filter-bar__item:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
 .otk-card {
   @include card-soft;
   padding: var(--space-6);
   margin-bottom: var(--space-6);
 
-  @include mobile {
+  @include lg {
     padding: var(--space-4);
     margin-bottom: var(--space-4);
   }
@@ -148,24 +129,24 @@
 
   &--awaiting &__header {
     grid-template-columns:
-      minmax(4.25rem, auto)
-      1fr
-      0.75fr
-      80px
+      minmax(0, 1fr)
+      minmax(0, 1.15fr)
+      72px
+      minmax(5.5rem, auto)
       minmax(5rem, 0.9fr)
-      110px
-      130px
-      minmax(7.5rem, auto);
+      100px
+      120px
+      minmax(7rem, auto);
     column-gap: var(--space-4);
   }
 
   &--history &__header {
     grid-template-columns:
       minmax(6.5rem, auto)
-      minmax(4.25rem, auto)
       minmax(0, 1fr)
-      92px
-      80px
+      minmax(0, 1.1fr)
+      88px
+      72px
       minmax(0, 1fr);
     column-gap: var(--space-4);
   }
@@ -188,23 +169,23 @@
 
   &--awaiting &__row {
     grid-template-columns:
-      minmax(4.25rem, auto)
-      1fr
-      0.75fr
-      80px
+      minmax(0, 1fr)
+      minmax(0, 1.15fr)
+      72px
+      minmax(5.5rem, auto)
       minmax(5rem, 0.9fr)
-      110px
-      130px
-      minmax(7.5rem, auto);
+      100px
+      120px
+      minmax(7rem, auto);
   }
 
   &--history &__row {
     grid-template-columns:
       minmax(6.5rem, auto)
-      minmax(4.25rem, auto)
       minmax(0, 1fr)
-      92px
-      80px
+      minmax(0, 1.1fr)
+      88px
+      72px
       minmax(0, 1fr);
   }
 
@@ -279,97 +260,9 @@
 
   &__actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
     justify-content: flex-end;
-  }
-
-  @include mobile {
-    gap: var(--space-3);
-
-    &__header {
-      display: none;
-    }
-
-    &__row {
-      align-items: stretch;
-    }
-
-    &--awaiting &__row {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      padding: var(--space-4);
-
-      > * {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: var(--space-3);
-        padding: var(--space-2) 0;
-        border-bottom: 1px solid var(--border-subtle);
-        font-size: var(--font-label);
-
-        &::before {
-          flex-shrink: 0;
-          font-size: var(--font-caption);
-          font-weight: var(--weight-medium);
-          color: var(--text-muted);
-        }
-
-        &:last-child {
-          border-bottom: none;
-          justify-content: flex-end;
-          padding-top: var(--space-3);
-        }
-      }
-
-      > *:nth-child(1)::before { content: '№ партии'; }
-      > *:nth-child(2)::before { content: 'Профиль'; }
-      > *:nth-child(3)::before { content: 'Продукт'; }
-      > *:nth-child(4)::before { content: 'Линия'; }
-      > *:nth-child(5)::before { content: 'Выпуск'; }
-      > *:nth-child(6)::before { content: 'Размеры'; }
-      > *:nth-child(7)::before { content: 'Оператор'; }
-      > *:nth-child(8)::before { content: 'Дата'; }
-    }
-
-    &--history &__row {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      padding: var(--space-4);
-
-      > * {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: var(--space-3);
-        padding: var(--space-2) 0;
-        border-bottom: 1px solid var(--border-subtle);
-        font-size: var(--font-label);
-        text-align: right;
-
-        &::before {
-          flex-shrink: 0;
-          font-size: var(--font-caption);
-          font-weight: var(--weight-medium);
-          color: var(--text-muted);
-          text-align: left;
-        }
-
-        &:last-child {
-          border-bottom: none;
-        }
-      }
-
-      > *:nth-child(1)::before { content: 'Статус'; }
-      > *:nth-child(2)::before { content: '№ партии'; }
-      > *:nth-child(3)::before { content: 'Профиль'; }
-      > *:nth-child(4)::before { content: 'Задание'; }
-      > *:nth-child(5)::before { content: 'Принято'; }
-      > *:nth-child(6)::before { content: 'Брак'; }
-      > *:nth-child(7)::before { content: 'Комментарий'; }
-    }
   }
 }
 
@@ -563,8 +456,12 @@
   }
 }
 
-@include mobile {
+@include responsive-tables {
   .page--otk {
+    .otk-table__actions {
+      flex-wrap: wrap;
+    }
+
     .otk-table--awaiting .otk-table__header {
       display: none;
     }
@@ -605,38 +502,34 @@
     }
 
     .otk-table--awaiting .otk-table__row > *:nth-child(1)::before {
-      content: '№ партии';
-    }
-
-    .otk-table--awaiting .otk-table__row > *:nth-child(2)::before {
       content: 'Профиль';
     }
 
-    .otk-table--awaiting .otk-table__row > *:nth-child(3)::before {
+    .otk-table--awaiting .otk-table__row > *:nth-child(2)::before {
       content: 'Продукт / рецепт';
     }
 
-    .otk-table--awaiting .otk-table__row > *:nth-child(4)::before {
+    .otk-table--awaiting .otk-table__row > *:nth-child(3)::before {
       content: 'Линия';
     }
 
-    .otk-table--awaiting .otk-table__row > *:nth-child(5)::before {
+    .otk-table--awaiting .otk-table__row > *:nth-child(4)::before {
       content: 'Выпуск';
     }
 
-    .otk-table--awaiting .otk-table__row > *:nth-child(6)::before {
+    .otk-table--awaiting .otk-table__row > *:nth-child(5)::before {
       content: 'Размеры';
     }
 
-    .otk-table--awaiting .otk-table__row > *:nth-child(7)::before {
+    .otk-table--awaiting .otk-table__row > *:nth-child(6)::before {
       content: 'Оператор';
     }
 
-    .otk-table--awaiting .otk-table__row > *:nth-child(8)::before {
+    .otk-table--awaiting .otk-table__row > *:nth-child(7)::before {
       content: 'Дата';
     }
 
-    .otk-table--awaiting .otk-table__row > *:nth-child(9)::before {
+    .otk-table--awaiting .otk-table__row > *:nth-child(8)::before {
       content: 'Действия';
     }
 
@@ -684,26 +577,22 @@
     }
 
     .otk-table--history .otk-table__row > *:nth-child(2)::before {
-      content: '№ партии';
-    }
-
-    .otk-table--history .otk-table__row > *:nth-child(3)::before {
       content: 'Профиль';
     }
 
-    .otk-table--history .otk-table__row > *:nth-child(4)::before {
+    .otk-table--history .otk-table__row > *:nth-child(3)::before {
       content: 'Задание / продукт';
     }
 
-    .otk-table--history .otk-table__row > *:nth-child(5)::before {
+    .otk-table--history .otk-table__row > *:nth-child(4)::before {
       content: 'Принято';
     }
 
-    .otk-table--history .otk-table__row > *:nth-child(6)::before {
+    .otk-table--history .otk-table__row > *:nth-child(5)::before {
       content: 'Брак';
     }
 
-    .otk-table--history .otk-table__row > *:nth-child(7)::before {
+    .otk-table--history .otk-table__row > *:nth-child(6)::before {
       content: 'Комментарий';
     }
   }

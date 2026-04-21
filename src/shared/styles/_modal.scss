@@ -4,8 +4,8 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(5px);
   @include flex-center;
   z-index: var(--z-modal);
   padding: var(--space-4);
@@ -21,10 +21,10 @@
 }
 
 .modal {
-  --modal-padding-x: var(--space-5);
-  --modal-padding-y: var(--space-4);
-  --modal-actions-padding-y: var(--space-4);
-  --modal-actions-padding-bottom: var(--space-5);
+  --modal-padding-x: var(--space-4);
+  --modal-padding-y: var(--space-3);
+  --modal-actions-padding-y: var(--space-3);
+  --modal-actions-padding-bottom: var(--space-4);
 
   margin: auto 0;
 
@@ -37,7 +37,7 @@
   border-radius: var(--radius-lg);
   box-shadow:
     var(--shadow-lg),
-    0 0 0 1px rgba(17, 24, 39, 0.04);
+    0 0 0 1px var(--card-border);
   padding: 0;
   min-width: min(400px, 92vw);
   max-width: 92vw;
@@ -192,6 +192,9 @@
 
     &:focus {
       outline: none;
+    }
+
+    &:focus-visible {
       border-color: var(--input-focus-border);
       box-shadow: 0 0 0 3px var(--input-focus-ring);
     }
@@ -237,7 +240,7 @@
     background-position: right 10px center;
     border: 1px solid var(--select-border);
     border-radius: var(--select-radius);
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    box-shadow: var(--shadow-sm);
     color: var(--select-text) !important;
     font-size: var(--select-font-size);
     font-weight: var(--weight-normal);
@@ -253,13 +256,16 @@
 
     &:hover {
       border-color: var(--select-border-hover);
-      background-color: #f9fafb !important;
+      background-color: var(--bg-hover) !important;
     }
 
     &:focus {
-      @include select-focus-ring;
       outline: none;
-      background-color: #fafbfc !important;
+    }
+
+    &:focus-visible {
+      @include select-focus-ring;
+      background-color: var(--select-bg) !important;
     }
 
     &:disabled {
@@ -269,7 +275,7 @@
 
     &:required:invalid:not(:focus) {
       border-color: var(--select-border);
-      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      box-shadow: var(--shadow-sm);
     }
   }
 
@@ -299,13 +305,15 @@
     display: flex;
     justify-content: flex-end;
     flex-wrap: wrap;
-    gap: var(--space-3);
+    gap: var(--space-2);
     padding: var(--modal-actions-padding-y) var(--modal-padding-x) var(--modal-actions-padding-bottom);
     border-top: 1px solid var(--border-subtle);
     flex-shrink: 0;
     width: 100%;
     box-sizing: border-box;
     margin: 0;
+    margin-top: auto;
+    background: var(--card);
   }
 
   /* Футер внутри form: компенсируем горизонтальный padding формы, чтобы линия и отступы кнопок совпадали с шапкой */
@@ -377,6 +385,16 @@
     max-height: min(85vh, calc(100dvh - var(--space-8)));
     border-radius: var(--radius-lg);
     animation: modalIn 0.16s ease;
+  }
+}
+
+@include lg {
+  .modal:not(.modal--fullscreen) .modal__actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    padding-bottom: max(var(--modal-actions-padding-bottom), env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -8px 28px color-mix(in srgb, var(--bg) 82%, transparent);
   }
 }
 

@@ -50,50 +50,9 @@
   }
 }
 
-.materials-tabs {
-  display: flex;
-  gap: 0;
-  margin-bottom: 1.5rem;
-  border-bottom: 1px solid var(--border-subtle);
-
-  &__tab {
-    padding: 0.65rem 1.25rem;
-    background: transparent;
-    border: none;
-    border-bottom: 3px solid transparent;
-    color: var(--text-muted);
-    font-size: 0.95rem;
-    font-weight: 500;
-    cursor: pointer;
-    margin-bottom: -1px;
-    position: relative;
-
-    &:hover {
-      color: var(--text);
-    }
-
-    &--active {
-      color: var(--text);
-      font-weight: 600;
-
-      &::after {
-        content: '';
-        position: absolute;
-        bottom: -1px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: calc(100% + 8px);
-        height: 3px;
-        background: var(--accent);
-        border-radius: 2px;
-      }
-    }
-  }
-}
-
 .materials-card {
   @include card-soft;
-  padding: var(--space-4) var(--space-5);
+  padding: var(--card-padding);
 
   &__head {
     align-items: center;
@@ -148,6 +107,27 @@
     background: var(--warning-muted);
     color: var(--warning);
     white-space: nowrap;
+  }
+}
+
+@include lg {
+  .page--materials .materials-card__head.ds-toolbar.ds-toolbar--in-card {
+    .materials-card__head-main {
+      gap: var(--space-2);
+    }
+
+    .materials-card__search {
+      order: -1;
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .materials-card__filter.dias-select {
+      width: 100%;
+      max-width: none;
+    }
   }
 }
 
@@ -346,7 +326,7 @@
 
   &__actions {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
     justify-content: flex-end;
@@ -372,6 +352,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    word-break: break-word;
   }
 
   &__card-status {
@@ -423,7 +404,7 @@
   font-weight: normal;
 }
 
-@include mobile {
+@include responsive-tables {
   .page--materials {
     .materials-table-wrap {
       overflow-x: visible;
@@ -434,6 +415,12 @@
     .materials-table--batches-full,
     .materials-table--movements {
       min-width: 0 !important;
+    }
+
+    .materials-table__comment {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
     }
 
     .materials-table--catalog .materials-table__header,

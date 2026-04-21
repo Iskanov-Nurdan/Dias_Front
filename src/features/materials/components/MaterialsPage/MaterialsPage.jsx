@@ -37,6 +37,45 @@ const unitLabelRu = (u) => {
   return u || 'кг';
 };
 
+const normMovementKey = (raw) =>
+  String(raw ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+
+const MOVEMENT_TYPE_LABEL = {
+  in: 'Приход',
+  incoming: 'Приход',
+  intake: 'Приход',
+  receipt: 'Приход',
+  out: 'Расход',
+  outgoing: 'Расход',
+  consumption: 'Расход',
+  fifo_consume: 'Списание (FIFO)',
+  writeoff: 'Списание',
+  adjustment: 'Корректировка',
+  transfer: 'Перемещение',
+  production: 'Производство',
+  reserve: 'Резерв',
+  unreserve: 'Снятие резерва',
+  'return': 'Возврат',
+};
+
+const movementTypeLabel = (raw) => {
+  if (raw == null || raw === '') return '—';
+  const k = normMovementKey(raw);
+  if (!k) return '—';
+  if (MOVEMENT_TYPE_LABEL[k]) return MOVEMENT_TYPE_LABEL[k];
+  if (/^[a-z0-9_]+$/i.test(String(raw ?? ''))) {
+    return String(raw)
+      .split(/[_\s-]+/)
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+  }
+  return String(raw);
+};
+
 const BALANCE_FILTER = {
   ALL: 'all',
   LOW: 'low',
@@ -546,7 +585,10 @@ const MaterialsPage = () => {
             )}
             {!movementsLoading && (!movementsError || movementsError.status === 404) && (
               movementList.length === 0 ? (
-                <EmptyState title="Нет записей движения" description="Подключите GET materials/movements/ на бэкенде." />
+                <EmptyState
+                  title="Нет записей движения"
+                  description="История движения сырья пока пуста. Записи появятся после операций прихода, списания и корректировок."
+                />
               ) : (
                 <div className="materials-table-wrap">
                   <div className="materials-table materials-table--movements">
@@ -566,7 +608,7 @@ const MaterialsPage = () => {
                             {typeof at === 'string' && at.length >= 16 ? at.slice(0, 16).replace('T', ' ') : formatDate(at)}
                           </span>
                           <span>{m.material_name ?? m.name ?? '—'}</span>
-                          <span>{m.movement_type ?? m.type ?? '—'}</span>
+                          <span>{movementTypeLabel(m.movement_type ?? m.type)}</span>
                           <span>{formatQuantityDisplay(m.quantity)}</span>
                           <span>{unitLabelRu(m.unit)}</span>
                           <span className="materials-table__comment">{m.comment ?? '—'}</span>

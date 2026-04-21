@@ -322,7 +322,7 @@ const CompositionModal = ({
     () =>
       (rawMaterials || []).map((m) => ({
         value: String(m.id),
-        label: m.name || `#${m.id}`,
+        label: m.name || 'Сырьё',
       })),
     [rawMaterials],
   );
@@ -471,7 +471,7 @@ const ProduceChemistryModal = ({ initialChemistryId, onClose, onSuccess }) => {
         .filter((c) => c.is_active !== false)
         .map((c) => ({
           value: String(c.id),
-          label: c.name || `#${c.id}`,
+          label: c.name || 'Элемент',
         })),
     [catalog],
   );
@@ -810,7 +810,7 @@ const ChemistryPage = () => {
                     row.chemistry?.name
                     ?? row.chemistry_name
                     ?? row.name
-                    ?? (row.chemistry_id != null ? `#${row.chemistry_id}` : '—');
+                    ?? '—';
                   const dt = row.created_at || row.produced_at || '—';
                   const ds = typeof dt === 'string' ? dt.slice(0, 16).replace('T', ' ') : dt;
                   const cpu = row.cost_per_unit ?? row.unit_cost;

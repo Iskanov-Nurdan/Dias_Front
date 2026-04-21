@@ -3,7 +3,8 @@
 .complaints-inbox {
   &__top {
     display: flex;
-    align-items: center;
+    flex-wrap: wrap;
+    align-items: flex-start;
     justify-content: space-between;
     gap: var(--space-3);
     margin-bottom: var(--space-4);
@@ -14,6 +15,8 @@
     font-size: var(--font-lg);
     font-weight: var(--weight-semibold);
     color: var(--text);
+    min-width: 0;
+    flex: 1 1 min(12rem, 100%);
   }
 
   &__loading,

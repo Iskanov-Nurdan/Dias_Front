@@ -18,7 +18,7 @@
     padding-bottom: var(--space-2);
   }
 
-  @include mobile {
+  @include responsive-tables {
     th:nth-child(n),
     td:nth-child(n) {
       width: auto;

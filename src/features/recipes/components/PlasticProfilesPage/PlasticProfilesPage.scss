@@ -1,3 +1,4 @@
+@use '../../../../shared/styles/variables' as *;
 @use '../../../../shared/styles/mixins' as *;
 
 .page--plastic-profiles {
@@ -23,7 +24,7 @@
 
 .plastic-profiles-card {
   @include card-soft;
-  padding: 1.5rem;
+  padding: var(--card-padding);
 
   &__head {
     align-items: center;
@@ -140,7 +141,7 @@
   }
 }
 
-@include mobile {
+@include responsive-tables {
   .page--plastic-profiles {
     .plastic-profiles-table-wrap {
       overflow-x: visible;

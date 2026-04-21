@@ -16,11 +16,11 @@ import {
   batchTotalMetersDisplay,
 } from '../../lib/batchMeta';
 
-const lineLabel = (b) => b.line_name || b.line?.name || (b.line_id != null ? `#${b.line_id}` : '—');
+const lineLabel = (b) => b.line_name || b.line?.name || '—';
 const profileLabel = (b) =>
-  b.profile?.name || b.profile_name || b.profile?.code || (b.profile_id != null ? `#${b.profile_id}` : '—');
+  b.profile?.name || b.profile_name || '—';
 const recipeLabel = (b) =>
-  b.recipe?.recipe || b.recipe?.name || b.recipe_name || (b.recipe_id != null ? `#${b.recipe_id}` : '—');
+  b.recipe?.recipe || b.recipe?.name || b.recipe_name || '—';
 
 const money = (n) => {
   if (n == null || !Number.isFinite(n)) return '—';

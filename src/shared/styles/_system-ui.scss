@@ -1,0 +1,116 @@
+@use 'variables' as *;
+@use 'mixins' as *;
+
+/* ── ERP: вкладки — полная ширина, равные доли (как «Смены»), активная: фон + полоса accent ── */
+
+.users-page__tabs-wrap {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.materials-tabs,
+.otk-tabs,
+.chemistry-tabs,
+.lines-tabs,
+.my-shift__tabs,
+.shifts-report__main-tabs,
+.page--users .page__tabs {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: nowrap;
+  gap: 0;
+  width: 100%;
+  min-height: var(--ds-tab-bar-height);
+  margin: 0 0 var(--ds-tab-bar-margin-bottom);
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background: transparent;
+  box-shadow: none;
+  box-sizing: border-box;
+}
+
+.materials-tabs__tab,
+.otk-tabs__tab,
+.chemistry-tabs__tab,
+.lines-tabs__tab,
+.my-shift__tab,
+.shifts-report__main-tab,
+.page--users .page__tab {
+  position: relative;
+  display: inline-flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: var(--ds-tab-bar-height);
+  margin: 0;
+  padding: var(--space-2) var(--space-1);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--font-label);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: normal;
+  text-align: center;
+  box-sizing: border-box;
+  box-shadow: none;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast);
+
+  svg {
+    flex-shrink: 0;
+    opacity: 0.9;
+  }
+
+  &:hover {
+    color: var(--text);
+    background: var(--bg-hover);
+  }
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+    z-index: 1;
+    border-radius: var(--radius-sm);
+  }
+}
+
+.materials-tabs__tab--active,
+.otk-tabs__tab--active,
+.chemistry-tabs__tab--active,
+.lines-tabs__tab--active,
+.my-shift__tab--active,
+.shifts-report__main-tab--active,
+.page--users .page__tab--active {
+  color: var(--text);
+  font-weight: var(--weight-semibold);
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  box-shadow: none;
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background: var(--accent);
+    border-radius: 2px 2px 0 0;
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--text) 9%, transparent);
+  }
+}

@@ -31,41 +31,6 @@
   }
 }
 
-.page--users {
-  .page__tabs {
-    display: inline-flex;
-    gap: var(--space-1);
-    padding: var(--space-1);
-    background: var(--bg-hover);
-    border-radius: var(--radius-md);
-  }
-
-  .page__tab {
-    padding: var(--space-2) var(--space-3);
-    background: transparent;
-    border: none;
-    border-radius: var(--radius-sm);
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-size: var(--font-label);
-    font-weight: var(--weight-medium);
-    transition:
-      background var(--transition-fast),
-      color var(--transition-fast);
-
-    &:hover {
-      color: var(--text);
-      background: var(--card);
-    }
-
-    &--active {
-      color: var(--text);
-      background: var(--card);
-      box-shadow: var(--shadow-sm);
-    }
-  }
-}
-
 .users-page__filters {
   display: flex;
   flex-direction: column;
@@ -101,6 +66,22 @@
         flex: 0 0 auto;
         min-width: 140px;
         max-width: 220px;
+      }
+    }
+
+    @include lg {
+      flex-wrap: wrap;
+      overflow-x: visible;
+
+      .filter-bar--row {
+        flex: 1 1 100%;
+        flex-wrap: wrap;
+        min-width: 0;
+
+        .filter-bar__item {
+          flex: 1 1 min(140px, 100%);
+          max-width: 100%;
+        }
       }
     }
   }

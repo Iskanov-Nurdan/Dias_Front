@@ -2,12 +2,29 @@ import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from
 import { createPortal } from 'react-dom';
 import './ActionMenu.scss';
 
-/** Above headers/sidebars; below toasts (see _variables.scss). */
 const MENU_Z = 1100;
+const SHEET_MAX = 768;
+
+const safePad = () => {
+  if (typeof window === 'undefined') return 12;
+  const st = window.getComputedStyle(document.documentElement);
+  const l = parseFloat(st.paddingLeft) || 0;
+  const r = parseFloat(st.paddingRight) || 0;
+  const base = Math.max(12, l, r, 8);
+  return base;
+};
+
+const safeInsetBottom = () => {
+  if (typeof window === 'undefined') return 0;
+  const v = getComputedStyle(document.documentElement).getPropertyValue('env(safe-area-inset-bottom)');
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? n : 0;
+};
 
 const ActionMenu = ({ items, align = 'right', ariaLabel = 'Действия' }) => {
   const [open, setOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState({});
+  const [sheet, setSheet] = useState(false);
   const rootRef = useRef(null);
   const dropdownRef = useRef(null);
 
@@ -16,28 +33,49 @@ const ActionMenu = ({ items, align = 'right', ariaLabel = 'Действия' }) 
     const menu = dropdownRef.current;
     if (!trigger) return;
 
-    const rect = trigger.getBoundingClientRect();
-    const gap = 4;
-    const pad = 8;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const fallbackW = 168;
+    const pad = safePad();
+    const bottomInset = safeInsetBottom();
+    const useSheet = vw <= SHEET_MAX;
+    setSheet(useSheet);
+
+    const rect = trigger.getBoundingClientRect();
+    const gap = 6;
+    const fallbackW = Math.min(280, vw - 2 * pad);
+
+    if (useSheet) {
+      setMenuStyle({
+        position: 'fixed',
+        left: pad,
+        right: pad,
+        top: 'auto',
+        bottom: Math.max(pad, bottomInset + 8),
+        width: 'auto',
+        maxWidth: 'none',
+        maxHeight: `min(55dvh, ${Math.floor(vh * 0.55)}px)`,
+        zIndex: MENU_Z,
+      });
+      return;
+    }
 
     const apply = () => {
       const m = dropdownRef.current;
       if (!m) return;
-      const mw = m.offsetWidth || fallbackW;
+      let mw = m.offsetWidth || fallbackW;
+      mw = Math.min(mw, vw - 2 * pad);
       const mh = m.offsetHeight || 0;
 
       let left = align === 'right' ? rect.right - mw : rect.left;
-      left = Math.max(pad, Math.min(left, vw - pad - mw));
+      if (left + mw > vw - pad) left = vw - pad - mw;
+      if (left < pad) left = pad;
 
       let top = rect.bottom + gap;
-      if (mh > 0 && top + mh > vh - pad) {
+      if (mh > 0 && top + mh > vh - pad - bottomInset) {
         top = rect.top - mh - gap;
       }
       if (mh > 0) {
-        top = Math.max(pad, Math.min(top, vh - pad - mh));
+        top = Math.max(pad, Math.min(top, vh - pad - bottomInset - mh));
       } else {
         top = Math.max(pad, top);
       }
@@ -47,6 +85,9 @@ const ActionMenu = ({ items, align = 'right', ariaLabel = 'Действия' }) 
         top,
         left,
         right: 'auto',
+        width: `${mw}px`,
+        maxWidth: `${vw - 2 * pad}px`,
+        maxHeight: `min(320px, calc(100dvh - ${pad * 2}px))`,
         zIndex: MENU_Z,
       });
     };
@@ -55,14 +96,10 @@ const ActionMenu = ({ items, align = 'right', ariaLabel = 'Действия' }) 
       setMenuStyle({
         position: 'fixed',
         top: Math.max(pad, rect.bottom + gap),
-        left: Math.max(
-          pad,
-          Math.min(
-            align === 'right' ? rect.right - fallbackW : rect.left,
-            vw - pad - fallbackW
-          )
-        ),
+        left: Math.max(pad, Math.min(align === 'right' ? rect.right - fallbackW : rect.left, vw - pad - fallbackW)),
         right: 'auto',
+        width: `${fallbackW}px`,
+        maxWidth: `${vw - 2 * pad}px`,
         zIndex: MENU_Z,
       });
       return;
@@ -106,13 +143,28 @@ const ActionMenu = ({ items, align = 'right', ariaLabel = 'Действия' }) 
 
   if (!items?.length) return null;
 
+  const dropdownClass = [
+    'action-menu__dropdown',
+    'action-menu__dropdown--portal',
+    `action-menu__dropdown--${align}`,
+    sheet ? 'action-menu__dropdown--sheet' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const backdrop =
+    open && sheet ? (
+      <button
+        type="button"
+        className="action-menu__backdrop"
+        aria-label="Закрыть меню"
+        tabIndex={-1}
+        onClick={() => setOpen(false)}
+      />
+    ) : null;
+
   const dropdown = open ? (
-    <ul
-      ref={dropdownRef}
-      className={`action-menu__dropdown action-menu__dropdown--portal action-menu__dropdown--${align}`}
-      style={menuStyle}
-      role="menu"
-    >
+    <ul ref={dropdownRef} className={dropdownClass} style={menuStyle} role="menu">
       {items.map((item, i) => (
         <li key={i} role="none">
           <button
@@ -146,8 +198,12 @@ const ActionMenu = ({ items, align = 'right', ariaLabel = 'Действия' }) 
           setOpen((v) => !v);
         }}
       >
-        <span className="action-menu__dots" aria-hidden>⋯</span>
+        <span className="action-menu__dots" aria-hidden>
+          ⋯
+        </span>
+        <span className="action-menu__hint">{ariaLabel}</span>
       </button>
+      {open && backdrop && createPortal(backdrop, document.body)}
       {dropdown && createPortal(dropdown, document.body)}
     </div>
   );

@@ -3,6 +3,7 @@
 @use '../shared/styles/ds';
 @use '../shared/styles/shell';
 @use '../shared/styles/modal';
+@use '../shared/styles/system-ui';
 
 * {
   box-sizing: border-box;
@@ -18,7 +19,7 @@ html {
 body {
   margin: 0;
   font-family: var(--font-sans);
-  background: var(--bg);
+  background: var(--bg-gradient);
   color: var(--text);
   font-size: var(--font-body);
   font-weight: var(--weight-normal);
@@ -97,7 +98,7 @@ h3,
   border-radius: var(--radius-lg);
   box-shadow:
     var(--shadow-sm),
-    0 0 0 1px rgba(17, 24, 39, 0.04);
+    0 0 0 1px var(--card-border);
   overflow: hidden;
   table-layout: auto;
 
@@ -117,7 +118,7 @@ h3,
   }
 
   th {
-    background: rgba(17, 24, 39, 0.02);
+    background: var(--table-header-bg);
     font-weight: var(--weight-medium);
     font-size: var(--font-caption);
     letter-spacing: 0.02em;
@@ -170,7 +171,7 @@ h3,
     table-layout: fixed;
   }
 
-  @include desktop-only {
+  @media (min-width: 1201px) {
     th,
     td {
       padding: 10px var(--space-3);
@@ -190,17 +191,21 @@ h3,
 
     &__cell--lead {
       font-size: var(--font-label);
-      max-width: 280px;
-      @include text-ellipsis;
+      max-width: min(36rem, 100%);
+      white-space: normal;
+      word-break: break-word;
+      overflow: visible;
     }
 
     &__cell--muted {
-      max-width: 200px;
-      @include text-ellipsis;
+      max-width: min(28rem, 100%);
+      white-space: normal;
+      word-break: break-word;
+      overflow: visible;
     }
   }
 
-  @include mobile {
+  @include responsive-tables {
     display: block;
     width: 100%;
     max-width: 100%;
@@ -233,7 +238,7 @@ h3,
       border-radius: var(--radius-lg);
       box-shadow:
         var(--shadow-sm),
-        0 0 0 1px rgba(17, 24, 39, 0.04);
+        0 0 0 1px var(--card-border);
       border: none;
     }
 
@@ -260,6 +265,7 @@ h3,
     &--row-actions tbody td:last-child {
       justify-content: flex-end;
       padding-top: var(--space-3);
+      white-space: normal;
     }
   }
 }
@@ -438,11 +444,11 @@ textarea {
   }
 
   &:focus {
-    @include focus-ring;
+    outline: none;
   }
 
   &:focus-visible {
-    outline: none;
+    @include focus-ring;
   }
 }
 
@@ -454,12 +460,12 @@ select {
   min-height: var(--input-height);
   padding: 0 36px 0 var(--space-3);
   background-color: var(--select-bg);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239aa3b5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
   border: 1px solid var(--select-border);
   border-radius: var(--select-radius);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--shadow-sm);
   color: var(--select-text);
   cursor: pointer;
   appearance: none;
@@ -473,13 +479,16 @@ select {
 
   &:hover {
     border-color: var(--select-border-hover);
-    background-color: #f9fafb;
+    background-color: var(--bg-hover);
   }
 
   &:focus {
-    @include select-focus-ring;
     outline: none;
-    background-color: #fafbfc;
+  }
+
+  &:focus-visible {
+    @include select-focus-ring;
+    background-color: var(--select-bg);
   }
 
   &:disabled {
@@ -487,9 +496,9 @@ select {
     cursor: not-allowed;
   }
 
-  &:required:invalid:not(:focus) {
+  &:required:invalid:not(:focus-visible) {
     border-color: var(--select-border);
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    box-shadow: var(--shadow-sm);
   }
 
   option[value=''] {

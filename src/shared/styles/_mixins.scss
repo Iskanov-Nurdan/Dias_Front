@@ -27,10 +27,10 @@
     background: transparent;
   }
   &::-webkit-scrollbar-thumb {
-    background: rgba(15, 23, 42, 0.12);
+    background: var(--scrollbar-thumb);
     border-radius: var(--radius-full);
     &:hover {
-      background: rgba(15, 23, 42, 0.2);
+      background: var(--scrollbar-thumb-hover);
     }
   }
 }
@@ -41,7 +41,7 @@
   border-radius: var(--radius-lg);
   box-shadow:
     var(--shadow-sm),
-    0 0 0 1px rgba(17, 24, 39, 0.04);
+    0 0 0 1px var(--card-border);
   transition:
     box-shadow var(--transition-base);
 }
@@ -66,7 +66,7 @@
 @mixin card-soft-hover {
   &:hover {
     box-shadow: var(--shadow-md);
-    border-color: rgba(15, 23, 42, 0.1);
+    border-color: var(--hairline);
   }
 }
 
@@ -91,8 +91,8 @@
 @mixin modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(6px);
   z-index: var(--z-modal);
   @include flex-center;
 }
@@ -123,6 +123,13 @@
 
 @mixin mobile {
   @media (max-width: 768px) {
+    @content;
+  }
+}
+
+/** Таблицы → карточки/стек: планшет и узкий laptop (до 1200px включительно). */
+@mixin responsive-tables {
+  @media (max-width: 1200px) {
     @content;
   }
 }

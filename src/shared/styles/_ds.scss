@@ -2,8 +2,8 @@
 
 /* ── Page frame (title lives in MainLayout header) ─────────────────────── */
 .ds-page-top {
-  margin-bottom: var(--space-3);
-  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
+  padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -20,9 +20,9 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-4);
+  gap: var(--space-3);
   margin-bottom: var(--layout-gap);
-  padding-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--border-subtle);
   flex-wrap: wrap;
 }
@@ -59,21 +59,21 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3);
-  row-gap: var(--space-3);
+  gap: var(--space-2);
+  row-gap: var(--space-2);
   margin-bottom: var(--layout-gap);
   min-width: 0;
 }
 
 .ds-toolbar--page-head {
-  padding-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
   margin-bottom: var(--layout-gap);
   border-bottom: 1px solid var(--border-subtle);
   align-items: center;
 }
 
 .ds-toolbar--in-card {
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-3);
 }
 
 .ds-toolbar__start {
@@ -94,7 +94,7 @@
   margin-left: auto;
 }
 
-@include mobile {
+@include lg {
   .ds-toolbar__end {
     flex-basis: 100%;
     margin-left: 0;
@@ -125,16 +125,69 @@
 
   &:focus {
     outline: none;
+  }
+
+  &:focus-visible {
     border-color: var(--input-focus-border);
     box-shadow: 0 0 0 3px var(--input-focus-ring);
   }
 }
 
-@include mobile {
+@include lg {
   .ds-toolbar__search--full {
     flex: 1 1 100%;
     max-width: none;
     width: 100%;
+  }
+
+  /* Карточные тулбары: поиск на всю ширину, actions в сетке, одиночные CTA — full width */
+  .ds-toolbar--in-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+    row-gap: var(--space-2);
+
+    .ds-toolbar__start {
+      width: 100%;
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-2);
+    }
+
+    .ds-toolbar__search,
+    .ds-toolbar__search--full {
+      flex: 1 1 100% !important;
+      max-width: none !important;
+      width: 100%;
+    }
+
+    .ds-toolbar__start input[type='text'],
+    .ds-toolbar__start input[type='search'] {
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+    }
+
+    .ds-toolbar__end {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-2);
+      flex-basis: auto !important;
+      width: 100%;
+      margin-left: 0 !important;
+      justify-content: stretch;
+      align-items: stretch;
+    }
+
+    .ds-toolbar__end > *:only-child {
+      grid-column: 1 / -1;
+    }
+
+    .ds-toolbar__end .btn {
+      width: 100%;
+      min-height: 44px;
+      justify-content: center;
+    }
   }
 
   .ds-toolbar--stack-mobile {
@@ -201,7 +254,7 @@
   }
 }
 
-@include desktop-only {
+@media (min-width: 1201px) {
   .ds-toolbar--page-head {
     flex-wrap: nowrap;
     align-items: center;
@@ -220,7 +273,7 @@
   border-radius: var(--radius-lg);
   box-shadow:
     var(--shadow-sm),
-    0 0 0 1px rgba(17, 24, 39, 0.04);
+    0 0 0 1px var(--card-border);
 }
 
 .ds-card--pad {

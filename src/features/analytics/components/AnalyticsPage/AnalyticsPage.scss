@@ -6,15 +6,15 @@
   margin: 0 auto;
 
   .analytics-section {
-    margin-bottom: var(--space-5);
+    margin-bottom: var(--layout-gap);
   }
 }
 
 /* ——— Hero: период + KPI ——— */
 .analytics-hero {
   @include card-soft;
-  padding: var(--space-4) var(--space-4) var(--space-5);
-  margin-bottom: var(--space-5);
+  padding: var(--card-padding);
+  margin-bottom: var(--layout-gap);
   border-radius: var(--radius-lg);
 }
 
@@ -28,8 +28,8 @@
 
 .analytics-finance-shell {
   @include card-soft;
-  padding: var(--space-4) var(--space-5) var(--space-5);
-  margin-bottom: var(--space-5);
+  padding: var(--card-padding);
+  margin-bottom: var(--layout-gap);
   border-radius: var(--radius-lg);
 }
 
@@ -1214,16 +1214,111 @@
   font-weight: var(--weight-semibold);
 }
 
-.detail-content--tight .detail-table,
-.detail-content--tight .detail-table-header--6 {
-  @include mobile {
-    min-width: 560px;
+@include responsive-tables {
+  .detail-content--tight {
+    overflow-x: hidden;
+    max-width: 100%;
   }
-}
 
-.detail-content--tight .detail-table-header--7 {
-  @include mobile {
-    min-width: 640px;
+  .detail-content--tight .detail-table-header--6,
+  .detail-content--tight .detail-table-header--7 {
+    display: none !important;
+  }
+
+  .detail-content--tight .detail-table-row--6,
+  .detail-content--tight .detail-table-row--7 {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: var(--space-3);
+    margin-bottom: var(--space-2);
+    min-width: 0 !important;
+    grid-template-columns: unset !important;
+  }
+
+  .detail-content--tight .detail-table-row--6 .detail-table-cell,
+  .detail-content--tight .detail-table-row--7 .detail-table-cell {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--border-subtle);
+    text-align: right;
+    min-width: 0;
+
+    &::before {
+      content: '';
+      flex: 0 1 46%;
+      min-width: 0;
+      text-align: left;
+      font-size: var(--font-caption);
+      font-weight: var(--weight-medium);
+      color: var(--text-muted);
+    }
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &--num {
+      justify-content: space-between;
+    }
+  }
+
+  .detail-content--tight .detail-table-row--6 .detail-table-cell:nth-child(1)::before {
+    content: 'Дата';
+  }
+
+  .detail-content--tight .detail-table-row--6 .detail-table-cell:nth-child(2)::before {
+    content: 'Клиент / заказ';
+  }
+
+  .detail-content--tight .detail-table-row--6 .detail-table-cell:nth-child(3)::before {
+    content: 'Продукт';
+  }
+
+  .detail-content--tight .detail-table-row--6 .detail-table-cell:nth-child(4)::before {
+    content: 'Кол-во';
+  }
+
+  .detail-content--tight .detail-table-row--6 .detail-table-cell:nth-child(5)::before {
+    content: 'Цена / ед.';
+  }
+
+  .detail-content--tight .detail-table-row--6 .detail-table-cell:nth-child(6)::before {
+    content: 'Сумма';
+  }
+
+  .detail-content--tight .detail-table-row--7 .detail-table-cell:nth-child(1)::before {
+    content: 'Дата';
+  }
+
+  .detail-content--tight .detail-table-row--7 .detail-table-cell:nth-child(2)::before {
+    content: 'Партия';
+  }
+
+  .detail-content--tight .detail-table-row--7 .detail-table-cell:nth-child(3)::before {
+    content: 'Профиль';
+  }
+
+  .detail-content--tight .detail-table-row--7 .detail-table-cell:nth-child(4)::before {
+    content: 'Линия';
+  }
+
+  .detail-content--tight .detail-table-row--7 .detail-table-cell:nth-child(5)::before {
+    content: 'Шт';
+  }
+
+  .detail-content--tight .detail-table-row--7 .detail-table-cell:nth-child(6)::before {
+    content: 'Метры';
+  }
+
+  .detail-content--tight .detail-table-row--7 .detail-table-cell:nth-child(7)::before {
+    content: 'Затраты';
   }
 }
 

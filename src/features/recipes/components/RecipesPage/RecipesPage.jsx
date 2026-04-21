@@ -29,14 +29,13 @@ const recipeDisplayName = (r) =>
   r.recipe || r.recipe_name || r.name || r.product || r.product_name || '—';
 
 const profileLabel = (r, profileMap) => {
-  const fromObj = r.profile?.name || r.profile?.code;
-  if (fromObj) return r.profile.code ? `${r.profile.name} (${r.profile.code})` : r.profile.name;
+  if (r.profile?.name) return r.profile.name;
   const pid = r.profile_id ?? r.profile?.id;
   if (pid != null && profileMap?.has(Number(pid))) {
     const p = profileMap.get(Number(pid));
-    return p?.code ? `${p.name} (${p.code})` : (p?.name || `#${pid}`);
+    return p?.name || '—';
   }
-  return r.profile_name || r.plastic_profile_name || (pid != null ? `#${pid}` : '—');
+  return r.profile_name || r.plastic_profile_name || '—';
 };
 
 const componentCount = (r) => {
@@ -150,8 +149,8 @@ const RecipesPage = () => {
     if (!filterProfileId) return '';
     const pid = Number(filterProfileId);
     const p = plasticProfiles.find((x) => Number(x.id) === pid);
-    if (!p) return `id ${filterProfileId}`;
-    return p.code ? `${p.name} (${p.code})` : p.name;
+    if (!p) return 'Профиль';
+    return p.name || 'Профиль';
   }, [filterProfileId, plasticProfiles]);
 
   const clearProfileFilter = useCallback(() => {
@@ -443,8 +442,8 @@ const RecipeMetaModal = ({
     [plasticProfiles, lockedProfileId],
   );
   const lockedSummary = lockedProfileObj
-    ? (lockedProfileObj.code ? `${lockedProfileObj.name} (${lockedProfileObj.code})` : lockedProfileObj.name)
-    : (lockedProfileId != null ? `#${lockedProfileId}` : '');
+    ? (lockedProfileObj.name || 'Профиль')
+    : (lockedProfileId != null ? 'Выбранный профиль' : '');
 
   const [name, setName] = useState('');
   const [profileId, setProfileId] = useState('');
@@ -556,7 +555,7 @@ const RecipeMetaModal = ({
                   aria-label="Для какого профиля"
                   options={plasticProfiles.map((p) => ({
                     value: String(p.id),
-                    label: p.code ? `${p.name} (${p.code})` : p.name || `#${p.id}`,
+                    label: p.name || 'Без названия',
                   }))}
                 />
               </>
@@ -615,11 +614,11 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
   const unifiedOptions = useMemo(() => {
     const raw = rawMaterials.map((i) => ({
       value: `raw:${i.id}`,
-      label: `Сырьё: ${i.name || `#${i.id}`}`,
+      label: `Сырьё: ${i.name || 'Без названия'}`,
     }));
     const chem = chemistryElements.map((i) => ({
       value: `chem:${i.id}`,
-      label: `Химия: ${i.name || `#${i.id}`}`,
+      label: `Химия: ${i.name || 'Без названия'}`,
     }));
     return [...raw, ...chem].sort((a, b) => a.label.localeCompare(b.label, 'ru'));
   }, [rawMaterials, chemistryElements]);
@@ -948,9 +947,7 @@ const RecipeDetailModal = ({
   const title = data ? recipeDisplayName(data) : titleFallback;
   const rows = data ? getCompositionRows(data, rawMaterials, chemistryElements) : [];
   const comment = data?.comment ?? data?.note ?? '';
-  const profileDisplay = data?.profile?.name
-    ? (data.profile.code ? `${data.profile.name} (${data.profile.code})` : data.profile.name)
-    : profileLabelText;
+  const profileDisplay = data?.profile?.name || profileLabelText;
 
   return (
     <div className="modal-overlay modal-overlay--no-dismiss" role="presentation">

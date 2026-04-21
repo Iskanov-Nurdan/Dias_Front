@@ -15,47 +15,6 @@
   color: var(--text-muted, #5c6570);
 }
 
-.lines-tabs {
-  display: flex;
-  gap: 0;
-  margin-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border-subtle);
-
-  &__tab {
-    padding: 0.52rem 0.95rem;
-    background: transparent;
-    border: none;
-    border-bottom: 3px solid transparent;
-    color: var(--text-muted);
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    margin-bottom: -1px;
-    position: relative;
-
-    &:hover {
-      color: var(--text);
-    }
-
-    &--active {
-      color: var(--text);
-      font-weight: 600;
-
-      &::after {
-        content: '';
-        position: absolute;
-        bottom: -1px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: calc(100% + 8px);
-        height: 3px;
-        background: var(--accent);
-        border-radius: 2px;
-      }
-    }
-  }
-}
-
 .lines-toolbar {
   display: flex;
   align-items: center;
@@ -411,17 +370,17 @@
     &--action-pause,
     &--action-paused,
     &--action-shift_pause {
-      background: #fef3c7;
-      color: #92400e;
-      border: 1px solid #fcd34d;
+      background: var(--warning-muted);
+      color: var(--warning);
+      border: 1px solid rgba(251, 191, 36, 0.35);
     }
 
     &--action-resume,
     &--action-resumed,
     &--action-shift_resume {
-      background: #d1fae5;
-      color: #065f46;
-      border: 1px solid #6ee7b7;
+      background: var(--success-muted);
+      color: var(--success);
+      border: 1px solid rgba(52, 211, 153, 0.35);
     }
 
     &--action-x {
@@ -438,7 +397,11 @@
   }
 }
 
-@include mobile {
+@include responsive-tables {
+  .lines-table__actions {
+    flex-wrap: wrap;
+  }
+
   .lines-card__head {
     flex-direction: column;
     align-items: stretch;
@@ -451,32 +414,95 @@
   }
 
   .lines-card .lines-table.lines-table--lines {
-    .lines-table__header,
-    .lines-table__row {
-      grid-template-columns: 1fr;
-      gap: 0.5rem;
+    .lines-table__header {
+      display: none;
     }
 
-    .lines-table__th--actions {
+    .lines-table__row {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      padding: var(--space-3) var(--space-4);
+      margin-bottom: var(--space-2);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      background: var(--card);
+    }
+
+    .lines-table__row > * {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--space-3);
+      width: 100%;
+      padding: var(--space-2) 0;
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: right;
+      min-width: 0;
+
+      &:last-child {
+        border-bottom: none;
+        padding-top: var(--space-2);
+      }
+    }
+
+    .lines-table__row > *::before {
+      content: '';
+      flex: 0 1 42%;
+      min-width: 0;
+      font-size: var(--font-caption);
+      font-weight: 500;
+      color: var(--text-secondary);
       text-align: left;
     }
 
+    .lines-table__row > *:nth-child(1)::before {
+      content: 'Название';
+    }
+
+    .lines-table__row > *:nth-child(2)::before {
+      content: 'Код';
+    }
+
+    .lines-table__row > *:nth-child(3)::before {
+      content: 'Статус';
+    }
+
+    .lines-table__row > *:nth-child(4)::before {
+      content: 'Действия';
+    }
+
     .lines-table__actions {
-      justify-content: flex-start;
+      justify-content: flex-end;
       flex-wrap: wrap;
+      gap: var(--space-2);
     }
   }
 
   .lines-toolbar {
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+
+    &__left,
+    &__right {
+      width: 100%;
+      flex: 1 1 auto;
+    }
 
     &__search {
-      max-width: none;
+      max-width: none !important;
+      width: 100%;
     }
 
     &__right {
-      width: 100%;
-      justify-content: flex-end;
+      justify-content: stretch;
+
+      .btn {
+        flex: 1 1 100%;
+        width: 100%;
+      }
     }
   }
 
@@ -588,8 +614,8 @@
   -webkit-overflow-scrolling: touch;
 }
 
-/* Десктоп: минимальная ширина сетки; на мобилке — карточки без min-width */
-@include desktop-only {
+/* Широкий стол: min-width только от 1201px (ниже — карточки в responsive-tables). */
+@media (min-width: 1201px) {
   .lines-table--opening {
     min-width: 560px;
   }
@@ -733,6 +759,10 @@
     grid-template-columns: repeat(3, 1fr);
     gap: 0.5rem 1rem;
     margin: 0;
+
+    @include lg {
+      grid-template-columns: 1fr;
+    }
 
     dt {
       margin: 0;

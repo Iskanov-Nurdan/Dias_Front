@@ -222,7 +222,7 @@ const AnalyticsPage = () => {
   );
 
   return (
-    <div className="analytics-page" data-theme="dark">
+    <div className="analytics-page">
       <div className="analytics-page__sticky-top">
         <header className="analytics-page__header analytics-page__header--dashboard">
           <div className="analytics-page__header-main">

@@ -56,6 +56,23 @@ const normalizeTimeInput = (v) => {
   return s;
 };
 
+/** YYYY-MM-DD для input type="date" (локальный календарный день). */
+const getLocalDateInputValue = (d = new Date()) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+/** Дата начала в форме: с бэка / при создании клиента — сегодня. */
+const getDateStartFieldValue = (c) => {
+  if (!c) return '';
+  const raw = c.dateStart ?? c.date_start;
+  if (raw) return String(raw).slice(0, 10);
+  const isNew = c.id == null || String(c.id).trim() === '';
+  return isNew ? getLocalDateInputValue() : '';
+};
+
 const MOBILE_FORM_MQ = '(max-width: 768px)';
 
 const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave, onClose, error, saving, fullscreen = false }) => {
@@ -86,7 +103,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const [sportId, setSportId] = useState('');
   const [trainerId, setTrainerId] = useState('');
   const [trainersList, setTrainersList] = useState([]);
-  const [dateStart, setDateStart] = useState('');
+  const [dateStart, setDateStart] = useState(() => getDateStartFieldValue(client));
   const [price, setPrice] = useState('');
   const [discount, setDiscount] = useState('');
   const [paid, setPaid] = useState(false);
@@ -186,7 +203,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
     setPhone(client.phone || '');
     setSportId(client.sportId ?? client.sport_id ?? client.sport?.id ?? '');
     setTrainerId(client.trainerId ?? client.trainer_id ?? client.trainer?.id ?? '');
-    setDateStart(client.dateStart ? client.dateStart.slice(0, 10) : '');
+    setDateStart(getDateStartFieldValue(client));
     setPrice(getPriceFieldInitialForForm(client));
     setDiscount(client.discount ?? '');
     setPaid(isClientPaid(client));

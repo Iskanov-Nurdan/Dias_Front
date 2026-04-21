@@ -1,6 +1,6 @@
 @use '../../shared/styles/mixins';
 
-// ——— Страница (локальная тёмная тема через data-theme на корне) ———
+// ——— Страница (цвета графиков; общая тема с document[data-theme]) ———
 .analytics-page {
   width: 100%;
   max-width: none;

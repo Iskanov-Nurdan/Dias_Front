@@ -15,6 +15,11 @@ import { OTKPage } from '../../features/otk';
 import { WarehousePage } from '../../features/warehouse';
 import { SalesPage } from '../../features/sales';
 import { ClientsPage } from '../../features/clients';
+import { OrdersPage } from '../../features/orders';
+import { PaymentsPage } from '../../features/payments';
+import { ReturnsPage } from '../../features/returns';
+import { DefectsPage } from '../../features/defects';
+import { ReworkRequestsPage } from '../../features/reworkRequests';
 import { MyShiftPage, ShiftsReportPage } from '../../features/shifts';
 import { getDefaultHomePath } from '../../shared/config/navigation';
 import { STAGE2_TABS_ENABLED } from '../../shared/config/constants';
@@ -60,7 +65,12 @@ const AppRoutes = () => (
       {STAGE2_TABS_ENABLED && (
         <>
           <Route path="clients" element={<ProtectedRoute requiredAccess="clients"><ClientsPage /></ProtectedRoute>} />
+          <Route path="orders" element={<ProtectedRoute requiredAccess="client_orders"><OrdersPage /></ProtectedRoute>} />
           <Route path="sales" element={<ProtectedRoute requiredAccess="sales"><SalesPage /></ProtectedRoute>} />
+          <Route path="payments" element={<ProtectedRoute requiredAccess="payments"><PaymentsPage /></ProtectedRoute>} />
+          <Route path="returns" element={<ProtectedRoute requiredAccess="returns"><ReturnsPage /></ProtectedRoute>} />
+          <Route path="defects" element={<ProtectedRoute requiredAccess="defects"><DefectsPage /></ProtectedRoute>} />
+          <Route path="rework-requests" element={<ProtectedRoute requiredAccess="defects"><ReworkRequestsPage /></ProtectedRoute>} />
         </>
       )}
       <Route path="forbidden" element={<PlaceholderPage title="Нет доступа" />} />

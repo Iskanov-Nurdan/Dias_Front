@@ -206,6 +206,21 @@ ${s.comment ? `<tr><th>Комментарий</th><td>${escapeHtml(String(s.comm
   return { source: 'local' };
 }
 
+export async function downloadSaleReceipt(saleId) {
+  const res = await apiClient.get(`sales/${saleId}/receipt/`, {
+    responseType: 'blob',
+    headers: { Accept: 'text/html,application/pdf,application/octet-stream,*/*' },
+  });
+  const blob = res.data;
+  if (!(blob instanceof Blob) || blob.size === 0) {
+    throw new Error('Пустой ответ для квитанции');
+  }
+  const ct = (res.headers?.['content-type'] || '').toLowerCase();
+  const ext = ct.includes('pdf') ? 'pdf' : 'html';
+  const name = blobFilenameFromHeaders(res.headers, `receipt-${saleId}.${ext}`);
+  triggerBlobDownload(blob, name);
+}
+
 function escapeHtml(str) {
   return str
     .replace(/&/g, '&amp;')

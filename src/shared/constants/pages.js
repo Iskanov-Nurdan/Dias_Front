@@ -9,6 +9,11 @@ export const PAGE_IDS = {
   WAREHOUSE: 'warehouse',
   CLIENTS: 'clients',
   SALES: 'sales',
+  ORDERS: 'orders',
+  PAYMENTS: 'payments',
+  RETURNS: 'returns',
+  DEFECTS: 'defects',
+  REWORK_REQUESTS: 'rework-requests',
 };
 
 export const PAGE_ROUTES = {
@@ -22,6 +27,11 @@ export const PAGE_ROUTES = {
   [PAGE_IDS.WAREHOUSE]: '/warehouse',
   [PAGE_IDS.CLIENTS]: '/clients',
   [PAGE_IDS.SALES]: '/sales',
+  [PAGE_IDS.ORDERS]: '/orders',
+  [PAGE_IDS.PAYMENTS]: '/payments',
+  [PAGE_IDS.RETURNS]: '/returns',
+  [PAGE_IDS.DEFECTS]: '/defects',
+  [PAGE_IDS.REWORK_REQUESTS]: '/rework-requests',
 };
 
 export const PAGE_LABELS = {
@@ -35,6 +45,11 @@ export const PAGE_LABELS = {
   [PAGE_IDS.WAREHOUSE]: 'Склад',
   [PAGE_IDS.CLIENTS]: 'Клиенты',
   [PAGE_IDS.SALES]: 'Продажи',
+  [PAGE_IDS.ORDERS]: 'Заявки',
+  [PAGE_IDS.PAYMENTS]: 'Оплаты',
+  [PAGE_IDS.RETURNS]: 'Возвраты',
+  [PAGE_IDS.DEFECTS]: 'Брак / переделка',
+  [PAGE_IDS.REWORK_REQUESTS]: 'Переделка',
 };
 
 /** Группы для вспомогательных подборок (виджеты, ссылки) */
@@ -45,7 +60,7 @@ export const PAGE_GROUPS = {
   main: [PAGE_IDS.ANALYTICS, PAGE_IDS.OTK, PAGE_IDS.WAREHOUSE],
   setup: [PAGE_IDS.LINES, PAGE_IDS.MATERIALS, PAGE_IDS.CHEMISTRY, PAGE_IDS.RECIPES],
   admin: [PAGE_IDS.USERS],
-  commerce: [PAGE_IDS.CLIENTS, PAGE_IDS.SALES],
+  commerce: [PAGE_IDS.CLIENTS, PAGE_IDS.ORDERS, PAGE_IDS.SALES, PAGE_IDS.PAYMENTS, PAGE_IDS.RETURNS, PAGE_IDS.DEFECTS, PAGE_IDS.REWORK_REQUESTS],
 };
 
 export const PAGE_ICONS = {
@@ -59,4 +74,9 @@ export const PAGE_ICONS = {
   [PAGE_IDS.WAREHOUSE]: 'Warehouse',
   [PAGE_IDS.CLIENTS]: 'Building2',
   [PAGE_IDS.SALES]: 'TrendingUp',
+  [PAGE_IDS.ORDERS]: 'ClipboardList',
+  [PAGE_IDS.PAYMENTS]: 'TrendingUp',
+  [PAGE_IDS.RETURNS]: 'Truck',
+  [PAGE_IDS.DEFECTS]: 'ShieldCheck',
+  [PAGE_IDS.REWORK_REQUESTS]: 'ClipboardCheck',
 };

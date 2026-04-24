@@ -3,7 +3,7 @@ import { STAGE2_TABS_ENABLED } from './constants';
 /** Маршруты по ключу доступа (совпадает с access_keys бэкенда). */
 export const ACCESS_ROUTE_MAP = {
   my_shift: '/my-shift',
-  recipes: '/recipes',
+  recipes: '/directories',
   materials: '/materials',
   lines: '/lines',
   chemistry: '/chemistry',
@@ -18,7 +18,7 @@ export const ACCESS_ROUTE_MAP = {
   client_orders: '/orders',
   payments: '/payments',
   returns: '/returns',
-  defects: '/defects',
+  defects: '/defects-rework',
 };
 
 /** Первый экран после входа. */
@@ -77,8 +77,7 @@ export function getNavSections() {
       links: [
         { path: '/materials', accessKey: 'materials' },
         { path: '/chemistry', accessKey: 'chemistry' },
-        { path: '/profiles', accessKey: 'recipes', label: 'Профили' },
-        { path: '/recipes', accessKey: 'recipes', label: 'Рецепты' },
+        { path: '/directories', accessKey: 'recipes', label: 'Справочники' },
       ],
     },
     {
@@ -101,8 +100,7 @@ export function getNavSections() {
         { path: '/sales', accessKey: 'sales' },
         { path: '/payments', accessKey: 'payments', label: 'Оплаты' },
         { path: '/returns', accessKey: 'returns', label: 'Возвраты' },
-        { path: '/defects', accessKey: 'defects', label: 'Брак / переделка' },
-        { path: '/rework-requests', accessKey: 'defects', label: 'Переделка' },
+        { path: '/defects-rework', accessKey: 'defects', label: 'Брак / переделка' },
       ],
     });
   }

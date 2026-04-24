@@ -1,0 +1,11 @@
+@use '../../../../shared/styles/variables' as *;
+
+.reference-books-page {
+  &__tabs {
+    margin-bottom: var(--space-3);
+  }
+
+  &__content {
+    width: 100%;
+  }
+}

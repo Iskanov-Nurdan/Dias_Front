@@ -27,6 +27,7 @@ const ClientsPage = () => {
   const toast = useToast();
   const [queryState, setQueryState] = useState({ page: 1, page_size: 20, search: '' });
   const [modalClient, setModalClient] = useState(null);
+  const [detailClient, setDetailClient] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [historyTarget, setHistoryTarget] = useState(null);
   const [historyItems, setHistoryItems] = useState([]);
@@ -154,11 +155,11 @@ const ClientsPage = () => {
             {items.map((c) => (
               <tr
                 key={c.id}
-                onClick={() => setModalClient(c)}
+                onClick={() => setDetailClient(c)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    setModalClient(c);
+                    setDetailClient(c);
                   }
                 }}
                 tabIndex={0}
@@ -184,6 +185,8 @@ const ClientsPage = () => {
                   <ActionMenu
                     ariaLabel="Действия"
                     items={[
+                      { label: 'Открыть', onClick: () => setDetailClient(c) },
+                      { label: 'Редактировать', onClick: () => setModalClient(c) },
                       { label: 'История', onClick: () => handleOpenHistory(c) },
                       ...(clientCanDelete(c)
                         ? [{ label: 'Удалить', danger: true, onClick: () => setDeleteTarget({ id: c.id, name: c.name || c.title || 'Клиент' }) }]
@@ -201,6 +204,21 @@ const ClientsPage = () => {
         <Pagination meta={listMeta} onPageChange={(nextPage) => setQueryState((p) => ({ ...p, page: nextPage }))} />
       )}
       {submitError && !deleteTarget && <p className="modal__error">{submitError}</p>}
+
+      {detailClient && (
+        <ClientDetailModal
+          client={detailClient}
+          onClose={() => setDetailClient(null)}
+          onEdit={(client) => {
+            setDetailClient(null);
+            setModalClient(client);
+          }}
+          onOpenHistory={(client) => {
+            setDetailClient(null);
+            handleOpenHistory(client);
+          }}
+        />
+      )}
 
       {modalClient !== null && (
         <ClientModal
@@ -240,6 +258,38 @@ const clientIsActive = (c) => {
   if (c.active === false) return false;
   return true;
 };
+
+const ClientDetailModal = ({ client, onClose, onEdit, onOpenHistory }) => (
+  <div className="modal-overlay" onClick={onClose}>
+    <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
+      <div className="modal__head">
+        <h3>Карточка клиента</h3>
+        <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+      </div>
+      <div style={{ padding: '1.5rem' }}>
+        <section className="card" style={{ padding: 12, marginBottom: 12 }}>
+          <h4>Основные данные</h4>
+          <p><strong>Название:</strong> {client?.name || client?.title || '—'}</p>
+          <p><strong>Телефон:</strong> {client?.phone || client?.phone_number || '—'}</p>
+          <p><strong>Контакт:</strong> {client?.contact_person || client?.contact_name || '—'}</p>
+          <p><strong>Статус:</strong> {clientIsActive(client) ? 'Активен' : 'Неактивен'}</p>
+          {(client?.comment || client?.notes) && (
+            <p><strong>Комментарий:</strong> {client.comment || client.notes}</p>
+          )}
+        </section>
+        <section className="card" style={{ padding: 12, marginBottom: 12 }}>
+          <h4>Связанные данные</h4>
+          <p><strong>Продаж:</strong> {client?.sales_count ?? client?.orders_count ?? '—'}</p>
+          <p><strong>Сумма продаж:</strong> {client?.sales_total != null && client?.sales_total !== '' ? `${formatQuantityDisplay(client.sales_total)} сом` : '—'}</p>
+        </section>
+      </div>
+      <div className="modal__actions">
+        <button type="button" className="btn btn--secondary" onClick={() => onOpenHistory(client)}>История</button>
+        <button type="button" className="btn btn--primary" onClick={() => onEdit(client)}>Редактировать</button>
+      </div>
+    </div>
+  </div>
+);
 
 const ClientModal = ({ client, onClose, onSubmit, error }) => {
   const [name, setName] = useState(client?.name || '');

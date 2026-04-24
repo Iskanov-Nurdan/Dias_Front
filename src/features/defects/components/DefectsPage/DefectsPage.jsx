@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { apiClient } from '../../../../shared/api';
 import { useOperationalRefetch } from '../../../../shared/realtime';
 import { useServerQuery, formatQuantityDisplay, getApiErrorMessage, parseLocaleNumber } from '../../../../shared/lib';
-import { ActionMenu, ConfirmModal, EmptyState, ErrorState, Loading, Select, useToast } from '../../../../shared/ui';
+import { ActionMenu, Badge, ConfirmModal, EmptyState, ErrorState, Loading, Pagination, Select, useToast } from '../../../../shared/ui';
 import {
+  completeDefectRework,
   createDefect,
   deleteDefect,
   sellDefect,
@@ -23,6 +24,30 @@ const STATUS_OPTIONS = [
 
 const statusLabel = (v) => STATUS_OPTIONS.find((x) => x.value === v)?.label || v || '—';
 
+const statusVariant = (v) => {
+  switch (v) {
+    case 'new': return 'default';
+    case 'on_stock': return 'warning';
+    case 'sent_to_rework': return 'primary';
+    case 'reworked': return 'success';
+    case 'sold': return 'success';
+    case 'written_off': return 'danger';
+    default: return 'default';
+  }
+};
+
+const sourceLabel = (t) => {
+  if (t === 'otk') return 'ОТК';
+  if (t === 'return') return 'Возврат';
+  return t || '—';
+};
+
+const canEditDefect = (s) => ['new', 'on_stock'].includes(s);
+const canSendDefectToRework = (s) => ['new', 'on_stock'].includes(s);
+const canCompleteDefectRework = (s) => s === 'sent_to_rework';
+const canSellOrWriteoffDefect = (s) => s === 'on_stock';
+const canDeleteDefect = (s) => s === 'new';
+
 const DefectsPage = () => {
   const toast = useToast();
   const [queryState, setQueryState] = useState({ page: 1, page_size: 20, status: '' });
@@ -30,14 +55,27 @@ const DefectsPage = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [writeoffTarget, setWriteoffTarget] = useState(null);
   const [sellTarget, setSellTarget] = useState(null);
+  const [sendReworkTarget, setSendReworkTarget] = useState(null);
+  const [completeReworkTarget, setCompleteReworkTarget] = useState(null);
   const [writeoffReason, setWriteoffReason] = useState('');
   const [sellClient, setSellClient] = useState('');
   const [sellPrice, setSellPrice] = useState('');
   const [sellQty, setSellQty] = useState('');
   const [clients, setClients] = useState([]);
   const [submitError, setSubmitError] = useState('');
-  const { items, loading, error, refetch } = useServerQuery('defects/', queryState, { enabled: true });
+  const { items, meta, raw, loading, error, refetch } = useServerQuery('defects/', queryState, { enabled: true });
   useOperationalRefetch(['defect_record', 'sale', 'rework_request'], refetch, true);
+
+  const listMeta = useMemo(() => {
+    if (meta) return meta;
+    const r = raw;
+    const ps = Number(queryState.page_size) || 20;
+    if (r && typeof r.count === 'number' && ps > 0) {
+      const pages = Math.max(1, Math.ceil(r.count / ps));
+      return { page: queryState.page, pages, total: r.count };
+    }
+    return null;
+  }, [meta, raw, queryState.page, queryState.page_size]);
 
   useEffect(() => {
     apiClient.get('clients/', { params: { page_size: 500 } }).then((r) => setClients(r.data?.items || [])).catch(() => setClients([]));
@@ -55,6 +93,7 @@ const DefectsPage = () => {
       setSubmitError(getApiErrorMessage(e, 'Ошибка сохранения записи брака'));
     }
   };
+
   const onDelete = async () => {
     if (!deleteTarget?.id) return;
     setSubmitError('');
@@ -74,10 +113,16 @@ const DefectsPage = () => {
       await fn();
       refetch();
       toast.show(okText);
+      return true;
     } catch (e) {
       setSubmitError(getApiErrorMessage(e, 'Ошибка операции'));
+      return false;
     }
   };
+
+  const deleteMessage = deleteTarget
+    ? `Удалить запись брака по продукту «${deleteTarget.product || 'без названия'}»?`
+    : '';
 
   return (
     <div className="page">
@@ -99,43 +144,83 @@ const DefectsPage = () => {
       {error && error.status !== 404 && <ErrorState error={error} onRetry={refetch} />}
       {!loading && (!error || error.status === 404) && items.length === 0 && <EmptyState title="Нет записей брака" />}
       {!loading && (!error || error.status === 404) && items.length > 0 && (
-        <table className="data-table data-table--fixed data-table--row-actions">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Продукт</th>
-              <th className="data-table__cell--num">Количество</th>
-              <th>Источник</th>
-              <th>Статус</th>
-              <th>Причина</th>
-              <th aria-hidden />
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((d) => (
-              <tr key={d.id}>
-                <td>#{d.id}</td>
-                <td>{d.product || '—'}</td>
-                <td className="data-table__cell--num">{d.quantity_pcs != null ? formatQuantityDisplay(d.quantity_pcs) : '—'}</td>
-                <td>{d.source_type || '—'}</td>
-                <td>{statusLabel(d.status)}</td>
-                <td>{d.defect_reason || d.writeoff_reason || '—'}</td>
-                <td>
-                  <ActionMenu
-                    ariaLabel="Действия"
-                    items={[
-                      { label: 'Редактировать', onClick: () => setModalDefect(d) },
-                      { label: 'Передать на переработку', onClick: () => runAction(() => sendDefectToRework(d.id), 'Передано на переработку') },
-                      { label: 'Продать брак', onClick: () => { setSellTarget(d); setSellQty(String(d.quantity_pcs || '')); setSellClient(''); setSellPrice(''); } },
-                      { label: 'Списать', danger: true, onClick: () => { setWriteoffTarget(d); setWriteoffReason(''); } },
-                      { label: 'Удалить', danger: true, onClick: () => setDeleteTarget(d) },
-                    ]}
-                  />
-                </td>
+        <>
+          <table className="data-table data-table--fixed data-table--row-actions">
+            <thead>
+              <tr>
+                <th>Продукт</th>
+                <th className="data-table__cell--num">Количество</th>
+                <th>Источник</th>
+                <th>Статус</th>
+                <th>Причина</th>
+                <th aria-hidden />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {items.map((d) => {
+                const st = d.status;
+                const menuItems = [];
+                if (canEditDefect(st)) {
+                  menuItems.push({ label: 'Редактировать', onClick: () => setModalDefect(d) });
+                }
+                if (canSendDefectToRework(st)) {
+                  menuItems.push({
+                    label: 'На переработку',
+                    onClick: () => { setSendReworkTarget(d); setSubmitError(''); },
+                  });
+                }
+                if (canCompleteDefectRework(st)) {
+                  menuItems.push({
+                    label: 'Завершить переработку',
+                    onClick: () => { setCompleteReworkTarget(d); setSubmitError(''); },
+                  });
+                }
+                if (canSellOrWriteoffDefect(st)) {
+                  menuItems.push({
+                    label: 'Продать',
+                    onClick: () => {
+                      setSellTarget(d);
+                      setSellQty(String(d.quantity_pcs ?? ''));
+                      setSellClient('');
+                      setSellPrice('');
+                      setSubmitError('');
+                    },
+                  });
+                  menuItems.push({
+                    label: 'Списать',
+                    danger: true,
+                    onClick: () => { setWriteoffTarget(d); setWriteoffReason(''); setSubmitError(''); },
+                  });
+                }
+                if (canDeleteDefect(st)) {
+                  menuItems.push({
+                    label: 'Удалить',
+                    danger: true,
+                    onClick: () => { setDeleteTarget(d); setSubmitError(''); },
+                  });
+                }
+
+                return (
+                  <tr key={d.id}>
+                    <td>{d.product || '—'}</td>
+                    <td className="data-table__cell--num">{d.quantity_pcs != null ? formatQuantityDisplay(d.quantity_pcs) : '—'}</td>
+                    <td>{sourceLabel(d.source_type)}</td>
+                    <td><Badge variant={statusVariant(st)}>{statusLabel(st)}</Badge></td>
+                    <td>{d.defect_reason || d.writeoff_reason || '—'}</td>
+                    <td>
+                      {menuItems.length ? (
+                        <ActionMenu ariaLabel="Действия" items={menuItems} />
+                      ) : (
+                        <span style={{ opacity: 0.5 }}>—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <Pagination meta={listMeta} onPageChange={(nextPage) => setQueryState((p) => ({ ...p, page: nextPage }))} />
+        </>
       )}
 
       {modalDefect && (
@@ -146,52 +231,118 @@ const DefectsPage = () => {
           error={submitError}
         />
       )}
+
       <ConfirmModal
         open={!!deleteTarget}
         title="Удалить запись брака?"
-        message={deleteTarget ? `Удалить запись #${deleteTarget.id}?` : ''}
+        message={deleteMessage}
         confirmText="Удалить"
         onConfirm={onDelete}
         onCancel={() => { setDeleteTarget(null); setSubmitError(''); }}
         error={deleteTarget ? submitError : undefined}
       />
+
+      <ConfirmModal
+        open={!!sendReworkTarget}
+        title="Передать на переработку"
+        message="Статус записи брака изменится на сервере. Продолжить?"
+        confirmText="Передать"
+        onConfirm={async () => {
+          if (!sendReworkTarget?.id) return;
+          const ok = await runAction(() => sendDefectToRework(sendReworkTarget.id), 'Передано на переработку');
+          if (ok) setSendReworkTarget(null);
+        }}
+        onCancel={() => { setSendReworkTarget(null); setSubmitError(''); }}
+        error={sendReworkTarget ? submitError : undefined}
+      />
+
+      <ConfirmModal
+        open={!!completeReworkTarget}
+        title="Завершить переработку"
+        message="Завершить переработку по этой записи брака на сервере?"
+        confirmText="Завершить"
+        onConfirm={async () => {
+          if (!completeReworkTarget?.id) return;
+          const ok = await runAction(() => completeDefectRework(completeReworkTarget.id), 'Переработка завершена');
+          if (ok) setCompleteReworkTarget(null);
+        }}
+        onCancel={() => { setCompleteReworkTarget(null); setSubmitError(''); }}
+        error={completeReworkTarget ? submitError : undefined}
+      />
+
       <ConfirmModal
         open={!!writeoffTarget}
         title="Списать брак"
-        message={
+        message={(
           <div>
             <p>Укажите причину списания:</p>
             <textarea rows={3} value={writeoffReason} onChange={(e) => setWriteoffReason(e.target.value)} />
           </div>
-        }
+        )}
         confirmText="Списать"
-        onConfirm={() => runAction(() => writeoffDefect(writeoffTarget.id, writeoffReason.trim()), 'Брак списан')}
+        onConfirm={async () => {
+          const reason = writeoffReason.trim();
+          if (!reason) {
+            setSubmitError('Укажите причину списания');
+            return;
+          }
+          if (!writeoffTarget?.id) return;
+          const ok = await runAction(() => writeoffDefect(writeoffTarget.id, reason), 'Брак списан');
+          if (ok) {
+            setWriteoffTarget(null);
+            setWriteoffReason('');
+          }
+        }}
         onCancel={() => { setWriteoffTarget(null); setWriteoffReason(''); setSubmitError(''); }}
         error={writeoffTarget ? submitError : undefined}
       />
+
       <ConfirmModal
         open={!!sellTarget}
         title="Продать брак"
-        message={
+        message={(
           <div>
             <label>Клиент</label>
-            <Select value={sellClient} onChange={setSellClient} options={[{ value: '', label: 'Выберите клиента' }, ...clients.map((c) => ({ value: String(c.id), label: c.name || `#${c.id}` }))]} />
+            <Select
+              value={sellClient}
+              onChange={setSellClient}
+              options={[{ value: '', label: 'Выберите клиента' }, ...clients.map((c) => ({ value: String(c.id), label: c.name || 'Без названия' }))]}
+            />
             <label>Цена</label>
             <input value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} />
             <label>Количество</label>
             <input value={sellQty} onChange={(e) => setSellQty(e.target.value)} />
           </div>
-        }
-        confirmText="Продать"
-        onConfirm={() => runAction(
-          () => sellDefect(sellTarget.id, {
-            client_id: Number(sellClient),
-            price: parseLocaleNumber(sellPrice),
-            quantity: parseLocaleNumber(sellQty),
-            date: new Date().toISOString().slice(0, 10),
-          }),
-          'Продажа брака создана',
         )}
+        confirmText="Продать"
+        onConfirm={async () => {
+          const cid = Number(sellClient);
+          const price = parseLocaleNumber(sellPrice);
+          const qty = parseLocaleNumber(sellQty);
+          if (!sellClient || !Number.isFinite(cid) || cid <= 0) {
+            setSubmitError('Выберите клиента');
+            return;
+          }
+          if (!Number.isFinite(price) || price < 0) {
+            setSubmitError('Укажите корректную цену');
+            return;
+          }
+          if (!Number.isFinite(qty) || qty <= 0) {
+            setSubmitError('Укажите корректное количество');
+            return;
+          }
+          if (!sellTarget?.id) return;
+          const ok = await runAction(
+            () => sellDefect(sellTarget.id, {
+              client_id: cid,
+              price,
+              quantity: qty,
+              date: new Date().toISOString().slice(0, 10),
+            }),
+            'Продажа брака создана',
+          );
+          if (ok) setSellTarget(null);
+        }}
         onCancel={() => { setSellTarget(null); setSubmitError(''); }}
         error={sellTarget ? submitError : undefined}
       />
@@ -201,12 +352,10 @@ const DefectsPage = () => {
 
 const DefectModal = ({ defect, onClose, onSubmit, error }) => {
   const [sourceType, setSourceType] = useState(defect?.source_type || 'return');
-  const [sourceId, setSourceId] = useState(defect?.source_id != null ? String(defect.source_id) : '');
   const [product, setProduct] = useState(defect?.product || '');
   const [quantityPcs, setQuantityPcs] = useState(defect?.quantity_pcs != null ? String(defect.quantity_pcs) : '');
   const [kgCoeff, setKgCoeff] = useState(defect?.kg_coefficient != null ? String(defect.kg_coefficient) : '');
   const [reason, setReason] = useState(defect?.defect_reason || '');
-  const [status, setStatus] = useState(defect?.status || 'new');
   const [comment, setComment] = useState(defect?.comment || '');
 
   return (
@@ -221,20 +370,16 @@ const DefectModal = ({ defect, onClose, onSubmit, error }) => {
             e.preventDefault();
             onSubmit({
               source_type: sourceType,
-              ...(sourceId ? { source_id: Number(sourceId) } : {}),
               product: product.trim(),
               quantity_pcs: parseLocaleNumber(quantityPcs) || 0,
               ...(kgCoeff ? { kg_coefficient: parseLocaleNumber(kgCoeff) } : {}),
               defect_reason: reason.trim() || undefined,
-              status,
               comment: comment.trim() || undefined,
             });
           }}
         >
           <label>Источник</label>
           <Select value={sourceType} onChange={setSourceType} options={[{ value: 'otk', label: 'ОТК' }, { value: 'return', label: 'Возврат' }]} />
-          <label>ID источника</label>
-          <input value={sourceId} onChange={(e) => setSourceId(e.target.value)} />
           <label>Продукт *</label>
           <input value={product} onChange={(e) => setProduct(e.target.value)} required />
           <label>Количество (шт) *</label>
@@ -243,8 +388,6 @@ const DefectModal = ({ defect, onClose, onSubmit, error }) => {
           <input value={kgCoeff} onChange={(e) => setKgCoeff(e.target.value)} />
           <label>Причина брака</label>
           <input value={reason} onChange={(e) => setReason(e.target.value)} />
-          <label>Статус</label>
-          <Select value={status} onChange={setStatus} options={STATUS_OPTIONS} />
           <label>Комментарий</label>
           <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} />
           {error && <p className="modal__error">{error}</p>}

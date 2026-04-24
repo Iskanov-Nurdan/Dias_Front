@@ -7,6 +7,7 @@ import {
   cancelReworkRequest,
   completeReworkRequest,
   createReworkRequest,
+  getReworkSelectSources,
   startReworkRequest,
   updateReworkRequest,
 } from '../../api/reworkRequestsApi';
@@ -33,10 +34,6 @@ const statusVariant = (v) => {
 const pickNestedId = (row, objectKey, idKey) => {
   if (!row) return '';
   if (row[idKey] != null) return String(row[idKey]);
-  const o = row[objectKey];
-  if (o != null && typeof o === 'object' && o.id != null) return String(o.id);
-  if (typeof o === 'number' && Number.isFinite(o)) return String(o);
-  if (typeof o === 'string' && o.trim() !== '') return o.trim();
   return '';
 };
 
@@ -94,6 +91,7 @@ const ReworkRequestsPage = () => {
   const toast = useToast();
   const [queryState, setQueryState] = useState({ page: 1, page_size: 20, status: '' });
   const [modalDoc, setModalDoc] = useState(null);
+  const [detailDocId, setDetailDocId] = useState(null);
   const [completeTarget, setCompleteTarget] = useState(null);
   const [startTarget, setStartTarget] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
@@ -126,10 +124,20 @@ const ReworkRequestsPage = () => {
   }, [warehouseBatches]);
 
   const loadRefs = () => {
-    apiClient.get('warehouse/batches/', { params: { page_size: 500 } }).then((r) => setWarehouseBatches(r.data?.items || [])).catch(() => setWarehouseBatches([]));
-    apiClient.get('returns/', { params: { page_size: 500 } }).then((r) => setReturnsList(r.data?.items || [])).catch(() => setReturnsList([]));
-    apiClient.get('defects/', { params: { page_size: 500 } }).then((r) => setDefectsList(r.data?.items || [])).catch(() => setDefectsList([]));
-    apiClient.get('sales/', { params: { page_size: 500 } }).then((r) => setSalesList(r.data?.items || [])).catch(() => setSalesList([]));
+    getReworkSelectSources()
+      .then((res) => {
+        const data = res.data || {};
+        setWarehouseBatches(Array.isArray(data.result_warehouse_batches) ? data.result_warehouse_batches : []);
+        setReturnsList(Array.isArray(data.returns) ? data.returns : []);
+        setDefectsList(Array.isArray(data.defect_records) ? data.defect_records : []);
+        setSalesList(Array.isArray(data.original_sales) ? data.original_sales : []);
+      })
+      .catch(() => {
+        setWarehouseBatches([]);
+        setReturnsList([]);
+        setDefectsList([]);
+        setSalesList([]);
+      });
   };
 
   useEffect(() => { loadRefs(); }, []);
@@ -222,23 +230,24 @@ const ReworkRequestsPage = () => {
             <tbody>
               {items.map((r) => {
                 const st = r.status;
-                const menuItems = [];
-                if (canEditRework(st)) {
+                const availableActions = Array.isArray(r.available_actions) ? r.available_actions : [];
+                const menuItems = [{ label: 'Открыть', onClick: () => setDetailDocId(r.id) }];
+                if (canEditRework(st) && availableActions.includes('edit')) {
                   menuItems.push({ label: 'Редактировать', onClick: () => setModalDoc(r) });
                 }
-                if (canStartRework(st)) {
+                if (canStartRework(st) && availableActions.includes('start')) {
                   menuItems.push({
                     label: 'Начать',
                     onClick: () => { setStartTarget(r); setSubmitError(''); },
                   });
                 }
-                if (canCompleteRework(st)) {
+                if (canCompleteRework(st) && availableActions.includes('complete')) {
                   menuItems.push({
                     label: 'Завершить',
                     onClick: () => { setCompleteTarget(r); setResultBatchId(''); setSubmitError(''); },
                   });
                 }
-                if (canCancelRework(st)) {
+                if (canCancelRework(st) && availableActions.includes('cancel')) {
                   menuItems.push({
                     label: 'Отменить',
                     danger: true,
@@ -248,7 +257,11 @@ const ReworkRequestsPage = () => {
 
                 return (
                   <tr key={r.id}>
-                    <td>{r.rework_number || '—'}</td>
+                    <td>
+                      <button type="button" className="btn btn--ghost" onClick={() => setDetailDocId(r.id)}>
+                        {r.rework_number || '—'}
+                      </button>
+                    </td>
                     <td>{r.product || '—'}</td>
                     <td className="data-table__cell--num">{r.quantity_kg != null ? formatQuantityDisplay(r.quantity_kg) : '—'}</td>
                     <td><Badge variant={statusVariant(st)}>{statusLabel(st)}</Badge></td>
@@ -280,6 +293,33 @@ const ReworkRequestsPage = () => {
           onSubmit={onSubmit}
           onClose={() => { setModalDoc(null); setSubmitError(''); }}
           error={submitError}
+        />
+      )}
+      {detailDocId && (
+        <ReworkDetailModal
+          reworkId={detailDocId}
+          batchById={batchById}
+          onClose={() => setDetailDocId(null)}
+          onEdit={(doc) => {
+            setDetailDocId(null);
+            setModalDoc(doc);
+          }}
+          onStart={(doc) => {
+            setDetailDocId(null);
+            setStartTarget(doc);
+            setSubmitError('');
+          }}
+          onComplete={(doc) => {
+            setDetailDocId(null);
+            setCompleteTarget(doc);
+            setResultBatchId('');
+            setSubmitError('');
+          }}
+          onCancel={(doc) => {
+            setDetailDocId(null);
+            setCancelTarget(doc);
+            setSubmitError('');
+          }}
         />
       )}
 
@@ -384,9 +424,20 @@ const ReworkModal = ({
     label: saleRefLabel(s) || 'Продажа',
   })), [salesList]);
 
+  useEffect(() => {
+    const fromDefect = defectRecord ? defectsList.find((x) => String(x.id) === String(defectRecord)) : null;
+    if (!product.trim()) {
+      const nextProduct = fromDefect?.product || '';
+      if (nextProduct) setProduct(nextProduct);
+    }
+    if ((!quantityKg || String(quantityKg).trim() === '') && fromDefect?.quantity_pcs != null) {
+      setQuantityKg(String(fromDefect.quantity_pcs));
+    }
+  }, [defectRecord, defectsList, product, quantityKg]);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
           <h3>{doc ? 'Переделка' : 'Новая переделка'}</h3>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
@@ -394,6 +445,7 @@ const ReworkModal = ({
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            if (!defectRecord || !originalSale) return;
             const q = parseLocaleNumber(quantityKg);
             const payload = {
               product: product.trim() || undefined,
@@ -401,8 +453,8 @@ const ReworkModal = ({
               comment: comment.trim() || undefined,
             };
             if (returnDoc) payload.return_doc = Number(returnDoc);
-            if (defectRecord) payload.defect_record = Number(defectRecord);
-            if (originalSale) payload.original_sale = Number(originalSale);
+            payload.defect_record = Number(defectRecord);
+            payload.original_sale = Number(originalSale);
             if (!doc) payload.status = 'pending';
             onSubmit(payload);
           }}
@@ -426,7 +478,7 @@ const ReworkModal = ({
             options={[{ value: '', label: 'Нет' }, ...saleOptions]}
           />
           <label>Продукт *</label>
-          <input value={product} onChange={(e) => setProduct(e.target.value)} required />
+          <input value={product} onChange={(e) => setProduct(e.target.value)} readOnly required />
           <label>Количество, кг {!doc ? '*' : ''}</label>
           <input value={quantityKg} onChange={(e) => setQuantityKg(e.target.value)} required={!doc} />
           <label>Комментарий</label>
@@ -437,6 +489,74 @@ const ReworkModal = ({
             <button type="submit" className="btn btn--primary">Сохранить</button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+};
+
+const ReworkDetailModal = ({
+  reworkId,
+  batchById,
+  onClose,
+  onEdit,
+  onStart,
+  onComplete,
+  onCancel,
+}) => {
+  const [doc, setDoc] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await apiClient.get(`rework-requests/${reworkId}/`);
+        if (!alive) return;
+        setDoc(res.data || null);
+      } catch (e) {
+        if (!alive) return;
+        setError(getApiErrorMessage(e, 'Не удалось загрузить карточку переделки'));
+      } finally {
+        if (alive) setLoading(false);
+      }
+    };
+    load();
+    return () => { alive = false; };
+  }, [reworkId]);
+
+  const st = doc?.status;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
+        <div className="modal__head">
+          <h3>Карточка переделки</h3>
+          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+        </div>
+        {loading && <Loading />}
+        {!loading && error && <p className="modal__error">{error}</p>}
+        {!loading && !error && doc && (
+          <div style={{ padding: '0 1.5rem 1.5rem' }}>
+            <section className="card" style={{ padding: 12, marginBottom: 12 }}>
+              <h4>Данные</h4>
+              <p><strong>Номер:</strong> {doc.rework_number || '—'}</p>
+              <p><strong>Продукт:</strong> {doc.product || '—'}</p>
+              <p><strong>Количество:</strong> {doc.quantity_kg != null ? `${formatQuantityDisplay(doc.quantity_kg)} кг` : '—'}</p>
+              <p><strong>Статус:</strong> <Badge variant={statusVariant(st)}>{statusLabel(st)}</Badge></p>
+              <p><strong>Результат:</strong> {reworkResultLabel(doc, batchById)}</p>
+              {doc.comment ? <p><strong>Комментарий:</strong> {doc.comment}</p> : null}
+            </section>
+            <div className="modal__actions">
+              {canEditRework(st) ? <button type="button" className="btn btn--secondary" onClick={() => onEdit(doc)}>Редактировать</button> : null}
+              {canStartRework(st) ? <button type="button" className="btn btn--secondary" onClick={() => onStart(doc)}>Начать</button> : null}
+              {canCompleteRework(st) ? <button type="button" className="btn btn--primary" onClick={() => onComplete(doc)}>Завершить</button> : null}
+              {canCancelRework(st) ? <button type="button" className="btn btn--danger" onClick={() => onCancel(doc)}>Отменить</button> : null}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -79,14 +79,16 @@ async function sniffDownloadBlob(blob) {
 
 export const getReturns = (params) => apiClient.get('returns/', { params });
 export const getReturnById = (id) => apiClient.get(`returns/${id}/`);
+export const getReturnSelectSources = (saleId) =>
+  apiClient.get('returns/select-sources/', { params: saleId ? { sale_id: saleId } : {} });
 export const createReturn = (payload) => apiClient.post('returns/', payload);
 export const updateReturn = (id, payload) => apiClient.patch(`returns/${id}/`, payload);
 export const deleteReturn = (id) => apiClient.delete(`returns/${id}/`);
 
 export const downloadReturnWaybill = async (returnId) => {
-  const res = await apiClient.get(`returns/${returnId}/nakladnaya/`, {
+  const res = await apiClient.get(`returns/${returnId}/waybill/`, {
     responseType: 'blob',
-    headers: { Accept: 'text/html,application/pdf,application/octet-stream,*/*' },
+    headers: { Accept: 'text/html,*/*' },
   });
   const blob = res.data;
   if (!(blob instanceof Blob) || blob.size === 0) throw new Error('Пустой ответ по акту возврата');
@@ -97,27 +99,10 @@ export const downloadReturnWaybill = async (returnId) => {
   }
 
   const ct = (res.headers?.['content-type'] || '').toLowerCase();
-  let ext = 'html';
-  if (sniff.kind === 'pdf') ext = 'pdf';
-  else if (sniff.kind === 'xlsx') ext = 'xlsx';
-  else if (sniff.kind === 'html') ext = 'html';
-  else if (ct.includes('pdf')) ext = 'pdf';
-  else if (ct.includes('spreadsheet') || ct.includes('excel')) ext = 'xlsx';
-
-  let filename = blobFilenameFromHeaders(res.headers, `return-waybill-${returnId}.${ext}`);
-  if (sniff.kind === 'pdf' && !/\.pdf$/i.test(filename)) {
-    filename = filename.replace(/\.(html|htm|bin|dat)$/i, '.pdf');
-    if (!/\.pdf$/i.test(filename)) filename = `return-waybill-${returnId}.pdf`;
-  }
-  if (sniff.kind === 'html' && !/\.(html|htm)$/i.test(filename) && !ct.includes('pdf')) {
-    filename = filename.replace(/\.(bin|dat)$/i, '.html');
-    if (!/\.(html|htm)$/i.test(filename)) filename = `return-waybill-${returnId}.html`;
+  if (sniff.kind !== 'html' && !ct.includes('text/html')) {
+    throw new Error('Неверный формат акта возврата');
   }
 
-  const downloadBlob =
-    sniff.kind === 'pdf' && !ct.includes('pdf')
-      ? new Blob([await blob.arrayBuffer()], { type: 'application/pdf' })
-      : blob;
-
-  triggerBlobDownload(downloadBlob, filename);
+  const filename = blobFilenameFromHeaders(res.headers, `return-waybill-${returnId}.html`);
+  triggerBlobDownload(blob, filename);
 };

@@ -19,7 +19,7 @@ import {
 import { apiClient } from '../../../../shared/api';
 import { useAuth } from '../../../auth/model/AuthProvider';
 import { useOperationalRefetch } from '../../../../shared/realtime';
-import { downloadSaleReceipt } from '../../api/salesApi';
+import { downloadSaleReceipt, getSalesSelectSources } from '../../api/salesApi';
 import WaybillPreviewModal from './WaybillPreviewModal';
 import './SalesPage.scss';
 
@@ -31,15 +31,6 @@ const SALE_STATUS_OPTIONS = [
   { value: 'closed', label: 'Закрыта' },
   { value: 'canceled', label: 'Отменена' },
 ];
-
-const SALE_ALLOWED_TRANSITIONS = {
-  draft: ['confirmed', 'canceled'],
-  confirmed: ['partially_shipped', 'shipped', 'canceled'],
-  partially_shipped: ['shipped', 'closed', 'canceled'],
-  shipped: ['closed'],
-  closed: [],
-  canceled: [],
-};
 
 const statusLabel = (v) => SALE_STATUS_OPTIONS.find((x) => x.value === v)?.label || v || '—';
 const statusVariant = (v) => {
@@ -57,21 +48,8 @@ const statusVariant = (v) => {
 const formatDate = (v) => (v ? String(v).slice(0, 10) : '—');
 const toMoney = (v) => (v != null ? `${formatQuantityDisplay(v)} сом` : '—');
 
-const saleClientIdFromRow = (sale) => {
-  if (sale?.client_id != null) return String(sale.client_id);
-  const c = sale?.client;
-  if (c != null && typeof c === 'object' && c.id != null) return String(c.id);
-  if (c != null && (typeof c === 'number' || typeof c === 'string')) return String(c);
-  return '';
-};
-
-const saleLinkedOrderIdFromRow = (sale) => {
-  if (sale?.linked_order_id != null) return String(sale.linked_order_id);
-  const lo = sale?.linked_order;
-  if (lo != null && typeof lo === 'object' && lo.id != null) return String(lo.id);
-  if (lo != null && (typeof lo === 'number' || typeof lo === 'string')) return String(lo);
-  return '';
-};
+const saleClientIdFromRow = (sale) => (sale?.client_id != null ? String(sale.client_id) : '');
+const saleLinkedOrderIdFromRow = (sale) => (sale?.linked_order_id != null ? String(sale.linked_order_id) : '');
 
 const formatApiErrorDetail = (data, fallback) => {
   let msg = fallback;
@@ -117,6 +95,7 @@ const SalesPage = () => {
   });
   const [clients, setClients] = useState([]);
   const [modalSale, setModalSale] = useState(null);
+  const [detailSaleId, setDetailSaleId] = useState(null);
   const [waybillPreviewSaleId, setWaybillPreviewSaleId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [submitError, setSubmitError] = useState('');
@@ -127,18 +106,21 @@ const SalesPage = () => {
 
   const { items, meta, loading, error, refetch } = useServerQuery('sales/', queryState, { enabled: true });
 
-  const loadClients = useCallback(() => {
-    apiClient.get('clients/', { params: { page_size: 500 } })
-      .then((res) => setClients(res.data?.items || []))
+  const loadSelectSources = useCallback((clientId = '') => {
+    getSalesSelectSources(clientId)
+      .then((res) => {
+        const data = res.data || {};
+        setClients(Array.isArray(data.clients) ? data.clients : []);
+      })
       .catch(() => setClients([]));
   }, []);
 
-  useEffect(() => { loadClients(); }, [loadClients]);
+  useEffect(() => { loadSelectSources(); }, [loadSelectSources]);
 
   const reloadOperational = useCallback(() => {
     refetch();
-    loadClients();
-  }, [refetch, loadClients]);
+    loadSelectSources(queryState.client);
+  }, [refetch, loadSelectSources, queryState.client]);
 
   useOperationalRefetch(['sale', 'warehouse_batch', 'order', 'payment', 'return'], reloadOperational, true);
 
@@ -330,13 +312,18 @@ const SalesPage = () => {
           </thead>
           <tbody>
             {items.map((s) => {
-              const allowedNext = SALE_ALLOWED_TRANSITIONS[s.sale_status] || [];
+              const allowedNext = Array.isArray(s.available_status_transitions) ? s.available_status_transitions : [];
+              const availableActions = Array.isArray(s.available_actions) ? s.available_actions : [];
               return (
                 <tr key={s.id}>
-                  <td>{formatDate(s.date || s.sale_date || s.created_at)}</td>
-                  <td>{s.client_name || s.client?.name || '—'}</td>
+                  <td>
+                    <button type="button" className="btn btn--ghost" onClick={() => setDetailSaleId(s.id)}>
+                      {formatDate(s.date || s.created_at)}
+                    </button>
+                  </td>
+                  <td>{s.client_name || '—'}</td>
                   <td>{s.order_number || s.sale_number || `#${s.id}`}</td>
-                  <td>{s.linked_order_number || (s.linked_order ? `Заявка ${s.linked_order}` : '—')}</td>
+                  <td>{s.linked_order_number || '—'}</td>
                   <td><Badge variant={statusVariant(s.sale_status)}>{statusLabel(s.sale_status)}</Badge></td>
                   <td className="data-table__cell--num">{toMoney(s.revenue)}</td>
                   <td className="data-table__cell--num">{toMoney(s.paid_amount)}</td>
@@ -345,8 +332,12 @@ const SalesPage = () => {
                       ariaLabel="Действия"
                       items={[
                         {
+                          label: 'Открыть',
+                          onClick: () => setDetailSaleId(s.id),
+                        },
+                        {
                           label: 'Редактировать',
-                          disabled: ['closed', 'canceled'].includes(s.sale_status),
+                          disabled: !availableActions.includes('edit'),
                           onClick: () => setModalSale(s),
                         },
                         {
@@ -359,11 +350,14 @@ const SalesPage = () => {
                           disabled: busyId === s.id,
                           onClick: () => onDownloadReceipt(s),
                         },
-                        ...allowedNext.map((st) => ({
-                          label: `→ ${statusLabel(st)}`,
+                        ...allowedNext.map((st) => {
+                          const nextStatus = st?.status || st;
+                          return ({
+                          label: `→ ${statusLabel(nextStatus)}`,
                           disabled: busyId === s.id,
-                          onClick: () => handleChangeStatus(s, st),
-                        })),
+                          onClick: () => handleChangeStatus(s, nextStatus),
+                        });
+                        }),
                         {
                           label: 'Удалить',
                           danger: true,
@@ -395,6 +389,21 @@ const SalesPage = () => {
           onSubmit={handleSubmit}
           onClose={() => { setModalSale(null); setSubmitError(''); }}
           error={submitError}
+        />
+      )}
+
+      {detailSaleId && (
+        <SaleDetailModal
+          saleId={detailSaleId}
+          onClose={() => setDetailSaleId(null)}
+          onEdit={(sale) => {
+            setDetailSaleId(null);
+            setModalSale(sale);
+          }}
+          onOpenWaybillPreview={(sale) => onOpenWaybillPreview(sale)}
+          onDownloadReceipt={(sale) => onDownloadReceipt(sale)}
+          onChangeStatus={(sale, status) => handleChangeStatus(sale, status)}
+          busyId={busyId}
         />
       )}
 
@@ -439,10 +448,11 @@ const SalesPage = () => {
 
 const SaleModal = ({ sale, clients, onSubmit, onClose, error }) => {
   const isEdit = Boolean(sale?.id);
+  const [sourceClients, setSourceClients] = useState(clients || []);
   const [orders, setOrders] = useState([]);
   const [batches, setBatches] = useState([]);
   const [date, setDate] = useState(
-    (sale?.date || sale?.sale_date || '').toString().slice(0, 10) || new Date().toISOString().slice(0, 10),
+    (sale?.date || '').toString().slice(0, 10) || new Date().toISOString().slice(0, 10),
   );
   const [client, setClient] = useState(() => (sale ? saleClientIdFromRow(sale) : ''));
   const [linkedOrder, setLinkedOrder] = useState(() => (sale ? saleLinkedOrderIdFromRow(sale) : ''));
@@ -454,15 +464,19 @@ const SaleModal = ({ sale, clients, onSubmit, onClose, error }) => {
   );
 
   useEffect(() => {
-    apiClient.get('orders/', { params: { page_size: 500 } })
-      .then((r) => setOrders(r.data?.items || []))
-      .catch(() => setOrders([]));
-    if (!isEdit) {
-      apiClient.get('warehouse/batches/', { params: { page_size: 500, status: 'available' } })
-        .then((r) => setBatches(r.data?.items || []))
-        .catch(() => setBatches([]));
-    }
-  }, [isEdit]);
+    getSalesSelectSources(client)
+      .then((res) => {
+        const data = res.data || {};
+        setSourceClients(Array.isArray(data.clients) ? data.clients : []);
+        setOrders(Array.isArray(data.orders) ? data.orders : []);
+        setBatches(Array.isArray(data.warehouse_batches) ? data.warehouse_batches : []);
+      })
+      .catch(() => {
+        setSourceClients([]);
+        setOrders([]);
+        setBatches([]);
+      });
+  }, [client]);
 
   const total = useMemo(
     () => lines.reduce((sum, l) => {
@@ -514,7 +528,7 @@ const SaleModal = ({ sale, clients, onSubmit, onClose, error }) => {
                   ...(line.unit_price ? { unit_price: parseLocaleNumber(line.unit_price) } : {}),
                   ...(String(line.comment || '').trim() ? { comment: String(line.comment).trim() } : {}),
                 }))
-                .filter((line) => line.product && line.quantity > 0);
+                .filter((line) => line.warehouse_batch && line.product && line.quantity > 0);
               if (!payloadLines.length) return;
               const payload = {
                 date,
@@ -544,7 +558,7 @@ const SaleModal = ({ sale, clients, onSubmit, onClose, error }) => {
               onChange={setClient}
               options={[
                 { value: '', label: 'Без клиента' },
-                ...clients.map((c) => ({ value: String(c.id), label: c.name || 'Клиент' })),
+                ...sourceClients.map((c) => ({ value: String(c.id), label: c.name || 'Клиент' })),
               ]}
             />
 
@@ -567,16 +581,25 @@ const SaleModal = ({ sale, clients, onSubmit, onClose, error }) => {
                 {lines.map((line, idx) => (
                   <div key={idx} className="card" style={{ marginTop: 8, padding: 8 }}>
                     <label>Товар *</label>
-                    <input
-                      value={line.product}
-                      onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, product: e.target.value } : x)))}
-                    />
+                    <input value={line.product} readOnly />
                     <label>Партия склада</label>
                     <Select
                       value={line.warehouse_batch_id}
-                      onChange={(v) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, warehouse_batch_id: v } : x)))}
+                      onChange={(v) => setLines((prev) => prev.map((x, i) => {
+                        if (i !== idx) return x;
+                        const picked = batches.find((b) => String(b.id) === String(v));
+                        const batchProduct = picked ? (picked.product_name || picked.product?.name || picked.product || '') : '';
+                        return {
+                          ...x,
+                          warehouse_batch_id: v,
+                          product: batchProduct || x.product,
+                        };
+                      }))}
                       options={batchOptions}
                     />
+                    <p style={{ margin: '4px 0 0', fontSize: '0.8125rem', opacity: 0.75 }}>
+                      Сначала выберите партию, товар подставится автоматически.
+                    </p>
                     <label>Количество *</label>
                     <input
                       type="number"
@@ -644,6 +667,133 @@ const SaleModal = ({ sale, clients, onSubmit, onClose, error }) => {
           <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
           <button type="submit" form="sales-modal-form" className="btn btn--primary">Сохранить</button>
         </div>
+      </div>
+    </div>
+  );
+};
+
+const SaleDetailModal = ({
+  saleId,
+  onClose,
+  onEdit,
+  onOpenWaybillPreview,
+  onDownloadReceipt,
+  onChangeStatus,
+  busyId,
+}) => {
+  const [sale, setSale] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await apiClient.get(`sales/${saleId}/`);
+        if (!alive) return;
+        setSale(res.data || null);
+      } catch (e) {
+        if (!alive) return;
+        setError(getApiErrorMessage(e, 'Не удалось загрузить карточку продажи'));
+      } finally {
+        if (alive) setLoading(false);
+      }
+    };
+    load();
+    return () => { alive = false; };
+  }, [saleId]);
+
+  const allowedNext = sale && Array.isArray(sale.available_status_transitions)
+    ? sale.available_status_transitions
+    : [];
+  const availableActions = sale && Array.isArray(sale.available_actions) ? sale.available_actions : [];
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
+        <div className="modal__head">
+          <h3>Карточка продажи</h3>
+          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+        </div>
+        {loading && <Loading />}
+        {!loading && error && <p className="modal__error">{error}</p>}
+        {!loading && !error && sale && (
+          <div style={{ padding: '0 1.5rem 1.5rem' }}>
+            <section className="card" style={{ padding: 12, marginBottom: 12 }}>
+              <h4>Общее</h4>
+              <p><strong>Дата:</strong> {formatDate(sale.date || sale.created_at)}</p>
+              <p><strong>Номер:</strong> {sale.order_number || sale.sale_number || `#${sale.id}`}</p>
+              <p><strong>Клиент:</strong> {sale.client_name || '—'}</p>
+              <p><strong>Связанная заявка:</strong> {sale.linked_order_number || '—'}</p>
+              <p><strong>Статус:</strong> <Badge variant={statusVariant(sale.sale_status)}>{statusLabel(sale.sale_status)}</Badge></p>
+              <p><strong>Выручка:</strong> {toMoney(sale.revenue)}</p>
+              <p><strong>Оплачено:</strong> {toMoney(sale.paid_amount)}</p>
+              {sale.comment ? <p><strong>Комментарий:</strong> {sale.comment}</p> : null}
+            </section>
+
+            <section className="card" style={{ padding: 12, marginBottom: 12 }}>
+              <h4>Строки продажи</h4>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Товар</th>
+                    <th className="data-table__cell--num">Количество</th>
+                    <th className="data-table__cell--num">Цена</th>
+                    <th className="data-table__cell--num">Сумма</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(Array.isArray(sale.lines) ? sale.lines : []).map((line, idx) => {
+                    const qty = parseLocaleNumber(line.quantity ?? 0) || 0;
+                    const price = parseLocaleNumber(line.unit_price ?? 0) || 0;
+                    const total = Number((qty * price).toFixed(2));
+                    return (
+                      <tr key={line.id || idx}>
+                        <td>{line.product_name || line.product?.name || line.product || '—'}</td>
+                        <td className="data-table__cell--num">{formatQuantityDisplay(qty)}</td>
+                        <td className="data-table__cell--num">{toMoney(price)}</td>
+                        <td className="data-table__cell--num">{toMoney(total)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </section>
+
+            <div className="modal__actions">
+              <button
+                type="button"
+                className="btn btn--secondary"
+                disabled={!availableActions.includes('edit')}
+                onClick={() => onEdit(sale)}
+              >
+                Редактировать
+              </button>
+              <button type="button" className="btn btn--secondary" onClick={() => onOpenWaybillPreview(sale)}>
+                Накладная
+              </button>
+              <button type="button" className="btn btn--secondary" onClick={() => onDownloadReceipt(sale)}>
+                Квитанция
+              </button>
+              {allowedNext.length > 0 ? (
+                <Select
+                  value=""
+                  onChange={(nextStatus) => nextStatus && onChangeStatus(sale, nextStatus)}
+                  placeholder={busyId === sale.id ? 'Обновление...' : 'Сменить статус'}
+                  options={[
+                    { value: '', label: 'Сменить статус' },
+                    ...allowedNext.map((st) => {
+                      const nextStatus = st?.status || st;
+                      return { value: nextStatus, label: statusLabel(nextStatus) };
+                    }),
+                  ]}
+                />
+              ) : null}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

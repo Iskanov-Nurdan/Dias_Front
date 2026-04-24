@@ -161,7 +161,8 @@ const sessionRowSortKey = (row) => {
 };
 
 /**
- * Сшивает open → (params_update*) → close по каждой линии; прочие события — отдельными строками.
+ * Сшивает open → (params_update*, pause/resume*) → close по каждой линии;
+ * в список истории выводится одна строка на смену.
  */
 const buildLineHistorySessionRows = (items) => {
   if (!items?.length) return [];
@@ -183,6 +184,7 @@ const buildLineHistorySessionRows = (items) => {
 
     let pendingOpen = null;
     let pendingParams = [];
+    let pendingPauseResume = [];
 
     const flushOpenOnly = () => {
       if (pendingOpen) {
@@ -192,9 +194,11 @@ const buildLineHistorySessionRows = (items) => {
           open: pendingOpen,
           close: null,
           paramUpdates: pendingParams,
+          pauseResume: pendingPauseResume,
         });
         pendingOpen = null;
         pendingParams = [];
+        pendingPauseResume = [];
       }
     };
 
@@ -204,9 +208,12 @@ const buildLineHistorySessionRows = (items) => {
         flushOpenOnly();
         pendingOpen = ev;
         pendingParams = [];
+        pendingPauseResume = [];
       } else if (a === 'params_update') {
         if (pendingOpen) pendingParams.push(ev);
         else out.push({ kind: 'single', lineKey, event: ev });
+      } else if (PAUSE_HISTORY_ACTIONS.has(a) || RESUME_HISTORY_ACTIONS.has(a)) {
+        if (pendingOpen) pendingPauseResume.push(ev);
       } else if (a === 'close') {
         if (pendingOpen) {
           out.push({
@@ -215,9 +222,11 @@ const buildLineHistorySessionRows = (items) => {
             open: pendingOpen,
             close: ev,
             paramUpdates: pendingParams,
+            pauseResume: pendingPauseResume,
           });
           pendingOpen = null;
           pendingParams = [];
+          pendingPauseResume = [];
         } else {
           out.push({ kind: 'single', lineKey, event: ev });
         }
@@ -1287,7 +1296,7 @@ const LineHistorySessionModal = ({
   const displayOpen = hasRemote ? (remote.open ?? snapshot.open) : snapshot.open;
   const displayClose = hasRemote ? (remote.close ?? null) : snapshot.close;
   const displayUpdates = hasRemote ? (remote.updates ?? []) : (snapshot.paramUpdates ?? []);
-  const displayPauseResume = hasRemote ? (remote.pauseResume ?? []) : [];
+  const displayPauseResume = hasRemote ? (remote.pauseResume ?? []) : (snapshot.pauseResume ?? []);
   const lineTitle = sessionLineName(displayOpen, displayClose);
 
   return (

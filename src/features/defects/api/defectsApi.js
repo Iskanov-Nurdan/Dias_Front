@@ -1,6 +1,7 @@
 import { apiClient } from '../../../shared/api';
 
 export const getDefects = (params) => apiClient.get('defects/', { params });
+export const getDefectsSelectSources = () => apiClient.get('defects/select-sources/');
 export const createDefect = (payload) => apiClient.post('defects/', payload);
 export const updateDefect = (id, payload) => apiClient.patch(`defects/${id}/`, payload);
 export const deleteDefect = (id) => apiClient.delete(`defects/${id}/`);

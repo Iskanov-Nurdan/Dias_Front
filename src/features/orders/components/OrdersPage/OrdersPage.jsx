@@ -8,6 +8,7 @@ import {
   deleteOrder,
   downloadOrderWaybill,
   getOrderReservations,
+  getOrderSelectSources,
   patchOrderStatus,
   updateOrder,
 } from '../../api/ordersApi';
@@ -35,16 +36,6 @@ const RESERVATION_STATUS_LABELS = {
   active: 'Активен',
   released: 'Снят',
   fulfilled: 'Исполнен',
-};
-
-const ALLOWED_TRANSITIONS = {
-  new: ['confirmed', 'canceled'],
-  confirmed: ['in_progress', 'canceled'],
-  in_progress: ['partially_shipped', 'shipped', 'canceled'],
-  partially_shipped: ['shipped', 'closed', 'canceled'],
-  shipped: ['closed'],
-  closed: [],
-  canceled: [],
 };
 
 const SOURCE_TYPE_LABELS = {
@@ -109,26 +100,15 @@ const orderClientId = (order) => {
 const formatLineQty = (v) => (v != null && v !== '' ? formatQuantityDisplay(v) : '—');
 const formatLineMoneyCell = (v) => (v != null && v !== '' ? toMoney(v) : '—');
 
-const getRemainingToShip = (order) => {
-  if (order?.remaining_to_ship != null) return Number(order.remaining_to_ship) || 0;
-  const lines = Array.isArray(order?.lines) ? order.lines : [];
-  const lineRemaining = lines.reduce((sum, line) => {
-    const ordered = Number(line?.ordered_quantity ?? 0);
-    const shipped = Number(line?.shipped_quantity ?? line?.shipped ?? 0);
-    if (!Number.isFinite(ordered) || !Number.isFinite(shipped)) return sum;
-    return sum + Math.max(ordered - shipped, 0);
-  }, 0);
-  if (lineRemaining > 0) return lineRemaining;
-  return 0;
-};
+const getRemainingToShip = (order) => (order?.remaining_to_ship != null ? Number(order.remaining_to_ship) || 0 : 0);
 
-const canEditOrder = (status) => !['closed', 'canceled'].includes(status);
-const canCreateShipment = (status) => ['new', 'confirmed', 'in_progress', 'partially_shipped'].includes(status);
-const canAcceptPayment = (status) => ['new', 'confirmed', 'in_progress', 'partially_shipped', 'shipped'].includes(status);
+const canEditOrder = (actions) => Array.isArray(actions) && actions.includes('edit');
+const canCreateShipment = (actions) => Array.isArray(actions) && actions.includes('create_shipment');
+const canAcceptPayment = (actions) => Array.isArray(actions) && actions.includes('accept_payment');
 
 const lineToPayload = (line) => ({
   product: String(line.product || '').trim(),
-  product_type: String(line.product_type || '').trim() || undefined,
+  ...(line.profile ? { profile: Number(line.profile) } : {}),
   ordered_quantity: parseLocaleNumber(line.ordered_quantity) || 0,
   unit_price: parseLocaleNumber(line.unit_price) || undefined,
   comment: String(line.comment || '').trim() || undefined,
@@ -138,6 +118,7 @@ const OrdersPage = () => {
   const toast = useToast();
   const [queryState, setQueryState] = useState({ page: 1, page_size: 20, search: '', status: '' });
   const [clients, setClients] = useState([]);
+  const [profiles, setProfiles] = useState([]);
   const [modalOrder, setModalOrder] = useState(null);
   const [detailOrderId, setDetailOrderId] = useState(null);
   const [paymentTarget, setPaymentTarget] = useState(null);
@@ -148,9 +129,16 @@ const OrdersPage = () => {
   const { items, meta, loading, error, refetch } = useServerQuery('orders/', queryState, { enabled: true });
 
   useEffect(() => {
-    apiClient.get('clients/', { params: { page_size: 500 } })
-      .then((res) => setClients(res.data?.items || []))
-      .catch(() => setClients([]));
+    getOrderSelectSources()
+      .then((res) => {
+        const data = res.data || {};
+        setClients(Array.isArray(data.clients) ? data.clients : []);
+        setProfiles(Array.isArray(data.profiles) ? data.profiles : []);
+      })
+      .catch(() => {
+        setClients([]);
+        setProfiles([]);
+      });
   }, []);
 
   useOperationalRefetch(['order', 'sale', 'payment', 'return'], refetch, true);
@@ -217,7 +205,7 @@ const OrdersPage = () => {
           <button
             type="button"
             className="btn btn--primary"
-            onClick={() => setModalOrder({ lines: [{ product: '', product_type: '', ordered_quantity: '', unit_price: '', comment: '' }] })}
+            onClick={() => setModalOrder({ lines: [{ profile: '', product: '', ordered_quantity: '', unit_price: '', comment: '' }] })}
           >
             Создать заявку
           </button>
@@ -244,7 +232,8 @@ const OrdersPage = () => {
           </thead>
           <tbody>
             {items.map((o) => {
-              const allowedNext = ALLOWED_TRANSITIONS[o.status] || [];
+              const allowedNext = Array.isArray(o.available_status_transitions) ? o.available_status_transitions : [];
+              const availableActions = Array.isArray(o.available_actions) ? o.available_actions : [];
               return (
                 <tr key={o.id}>
                   <td>
@@ -253,7 +242,7 @@ const OrdersPage = () => {
                     </button>
                   </td>
                   <td>{formatDate(o.date || o.created_at)}</td>
-                  <td>{o.client_name || o.client?.name || '—'}</td>
+                  <td>{o.client_name || '—'}</td>
                   <td><Badge variant={statusVariant(o.status)}>{statusLabel(o.status)}</Badge></td>
                   <td className="data-table__cell--num">{toMoney(o.total_amount)}</td>
                   <td className="data-table__cell--num">{toMoney(o.paid_amount)}</td>
@@ -263,15 +252,18 @@ const OrdersPage = () => {
                       ariaLabel="Действия"
                       items={[
                         { label: 'Открыть', onClick: () => setDetailOrderId(o.id) },
-                        { label: 'Редактировать', disabled: !canEditOrder(o.status), onClick: () => setModalOrder(o) },
-                        { label: 'Создать отгрузку', disabled: !canCreateShipment(o.status), onClick: () => setShipmentTarget(o) },
-                        { label: 'Принять оплату', disabled: !canAcceptPayment(o.status), onClick: () => setPaymentTarget(o) },
+                        { label: 'Редактировать', disabled: !canEditOrder(availableActions), onClick: () => setModalOrder(o) },
+                        { label: 'Создать отгрузку', disabled: !canCreateShipment(availableActions), onClick: () => setShipmentTarget(o) },
+                        { label: 'Принять оплату', disabled: !canAcceptPayment(availableActions), onClick: () => setPaymentTarget(o) },
                         { label: 'Накладная', onClick: () => downloadOrderWaybill(o.id) },
-                        ...allowedNext.map((st) => ({
-                          label: `→ ${statusLabel(st)}`,
+                        ...allowedNext.map((st) => {
+                          const nextStatus = st?.status || st;
+                          return ({
+                          label: `→ ${statusLabel(nextStatus)}`,
                           disabled: busyId === o.id,
-                          onClick: () => onChangeStatus(o, st),
-                        })),
+                          onClick: () => onChangeStatus(o, nextStatus),
+                        });
+                        }),
                         { label: 'Удалить', danger: true, onClick: () => setDeleteTarget(o) },
                       ]}
                     />
@@ -292,6 +284,7 @@ const OrdersPage = () => {
         <OrderModal
           order={modalOrder?.id ? modalOrder : null}
           clients={clients}
+          profiles={profiles}
           onClose={() => { setModalOrder(null); setErrorText(''); }}
           onSubmit={onSubmitOrder}
           error={errorText}
@@ -341,7 +334,7 @@ const OrdersPage = () => {
   );
 };
 
-const OrderModal = ({ order, clients, onClose, onSubmit, error }) => {
+const OrderModal = ({ order, clients, profiles, onClose, onSubmit, error }) => {
   const [saleDate, setSaleDate] = useState((order?.date || '').toString().slice(0, 10) || new Date().toISOString().slice(0, 10));
   const [client, setClient] = useState(order?.client_id != null ? String(order.client_id) : '');
   const [sourceType, setSourceType] = useState(order?.source_type || 'manager');
@@ -350,13 +343,13 @@ const OrderModal = ({ order, clients, onClose, onSubmit, error }) => {
     Array.isArray(order?.lines) && order.lines.length
       ? order.lines.map((x) => ({
         id: x.id,
+        profile: x.profile_id != null ? String(x.profile_id) : (x.profile != null ? String(typeof x.profile === 'object' ? x.profile.id : x.profile) : ''),
         product: x.product || '',
-        product_type: x.product_type || '',
         ordered_quantity: x.ordered_quantity != null ? String(x.ordered_quantity) : '',
         unit_price: x.unit_price != null ? String(x.unit_price) : '',
         comment: x.comment || '',
       }))
-      : [{ product: '', product_type: '', ordered_quantity: '', unit_price: '', comment: '' }],
+      : [{ profile: '', product: '', ordered_quantity: '', unit_price: '', comment: '' }],
   );
 
   const total = lines.reduce((sum, line) => {
@@ -395,7 +388,7 @@ const OrderModal = ({ order, clients, onClose, onSubmit, error }) => {
           <Select
             value={client}
             onChange={setClient}
-            options={[{ value: '', label: 'Без клиента' }, ...clients.map((c) => ({ value: String(c.id), label: c.name || `Клиент #${c.id}` }))]}
+            options={[{ value: '', label: 'Без клиента' }, ...clients.map((c) => ({ value: String(c.id), label: c.name || 'Клиент' }))]}
           />
           <label>Источник</label>
           <Select
@@ -416,9 +409,20 @@ const OrderModal = ({ order, clients, onClose, onSubmit, error }) => {
             {lines.map((line, idx) => (
               <div key={line.id || idx} className="card" style={{ marginTop: 8, padding: 8 }}>
                 <label>Товар *</label>
+                <label>Профиль</label>
+                <Select
+                  value={line.profile}
+                  onChange={(v) => {
+                    const picked = (profiles || []).find((p) => String(p.id) === String(v));
+                    setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, profile: v, product: picked?.name || x.product } : x)));
+                  }}
+                  options={[
+                    { value: '', label: 'Не выбран' },
+                    ...(profiles || []).map((p) => ({ value: String(p.id), label: p.name || `Профиль #${p.id}` })),
+                  ]}
+                />
+                <label>Товар *</label>
                 <input value={line.product} onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, product: e.target.value } : x)))} />
-                <label>Тип товара</label>
-                <input value={line.product_type} onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, product_type: e.target.value } : x)))} />
                 <label>Количество *</label>
                 <IntegerInput min={1} value={line.ordered_quantity} onChange={(v) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, ordered_quantity: v } : x)))} />
                 <label>Цена</label>
@@ -432,7 +436,7 @@ const OrderModal = ({ order, clients, onClose, onSubmit, error }) => {
               type="button"
               className="btn btn--secondary"
               style={{ marginTop: 8 }}
-              onClick={() => setLines((prev) => [...prev, { product: '', product_type: '', ordered_quantity: '', unit_price: '', comment: '' }])}
+              onClick={() => setLines((prev) => [...prev, { profile: '', product: '', ordered_quantity: '', unit_price: '', comment: '' }])}
             >
               Добавить строку
             </button>
@@ -453,8 +457,6 @@ const OrderDetailModal = ({ orderId, onClose, onEdit, onCreateShipment, onAccept
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [relatedSales, setRelatedSales] = useState([]);
-  const [relatedPayments, setRelatedPayments] = useState([]);
   const [reservations, setReservations] = useState([]);
 
   useEffect(() => {
@@ -463,16 +465,12 @@ const OrderDetailModal = ({ orderId, onClose, onEdit, onCreateShipment, onAccept
       setLoading(true);
       setError('');
       try {
-        const [orderRes, salesRes, paymentsRes, reservationsRes] = await Promise.all([
+        const [orderRes, reservationsRes] = await Promise.all([
           apiClient.get(`orders/${orderId}/`),
-          apiClient.get('sales/', { params: { page_size: 200, linked_order: orderId } }),
-          apiClient.get('payments/', { params: { page_size: 200, linked_order: orderId } }),
           getOrderReservations(orderId).catch(() => ({ data: [] })),
         ]);
         if (!alive) return;
         setOrder(orderRes.data || null);
-        setRelatedSales(salesRes.data?.items || []);
-        setRelatedPayments(paymentsRes.data?.items || []);
         setReservations(normalizeApiList(reservationsRes.data));
       } catch (e) {
         if (!alive) return;
@@ -485,7 +483,12 @@ const OrderDetailModal = ({ orderId, onClose, onEdit, onCreateShipment, onAccept
     return () => { alive = false; };
   }, [orderId]);
 
-  const allowedNext = order ? (ALLOWED_TRANSITIONS[order.status] || []) : [];
+  const allowedNext = order && Array.isArray(order.available_status_transitions)
+    ? order.available_status_transitions
+    : [];
+  const availableActions = order && Array.isArray(order.available_actions) ? order.available_actions : [];
+  const relatedSales = Array.isArray(order?.linked_entities?.sales) ? order.linked_entities.sales : [];
+  const relatedPayments = Array.isArray(order?.linked_entities?.payments) ? order.linked_entities.payments : [];
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -503,7 +506,7 @@ const OrderDetailModal = ({ orderId, onClose, onEdit, onCreateShipment, onAccept
               <h4>Общее</h4>
               <p><strong>Номер:</strong> {order.order_number || `Заявка ${order.id}`}</p>
               <p><strong>Дата:</strong> {formatDate(order.date || order.created_at)}</p>
-              <p><strong>Клиент:</strong> {order.client_name || order.client?.name || '—'}</p>
+              <p><strong>Клиент:</strong> {order.client_name || '—'}</p>
               <p><strong>Источник:</strong> {SOURCE_TYPE_LABELS[order.source_type] || order.source_type || '—'}</p>
               <p><strong>Статус:</strong> <Badge variant={statusVariant(order.status)}>{statusLabel(order.status)}</Badge></p>
               {order.has_company_debt_by_goods && (
@@ -641,9 +644,9 @@ const OrderDetailModal = ({ orderId, onClose, onEdit, onCreateShipment, onAccept
             </section>
 
             <div className="modal__actions">
-              <button type="button" className="btn btn--secondary" onClick={() => onEdit(order)} disabled={!canEditOrder(order.status)}>Редактировать</button>
-              <button type="button" className="btn btn--secondary" onClick={() => onCreateShipment(order)} disabled={!canCreateShipment(order.status)}>Создать отгрузку</button>
-              <button type="button" className="btn btn--secondary" onClick={() => onAcceptPayment(order)} disabled={!canAcceptPayment(order.status)}>Принять оплату</button>
+              <button type="button" className="btn btn--secondary" onClick={() => onEdit(order)} disabled={!canEditOrder(availableActions)}>Редактировать</button>
+              <button type="button" className="btn btn--secondary" onClick={() => onCreateShipment(order)} disabled={!canCreateShipment(availableActions)}>Создать отгрузку</button>
+              <button type="button" className="btn btn--secondary" onClick={() => onAcceptPayment(order)} disabled={!canAcceptPayment(availableActions)}>Принять оплату</button>
               {allowedNext.length > 0 && (
                 <Select
                   value=""
@@ -651,7 +654,10 @@ const OrderDetailModal = ({ orderId, onClose, onEdit, onCreateShipment, onAccept
                   placeholder={busyId === order.id ? 'Обновление...' : 'Сменить статус'}
                   options={[
                     { value: '', label: 'Сменить статус' },
-                    ...allowedNext.map((st) => ({ value: st, label: statusLabel(st) })),
+                    ...allowedNext.map((st) => {
+                      const nextStatus = st?.status || st;
+                      return { value: nextStatus, label: statusLabel(nextStatus) };
+                    }),
                   ]}
                 />
               )}
@@ -738,7 +744,7 @@ const CreateShipmentFromOrderModal = ({ order, onClose, onSuccess }) => {
           <label>Дата отгрузки</label>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
           <label>Клиент</label>
-          <input value={order?.client_name || order?.client?.name || 'Без клиента'} disabled />
+          <input value={order?.client_name || 'Без клиента'} disabled />
           <div style={{ marginTop: 12 }}>
             <strong>Строки отгрузки</strong>
             {lines.map((line, idx) => (
@@ -811,7 +817,7 @@ const AcceptPaymentModal = ({ order, onClose, onSuccess }) => {
           <label>Дата</label>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
           <label>Клиент</label>
-          <input value={order?.client_name || order?.client?.name || 'Без клиента'} disabled />
+          <input value={order?.client_name || 'Без клиента'} disabled />
           <label>Тип оплаты</label>
           <Select
             value={paymentType}

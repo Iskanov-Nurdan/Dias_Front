@@ -79,17 +79,18 @@ async function sniffDownloadBlob(blob) {
 
 export const getOrders = (params) => apiClient.get('orders/', { params });
 export const getOrder = (id) => apiClient.get(`orders/${id}/`);
+export const getOrderSelectSources = () => apiClient.get('orders/select-sources/');
 export const createOrder = (payload) => apiClient.post('orders/', payload);
 export const updateOrder = (id, payload) => apiClient.patch(`orders/${id}/`, payload);
 export const deleteOrder = (id) => apiClient.delete(`orders/${id}/`);
 export const patchOrderStatus = (id, status) => apiClient.patch(`orders/${id}/status/`, { status });
 export const cancelOrder = (id) => apiClient.patch(`orders/${id}/cancel/`);
-export const getOrderReservations = (id) => apiClient.get(`orders/${id}/reservations/`);
+export const getOrderReservations = (id) => apiClient.get('order-reservations/', { params: { order_id: id } });
 
 export const downloadOrderWaybill = async (orderId) => {
-  const res = await apiClient.get(`orders/${orderId}/nakladnaya/`, {
+  const res = await apiClient.get(`orders/${orderId}/waybill/`, {
     responseType: 'blob',
-    headers: { Accept: 'text/html,application/pdf,application/octet-stream,*/*' },
+    headers: { Accept: 'text/html,*/*' },
   });
   const blob = res.data;
   if (!(blob instanceof Blob) || blob.size === 0) throw new Error('Пустой ответ по накладной заявки');
@@ -100,27 +101,10 @@ export const downloadOrderWaybill = async (orderId) => {
   }
 
   const ct = (res.headers?.['content-type'] || '').toLowerCase();
-  let ext = 'html';
-  if (sniff.kind === 'pdf') ext = 'pdf';
-  else if (sniff.kind === 'xlsx') ext = 'xlsx';
-  else if (sniff.kind === 'html') ext = 'html';
-  else if (ct.includes('pdf')) ext = 'pdf';
-  else if (ct.includes('spreadsheet') || ct.includes('excel')) ext = 'xlsx';
-
-  let filename = blobFilenameFromHeaders(res.headers, `order-waybill-${orderId}.${ext}`);
-  if (sniff.kind === 'pdf' && !/\.pdf$/i.test(filename)) {
-    filename = filename.replace(/\.(html|htm|bin|dat)$/i, '.pdf');
-    if (!/\.pdf$/i.test(filename)) filename = `order-waybill-${orderId}.pdf`;
-  }
-  if (sniff.kind === 'html' && !/\.(html|htm)$/i.test(filename) && !ct.includes('pdf')) {
-    filename = filename.replace(/\.(bin|dat)$/i, '.html');
-    if (!/\.(html|htm)$/i.test(filename)) filename = `order-waybill-${orderId}.html`;
+  if (sniff.kind !== 'html' && !ct.includes('text/html')) {
+    throw new Error('Неверный формат накладной заявки');
   }
 
-  const downloadBlob =
-    sniff.kind === 'pdf' && !ct.includes('pdf')
-      ? new Blob([await blob.arrayBuffer()], { type: 'application/pdf' })
-      : blob;
-
-  triggerBlobDownload(downloadBlob, filename);
+  const filename = blobFilenameFromHeaders(res.headers, `order-waybill-${orderId}.html`);
+  triggerBlobDownload(blob, filename);
 };

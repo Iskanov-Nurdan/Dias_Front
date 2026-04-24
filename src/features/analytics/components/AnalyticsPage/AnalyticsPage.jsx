@@ -24,6 +24,7 @@ import {
   getPurchaseDetails,
 } from '../../api';
 import { Loading, ErrorState, Select, FiltersModal } from '../../../../shared/ui';
+import { useOperationalRefetch } from '../../../../shared/realtime';
 
 const formatNumber = (num) => Number(num || 0).toLocaleString('ru-RU');
 
@@ -351,6 +352,12 @@ const AnalyticsPage = () => {
     load(ctrl.signal);
     return () => ctrl.abort();
   }, [load]);
+
+  useOperationalRefetch(
+    ['sale', 'payment', 'order', 'return', 'warehouse_batch', 'defect_record', 'rework_request'],
+    () => { load(); },
+    true,
+  );
 
   if (loading) return <Loading />;
   if (error) return <ErrorState error={error} onRetry={load} />;

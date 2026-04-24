@@ -137,8 +137,11 @@ const WaybillPreviewModal = ({ saleId, onClose }) => {
   const onDownload = async () => {
     if (!sale?.id) return;
     setBusyDownload(true);
+    setError('');
     try {
-      await downloadSaleWaybill(sale.id, sale);
+      await downloadSaleWaybill(sale.id);
+    } catch (e) {
+      setError(getApiErrorMessage(e, 'Не удалось скачать накладную'));
     } finally {
       setBusyDownload(false);
     }

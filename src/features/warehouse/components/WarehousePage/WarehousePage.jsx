@@ -80,13 +80,12 @@ const WarehousePage = () => {
     return null;
   }, [meta, raw, queryState.page, queryState.page_size]);
 
-  const handleReserve = async (batchId, quantity, saleId) => {
+  const handleReserve = async (batchId, quantity) => {
     setSubmitError('');
     try {
       await apiClient.post('warehouse/batches/reserve/', {
         batch_id: Number(batchId),
         quantity: Number(quantity),
-        ...(saleId ? { sale_id: Number(saleId) } : {}),
       });
       setReserveTarget(null);
       refetch();
@@ -194,11 +193,13 @@ const WarehousePage = () => {
               const reservedRaw = b.reserved_quantity;
               const availableRaw = b.available_quantity;
               const qty = Number.isFinite(Number(availableRaw)) ? Number(availableRaw) : 0;
-              const canReserve = String(b.status || '').toLowerCase() === 'available';
-              const productLabel = (b.product_name && String(b.product_name).trim()) || b.product?.name || b.product || '—';
+              const productLabel = (b.product_name && String(b.product_name).trim()) || '—';
               const inv = resolveInventoryForm(b);
               const invMod = inventoryFormBadgeModifier(inv);
               const qKey = readWarehouseQuality(b);
+              const canReserve =
+                String(b.status || '').toLowerCase() === 'available'
+                && qKey !== 'defect';
               const defectReason = readWarehouseDefectReason(b);
               const isDefect = qKey === 'defect';
               return (
@@ -244,24 +245,27 @@ const WarehousePage = () => {
                   <td className="data-table__cell--num">{qtyRaw != null && qtyRaw !== '' ? formatNumberForInput(qtyRaw) : '—'}</td>
                   <td className="data-table__cell--num">{reservedRaw != null && reservedRaw !== '' ? formatNumberForInput(reservedRaw) : '—'}</td>
                   <td className="data-table__cell--num">{availableRaw != null && availableRaw !== '' ? formatNumberForInput(availableRaw) : '—'}</td>
-                  <td className="warehouse-table__batch data-table__cell--muted data-table__cell--num">{b.batch || b.lot || '—'}</td>
+                  <td className="warehouse-table__batch data-table__cell--muted data-table__cell--num">{b.batch || '—'}</td>
                   <td>
-                    <ActionMenu
-                      ariaLabel="Действия"
-                      items={[
-                        {
-                          label: 'Резерв',
-                          disabled: !canReserve,
-                          onClick: () => setReserveTarget({
-                            id: b.id,
-                            quantity: qty,
-                            product: productLabel,
-                            qualityKey: qKey,
-                            defectReason,
-                          }),
-                        },
-                      ]}
-                    />
+                    {canReserve ? (
+                      <ActionMenu
+                        ariaLabel="Действия"
+                        items={[
+                          {
+                            label: 'Резерв',
+                            onClick: () => setReserveTarget({
+                              id: b.id,
+                              quantity: qty,
+                              product: productLabel,
+                              qualityKey: qKey,
+                              defectReason,
+                            }),
+                          },
+                        ]}
+                      />
+                    ) : (
+                      <span className="data-table__cell--muted">—</span>
+                    )}
                   </td>
                 </tr>
               );
@@ -310,11 +314,8 @@ const ReserveModal = ({ batch, onClose, onSubmit, error }) => {
       ? formatNumberForInput(batch.quantity)
       : '1',
   );
-  const [saleId, setSaleId] = useState('');
-
   const isDirty = useDirtyFromBaseline(String(batch?.id ?? ''), false, {
     quantity: String(quantity ?? '').trim(),
-    saleId: String(saleId ?? '').trim(),
   });
   const {
     requestClose,
@@ -344,7 +345,6 @@ const ReserveModal = ({ batch, onClose, onSubmit, error }) => {
             onSubmit(
               batch.id,
               parseLocaleNumber(quantity),
-              saleId ? Number(saleId) : undefined,
             );
           }}
         >
@@ -364,19 +364,6 @@ const ReserveModal = ({ batch, onClose, onSubmit, error }) => {
             <label>Количество *</label>
             <DecimalInput min={1} value={quantity} onChange={setQuantity} required />
           </div>
-          <details className="warehouse-reserve__more">
-            <summary>Дополнительно</summary>
-            <div className="modal__field">
-              <label>№ продажи</label>
-              <input
-                type="number"
-                min="1"
-                placeholder="Необязательно"
-                value={saleId}
-                onChange={(e) => setSaleId(e.target.value)}
-              />
-            </div>
-          </details>
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={requestClose}>Отмена</button>

@@ -3,7 +3,7 @@ import { apiClient } from '../../../../shared/api';
 import { useOperationalRefetch } from '../../../../shared/realtime';
 import { useServerQuery, formatQuantityDisplay, getApiErrorMessage, parseLocaleNumber } from '../../../../shared/lib';
 import { ActionMenu, ConfirmModal, EmptyState, ErrorState, Loading, Pagination, Select, useToast } from '../../../../shared/ui';
-import { createReturn, deleteReturn, downloadReturnWaybill, updateReturn } from '../../api/returnsApi';
+import { createReturn, deleteReturn, downloadReturnWaybill, getReturnSelectSources, updateReturn } from '../../api/returnsApi';
 
 const TARGETS = [
   { value: 'warehouse', label: 'На склад' },
@@ -21,24 +21,13 @@ const targetLabel = (code) => TARGETS.find((t) => t.value === code)?.label || co
 
 const saleListLabel = (s) => s.order_number || s.sale_number || 'Продажа';
 
-const returnTableSaleLabel = (r) => {
-  if (r.sale_order_number) return r.sale_order_number;
-  if (r.order_number) return r.order_number;
-  const s = r.sale;
-  if (s != null && typeof s === 'object') {
-    return s.order_number || s.sale_number || saleListLabel(s);
-  }
-  return '—';
-};
+const returnTableSaleLabel = (r) => r.sale_order_number || r.order_number || '—';
 
-const returnTableClientLabel = (r) => r.client_name || r.sale?.client_name || r.sale?.client?.name || '—';
+const returnTableClientLabel = (r) => r.client_name || '—';
 
 const initialSaleIdFromDoc = (doc) => {
   if (!doc?.id) return '';
   if (doc.sale_id != null) return String(doc.sale_id);
-  const s = doc.sale;
-  if (s != null && typeof s === 'object' && s.id != null) return String(s.id);
-  if (s != null) return String(s);
   return '';
 };
 
@@ -81,9 +70,9 @@ const ReturnsPage = () => {
     date_from: '',
     date_to: '',
   });
-  const [clients, setClients] = useState([]);
   const [sales, setSales] = useState([]);
   const [modalDoc, setModalDoc] = useState(null);
+  const [detailDocId, setDetailDocId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [submitError, setSubmitError] = useState('');
   const [waybillBusyId, setWaybillBusyId] = useState(null);
@@ -92,8 +81,12 @@ const ReturnsPage = () => {
   useOperationalRefetch(['return', 'defect_record', 'rework_request', 'sale'], refetch, true);
 
   const loadRefs = useCallback(() => {
-    apiClient.get('clients/', { params: { page_size: 500 } }).then((r) => setClients(r.data?.items || [])).catch(() => setClients([]));
-    apiClient.get('sales/', { params: { page_size: 500 } }).then((r) => setSales(r.data?.items || [])).catch(() => setSales([]));
+    getReturnSelectSources()
+      .then((res) => {
+        const data = res.data || {};
+        setSales(Array.isArray(data.sales) ? data.sales : []);
+      })
+      .catch(() => setSales([]));
   }, []);
 
   useEffect(() => { loadRefs(); }, [loadRefs]);
@@ -147,7 +140,7 @@ const ReturnsPage = () => {
             value={queryState.client}
             onChange={(v) => setQueryState((p) => ({ ...p, client: v, page: 1 }))}
             placeholder="Клиент"
-            options={[{ value: '', label: 'Все клиенты' }, ...clients.map((c) => ({ value: String(c.id), label: c.name || `Клиент #${c.id}` }))]}
+            options={[{ value: '', label: 'Все клиенты' }, ...sales.map((s) => ({ value: String(s.client_id || ''), label: s.client_name || 'Клиент' })).filter((x) => x.value)]}
           />
           <label className="commercial-date-filter">
             <span className="commercial-date-filter__label">С</span>
@@ -189,7 +182,11 @@ const ReturnsPage = () => {
           <tbody>
             {items.map((r) => (
               <tr key={r.id}>
-                <td>{r.return_number || '—'}</td>
+                <td>
+                  <button type="button" className="btn btn--ghost" onClick={() => setDetailDocId(r.id)}>
+                    {r.return_number || '—'}
+                  </button>
+                </td>
                 <td>{(r.date || r.created_at || '').toString().slice(0, 10) || '—'}</td>
                 <td>{returnTableSaleLabel(r)}</td>
                 <td>{returnTableClientLabel(r)}</td>
@@ -198,6 +195,7 @@ const ReturnsPage = () => {
                   <ActionMenu
                     ariaLabel="Действия"
                     items={[
+                      { label: 'Открыть', onClick: () => setDetailDocId(r.id) },
                       { label: 'Редактировать', onClick: () => setModalDoc(r) },
                       {
                         label: 'Накладная',
@@ -226,6 +224,17 @@ const ReturnsPage = () => {
           onSubmit={onSubmit}
           onClose={() => { setModalDoc(null); setSubmitError(''); }}
           error={submitError}
+        />
+      )}
+      {detailDocId && (
+        <ReturnDetailModal
+          returnId={detailDocId}
+          onClose={() => setDetailDocId(null)}
+          onEdit={(doc) => {
+            setDetailDocId(null);
+            setModalDoc(doc);
+          }}
+          onDownloadWaybill={onDownloadWaybill}
         />
       )}
       <ConfirmModal
@@ -268,20 +277,17 @@ const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
       setSaleLines([]);
       return;
     }
-    let alive = true;
-    apiClient.get(`sales/${sale}/`)
-      .then((r) => {
-        if (!alive) return;
-        const d = r.data || {};
-        setSaleDetail(d);
-        setSaleLines(Array.isArray(d.sale_lines) ? d.sale_lines : (Array.isArray(d.lines) ? d.lines : []));
+    getReturnSelectSources(sale)
+      .then((res) => {
+        const data = res.data || {};
+        setSaleDetail((Array.isArray(data.sales) ? data.sales.find((x) => String(x.id) === String(sale)) : null) || null);
+        setSaleLines(Array.isArray(data.sale_lines) ? data.sale_lines : []);
       })
       .catch(() => {
-        if (!alive) return;
         setSaleDetail(null);
         setSaleLines([]);
       });
-    return () => { alive = false; };
+    return undefined;
   }, [sale]);
 
   const lineById = useMemo(() => {
@@ -292,12 +298,6 @@ const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
     return m;
   }, [saleLines]);
 
-  const routeWarnings = useMemo(() => {
-    const hasDefect = lines.some((l) => l.return_target === 'defect');
-    const hasRework = lines.some((l) => l.return_target === 'rework');
-    return { hasDefect, hasRework };
-  }, [lines]);
-
   const applySaleLineSelection = (idx, saleLineId) => {
     const sl = saleLineId ? lineById.get(String(saleLineId)) : null;
     const cap = saleLineReturnableCap(sl);
@@ -306,7 +306,7 @@ const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
       return {
         ...x,
         sale_line: saleLineId,
-        product: sl ? (sl.product || x.product) : x.product,
+        product: sl ? (sl.product || sl.sale_line_label || x.product) : x.product,
         quantity: cap != null && (!x.quantity || Number(parseLocaleNumber(x.quantity)) > cap) ? String(cap) : x.quantity,
       };
     }));
@@ -329,6 +329,10 @@ const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
               const l = lines[i];
               const qty = parseLocaleNumber(l.quantity);
               if (!(qty > 0)) continue;
+              if (!l.sale_line) {
+                setLineError(`Строка ${i + 1}: выберите строку продажи.`);
+                return;
+              }
               const sl = l.sale_line ? lineById.get(String(l.sale_line)) : null;
               const cap = saleLineReturnableCap(sl);
               if (cap != null && qty > cap) {
@@ -336,8 +340,7 @@ const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
                 return;
               }
               payloadLines.push({
-                ...(l.sale_line ? { sale_line: Number(l.sale_line) } : {}),
-                product: String(l.product || '').trim(),
+                sale_line: Number(l.sale_line),
                 quantity: qty,
                 return_target: l.return_target,
                 condition_type: l.condition_type,
@@ -378,21 +381,6 @@ const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
           <label>Комментарий</label>
           <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} />
 
-          {(routeWarnings.hasDefect || routeWarnings.hasRework) && (
-            <div className="card" style={{ marginTop: 12, padding: 12, borderLeft: '3px solid #ca8a04' }}>
-              {routeWarnings.hasDefect && (
-                <p style={{ margin: 0, fontSize: '0.9rem' }}>
-                  Выбран маршрут «В брак»: на сервере может быть создана запись брака.
-                </p>
-              )}
-              {routeWarnings.hasRework && (
-                <p style={{ margin: routeWarnings.hasDefect ? '8px 0 0' : 0, fontSize: '0.9rem' }}>
-                  Выбран маршрут «На переделку»: на сервере может быть создана переделка.
-                </p>
-              )}
-            </div>
-          )}
-
           <div style={{ marginTop: 12 }}>
             <strong>Строки возврата</strong>
             {lines.map((line, idx) => {
@@ -411,7 +399,7 @@ const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
                         const capLabel = c != null ? ` · макс. ${formatQuantityDisplay(c)}` : '';
                         return {
                           value: String(x.id),
-                          label: `${x.product || 'Позиция'}${capLabel}`,
+                          label: `${x.sale_line_label || x.product || 'Позиция'}${capLabel}`,
                         };
                       }),
                     ]}
@@ -424,11 +412,15 @@ const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
                         : '; окончательная проверка с учётом других возвратов — при сохранении на сервере.'}
                     </p>
                   )}
-                  <label>Товар *</label>
+                  <label>Товар</label>
                   <input
                     value={line.product}
-                    onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, product: e.target.value } : x)))}
+                    disabled
+                    readOnly
                   />
+                  <p style={{ margin: '4px 0 0', fontSize: '0.8125rem', opacity: 0.75 }}>
+                    Подставляется из строки продажи.
+                  </p>
                   <label>Количество *</label>
                   <input
                     type="number"
@@ -485,6 +477,106 @@ const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
             <button type="submit" className="btn btn--primary">Сохранить</button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+};
+
+const ReturnDetailModal = ({ returnId, onClose, onEdit, onDownloadWaybill }) => {
+  const [doc, setDoc] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await apiClient.get(`returns/${returnId}/`);
+        if (!alive) return;
+        setDoc(res.data || null);
+      } catch (e) {
+        if (!alive) return;
+        setError(getApiErrorMessage(e, 'Не удалось загрузить карточку возврата'));
+      } finally {
+        if (alive) setLoading(false);
+      }
+    };
+    load();
+    return () => { alive = false; };
+  }, [returnId]);
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
+        <div className="modal__head">
+          <h3>Карточка возврата</h3>
+          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+        </div>
+        {loading && <Loading />}
+        {!loading && error && <p className="modal__error">{error}</p>}
+        {!loading && !error && doc && (
+          <div style={{ padding: '0 1.5rem 1.5rem' }}>
+            <section className="card" style={{ padding: 12, marginBottom: 12 }}>
+              <h4>Общее</h4>
+              <p><strong>Номер:</strong> {doc.return_number || '—'}</p>
+              <p><strong>Дата:</strong> {(doc.date || doc.created_at || '').toString().slice(0, 10) || '—'}</p>
+              <p><strong>Продажа:</strong> {returnTableSaleLabel(doc)}</p>
+              <p><strong>Клиент:</strong> {returnTableClientLabel(doc)}</p>
+              <p><strong>Причина:</strong> {doc.return_reason || '—'}</p>
+              {doc.comment ? <p><strong>Комментарий:</strong> {doc.comment}</p> : null}
+            </section>
+            {Array.isArray(doc.downstream_links) && doc.downstream_links.length > 0 ? (
+              <section className="card" style={{ padding: 12, marginBottom: 12 }}>
+                <h4>Создано по возврату</h4>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Тип</th>
+                      <th>Номер</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {doc.downstream_links.map((x, idx) => (
+                      <tr key={x.id || idx}>
+                        <td>{x.type || '—'}</td>
+                        <td>{x.label || x.number || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+            ) : null}
+            <section className="card" style={{ padding: 12, marginBottom: 12 }}>
+              <h4>Строки возврата</h4>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Товар</th>
+                    <th className="data-table__cell--num">Количество</th>
+                    <th>Маршрут</th>
+                    <th>Состояние</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(Array.isArray(doc.lines) ? doc.lines : []).map((line, idx) => (
+                    <tr key={line.id || idx}>
+                      <td>{line.product || '—'}</td>
+                      <td className="data-table__cell--num">{formatQuantityDisplay(line.quantity)}</td>
+                      <td>{targetLabel(line.return_target)}</td>
+                      <td>{CONDITIONS.find((x) => x.value === line.condition_type)?.label || line.condition_type || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+            <div className="modal__actions">
+              <button type="button" className="btn btn--secondary" onClick={() => onEdit(doc)}>Редактировать</button>
+              <button type="button" className="btn btn--primary" onClick={() => onDownloadWaybill(doc)}>Накладная</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

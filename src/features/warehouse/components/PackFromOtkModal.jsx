@@ -29,7 +29,7 @@ const productName = (b) =>
   || (typeof b.product === 'string' ? b.product : null)
   || 'Продукт';
 
-const lotLabel = (b) => b.batch ?? b.lot ?? '—';
+const lotLabel = (b) => b.batch ?? '—';
 
 const formatDimsReadonly = (b) => {
   if (!batchHasFullPackagingGeometry(b)) return '—';
@@ -66,7 +66,7 @@ const PackFromOtkModal = ({ open, onClose, onSuccess, error: externalError, setE
 
   const availableQty = useMemo(() => {
     if (!selectedBatch) return 0;
-    const q = parseLocaleNumber(selectedBatch.quantity ?? selectedBatch.available_quantity);
+    const q = parseLocaleNumber(selectedBatch.available_quantity);
     return Number.isFinite(q) && q > 0 ? q : 0;
   }, [selectedBatch]);
 
@@ -86,13 +86,11 @@ const PackFromOtkModal = ({ open, onClose, onSuccess, error: externalError, setE
       return (Number(a.id) || 0) - (Number(b.id) || 0);
     });
     return list.map((b) => {
-      const q = parseLocaleNumber(b.quantity ?? b.available_quantity);
+      const q = parseLocaleNumber(b.available_quantity);
       const qtyStr = Number.isFinite(q) ? `${formatQuantityDisplay(q)} шт` : '—';
-      const qn = readWarehouseQuality(b);
-      const prefix = qn === 'defect' ? 'Брак · ' : '';
       return {
         value: String(b.id),
-        label: `${prefix}${productName(b)} · ${lotLabel(b)} · ${qtyStr}`,
+        label: `${productName(b)} · ${lotLabel(b)} · ${qtyStr}`,
       };
     });
   }, [unpackedBatches]);
@@ -117,7 +115,7 @@ const PackFromOtkModal = ({ open, onClose, onSuccess, error: externalError, setE
       })
       .then((res) => {
         const items = res.data?.items ?? [];
-        setUnpackedBatches(items);
+        setUnpackedBatches(items.filter((x) => readWarehouseQuality(x) !== 'defect'));
       })
       .catch(() => {
         setUnpackedBatches([]);
@@ -178,7 +176,6 @@ const PackFromOtkModal = ({ open, onClose, onSuccess, error: externalError, setE
     try {
       await packFromOtk({
         warehouse_batch_id: wid,
-        warehouse_batch: wid,
         pieces_per_package: ipp,
         packages_count: pk,
         ...(comment.trim() ? { comment: comment.trim() } : {}),

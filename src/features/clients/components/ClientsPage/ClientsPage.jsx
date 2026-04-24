@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
 import { useServerQuery, getApiErrorMessage, formatQuantityDisplay } from '../../../../shared/lib';
 import {
@@ -7,11 +7,13 @@ import {
   EmptyState,
   ErrorState,
   Loading,
+  Pagination,
   ActionMenu,
   useToast,
   Badge,
 } from '../../../../shared/ui';
 import { apiClient } from '../../../../shared/api';
+import { useOperationalRefetch } from '../../../../shared/realtime';
 import './ClientsPage.scss';
 
 const clientCanDelete = (c) => {
@@ -28,10 +30,21 @@ const ClientsPage = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [historyTarget, setHistoryTarget] = useState(null);
   const [historyItems, setHistoryItems] = useState([]);
+  const [historyFinance, setHistoryFinance] = useState(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
-  const { items, loading, error, refetch } = useServerQuery('clients/', queryState, { enabled: true });
+  const { items, meta, raw, loading, error, refetch } = useServerQuery('clients/', queryState, { enabled: true });
+  useOperationalRefetch(['sale', 'payment', 'order'], refetch, true);
+
+  const listMeta = useMemo(() => {
+    if (meta) return meta;
+    const ps = Number(queryState.page_size) || 20;
+    if (raw && typeof raw.count === 'number' && ps > 0) {
+      return { page: queryState.page, pages: Math.max(1, Math.ceil(raw.count / ps)), total: raw.count };
+    }
+    return null;
+  }, [meta, raw, queryState.page, queryState.page_size]);
 
   const handleSubmit = async (payload) => {
     setSubmitError('');
@@ -65,10 +78,16 @@ const ClientsPage = () => {
   const handleOpenHistory = async (client) => {
     setHistoryTarget(client);
     setHistoryItems([]);
+    setHistoryFinance(null);
     setHistoryLoading(true);
     try {
-      const res = await apiClient.get(`clients/${client.id}/history/`);
-      let rows = res.data?.items || [];
+      const [historyRes, summaryRes] = await Promise.allSettled([
+        apiClient.get(`clients/${client.id}/history/`),
+        apiClient.get('payments/summary/', { params: { client_id: client.id } }),
+      ]);
+      const historyData = historyRes.status === 'fulfilled' ? (historyRes.value.data || {}) : {};
+      const summaryData = summaryRes.status === 'fulfilled' ? (summaryRes.value.data || {}) : {};
+      let rows = historyData?.items || [];
       if (!rows.length) {
         const s = await apiClient.get('sales/', { params: { page_size: 200, client_id: client.id } });
         const sales = s.data?.items || [];
@@ -80,8 +99,10 @@ const ClientsPage = () => {
         }));
       }
       setHistoryItems(rows);
+      setHistoryFinance({ ...historyData, ...summaryData });
     } catch {
       setHistoryItems([]);
+      setHistoryFinance(null);
     } finally {
       setHistoryLoading(false);
     }
@@ -174,6 +195,9 @@ const ClientsPage = () => {
           </tbody>
         </table>
       )}
+      {!loading && (!error || error.status === 404) && (
+        <Pagination meta={listMeta} onPageChange={(nextPage) => setQueryState((p) => ({ ...p, page: nextPage }))} />
+      )}
       {submitError && !deleteTarget && <p className="modal__error">{submitError}</p>}
 
       {modalClient !== null && (
@@ -190,6 +214,7 @@ const ClientsPage = () => {
           client={historyTarget}
           loading={historyLoading}
           items={historyItems}
+          finance={historyFinance}
           onClose={() => setHistoryTarget(null)}
         />
       )}
@@ -276,20 +301,24 @@ const ClientModal = ({ client, onClose, onSubmit, error }) => {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            onSubmit({
+            const messengerValue = messenger.trim() || undefined;
+            const payload = {
               name: name.trim(),
               phone: phone.trim() || undefined,
               contact_person: contactPerson.trim() || undefined,
-              messenger: messenger.trim() || undefined,
-              whatsapp_telegram: messenger.trim() || undefined,
               email: email.trim() || undefined,
               phone_alt: phoneAlt.trim() || undefined,
               address: address.trim() || undefined,
               client_type: clientType.trim() || undefined,
               notes: comment.trim() || undefined,
-              comment: comment.trim() || undefined,
               is_active: isActive,
-            });
+            };
+            if ('whatsapp_telegram' in (client || {}) && !('messenger' in (client || {}))) {
+              payload.whatsapp_telegram = messengerValue;
+            } else {
+              payload.messenger = messengerValue;
+            }
+            onSubmit(payload);
           }}
         >
           <label>Название / компания *</label>
@@ -331,7 +360,9 @@ const ClientModal = ({ client, onClose, onSubmit, error }) => {
   );
 };
 
-const HistoryModal = ({ client, loading, items, onClose }) => (
+const moneyValue = (v) => (v == null || v === '' ? '—' : `${formatQuantityDisplay(v)} сом`);
+
+const HistoryModal = ({ client, loading, items, finance, onClose }) => (
   <div className="modal-overlay" onClick={onClose}>
     <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
       <div className="modal__head">
@@ -339,6 +370,23 @@ const HistoryModal = ({ client, loading, items, onClose }) => (
         <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
       </div>
       <div style={{ padding: '1.5rem' }}>
+        {!loading && finance && (
+          <div className="card" style={{ padding: 12, marginBottom: 12 }}>
+            <strong>Финансовая сводка</strong>
+            <div style={{ marginTop: 8, display: 'grid', gap: 4, fontSize: '0.9375rem' }}>
+              {'total_revenue' in finance && <div>Выручка: {moneyValue(finance.total_revenue)}</div>}
+              {'total_paid' in finance && <div>Оплачено: {moneyValue(finance.total_paid)}</div>}
+              {'total_refunded' in finance && <div>Возвратов денег: {moneyValue(finance.total_refunded)}</div>}
+              {'client_debt_money' in finance && <div>Долг: {moneyValue(finance.client_debt_money)}</div>}
+              {'client_advance_amount' in finance && <div>Аванс: {moneyValue(finance.client_advance_amount)}</div>}
+              {'credit_limit' in finance && <div>Кредитный лимит: {moneyValue(finance.credit_limit)}</div>}
+              {'credit_available' in finance && <div>Доступный кредит: {moneyValue(finance.credit_available)}</div>}
+              {'credit_limit_mode' in finance && <div>Режим лимита: {finance.credit_limit_mode || '—'}</div>}
+              {'credit_is_over_limit' in finance && <div>Превышение лимита: {finance.credit_is_over_limit ? 'Да' : 'Нет'}</div>}
+              {'credit_warning' in finance && finance.credit_warning && <div>Предупреждение: {finance.credit_warning}</div>}
+            </div>
+          </div>
+        )}
         {loading && <Loading />}
         {!loading && items.length === 0 && <EmptyState title="Нет данных" />}
         {!loading && items.length > 0 && (

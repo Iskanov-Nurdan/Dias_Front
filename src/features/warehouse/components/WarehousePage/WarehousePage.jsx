@@ -8,13 +8,12 @@ import {
   inventoryFormLabel,
   inventoryFormBadgeModifier,
   warehouseStockStatusRu,
-  getWarehouseQuantityPresentation,
   readWarehouseQuality,
   readWarehouseDefectReason,
   warehouseQualityShortLabel,
 } from '../../../../shared/lib';
 import { buildWarehouseBatchCardRows } from '../warehouseBatchCard';
-import { EmptyState, ErrorState, Loading, useToast, DecimalInput, ConfirmModal, ActionMenu } from '../../../../shared/ui';
+import { EmptyState, ErrorState, Loading, useToast, DecimalInput, ConfirmModal, ActionMenu, Pagination, Badge } from '../../../../shared/ui';
 import Select from '../../../../shared/ui/Select/Select';
 import { apiClient } from '../../../../shared/api';
 import { useOperationalRefetch } from '../../../../shared/realtime';
@@ -66,16 +65,20 @@ const WarehousePage = () => {
   const [packError, setPackError] = useState('');
   const [submitError, setSubmitError] = useState('');
 
-  const { items, loading, error, refetch } = useServerQuery('warehouse/batches/', queryState, { enabled: true });
+  const { items, meta, raw, loading, error, refetch } = useServerQuery('warehouse/batches/', queryState, { enabled: true });
 
   useOperationalRefetch(['warehouse_batch', 'production_batch', 'batch'], refetch, true);
 
-  const rows = useMemo(() => {
-    const raw = items || [];
-    const q = queryState.quality;
-    if (!q) return raw;
-    return raw.filter((b) => readWarehouseQuality(b) === q);
-  }, [items, queryState.quality]);
+  const rows = items || [];
+
+  const listMeta = useMemo(() => {
+    if (meta) return meta;
+    const ps = Number(queryState.page_size) || 20;
+    if (raw && typeof raw.count === 'number' && ps > 0) {
+      return { page: queryState.page, pages: Math.max(1, Math.ceil(raw.count / ps)), total: raw.count };
+    }
+    return null;
+  }, [meta, raw, queryState.page, queryState.page_size]);
 
   const handleReserve = async (batchId, quantity, saleId) => {
     setSubmitError('');
@@ -174,22 +177,26 @@ const WarehousePage = () => {
         <table className="data-table data-table--fixed data-table--warehouse data-table--row-actions data-table--clickable">
           <thead>
             <tr>
+              <th>Продукт</th>
               <th>Статус</th>
               <th>Качество</th>
-              <th>Продукт</th>
-              <th>Количество</th>
+              <th className="data-table__cell--num">Физический остаток</th>
+              <th className="data-table__cell--num">Зарезервировано</th>
+              <th className="data-table__cell--num">Свободно</th>
               <th>Партия</th>
               <th aria-hidden />
             </tr>
           </thead>
           <tbody>
             {rows.map((b) => {
-              const qty = b.quantity ?? b.available_quantity ?? 0;
+              const qtyRaw = b.quantity;
+              const reservedRaw = b.reserved_quantity;
+              const availableRaw = b.available_quantity;
+              const qty = Number.isFinite(Number(availableRaw)) ? Number(availableRaw) : 0;
               const canReserve = String(b.status || '').toLowerCase() === 'available';
               const productLabel = (b.product_name && String(b.product_name).trim()) || b.product?.name || b.product || '—';
               const inv = resolveInventoryForm(b);
               const invMod = inventoryFormBadgeModifier(inv);
-              const qtyPres = getWarehouseQuantityPresentation(b);
               const qKey = readWarehouseQuality(b);
               const defectReason = readWarehouseDefectReason(b);
               const isDefect = qKey === 'defect';
@@ -207,11 +214,19 @@ const WarehousePage = () => {
                     }
                   }}
                 >
+                  <td className="data-table__cell--lead">
+                    <span className="warehouse-table__product-name">{productLabel}</span>
+                    {defectReason ? (
+                      <span className="warehouse-table__defect-hint" title={defectReason}>
+                        {defectReason.length > 48 ? `${defectReason.slice(0, 48)}…` : defectReason}
+                      </span>
+                    ) : null}
+                  </td>
                   <td>
                     <div className="warehouse-table__status-stack">
-                      <span className={`badge badge--${String(b.status || '').toLowerCase()}`}>
+                      <Badge variant={String(b.status || '').toLowerCase() === 'shipped' ? 'success' : String(b.status || '').toLowerCase() === 'reserved' ? 'warning' : 'default'}>
                         {statusLabel(b.status)}
-                      </span>
+                      </Badge>
                       <span className={`warehouse-inv-badge warehouse-inv-badge--${invMod} warehouse-inv-badge--inline`}>
                         {inventoryFormLabel(inv)}
                       </span>
@@ -225,25 +240,9 @@ const WarehousePage = () => {
                       {warehouseQualityShortLabel(qKey)}
                     </span>
                   </td>
-                  <td className="data-table__cell--lead">
-                    <span className="warehouse-table__product-name">{productLabel}</span>
-                    {defectReason ? (
-                      <span className="warehouse-table__defect-hint" title={defectReason}>
-                        {defectReason.length > 48 ? `${defectReason.slice(0, 48)}…` : defectReason}
-                      </span>
-                    ) : null}
-                  </td>
-                  <td
-                    className="data-table__qty-cell data-table__cell--num"
-                    title={qtyPres.title || undefined}
-                  >
-                    <div className="warehouse-qty-cell">
-                      <span className="warehouse-qty-cell__primary">{qtyPres.primary}</span>
-                      {qtyPres.secondary && (
-                        <span className="warehouse-qty-cell__secondary">{qtyPres.secondary}</span>
-                      )}
-                    </div>
-                  </td>
+                  <td className="data-table__cell--num">{qtyRaw != null && qtyRaw !== '' ? formatNumberForInput(qtyRaw) : '—'}</td>
+                  <td className="data-table__cell--num">{reservedRaw != null && reservedRaw !== '' ? formatNumberForInput(reservedRaw) : '—'}</td>
+                  <td className="data-table__cell--num">{availableRaw != null && availableRaw !== '' ? formatNumberForInput(availableRaw) : '—'}</td>
                   <td className="warehouse-table__batch data-table__cell--muted data-table__cell--num">{b.batch || b.lot || '—'}</td>
                   <td>
                     <ActionMenu
@@ -268,6 +267,9 @@ const WarehousePage = () => {
             })}
           </tbody>
         </table>
+      )}
+      {!loading && (!error || error.status === 404) && (
+        <Pagination meta={listMeta} onPageChange={(nextPage) => setQueryState((p) => ({ ...p, page: nextPage }))} />
       )}
 
       {reserveTarget && (

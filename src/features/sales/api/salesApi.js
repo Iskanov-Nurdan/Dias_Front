@@ -215,10 +215,24 @@ export async function downloadSaleReceipt(saleId) {
   if (!(blob instanceof Blob) || blob.size === 0) {
     throw new Error('Пустой ответ для квитанции');
   }
+  const sniff = await sniffDownloadBlob(blob);
+  if (sniff.kind === 'json_error') {
+    throw new Error(sniff.message || 'Ошибка при формировании квитанции');
+  }
   const ct = (res.headers?.['content-type'] || '').toLowerCase();
-  const ext = ct.includes('pdf') ? 'pdf' : 'html';
-  const name = blobFilenameFromHeaders(res.headers, `receipt-${saleId}.${ext}`);
-  triggerBlobDownload(blob, name);
+  let ext = ct.includes('pdf') ? 'pdf' : 'html';
+  if (sniff.kind === 'pdf') ext = 'pdf';
+  else if (sniff.kind === 'html') ext = 'html';
+  let name = blobFilenameFromHeaders(res.headers, `receipt-${saleId}.${ext}`);
+  if (sniff.kind === 'pdf' && !/\.pdf$/i.test(name)) {
+    name = name.replace(/\.(html|htm|bin)$/i, '.pdf');
+    if (!/\.pdf$/i.test(name)) name = `receipt-${saleId}.pdf`;
+  }
+  const downloadBlob =
+    sniff.kind === 'pdf' && !ct.includes('pdf')
+      ? new Blob([await blob.arrayBuffer()], { type: 'application/pdf' })
+      : blob;
+  triggerBlobDownload(downloadBlob, name);
 }
 
 function escapeHtml(str) {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import DefectsPage from '../DefectsPage/DefectsPage';
 import ReworkRequestsPage from '../../../reworkRequests/components/ReworkRequestsPage/ReworkRequestsPage';
@@ -7,6 +7,22 @@ import './DefectsReworkPage.scss';
 const DefectsReworkPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [defectsMountKey, setDefectsMountKey] = useState(0);
+  const [reworkMountKey, setReworkMountKey] = useState(0);
+
+  const bumpDefectsList = useCallback(() => {
+    setDefectsMountKey((k) => k + 1);
+  }, []);
+
+  const bumpReworkList = useCallback(() => {
+    setReworkMountKey((k) => k + 1);
+  }, []);
+
+  const handleSentToReworkSuccess = useCallback(() => {
+    bumpReworkList();
+    navigate('/defects-rework/rework');
+    bumpDefectsList();
+  }, [navigate, bumpReworkList, bumpDefectsList]);
 
   const isReworkTab = location.pathname.startsWith('/defects-rework/rework');
 
@@ -34,7 +50,11 @@ const DefectsReworkPage = () => {
       </div>
 
       <div className="defects-rework-page__content">
-        {isReworkTab ? <ReworkRequestsPage /> : <DefectsPage />}
+        {isReworkTab ? (
+          <ReworkRequestsPage key={reworkMountKey} onAfterMutation={bumpDefectsList} />
+        ) : (
+          <DefectsPage key={defectsMountKey} onSentToReworkSuccess={handleSentToReworkSuccess} />
+        )}
       </div>
     </div>
   );

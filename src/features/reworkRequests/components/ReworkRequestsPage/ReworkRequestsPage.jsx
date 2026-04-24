@@ -87,15 +87,24 @@ const canStartRework = (s) => s === 'pending';
 const canCompleteRework = (s) => s === 'in_progress';
 const canCancelRework = (s) => s === 'pending' || s === 'in_progress';
 
+const reworkActionOn = (actions, key) => {
+  if (actions == null) return false;
+  if (Array.isArray(actions)) return actions.includes(key);
+  if (typeof actions === 'object') return Boolean(actions[key]);
+  return false;
+};
+
 const ReworkRequestsPage = () => {
   const toast = useToast();
   const [queryState, setQueryState] = useState({ page: 1, page_size: 20, status: '' });
   const [modalDoc, setModalDoc] = useState(null);
   const [detailDocId, setDetailDocId] = useState(null);
   const [completeTarget, setCompleteTarget] = useState(null);
+  const [completeOutputQty, setCompleteOutputQty] = useState('');
+  const [completeLossQty, setCompleteLossQty] = useState('');
+  const [completeQuality, setCompleteQuality] = useState('');
   const [startTarget, setStartTarget] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
-  const [resultBatchId, setResultBatchId] = useState('');
   const [warehouseBatches, setWarehouseBatches] = useState([]);
   const [returnsList, setReturnsList] = useState([]);
   const [defectsList, setDefectsList] = useState([]);
@@ -172,16 +181,27 @@ const ReworkRequestsPage = () => {
 
   const onComplete = async () => {
     if (!completeTarget?.id) return;
-    const bid = Number(resultBatchId);
-    if (!resultBatchId || !Number.isFinite(bid) || bid <= 0) {
-      setSubmitError('Выберите результирующую партию склада');
+    const out = parseLocaleNumber(completeOutputQty);
+    const loss = parseLocaleNumber(completeLossQty);
+    if (!Number.isFinite(out) || out < 0) {
+      setSubmitError('Укажите выход (output_quantity)');
+      return;
+    }
+    if (!Number.isFinite(loss) || loss < 0) {
+      setSubmitError('Укажите потери (loss_quantity)');
       return;
     }
     setSubmitError('');
     try {
-      await completeReworkRequest(completeTarget.id, { result_warehouse_batch_id: bid });
+      await completeReworkRequest(completeTarget.id, {
+        output_quantity: String(out),
+        loss_quantity: String(loss),
+        ...(completeQuality === 'good' || completeQuality === 'defect' ? { quality: completeQuality } : {}),
+      });
       setCompleteTarget(null);
-      setResultBatchId('');
+      setCompleteOutputQty('');
+      setCompleteLossQty('');
+      setCompleteQuality('');
       refetch();
       loadRefs();
       toast.show('Переделка завершена');
@@ -189,11 +209,6 @@ const ReworkRequestsPage = () => {
       setSubmitError(getApiErrorMessage(e, 'Ошибка завершения переделки'));
     }
   };
-
-  const batchSelectOptions = useMemo(() => warehouseBatches.map((b) => ({
-    value: String(b.id),
-    label: warehouseBatchShortLabel(b),
-  })), [warehouseBatches]);
 
   return (
     <div className="page commercial-page">
@@ -230,24 +245,30 @@ const ReworkRequestsPage = () => {
             <tbody>
               {items.map((r) => {
                 const st = r.status;
-                const availableActions = Array.isArray(r.available_actions) ? r.available_actions : [];
+                const availableActions = r.available_actions;
                 const menuItems = [{ label: 'Открыть', onClick: () => setDetailDocId(r.id) }];
-                if (canEditRework(st) && availableActions.includes('edit')) {
+                if (canEditRework(st) && reworkActionOn(availableActions, 'edit')) {
                   menuItems.push({ label: 'Редактировать', onClick: () => setModalDoc(r) });
                 }
-                if (canStartRework(st) && availableActions.includes('start')) {
+                if (canStartRework(st) && reworkActionOn(availableActions, 'start')) {
                   menuItems.push({
                     label: 'Начать',
                     onClick: () => { setStartTarget(r); setSubmitError(''); },
                   });
                 }
-                if (canCompleteRework(st) && availableActions.includes('complete')) {
+                if (canCompleteRework(st) && reworkActionOn(availableActions, 'complete')) {
                   menuItems.push({
                     label: 'Завершить',
-                    onClick: () => { setCompleteTarget(r); setResultBatchId(''); setSubmitError(''); },
+                    onClick: () => {
+                      setCompleteTarget(r);
+                      setCompleteOutputQty('');
+                      setCompleteLossQty('');
+                      setCompleteQuality('');
+                      setSubmitError('');
+                    },
                   });
                 }
-                if (canCancelRework(st) && availableActions.includes('cancel')) {
+                if (canCancelRework(st) && reworkActionOn(availableActions, 'cancel')) {
                   menuItems.push({
                     label: 'Отменить',
                     danger: true,
@@ -312,7 +333,9 @@ const ReworkRequestsPage = () => {
           onComplete={(doc) => {
             setDetailDocId(null);
             setCompleteTarget(doc);
-            setResultBatchId('');
+            setCompleteOutputQty('');
+            setCompleteLossQty('');
+            setCompleteQuality('');
             setSubmitError('');
           }}
           onCancel={(doc) => {
@@ -366,13 +389,27 @@ const ReworkRequestsPage = () => {
               </button>
             </div>
             <p className="commercial-note">
-              Укажите партию склада с результатом переработки — без неё завершение недоступно.
+              Укажите выход и потери по факту переработки (создание партии на складе выполняет сервер).
             </p>
-            <label>Результирующая партия *</label>
+            <label>Выход (output_quantity) *</label>
+            <input
+              value={completeOutputQty}
+              onChange={(e) => { setCompleteOutputQty(e.target.value); setSubmitError(''); }}
+            />
+            <label>Потери (loss_quantity) *</label>
+            <input
+              value={completeLossQty}
+              onChange={(e) => { setCompleteLossQty(e.target.value); setSubmitError(''); }}
+            />
+            <label>Качество результата</label>
             <Select
-              value={resultBatchId}
-              onChange={(v) => { setResultBatchId(v); setSubmitError(''); }}
-              options={[{ value: '', label: 'Выберите партию' }, ...batchSelectOptions]}
+              value={completeQuality}
+              onChange={(v) => setCompleteQuality(v)}
+              options={[
+                { value: '', label: 'По умолчанию (сервер)' },
+                { value: 'good', label: 'Годные' },
+                { value: 'defect', label: 'Брак' },
+              ]}
             />
             {submitError && <p className="modal__error">{submitError}</p>}
             <div className="modal__actions">
@@ -380,7 +417,6 @@ const ReworkRequestsPage = () => {
               <button
                 type="button"
                 className="btn btn--primary"
-                disabled={!resultBatchId}
                 onClick={onComplete}
               >
                 Завершить
@@ -445,7 +481,7 @@ const ReworkModal = ({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (!defectRecord || !originalSale) return;
+            if (!defectRecord) return;
             const q = parseLocaleNumber(quantityKg);
             const payload = {
               product: product.trim() || undefined,
@@ -454,8 +490,7 @@ const ReworkModal = ({
             };
             if (returnDoc) payload.return_doc = Number(returnDoc);
             payload.defect_record = Number(defectRecord);
-            payload.original_sale = Number(originalSale);
-            if (!doc) payload.status = 'pending';
+            if (originalSale) payload.original_sale = Number(originalSale);
             onSubmit(payload);
           }}
         >
@@ -475,7 +510,7 @@ const ReworkModal = ({
           <Select
             value={originalSale}
             onChange={setOriginalSale}
-            options={[{ value: '', label: 'Нет' }, ...saleOptions]}
+            options={[{ value: '', label: 'Необязательно' }, ...saleOptions]}
           />
           <label>Продукт *</label>
           <input value={product} onChange={(e) => setProduct(e.target.value)} readOnly required />

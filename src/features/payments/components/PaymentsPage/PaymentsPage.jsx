@@ -3,7 +3,7 @@ import { apiClient } from '../../../../shared/api';
 import { useOperationalRefetch } from '../../../../shared/realtime';
 import { useServerQuery, formatQuantityDisplay, getApiErrorMessage, parseLocaleNumber } from '../../../../shared/lib';
 import { ActionMenu, ConfirmModal, EmptyState, ErrorState, Loading, Pagination, Select, useToast } from '../../../../shared/ui';
-import { createPayment, deletePayment, getPaymentSummary, updatePayment } from '../../api/paymentsApi';
+import { cancelPayment, createPayment, getPaymentSummary, updatePayment } from '../../api/paymentsApi';
 
 const PAYMENT_TYPES = [
   { value: 'prepayment', label: 'Предоплата' },
@@ -29,7 +29,7 @@ const PaymentsPage = () => {
     page: 1,
     page_size: 20,
     payment_type: '',
-    client: '',
+    client_id: '',
     date_from: '',
     date_to: '',
   });
@@ -38,13 +38,13 @@ const PaymentsPage = () => {
   const [sales, setSales] = useState([]);
   const [modalPayment, setModalPayment] = useState(null);
   const [summary, setSummary] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
   const [submitError, setSubmitError] = useState('');
 
   const { items, meta, loading, error, refetch } = useServerQuery('payments/', queryState, { enabled: true });
 
   const loadSummary = useCallback(() => {
-    const clientId = queryState.client;
+    const clientId = queryState.client_id;
     if (!clientId) {
       setSummary(null);
       return;
@@ -52,7 +52,7 @@ const PaymentsPage = () => {
     getPaymentSummary(clientId)
       .then((r) => setSummary(r.data || null))
       .catch(() => setSummary(null));
-  }, [queryState.client]);
+  }, [queryState.client_id]);
 
   const reloadOperational = useCallback(() => {
     refetch();
@@ -85,17 +85,17 @@ const PaymentsPage = () => {
     }
   };
 
-  const onDelete = async () => {
-    if (!deleteTarget?.id) return;
+  const onCancelPayment = async () => {
+    if (!cancelTarget?.id) return;
     setSubmitError('');
     try {
-      await deletePayment(deleteTarget.id);
-      setDeleteTarget(null);
+      await cancelPayment(cancelTarget.id);
+      setCancelTarget(null);
       refetch();
       loadSummary();
-      toast.show('Оплата удалена');
+      toast.show('Платёж отменён');
     } catch (e) {
-      setSubmitError(getApiErrorMessage(e, 'Ошибка удаления'));
+      setSubmitError(getApiErrorMessage(e, 'Ошибка отмены'));
     }
   };
 
@@ -104,8 +104,8 @@ const PaymentsPage = () => {
       <div className="ds-toolbar ds-toolbar--stack-mobile commercial-toolbar">
         <div className="ds-toolbar__start commercial-toolbar__filters">
           <Select
-            value={queryState.client}
-            onChange={(v) => setQueryState((p) => ({ ...p, client: v, page: 1 }))}
+            value={queryState.client_id}
+            onChange={(v) => setQueryState((p) => ({ ...p, client_id: v, page: 1 }))}
             placeholder="Клиент"
             options={[{ value: '', label: 'Все клиенты' }, ...clients.map((c) => ({ value: String(c.id), label: c.name || `#${c.id}` }))]}
           />
@@ -137,7 +137,7 @@ const PaymentsPage = () => {
         </div>
       </div>
 
-      {summary && queryState.client && (
+      {summary && queryState.client_id && (
         <div className="commercial-summary">
           <p className="commercial-summary__title">Сводка по клиенту</p>
           {summary.client_name && (
@@ -168,6 +168,7 @@ const PaymentsPage = () => {
               <th>Тип</th>
               <th>Способ</th>
               <th className="data-table__cell--num">Сумма</th>
+              <th>Статус</th>
               <th aria-hidden />
             </tr>
           </thead>
@@ -180,12 +181,17 @@ const PaymentsPage = () => {
                 <td>{typeLabel(p.payment_type)}</td>
                 <td>{methodLabel(p.payment_method)}</td>
                 <td className="data-table__cell--num">{p.amount != null ? `${formatQuantityDisplay(p.amount)} сом` : '—'}</td>
+                <td>{p.status === 'canceled' ? 'Отменена' : p.status === 'active' ? 'Активна' : (p.status || '—')}</td>
                 <td>
                   <ActionMenu
                     ariaLabel="Действия"
                     items={[
-                      { label: 'Редактировать', onClick: () => setModalPayment(p) },
-                      { label: 'Удалить', danger: true, onClick: () => setDeleteTarget(p) },
+                      ...(p.status !== 'canceled'
+                        ? [{ label: 'Редактировать', onClick: () => setModalPayment(p) }]
+                        : []),
+                      ...(p.status === 'active'
+                        ? [{ label: 'Отменить платёж', danger: true, onClick: () => setCancelTarget(p) }]
+                        : []),
                     ]}
                   />
                 </td>
@@ -212,13 +218,13 @@ const PaymentsPage = () => {
         />
       )}
       <ConfirmModal
-        open={!!deleteTarget}
-        title="Удалить оплату?"
-        message={deleteTarget ? `Удалить платёж${deleteTarget.payment_number ? ` «${deleteTarget.payment_number}»` : ''}?` : ''}
-        confirmText="Удалить"
-        onConfirm={onDelete}
-        onCancel={() => { setDeleteTarget(null); setSubmitError(''); }}
-        error={deleteTarget ? submitError : undefined}
+        open={!!cancelTarget}
+        title="Отменить платёж?"
+        message={cancelTarget ? `Отменить платёж${cancelTarget.payment_number ? ` «${cancelTarget.payment_number}»` : ''}? Сумму и привязки менять нельзя — только отмена записи.` : ''}
+        confirmText="Отменить"
+        onConfirm={onCancelPayment}
+        onCancel={() => { setCancelTarget(null); setSubmitError(''); }}
+        error={cancelTarget ? submitError : undefined}
       />
     </div>
   );
@@ -226,15 +232,67 @@ const PaymentsPage = () => {
 
 const saleOptionLabel = (x) => x.order_number || x.sale_number || `Продажа #${x.id}`;
 
+const linkedReturnIdFromPayment = (p) => {
+  if (!p) return '';
+  if (p.linked_return_id != null) return String(p.linked_return_id);
+  const lr = p.linked_return;
+  if (lr != null && typeof lr === 'object' && lr.id != null) return String(lr.id);
+  if (lr != null && (typeof lr === 'number' || typeof lr === 'string')) return String(lr);
+  return '';
+};
+
 const PaymentModal = ({ payment, clients, orders, sales, onSubmit, onClose, error }) => {
+  const isCanceled = payment?.status === 'canceled';
+  const isEdit = Boolean(payment?.id) && !isCanceled;
+  const lockedAfterCreate = isEdit && payment?.status === 'active';
+
+  const [localError, setLocalError] = useState('');
   const [date, setDate] = useState((payment?.date || '').toString().slice(0, 10) || new Date().toISOString().slice(0, 10));
   const [client, setClient] = useState(payment?.client_id != null ? String(payment.client_id) : '');
   const [linkedOrder, setLinkedOrder] = useState(payment?.linked_order_id != null ? String(payment.linked_order_id) : '');
   const [linkedSale, setLinkedSale] = useState(payment?.linked_sale_id != null ? String(payment.linked_sale_id) : '');
+  const [linkedReturn, setLinkedReturn] = useState(() => linkedReturnIdFromPayment(payment));
+  const [manualRefundReason, setManualRefundReason] = useState(payment?.manual_refund_reason || '');
   const [type, setType] = useState(payment?.payment_type || 'payment');
   const [method, setMethod] = useState(payment?.payment_method || 'cash');
   const [amount, setAmount] = useState(payment?.amount != null ? String(payment.amount) : '');
   const [comment, setComment] = useState(payment?.comment || '');
+  const [returns, setReturns] = useState([]);
+
+  useEffect(() => {
+    if (type !== 'refund' || !client) {
+      setReturns([]);
+      return undefined;
+    }
+    let alive = true;
+    apiClient.get('returns/', { params: { client_id: client, page_size: 200 } })
+      .then((r) => {
+        if (!alive) return;
+        setReturns(Array.isArray(r.data?.items) ? r.data.items : []);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setReturns([]);
+      });
+    return () => { alive = false; };
+  }, [type, client]);
+
+  if (isCanceled) {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal__head">
+            <h3>Платёж отменён</h3>
+            <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+          </div>
+          <p style={{ padding: '0 1.25rem 1rem' }}>Отменённую оплату редактировать нельзя.</p>
+          <div className="modal__actions">
+            <button type="button" className="btn btn--primary" onClick={onClose}>Закрыть</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -246,37 +304,97 @@ const PaymentModal = ({ payment, clients, orders, sales, onSubmit, onClose, erro
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            setLocalError('');
+            if (lockedAfterCreate) {
+              onSubmit({
+                date,
+                payment_method: method,
+                comment: comment.trim() || undefined,
+                manual_refund_reason: manualRefundReason.trim() || undefined,
+              });
+              return;
+            }
             const amt = parseLocaleNumber(amount);
             if (!(amt > 0)) return;
-            onSubmit({
+            if (type === 'refund' && !linkedReturn && !manualRefundReason.trim()) {
+              setLocalError('Для возврата денег укажите связанный возврат или причину вручную');
+              return;
+            }
+            const payload = {
               date,
               ...(client ? { client: Number(client) } : {}),
               ...(linkedOrder ? { linked_order: Number(linkedOrder) } : {}),
               ...(linkedSale ? { linked_sale: Number(linkedSale) } : {}),
               payment_type: type,
               payment_method: method,
-              amount: amt,
+              amount: String(amt),
               comment: comment.trim() || undefined,
-            });
+            };
+            if (type === 'refund') {
+              if (linkedReturn) payload.linked_return = Number(linkedReturn);
+              if (manualRefundReason.trim()) payload.manual_refund_reason = manualRefundReason.trim();
+            }
+            onSubmit(payload);
           }}
         >
           <label>Дата</label>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           <label>Клиент</label>
-          <Select value={client} onChange={setClient} options={[{ value: '', label: 'Не выбран' }, ...clients.map((x) => ({ value: String(x.id), label: x.name || `#${x.id}` }))]} />
+          <Select
+            value={client}
+            onChange={setClient}
+            disabled={lockedAfterCreate}
+            options={[{ value: '', label: 'Не выбран' }, ...clients.map((x) => ({ value: String(x.id), label: x.name || `#${x.id}` }))]}
+          />
           <label>Связанная заявка</label>
-          <Select value={linkedOrder} onChange={setLinkedOrder} options={[{ value: '', label: 'Нет' }, ...orders.map((x) => ({ value: String(x.id), label: x.order_number || `Заявка #${x.id}` }))]} />
+          <Select
+            value={linkedOrder}
+            onChange={setLinkedOrder}
+            disabled={lockedAfterCreate}
+            options={[{ value: '', label: 'Нет' }, ...orders.map((x) => ({ value: String(x.id), label: x.order_number || `Заявка #${x.id}` }))]}
+          />
           <label>Связанная продажа</label>
-          <Select value={linkedSale} onChange={setLinkedSale} options={[{ value: '', label: 'Нет' }, ...sales.map((x) => ({ value: String(x.id), label: saleOptionLabel(x) }))]} />
+          <Select
+            value={linkedSale}
+            onChange={setLinkedSale}
+            disabled={lockedAfterCreate}
+            options={[{ value: '', label: 'Нет' }, ...sales.map((x) => ({ value: String(x.id), label: saleOptionLabel(x) }))]}
+          />
           <label>Тип оплаты</label>
-          <Select value={type} onChange={setType} options={PAYMENT_TYPES} />
+          <Select value={type} onChange={setType} disabled={lockedAfterCreate} options={PAYMENT_TYPES} />
           <label>Способ оплаты</label>
           <Select value={method} onChange={setMethod} options={PAYMENT_METHODS} />
           <label>Сумма *</label>
-          <input value={amount} onChange={(e) => setAmount(e.target.value)} required />
+          <input value={amount} onChange={(e) => setAmount(e.target.value)} required disabled={lockedAfterCreate} />
+          {type === 'refund' && !lockedAfterCreate && (
+            <>
+              <label>Связанный возврат</label>
+              <Select
+                value={linkedReturn}
+                onChange={setLinkedReturn}
+                options={[
+                  { value: '', label: 'Не выбран' },
+                  ...returns.map((x) => ({
+                    value: String(x.id),
+                    label: x.return_number || `Возврат #${x.id}`,
+                  })),
+                ]}
+              />
+              <label>Причина возврата денег (если нет документа возврата)</label>
+              <textarea rows={2} value={manualRefundReason} onChange={(e) => setManualRefundReason(e.target.value)} placeholder="Обязательно, если не выбран возврат" />
+            </>
+          )}
+          {type === 'refund' && lockedAfterCreate && (
+            <>
+              <label>Связанный возврат</label>
+              <input value={linkedReturn ? `№ ${linkedReturn}` : '—'} readOnly disabled />
+              <label>Причина возврата денег (вручную)</label>
+              <textarea rows={2} value={manualRefundReason} onChange={(e) => setManualRefundReason(e.target.value)} />
+            </>
+          )}
           <label>Комментарий</label>
           <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} />
-          {error && <p className="modal__error">{error}</p>}
+          {(error || localError) && <p className="modal__error">{localError || error}</p>}
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
             <button type="submit" className="btn btn--primary">Сохранить</button>

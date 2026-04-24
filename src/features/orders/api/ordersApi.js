@@ -82,10 +82,9 @@ export const getOrder = (id) => apiClient.get(`orders/${id}/`);
 export const getOrderSelectSources = () => apiClient.get('orders/select-sources/');
 export const createOrder = (payload) => apiClient.post('orders/', payload);
 export const updateOrder = (id, payload) => apiClient.patch(`orders/${id}/`, payload);
-export const deleteOrder = (id) => apiClient.delete(`orders/${id}/`);
 export const patchOrderStatus = (id, status) => apiClient.patch(`orders/${id}/status/`, { status });
 export const cancelOrder = (id) => apiClient.patch(`orders/${id}/cancel/`);
-export const getOrderReservations = (id) => apiClient.get('order-reservations/', { params: { order_id: id } });
+export const getOrderReservations = (id) => apiClient.get(`orders/${id}/reservations/`);
 
 export const downloadOrderWaybill = async (orderId) => {
   const res = await apiClient.get(`orders/${orderId}/waybill/`, {

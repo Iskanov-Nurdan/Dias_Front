@@ -83,7 +83,8 @@ export const getReturnSelectSources = (saleId) =>
   apiClient.get('returns/select-sources/', { params: saleId ? { sale_id: saleId } : {} });
 export const createReturn = (payload) => apiClient.post('returns/', payload);
 export const updateReturn = (id, payload) => apiClient.patch(`returns/${id}/`, payload);
-export const deleteReturn = (id) => apiClient.delete(`returns/${id}/`);
+export const completeReturn = (id) => apiClient.patch(`returns/${id}/complete/`, {});
+export const cancelReturn = (id) => apiClient.patch(`returns/${id}/cancel/`, {});
 
 export const downloadReturnWaybill = async (returnId) => {
   const res = await apiClient.get(`returns/${returnId}/waybill/`, {

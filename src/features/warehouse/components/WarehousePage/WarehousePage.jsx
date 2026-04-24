@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
 import {
   useServerQuery,
@@ -22,9 +22,76 @@ import './WarehousePage.scss';
 
 const statusLabel = (status) => warehouseStockStatusRu(status);
 
+const readDisplayProduct = (b) => {
+  if (!b || typeof b !== 'object') return '—';
+  const own = typeof b.product === 'string' ? b.product.trim() : '';
+  if (own) return own;
+  const profileLabel = b.linked_entities?.profile?.label;
+  if (typeof profileLabel === 'string' && profileLabel.trim()) return profileLabel.trim();
+  return '—';
+};
+
+const readDisplayBatch = (b) => {
+  if (!b || typeof b !== 'object') return '—';
+  const sourceLabel = b.linked_entities?.source_batch?.label;
+  if (typeof sourceLabel === 'string' && sourceLabel.trim()) return sourceLabel.trim();
+  if (b.source_batch != null && b.source_batch !== '') return `#${b.source_batch}`;
+  return '—';
+};
+
 const WarehouseBatchDetailModal = ({ batch, onClose }) => {
-  if (!batch) return null;
-  const rows = buildWarehouseBatchCardRows(batch);
+  const [fullBatch, setFullBatch] = useState(batch || null);
+  const [resolvedLineName, setResolvedLineName] = useState('');
+  useEffect(() => {
+    let alive = true;
+    setResolvedLineName('');
+    if (!batch?.id) {
+      setFullBatch(batch || null);
+      return () => { alive = false; };
+    }
+    apiClient.get(`warehouse/batches/${batch.id}/`)
+      .then((res) => {
+        if (!alive) return;
+        const detail = res.data || {};
+        setFullBatch({ ...(batch || {}), ...detail });
+      })
+      .catch(() => {
+        if (!alive) return;
+        setFullBatch(batch || null);
+      });
+    return () => { alive = false; };
+  }, [batch]);
+  useEffect(() => {
+    let alive = true;
+    if (!batch?.id) return () => { alive = false; };
+    if (fullBatch?.line_name) return () => { alive = false; };
+    apiClient.get(`warehouse/batches/${batch.id}/trace/`)
+      .then((res) => {
+        if (!alive) return;
+        const lineId = res.data?.production_batch?.line_id;
+        if (!lineId) return;
+        return apiClient.get(`lines/${lineId}/`)
+          .then((lineRes) => {
+            if (!alive) return;
+            const name = (lineRes.data?.name || '').toString().trim();
+            if (name) setResolvedLineName(name);
+          })
+          .catch(() => {
+            if (!alive) return;
+            setResolvedLineName(`Линия #${lineId}`);
+          });
+      })
+      .catch(() => {
+        if (!alive) return;
+        setResolvedLineName('');
+      });
+    return () => { alive = false; };
+  }, [batch, fullBatch?.line_name]);
+  if (!fullBatch) return null;
+  const rows = buildWarehouseBatchCardRows({
+    ...fullBatch,
+    line_name: fullBatch.line_name || resolvedLineName,
+  });
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -193,7 +260,7 @@ const WarehousePage = () => {
               const reservedRaw = b.reserved_quantity;
               const availableRaw = b.available_quantity;
               const qty = Number.isFinite(Number(availableRaw)) ? Number(availableRaw) : 0;
-              const productLabel = (b.product_name && String(b.product_name).trim()) || '—';
+              const productLabel = readDisplayProduct(b);
               const inv = resolveInventoryForm(b);
               const invMod = inventoryFormBadgeModifier(inv);
               const qKey = readWarehouseQuality(b);
@@ -245,7 +312,7 @@ const WarehousePage = () => {
                   <td className="data-table__cell--num">{qtyRaw != null && qtyRaw !== '' ? formatNumberForInput(qtyRaw) : '—'}</td>
                   <td className="data-table__cell--num">{reservedRaw != null && reservedRaw !== '' ? formatNumberForInput(reservedRaw) : '—'}</td>
                   <td className="data-table__cell--num">{availableRaw != null && availableRaw !== '' ? formatNumberForInput(availableRaw) : '—'}</td>
-                  <td className="warehouse-table__batch data-table__cell--muted data-table__cell--num">{b.batch || '—'}</td>
+                  <td className="warehouse-table__batch data-table__cell--muted data-table__cell--num">{readDisplayBatch(b)}</td>
                   <td>
                     {canReserve ? (
                       <ActionMenu

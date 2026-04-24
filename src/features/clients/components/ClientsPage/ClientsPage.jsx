@@ -12,23 +12,20 @@ import {
   useToast,
   Badge,
 } from '../../../../shared/ui';
-import { apiClient } from '../../../../shared/api';
+import {
+  createClient,
+  getClientFinancialSummary,
+  getClientHistory,
+  updateClient,
+} from '../../api/clientsApi';
 import { useOperationalRefetch } from '../../../../shared/realtime';
 import './ClientsPage.scss';
-
-const clientCanDelete = (c) => {
-  const n = Number(c?.sales_count ?? c?.sales_total_count ?? 0);
-  if (Number.isFinite(n) && n > 0) return false;
-  if (c?.has_sales === true) return false;
-  return true;
-};
 
 const ClientsPage = () => {
   const toast = useToast();
   const [queryState, setQueryState] = useState({ page: 1, page_size: 20, search: '' });
   const [modalClient, setModalClient] = useState(null);
   const [detailClient, setDetailClient] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
   const [historyTarget, setHistoryTarget] = useState(null);
   const [historyItems, setHistoryItems] = useState([]);
   const [historyFinance, setHistoryFinance] = useState(null);
@@ -51,28 +48,15 @@ const ClientsPage = () => {
     setSubmitError('');
     try {
       if (modalClient?.id) {
-        await apiClient.patch(`clients/${modalClient.id}/`, payload);
+        await updateClient(modalClient.id, payload);
       } else {
-        await apiClient.post('clients/', payload);
+        await createClient(payload);
       }
       setModalClient(null);
       refetch();
       toast.show('Сохранено');
     } catch (err) {
       setSubmitError(getApiErrorMessage(err, 'Ошибка'));
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    setSubmitError('');
-    try {
-      await apiClient.delete(`clients/${deleteTarget.id}/`);
-      setDeleteTarget(null);
-      refetch();
-      toast.show('Удалено');
-    } catch (err) {
-      setSubmitError(getApiErrorMessage(err, 'Ошибка удаления'));
     }
   };
 
@@ -83,22 +67,45 @@ const ClientsPage = () => {
     setHistoryLoading(true);
     try {
       const [historyRes, summaryRes] = await Promise.allSettled([
-        apiClient.get(`clients/${client.id}/history/`),
-        apiClient.get('payments/summary/', { params: { client_id: client.id } }),
+        getClientHistory(client.id),
+        getClientFinancialSummary(client.id),
       ]);
       const historyData = historyRes.status === 'fulfilled' ? (historyRes.value.data || {}) : {};
       const summaryData = summaryRes.status === 'fulfilled' ? (summaryRes.value.data || {}) : {};
-      let rows = historyData?.items || [];
-      if (!rows.length) {
-        const s = await apiClient.get('sales/', { params: { page_size: 200, client_id: client.id } });
-        const sales = s.data?.items || [];
-        rows = sales.map((x) => ({
-          id: x.id,
-          date: x.created_at || x.date,
+      const rows = [];
+      (Array.isArray(historyData.orders) ? historyData.orders : []).forEach((o) => {
+        rows.push({
+          id: `o-${o.id}`,
+          date: o.date || o.created_at,
+          type: 'Заявка',
+          description: `${o.order_number || 'Заявка'} · ${o.client_name || ''}`,
+        });
+      });
+      (Array.isArray(historyData.sales) ? historyData.sales : []).forEach((s) => {
+        rows.push({
+          id: `s-${s.id}`,
+          date: s.date || s.created_at,
           type: 'Продажа',
-          description: `${x.product_name || x.product?.name || 'Товар'} · ${formatQuantityDisplay(x.quantity)} шт · ${x.price != null ? `${formatQuantityDisplay(x.price)} сом` : '—'}`,
-        }));
-      }
+          description: `${s.order_number || s.sale_number || 'Продажа'} · выручка ${s.revenue != null ? `${formatQuantityDisplay(s.revenue)} сом` : '—'}`,
+        });
+      });
+      (Array.isArray(historyData.payments) ? historyData.payments : []).forEach((p) => {
+        rows.push({
+          id: `p-${p.id}`,
+          date: p.date || p.created_at,
+          type: 'Оплата',
+          description: `${p.payment_number || 'Платёж'} · ${p.amount != null ? `${formatQuantityDisplay(p.amount)} сом` : '—'}`,
+        });
+      });
+      (Array.isArray(historyData.returns) ? historyData.returns : []).forEach((r) => {
+        rows.push({
+          id: `r-${r.id}`,
+          date: r.date || r.created_at,
+          type: 'Возврат',
+          description: `${r.return_number || 'Возврат'} · ${r.return_reason || ''}`,
+        });
+      });
+      rows.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
       setHistoryItems(rows);
       setHistoryFinance({ ...historyData, ...summaryData });
     } catch {
@@ -188,9 +195,6 @@ const ClientsPage = () => {
                       { label: 'Открыть', onClick: () => setDetailClient(c) },
                       { label: 'Редактировать', onClick: () => setModalClient(c) },
                       { label: 'История', onClick: () => handleOpenHistory(c) },
-                      ...(clientCanDelete(c)
-                        ? [{ label: 'Удалить', danger: true, onClick: () => setDeleteTarget({ id: c.id, name: c.name || c.title || 'Клиент' }) }]
-                        : []),
                     ]}
                   />
                 </td>
@@ -203,7 +207,7 @@ const ClientsPage = () => {
       {!loading && (!error || error.status === 404) && (
         <Pagination meta={listMeta} onPageChange={(nextPage) => setQueryState((p) => ({ ...p, page: nextPage }))} />
       )}
-      {submitError && !deleteTarget && <p className="modal__error">{submitError}</p>}
+      {submitError && <p className="modal__error">{submitError}</p>}
 
       {detailClient && (
         <ClientDetailModal
@@ -239,15 +243,6 @@ const ClientsPage = () => {
         />
       )}
 
-      <ConfirmModal
-        open={!!deleteTarget}
-        title="Удалить клиента?"
-        message={deleteTarget ? `Удалить "${deleteTarget.name}"?` : ''}
-        confirmText="Удалить"
-        onConfirm={handleDelete}
-        onCancel={() => { setDeleteTarget(null); setSubmitError(''); }}
-        error={deleteTarget ? submitError : undefined}
-      />
     </div>
   );
 };
@@ -357,19 +352,15 @@ const ClientModal = ({ client, onClose, onSubmit, error }) => {
             const payload = {
               name: name.trim(),
               phone: phone.trim() || undefined,
-              contact_person: contactPerson.trim() || undefined,
+              contact: contactPerson.trim() || undefined,
               email: email.trim() || undefined,
               phone_alt: phoneAlt.trim() || undefined,
               address: address.trim() || undefined,
               client_type: clientType.trim() || undefined,
               notes: comment.trim() || undefined,
               is_active: isActive,
+              messenger: messengerValue,
             };
-            if ('whatsapp_telegram' in (client || {}) && !('messenger' in (client || {}))) {
-              payload.whatsapp_telegram = messengerValue;
-            } else {
-              payload.messenger = messengerValue;
-            }
             onSubmit(payload);
           }}
         >
@@ -426,8 +417,10 @@ const HistoryModal = ({ client, loading, items, finance, onClose }) => (
           <div className="card" style={{ padding: 12, marginBottom: 12 }}>
             <strong>Финансовая сводка</strong>
             <div style={{ marginTop: 8, display: 'grid', gap: 4, fontSize: '0.9375rem' }}>
+              {'payment_status' in finance && <div>Статус оплат: {finance.payment_status || '—'}</div>}
               {'total_revenue' in finance && <div>Выручка: {moneyValue(finance.total_revenue)}</div>}
               {'total_paid' in finance && <div>Оплачено: {moneyValue(finance.total_paid)}</div>}
+              {'total_paid_net' in finance && <div>Оплачено (нетто): {moneyValue(finance.total_paid_net)}</div>}
               {'total_refunded' in finance && <div>Возвратов денег: {moneyValue(finance.total_refunded)}</div>}
               {'client_debt_money' in finance && <div>Долг: {moneyValue(finance.client_debt_money)}</div>}
               {'client_advance_amount' in finance && <div>Аванс: {moneyValue(finance.client_advance_amount)}</div>}

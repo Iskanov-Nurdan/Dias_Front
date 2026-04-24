@@ -24,6 +24,21 @@ const shortDate = (d) => {
   return s.length >= 10 ? s.slice(0, 10) : s;
 };
 
+const productDisplay = (b) => {
+  const own = typeof b?.product === 'string' ? b.product.trim() : '';
+  if (own) return own;
+  const profileLabel = b?.linked_entities?.profile?.label;
+  if (typeof profileLabel === 'string' && profileLabel.trim()) return profileLabel.trim();
+  return '—';
+};
+
+const sourceBatchDisplay = (b) => {
+  const linked = b?.linked_entities?.source_batch?.label;
+  if (typeof linked === 'string' && linked.trim()) return linked.trim();
+  if (b?.source_batch != null && b.source_batch !== '') return `#${b.source_batch}`;
+  return '—';
+};
+
 /**
  * Пары «подпись — значение» для карточки партии на складе ГП (только бизнес-поля, по-русски).
  * @param {Record<string, unknown>} b
@@ -51,8 +66,9 @@ export function buildWarehouseBatchCardRows(b) {
   return [
     { label: 'Качество', value: warehouseQualityShortLabel(qKey) },
     ...(defectReason ? [{ label: 'Причина брака', value: defectReason }] : []),
-    { label: 'Партия', value: fmt(b.batch) },
-    { label: 'Продукт', value: fmt(b.product_name) },
+    { label: 'Партия', value: sourceBatchDisplay(b) },
+    { label: 'Профиль', value: fmt(b?.linked_entities?.profile?.label) },
+    { label: 'Продукт', value: productDisplay(b) },
     { label: 'Физический остаток', value: qtyStr },
     { label: 'Зарезервировано', value: reservedStr },
     { label: 'Свободно', value: availableStr },
@@ -60,6 +76,6 @@ export function buildWarehouseBatchCardRows(b) {
     { label: 'Форма хранения', value: inventoryFormLabel(inv) },
     { label: 'Статус на складе', value: warehouseStockStatusRu(b.status) },
     { label: 'Линия', value: fmt(b.line_name) },
-    { label: 'Дата выпуска', value: shortDate(b.release_date) },
+    { label: 'Дата выпуска', value: shortDate(b.date) },
   ];
 }

@@ -136,6 +136,13 @@ export async function downloadSaleReceipt(saleId) {
   triggerBlobDownload(blob, name);
 }
 
+export const getSales = (params) => apiClient.get('sales/', { params });
+export const getSale = (id) => apiClient.get(`sales/${id}/`);
+export const createSale = (payload) => apiClient.post('sales/', payload);
+export const updateSale = (id, payload) => apiClient.patch(`sales/${id}/`, payload);
+export const patchSaleStatus = (id, body) => apiClient.patch(`sales/${id}/status/`, body);
+export const cancelSale = (id) => apiClient.patch(`sales/${id}/cancel/`, {});
+
 export const getSalesSelectSources = (clientId) =>
   apiClient.get('sales/select-sources/', {
     params: clientId ? { client_id: clientId } : {},

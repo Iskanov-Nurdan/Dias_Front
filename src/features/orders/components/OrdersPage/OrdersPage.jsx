@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { apiClient } from '../../../../shared/api';
 import { useOperationalRefetch } from '../../../../shared/realtime';
-import { useServerQuery, parseLocaleNumber, formatQuantityDisplay, getApiErrorMessage } from '../../../../shared/lib';
+import { useServerQuery, parseLocaleNumber, formatQuantityDisplay, getApiErrorMessage, parseApiListResponse } from '../../../../shared/lib';
 import { ActionMenu, Badge, ConfirmModal, EmptyState, ErrorState, IntegerInput, Loading, Pagination, Select, useToast } from '../../../../shared/ui';
 import {
+  cancelOrder,
   createOrder,
-  deleteOrder,
   downloadOrderWaybill,
   getOrderReservations,
   getOrderSelectSources,
@@ -80,12 +80,11 @@ const reservationStatusVariant = (value) => {
 const formatDate = (value) => (value ? String(value).slice(0, 10) : '—');
 const toMoney = (value) => (value != null ? `${formatQuantityDisplay(value)} сом` : '—');
 
-const normalizeApiList = (data) => {
-  if (data == null) return [];
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data.results)) return data.results;
-  if (Array.isArray(data.items)) return data.items;
-  return [];
+const apiActionEnabled = (availableActions, key) => {
+  if (availableActions == null) return false;
+  if (Array.isArray(availableActions)) return availableActions.includes(key);
+  if (typeof availableActions === 'object') return Boolean(availableActions[key]);
+  return false;
 };
 
 const orderClientId = (order) => {
@@ -102,15 +101,19 @@ const formatLineMoneyCell = (v) => (v != null && v !== '' ? toMoney(v) : '—');
 
 const getRemainingToShip = (order) => (order?.remaining_to_ship != null ? Number(order.remaining_to_ship) || 0 : 0);
 
-const canEditOrder = (actions) => Array.isArray(actions) && actions.includes('edit');
-const canCreateShipment = (actions) => Array.isArray(actions) && actions.includes('create_shipment');
-const canAcceptPayment = (actions) => Array.isArray(actions) && actions.includes('accept_payment');
+const canEditOrder = (actions) => apiActionEnabled(actions, 'edit');
+const canCreateShipment = (actions) => apiActionEnabled(actions, 'create_shipment');
+const canAcceptPayment = (actions) => apiActionEnabled(actions, 'accept_payment');
 
 const lineToPayload = (line) => ({
+  ...(line.id ? { id: line.id } : {}),
   product: String(line.product || '').trim(),
+  product_type: String(line.product_type || 'профиль').trim(),
   ...(line.profile ? { profile: Number(line.profile) } : {}),
-  ordered_quantity: parseLocaleNumber(line.ordered_quantity) || 0,
-  unit_price: parseLocaleNumber(line.unit_price) || undefined,
+  ordered_quantity: String(parseLocaleNumber(line.ordered_quantity) || 0),
+  ...(line.unit_price !== '' && line.unit_price != null
+    ? { unit_price: String(parseLocaleNumber(line.unit_price)) }
+    : {}),
   comment: String(line.comment || '').trim() || undefined,
 });
 
@@ -123,7 +126,7 @@ const OrdersPage = () => {
   const [detailOrderId, setDetailOrderId] = useState(null);
   const [paymentTarget, setPaymentTarget] = useState(null);
   const [shipmentTarget, setShipmentTarget] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
   const [errorText, setErrorText] = useState('');
   const [busyId, setBusyId] = useState(null);
   const { items, meta, loading, error, refetch } = useServerQuery('orders/', queryState, { enabled: true });
@@ -156,16 +159,16 @@ const OrdersPage = () => {
     }
   };
 
-  const onDeleteOrder = async () => {
-    if (!deleteTarget?.id) return;
+  const onCancelOrder = async () => {
+    if (!cancelTarget?.id) return;
     setErrorText('');
     try {
-      await deleteOrder(deleteTarget.id);
-      setDeleteTarget(null);
+      await cancelOrder(cancelTarget.id);
+      setCancelTarget(null);
       refetch();
-      toast.show('Заявка удалена');
+      toast.show('Заявка отменена');
     } catch (e) {
-      setErrorText(getApiErrorMessage(e, 'Ошибка удаления'));
+      setErrorText(getApiErrorMessage(e, 'Ошибка отмены заявки'));
     }
   };
 
@@ -233,7 +236,7 @@ const OrdersPage = () => {
           <tbody>
             {items.map((o) => {
               const allowedNext = Array.isArray(o.available_status_transitions) ? o.available_status_transitions : [];
-              const availableActions = Array.isArray(o.available_actions) ? o.available_actions : [];
+              const availableActions = o.available_actions;
               return (
                 <tr key={o.id}>
                   <td>
@@ -264,7 +267,9 @@ const OrdersPage = () => {
                           onClick: () => onChangeStatus(o, nextStatus),
                         });
                         }),
-                        { label: 'Удалить', danger: true, onClick: () => setDeleteTarget(o) },
+                        ...(apiActionEnabled(availableActions, 'cancel')
+                          ? [{ label: 'Отменить заявку', danger: true, onClick: () => setCancelTarget(o) }]
+                          : []),
                       ]}
                     />
                   </td>
@@ -322,13 +327,13 @@ const OrdersPage = () => {
         />
       )}
       <ConfirmModal
-        open={!!deleteTarget}
-        title="Удалить заявку?"
-        message={deleteTarget ? `Удалить "${deleteTarget.order_number || `#${deleteTarget.id}`}"?` : ''}
-        confirmText="Удалить"
-        onConfirm={onDeleteOrder}
-        onCancel={() => { setDeleteTarget(null); setErrorText(''); }}
-        error={deleteTarget ? errorText : undefined}
+        open={!!cancelTarget}
+        title="Отменить заявку?"
+        message={cancelTarget ? `Отменить заявку «${cancelTarget.order_number || `#${cancelTarget.id}`}»?` : ''}
+        confirmText="Отменить"
+        onConfirm={onCancelOrder}
+        onCancel={() => { setCancelTarget(null); setErrorText(''); }}
+        error={cancelTarget ? errorText : undefined}
       />
     </div>
   );
@@ -471,7 +476,7 @@ const OrderDetailModal = ({ orderId, onClose, onEdit, onCreateShipment, onAccept
         ]);
         if (!alive) return;
         setOrder(orderRes.data || null);
-        setReservations(normalizeApiList(reservationsRes.data));
+        setReservations(parseApiListResponse(reservationsRes.data));
       } catch (e) {
         if (!alive) return;
         setError(getApiErrorMessage(e, 'Не удалось загрузить карточку заявки'));
@@ -486,7 +491,7 @@ const OrderDetailModal = ({ orderId, onClose, onEdit, onCreateShipment, onAccept
   const allowedNext = order && Array.isArray(order.available_status_transitions)
     ? order.available_status_transitions
     : [];
-  const availableActions = order && Array.isArray(order.available_actions) ? order.available_actions : [];
+  const availableActions = order?.available_actions;
   const relatedSales = Array.isArray(order?.linked_entities?.sales) ? order.linked_entities.sales : [];
   const relatedPayments = Array.isArray(order?.linked_entities?.payments) ? order.linked_entities.payments : [];
 

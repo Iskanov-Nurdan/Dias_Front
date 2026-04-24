@@ -4,9 +4,7 @@ import { useOperationalRefetch } from '../../../../shared/realtime';
 import { useServerQuery, formatQuantityDisplay, getApiErrorMessage, parseLocaleNumber } from '../../../../shared/lib';
 import { ActionMenu, Badge, ConfirmModal, EmptyState, ErrorState, Loading, Pagination, Select, useToast } from '../../../../shared/ui';
 import {
-  completeDefectRework,
   createDefect,
-  deleteDefect,
   getDefectsSelectSources,
   sellDefect,
   sendDefectToRework,
@@ -37,30 +35,41 @@ const statusVariant = (v) => {
   }
 };
 
-const sourceLabel = (t) => (t === 'return' ? 'Возврат' : (t || '—'));
+const SOURCE_LABELS = {
+  otk: 'ОТК',
+  qc: 'ОТК / контроль качества',
+  warehouse: 'Склад',
+  return: 'Возврат клиента',
+  manual: 'Вручную',
+};
+const sourceLabel = (t) => SOURCE_LABELS[t] || t || '—';
+
+const defectActionOn = (actions, key) => {
+  if (actions == null) return false;
+  if (Array.isArray(actions)) return actions.includes(key);
+  if (typeof actions === 'object') return Boolean(actions[key]);
+  return false;
+};
 
 const canEditDefect = (s) => ['new', 'on_stock'].includes(s);
 const canSendDefectToRework = (s) => ['new', 'on_stock'].includes(s);
-const canCompleteDefectRework = (s) => s === 'sent_to_rework';
 const canSellOrWriteoffDefect = (s) => s === 'on_stock';
-const canDeleteDefect = (s) => s === 'new';
 
 const DefectsPage = () => {
   const toast = useToast();
   const [queryState, setQueryState] = useState({ page: 1, page_size: 20, status: '' });
   const [modalDefect, setModalDefect] = useState(null);
   const [detailDefectId, setDetailDefectId] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
   const [writeoffTarget, setWriteoffTarget] = useState(null);
   const [sellTarget, setSellTarget] = useState(null);
   const [sendReworkTarget, setSendReworkTarget] = useState(null);
-  const [completeReworkTarget, setCompleteReworkTarget] = useState(null);
   const [writeoffReason, setWriteoffReason] = useState('');
   const [sellClient, setSellClient] = useState('');
   const [sellPrice, setSellPrice] = useState('');
   const [sellQty, setSellQty] = useState('');
   const [clients, setClients] = useState([]);
   const [returnLines, setReturnLines] = useState([]);
+  const [warehouseDefectBatches, setWarehouseDefectBatches] = useState([]);
   const [submitError, setSubmitError] = useState('');
   const { items, meta, raw, loading, error, refetch } = useServerQuery('defects/', queryState, { enabled: true });
   useOperationalRefetch(['defect_record', 'sale', 'rework_request'], refetch, true);
@@ -82,8 +91,12 @@ const DefectsPage = () => {
       .then((res) => {
         const data = res.data || {};
         setReturnLines(Array.isArray(data.return_lines) ? data.return_lines : []);
+        setWarehouseDefectBatches(Array.isArray(data.warehouse_defect_batches) ? data.warehouse_defect_batches : []);
       })
-      .catch(() => setReturnLines([]));
+      .catch(() => {
+        setReturnLines([]);
+        setWarehouseDefectBatches([]);
+      });
   }, []);
 
   const onSubmitDefect = async (payload) => {
@@ -99,19 +112,6 @@ const DefectsPage = () => {
     }
   };
 
-  const onDelete = async () => {
-    if (!deleteTarget?.id) return;
-    setSubmitError('');
-    try {
-      await deleteDefect(deleteTarget.id);
-      setDeleteTarget(null);
-      refetch();
-      toast.show('Запись брака удалена');
-    } catch (e) {
-      setSubmitError(getApiErrorMessage(e, 'Ошибка удаления'));
-    }
-  };
-
   const runAction = async (fn, okText) => {
     setSubmitError('');
     try {
@@ -124,10 +124,6 @@ const DefectsPage = () => {
       return false;
     }
   };
-
-  const deleteMessage = deleteTarget
-    ? `Удалить запись брака по продукту «${deleteTarget.product || 'без названия'}»?`
-    : '';
 
   return (
     <div className="page commercial-page">
@@ -165,24 +161,18 @@ const DefectsPage = () => {
             <tbody>
               {items.map((d) => {
                 const st = d.status;
-                const availableActions = Array.isArray(d.available_actions) ? d.available_actions : [];
+                const availableActions = d.available_actions;
                 const menuItems = [{ label: 'Открыть', onClick: () => setDetailDefectId(d.id) }];
-                if (canEditDefect(st) && availableActions.includes('edit')) {
+                if (canEditDefect(st) && defectActionOn(availableActions, 'edit')) {
                   menuItems.push({ label: 'Редактировать', onClick: () => setModalDefect(d) });
                 }
-                if (canSendDefectToRework(st) && availableActions.includes('send_to_rework')) {
+                if (canSendDefectToRework(st) && defectActionOn(availableActions, 'send_to_rework')) {
                   menuItems.push({
                     label: 'На переработку',
                     onClick: () => { setSendReworkTarget(d); setSubmitError(''); },
                   });
                 }
-                if (canCompleteDefectRework(st) && availableActions.includes('complete_rework')) {
-                  menuItems.push({
-                    label: 'Завершить переработку',
-                    onClick: () => { setCompleteReworkTarget(d); setSubmitError(''); },
-                  });
-                }
-                if (canSellOrWriteoffDefect(st) && availableActions.includes('sell')) {
+                if (canSellOrWriteoffDefect(st) && defectActionOn(availableActions, 'sell')) {
                   menuItems.push({
                     label: 'Продать',
                     onClick: () => {
@@ -194,21 +184,13 @@ const DefectsPage = () => {
                     },
                   });
                 }
-                if (canSellOrWriteoffDefect(st) && availableActions.includes('writeoff')) {
+                if (canSellOrWriteoffDefect(st) && defectActionOn(availableActions, 'writeoff')) {
                   menuItems.push({
                     label: 'Списать',
                     danger: true,
                     onClick: () => { setWriteoffTarget(d); setWriteoffReason(''); setSubmitError(''); },
                   });
                 }
-                if (canDeleteDefect(st) && availableActions.includes('delete')) {
-                  menuItems.push({
-                    label: 'Удалить',
-                    danger: true,
-                    onClick: () => { setDeleteTarget(d); setSubmitError(''); },
-                  });
-                }
-
                 return (
                   <tr key={d.id}>
                     <td>
@@ -241,6 +223,7 @@ const DefectsPage = () => {
         <DefectModal
           defect={modalDefect?.id ? modalDefect : null}
           returnLines={returnLines}
+          warehouseDefectBatches={warehouseDefectBatches}
           onClose={() => { setModalDefect(null); setSubmitError(''); }}
           onSubmit={onSubmitDefect}
           error={submitError}
@@ -259,11 +242,6 @@ const DefectsPage = () => {
             setSendReworkTarget(defect);
             setSubmitError('');
           }}
-          onCompleteRework={(defect) => {
-            setDetailDefectId(null);
-            setCompleteReworkTarget(defect);
-            setSubmitError('');
-          }}
           onSell={(defect) => {
             setDetailDefectId(null);
             setSellTarget(defect);
@@ -278,23 +256,8 @@ const DefectsPage = () => {
             setWriteoffReason('');
             setSubmitError('');
           }}
-          onDelete={(defect) => {
-            setDetailDefectId(null);
-            setDeleteTarget(defect);
-            setSubmitError('');
-          }}
         />
       )}
-
-      <ConfirmModal
-        open={!!deleteTarget}
-        title="Удалить запись брака?"
-        message={deleteMessage}
-        confirmText="Удалить"
-        onConfirm={onDelete}
-        onCancel={() => { setDeleteTarget(null); setSubmitError(''); }}
-        error={deleteTarget ? submitError : undefined}
-      />
 
       <ConfirmModal
         open={!!sendReworkTarget}
@@ -308,20 +271,6 @@ const DefectsPage = () => {
         }}
         onCancel={() => { setSendReworkTarget(null); setSubmitError(''); }}
         error={sendReworkTarget ? submitError : undefined}
-      />
-
-      <ConfirmModal
-        open={!!completeReworkTarget}
-        title="Завершить переработку"
-        message="Завершить переработку по этой записи брака на сервере?"
-        confirmText="Завершить"
-        onConfirm={async () => {
-          if (!completeReworkTarget?.id) return;
-          const ok = await runAction(() => completeDefectRework(completeReworkTarget.id), 'Переработка завершена');
-          if (ok) setCompleteReworkTarget(null);
-        }}
-        onCancel={() => { setCompleteReworkTarget(null); setSubmitError(''); }}
-        error={completeReworkTarget ? submitError : undefined}
       />
 
       <ConfirmModal
@@ -364,8 +313,8 @@ const DefectsPage = () => {
             />
             <label>Цена</label>
             <input value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} />
-            <label>Количество</label>
-            <input value={sellQty} onChange={(e) => setSellQty(e.target.value)} />
+            <label>Количество (всё количество брака)</label>
+            <input value={sellQty} readOnly />
           </div>
         )}
         confirmText="Продать"
@@ -386,12 +335,16 @@ const DefectsPage = () => {
             return;
           }
           if (!sellTarget?.id) return;
+          const fullQty = parseLocaleNumber(String(sellTarget.quantity_pcs ?? ''));
+          if (!Number.isFinite(fullQty) || fullQty <= 0 || qty !== fullQty) {
+            setSubmitError('Продажа брака только на всё количество записи (quantity = quantity_pcs)');
+            return;
+          }
           const ok = await runAction(
             () => sellDefect(sellTarget.id, {
               client_id: cid,
-              price,
-              quantity: qty,
-              date: new Date().toISOString().slice(0, 10),
+              price: String(price),
+              quantity: String(qty),
             }),
             'Продажа брака создана',
           );
@@ -404,8 +357,8 @@ const DefectsPage = () => {
   );
 };
 
-const DefectModal = ({ defect, returnLines, onClose, onSubmit, error }) => {
-  const [sourceType, setSourceType] = useState('return');
+const DefectModal = ({ defect, returnLines, warehouseDefectBatches, onClose, onSubmit, error }) => {
+  const [sourceType, setSourceType] = useState(defect?.source_type || 'return');
   const [sourceId, setSourceId] = useState(defect?.source_id != null ? String(defect.source_id) : '');
   const [product, setProduct] = useState(defect?.product || '');
   const [quantityPcs, setQuantityPcs] = useState(defect?.quantity_pcs != null ? String(defect.quantity_pcs) : '');
@@ -414,11 +367,20 @@ const DefectModal = ({ defect, returnLines, onClose, onSubmit, error }) => {
   const [comment, setComment] = useState(defect?.comment || '');
 
   useEffect(() => {
-    const src = returnLines.find((x) => String(x.id) === String(sourceId));
-    if (!src) return;
-    setProduct(src.product || '');
-    if (src.quantity != null && src.quantity !== '') setQuantityPcs(String(src.quantity));
-  }, [sourceId, returnLines]);
+    if (sourceType === 'return') {
+      const src = returnLines.find((x) => String(x.id) === String(sourceId));
+      if (!src) return;
+      setProduct(src.product || '');
+      if (src.quantity != null && src.quantity !== '') setQuantityPcs(String(src.quantity));
+    }
+    if (sourceType === 'warehouse') {
+      const wb = warehouseDefectBatches.find((x) => String(x.id) === String(sourceId));
+      if (!wb) return;
+      const label = wb.label || wb.product_name || wb.product || '';
+      setProduct(String(label));
+      if (wb.quantity != null && wb.quantity !== '') setQuantityPcs(String(wb.quantity));
+    }
+  }, [sourceId, sourceType, returnLines, warehouseDefectBatches]);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -442,16 +404,43 @@ const DefectModal = ({ defect, returnLines, onClose, onSubmit, error }) => {
           }}
         >
           <label>Источник</label>
-          <Select value={sourceType} onChange={setSourceType} options={[{ value: 'return', label: 'Возврат' }]} />
-          <label>Строка возврата *</label>
           <Select
-            value={sourceId}
-            onChange={setSourceId}
+            value={sourceType}
+            onChange={(v) => { setSourceType(v); setSourceId(''); }}
             options={[
-              { value: '', label: 'Выберите строку возврата' },
-              ...returnLines.map((x) => ({ value: String(x.id), label: x.label || x.product || `Строка #${x.id}` })),
+              { value: 'return', label: 'Возврат клиента' },
+              { value: 'warehouse', label: 'Склад (партия брака)' },
             ]}
           />
+          {sourceType === 'return' && (
+            <>
+              <label>Строка возврата *</label>
+              <Select
+                value={sourceId}
+                onChange={setSourceId}
+                options={[
+                  { value: '', label: 'Выберите строку возврата' },
+                  ...returnLines.map((x) => ({ value: String(x.id), label: x.label || x.product || `Строка #${x.id}` })),
+                ]}
+              />
+            </>
+          )}
+          {sourceType === 'warehouse' && (
+            <>
+              <label>Партия брака на складе *</label>
+              <Select
+                value={sourceId}
+                onChange={setSourceId}
+                options={[
+                  { value: '', label: 'Выберите партию' },
+                  ...warehouseDefectBatches.map((x) => ({
+                    value: String(x.id),
+                    label: x.label || x.product_name || x.product || `Партия #${x.id}`,
+                  })),
+                ]}
+              />
+            </>
+          )}
           <label>Продукт</label>
           <input value={product} readOnly />
           <label>Количество (шт)</label>
@@ -478,10 +467,8 @@ const DefectDetailModal = ({
   onClose,
   onEdit,
   onSendToRework,
-  onCompleteRework,
   onSell,
   onWriteoff,
-  onDelete,
 }) => {
   const [defect, setDefect] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -508,7 +495,7 @@ const DefectDetailModal = ({
   }, [defectId]);
 
   const st = defect?.status;
-  const availableActions = Array.isArray(defect?.available_actions) ? defect.available_actions : [];
+  const availableActions = defect?.available_actions;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -531,12 +518,15 @@ const DefectDetailModal = ({
               {defect.comment ? <p><strong>Комментарий:</strong> {defect.comment}</p> : null}
             </section>
             <div className="modal__actions">
-              {canEditDefect(st) && availableActions.includes('edit') ? <button type="button" className="btn btn--secondary" onClick={() => onEdit(defect)}>Редактировать</button> : null}
-              {canSendDefectToRework(st) && availableActions.includes('send_to_rework') ? <button type="button" className="btn btn--secondary" onClick={() => onSendToRework(defect)}>На переделку</button> : null}
-              {canCompleteDefectRework(st) && availableActions.includes('complete_rework') ? <button type="button" className="btn btn--secondary" onClick={() => onCompleteRework(defect)}>Завершить переделку</button> : null}
-              {canSellOrWriteoffDefect(st) && availableActions.includes('sell') ? <button type="button" className="btn btn--secondary" onClick={() => onSell(defect)}>Продать как брак</button> : null}
-              {canSellOrWriteoffDefect(st) && availableActions.includes('writeoff') ? <button type="button" className="btn btn--danger" onClick={() => onWriteoff(defect)}>Списать</button> : null}
-              {canDeleteDefect(st) && availableActions.includes('delete') ? <button type="button" className="btn btn--danger" onClick={() => onDelete(defect)}>Удалить</button> : null}
+              {canEditDefect(st) && defectActionOn(availableActions, 'edit') ? <button type="button" className="btn btn--secondary" onClick={() => onEdit(defect)}>Редактировать</button> : null}
+              {canSendDefectToRework(st) && defectActionOn(availableActions, 'send_to_rework') ? <button type="button" className="btn btn--secondary" onClick={() => onSendToRework(defect)}>На переделку</button> : null}
+              {st === 'sent_to_rework' ? (
+                <p style={{ margin: 0, fontSize: '0.875rem', opacity: 0.85 }}>
+                  Завершение переделки — в разделе «Переделки»: действие «Завершить» у созданного запроса.
+                </p>
+              ) : null}
+              {canSellOrWriteoffDefect(st) && defectActionOn(availableActions, 'sell') ? <button type="button" className="btn btn--secondary" onClick={() => onSell(defect)}>Продать как брак</button> : null}
+              {canSellOrWriteoffDefect(st) && defectActionOn(availableActions, 'writeoff') ? <button type="button" className="btn btn--danger" onClick={() => onWriteoff(defect)}>Списать</button> : null}
             </div>
           </div>
         )}

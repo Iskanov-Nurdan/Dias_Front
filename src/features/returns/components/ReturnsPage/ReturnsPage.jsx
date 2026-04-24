@@ -3,7 +3,15 @@ import { apiClient } from '../../../../shared/api';
 import { useOperationalRefetch } from '../../../../shared/realtime';
 import { useServerQuery, formatQuantityDisplay, getApiErrorMessage, parseLocaleNumber } from '../../../../shared/lib';
 import { ActionMenu, ConfirmModal, EmptyState, ErrorState, Loading, Pagination, Select, useToast } from '../../../../shared/ui';
-import { createReturn, deleteReturn, downloadReturnWaybill, getReturnSelectSources, updateReturn } from '../../api/returnsApi';
+import {
+  cancelReturn,
+  completeReturn,
+  createReturn,
+  downloadReturnWaybill,
+  getReturnSelectSources,
+  updateReturn,
+} from '../../api/returnsApi';
+import { getClients } from '../../../clients/api/clientsApi';
 
 const TARGETS = [
   { value: 'warehouse', label: 'На склад' },
@@ -27,6 +35,7 @@ const returnTableClientLabel = (r) => r.client_name || '—';
 
 const initialSaleIdFromDoc = (doc) => {
   if (!doc?.id) return '';
+  if (doc.sale != null) return String(typeof doc.sale === 'object' ? doc.sale.id : doc.sale);
   if (doc.sale_id != null) return String(doc.sale_id);
   return '';
 };
@@ -66,14 +75,16 @@ const ReturnsPage = () => {
   const [queryState, setQueryState] = useState({
     page: 1,
     page_size: 20,
-    client: '',
+    client_id: '',
     date_from: '',
     date_to: '',
   });
   const [sales, setSales] = useState([]);
+  const [filterClients, setFilterClients] = useState([]);
   const [modalDoc, setModalDoc] = useState(null);
   const [detailDocId, setDetailDocId] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [completeTarget, setCompleteTarget] = useState(null);
+  const [cancelDocTarget, setCancelDocTarget] = useState(null);
   const [submitError, setSubmitError] = useState('');
   const [waybillBusyId, setWaybillBusyId] = useState(null);
 
@@ -91,6 +102,12 @@ const ReturnsPage = () => {
 
   useEffect(() => { loadRefs(); }, [loadRefs]);
 
+  useEffect(() => {
+    getClients({ page_size: 500 })
+      .then((r) => setFilterClients(Array.isArray(r.data?.items) ? r.data.items : []))
+      .catch(() => setFilterClients([]));
+  }, []);
+
   const onSubmit = async (payload) => {
     setSubmitError('');
     try {
@@ -105,17 +122,31 @@ const ReturnsPage = () => {
     }
   };
 
-  const onDelete = async () => {
-    if (!deleteTarget?.id) return;
+  const onComplete = async () => {
+    if (!completeTarget?.id) return;
     setSubmitError('');
     try {
-      await deleteReturn(deleteTarget.id);
-      setDeleteTarget(null);
+      await completeReturn(completeTarget.id);
+      setCompleteTarget(null);
       refetch();
       loadRefs();
-      toast.show('Возврат удалён');
+      toast.show('Возврат проведён');
     } catch (e) {
-      setSubmitError(getApiErrorMessage(e, 'Ошибка удаления возврата'));
+      setSubmitError(getApiErrorMessage(e, 'Ошибка проведения'));
+    }
+  };
+
+  const onCancelDoc = async () => {
+    if (!cancelDocTarget?.id) return;
+    setSubmitError('');
+    try {
+      await cancelReturn(cancelDocTarget.id);
+      setCancelDocTarget(null);
+      refetch();
+      loadRefs();
+      toast.show('Возврат отменён');
+    } catch (e) {
+      setSubmitError(getApiErrorMessage(e, 'Ошибка отмены'));
     }
   };
 
@@ -137,10 +168,13 @@ const ReturnsPage = () => {
       <div className="ds-toolbar ds-toolbar--stack-mobile commercial-toolbar">
         <div className="ds-toolbar__start commercial-toolbar__filters">
           <Select
-            value={queryState.client}
-            onChange={(v) => setQueryState((p) => ({ ...p, client: v, page: 1 }))}
+            value={queryState.client_id}
+            onChange={(v) => setQueryState((p) => ({ ...p, client_id: v, page: 1 }))}
             placeholder="Клиент"
-            options={[{ value: '', label: 'Все клиенты' }, ...sales.map((s) => ({ value: String(s.client_id || ''), label: s.client_name || 'Клиент' })).filter((x) => x.value)]}
+            options={[
+              { value: '', label: 'Все клиенты' },
+              ...filterClients.map((c) => ({ value: String(c.id), label: c.name || 'Клиент' })),
+            ]}
           />
           <label className="commercial-date-filter">
             <span className="commercial-date-filter__label">С</span>
@@ -175,6 +209,7 @@ const ReturnsPage = () => {
               <th>Дата</th>
               <th>Продажа</th>
               <th>Клиент</th>
+              <th>Статус</th>
               <th>Причина</th>
               <th aria-hidden />
             </tr>
@@ -190,20 +225,35 @@ const ReturnsPage = () => {
                 <td>{(r.date || r.created_at || '').toString().slice(0, 10) || '—'}</td>
                 <td>{returnTableSaleLabel(r)}</td>
                 <td>{returnTableClientLabel(r)}</td>
+                <td>{r.status === 'completed' ? 'Проведён' : r.status === 'canceled' ? 'Отменён' : r.status === 'draft' ? 'Черновик' : (r.status || '—')}</td>
                 <td>{r.return_reason || '—'}</td>
                 <td>
                   <ActionMenu
                     ariaLabel="Действия"
-                    items={[
-                      { label: 'Открыть', onClick: () => setDetailDocId(r.id) },
-                      { label: 'Редактировать', onClick: () => setModalDoc(r) },
-                      {
-                        label: 'Накладная',
-                        disabled: waybillBusyId === r.id,
-                        onClick: () => onDownloadWaybill(r),
-                      },
-                      { label: 'Удалить', danger: true, onClick: () => setDeleteTarget(r) },
-                    ]}
+                    items={(() => {
+                      const menu = [{ label: 'Открыть', onClick: () => setDetailDocId(r.id) }];
+                      if (r.status === 'draft') {
+                        menu.push(
+                          { label: 'Редактировать', onClick: () => setModalDoc(r) },
+                          { label: 'Провести', onClick: () => { setCompleteTarget(r); setSubmitError(''); } },
+                          { label: 'Отменить', danger: true, onClick: () => { setCancelDocTarget(r); setSubmitError(''); } },
+                        );
+                      }
+                      if (r.status === 'completed') {
+                        menu.push(
+                          { label: 'Редактировать реквизиты', onClick: () => setModalDoc(r) },
+                          { label: 'Отменить возврат', danger: true, onClick: () => { setCancelDocTarget(r); setSubmitError(''); } },
+                        );
+                      }
+                      if (r.status !== 'canceled') {
+                        menu.push({
+                          label: 'Накладная',
+                          disabled: waybillBusyId === r.id,
+                          onClick: () => onDownloadWaybill(r),
+                        });
+                      }
+                      return menu;
+                    })()}
                   />
                 </td>
               </tr>
@@ -235,26 +285,41 @@ const ReturnsPage = () => {
             setModalDoc(doc);
           }}
           onDownloadWaybill={onDownloadWaybill}
+          onMutate={() => {
+            refetch();
+            loadRefs();
+          }}
         />
       )}
       <ConfirmModal
-        open={!!deleteTarget}
-        title="Удалить возврат?"
-        message={deleteTarget ? `Удалить возврат${deleteTarget.return_number ? ` «${deleteTarget.return_number}»` : ''}?` : ''}
-        confirmText="Удалить"
-        onConfirm={onDelete}
-        onCancel={() => { setDeleteTarget(null); setSubmitError(''); }}
-        error={deleteTarget ? submitError : undefined}
+        open={!!completeTarget}
+        title="Провести возврат?"
+        message={completeTarget ? `Провести возврат${completeTarget.return_number ? ` «${completeTarget.return_number}»` : ''}? Склад и связанные движения выполнит сервер.` : ''}
+        confirmText="Провести"
+        onConfirm={onComplete}
+        onCancel={() => { setCompleteTarget(null); setSubmitError(''); }}
+        error={completeTarget ? submitError : undefined}
+      />
+      <ConfirmModal
+        open={!!cancelDocTarget}
+        title="Отменить возврат?"
+        message={cancelDocTarget ? `Отменить возврат${cancelDocTarget.return_number ? ` «${cancelDocTarget.return_number}»` : ''}?` : ''}
+        confirmText="Отменить"
+        onConfirm={onCancelDoc}
+        onCancel={() => { setCancelDocTarget(null); setSubmitError(''); }}
+        error={cancelDocTarget ? submitError : undefined}
       />
     </div>
   );
 };
 
 const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
+  const isCompletedLimited = doc?.status === 'completed';
   const [sale, setSale] = useState(() => initialSaleIdFromDoc(doc));
   const [date, setDate] = useState((doc?.date || '').toString().slice(0, 10) || new Date().toISOString().slice(0, 10));
   const [reason, setReason] = useState(doc?.return_reason || '');
   const [comment, setComment] = useState(doc?.comment || '');
+  const [invoiceNumber, setInvoiceNumber] = useState(doc?.invoice_number || '');
   const [lineError, setLineError] = useState('');
   const [saleDetail, setSaleDetail] = useState(null);
   const [saleLines, setSaleLines] = useState([]);
@@ -316,13 +381,21 @@ const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
-          <h3>{doc ? 'Возврат' : 'Новый возврат'}</h3>
+          <h3>{isCompletedLimited ? 'Реквизиты возврата' : doc ? 'Возврат' : 'Новый возврат'}</h3>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <form
           onSubmit={(e) => {
             e.preventDefault();
             setLineError('');
+            if (isCompletedLimited) {
+              onSubmit({
+                return_reason: reason.trim() || undefined,
+                comment: comment.trim() || undefined,
+                invoice_number: invoiceNumber.trim() || undefined,
+              });
+              return;
+            }
             if (!sale) return;
             const payloadLines = [];
             for (let i = 0; i < lines.length; i += 1) {
@@ -341,7 +414,7 @@ const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
               }
               payloadLines.push({
                 sale_line: Number(l.sale_line),
-                quantity: qty,
+                quantity: String(qty),
                 return_target: l.return_target,
                 condition_type: l.condition_type,
                 comment: String(l.comment || '').trim() || undefined,
@@ -357,30 +430,37 @@ const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
             });
           }}
         >
-          <label>Продажа *</label>
-          <Select
-            value={sale}
-            onChange={(v) => { setLineError(''); setSale(v); }}
-            options={[
-              { value: '', label: 'Выберите продажу' },
-              ...sales.map((s) => ({ value: String(s.id), label: saleListLabel(s) })),
-            ]}
-          />
-          {saleDetail && (
-            <p style={{ margin: '6px 0 0', fontSize: '0.875rem', opacity: 0.85 }}>
-              {saleDetail.client_name || saleDetail.client?.name
-                ? `Клиент: ${saleDetail.client_name || saleDetail.client?.name}`
-                : null}
-            </p>
-          )}
+          {!isCompletedLimited && (
+            <>
+              <label>Продажа *</label>
+              <Select
+                value={sale}
+                onChange={(v) => { setLineError(''); setSale(v); }}
+                options={[
+                  { value: '', label: 'Выберите продажу' },
+                  ...sales.map((s) => ({ value: String(s.id), label: saleListLabel(s) })),
+                ]}
+              />
+              {saleDetail && (
+                <p style={{ margin: '6px 0 0', fontSize: '0.875rem', opacity: 0.85 }}>
+                  {saleDetail.client_name || saleDetail.client?.name
+                    ? `Клиент: ${saleDetail.client_name || saleDetail.client?.name}`
+                    : null}
+                </p>
+              )}
 
-          <label>Дата</label>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <label>Дата</label>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </>
+          )}
           <label>Причина возврата</label>
           <input value={reason} onChange={(e) => setReason(e.target.value)} />
           <label>Комментарий</label>
           <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} />
+          <label>Номер счёта / накладной</label>
+          <input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="Необязательно" />
 
+          {!isCompletedLimited && (
           <div style={{ marginTop: 12 }}>
             <strong>Строки возврата</strong>
             {lines.map((line, idx) => {
@@ -471,6 +551,7 @@ const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
               Добавить строку
             </button>
           </div>
+          )}
           {(lineError || error) && <p className="modal__error">{lineError || error}</p>}
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
@@ -482,10 +563,18 @@ const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
   );
 };
 
-const ReturnDetailModal = ({ returnId, onClose, onEdit, onDownloadWaybill }) => {
+const ReturnDetailModal = ({ returnId, onClose, onEdit, onDownloadWaybill, onMutate }) => {
+  const toast = useToast();
   const [doc, setDoc] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [actionBusy, setActionBusy] = useState(false);
+
+  const reloadDoc = () => {
+    apiClient.get(`returns/${returnId}/`)
+      .then((res) => setDoc(res.data || null))
+      .catch(() => {});
+  };
 
   useEffect(() => {
     let alive = true;
@@ -524,7 +613,9 @@ const ReturnDetailModal = ({ returnId, onClose, onEdit, onDownloadWaybill }) => 
               <p><strong>Дата:</strong> {(doc.date || doc.created_at || '').toString().slice(0, 10) || '—'}</p>
               <p><strong>Продажа:</strong> {returnTableSaleLabel(doc)}</p>
               <p><strong>Клиент:</strong> {returnTableClientLabel(doc)}</p>
+              <p><strong>Статус:</strong> {doc.status === 'completed' ? 'Проведён' : doc.status === 'canceled' ? 'Отменён' : doc.status === 'draft' ? 'Черновик' : (doc.status || '—')}</p>
               <p><strong>Причина:</strong> {doc.return_reason || '—'}</p>
+              {doc.invoice_number ? <p><strong>Номер счёта / накладной:</strong> {doc.invoice_number}</p> : null}
               {doc.comment ? <p><strong>Комментарий:</strong> {doc.comment}</p> : null}
             </section>
             {Array.isArray(doc.downstream_links) && doc.downstream_links.length > 0 ? (
@@ -572,8 +663,88 @@ const ReturnDetailModal = ({ returnId, onClose, onEdit, onDownloadWaybill }) => 
               </table>
             </section>
             <div className="modal__actions">
-              <button type="button" className="btn btn--secondary" onClick={() => onEdit(doc)}>Редактировать</button>
-              <button type="button" className="btn btn--primary" onClick={() => onDownloadWaybill(doc)}>Накладная</button>
+              {doc.status === 'draft' && (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn--primary"
+                    disabled={actionBusy}
+                    onClick={async () => {
+                      setActionBusy(true);
+                      try {
+                        await completeReturn(doc.id);
+                        toast.show('Возврат проведён');
+                        onMutate?.();
+                        reloadDoc();
+                      } catch (e) {
+                        toast.show(getApiErrorMessage(e, 'Не удалось провести'), 'error');
+                      } finally {
+                        setActionBusy(false);
+                      }
+                    }}
+                  >
+                    Провести
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--secondary"
+                    disabled={actionBusy}
+                    onClick={() => onEdit(doc)}
+                  >
+                    Редактировать
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--danger"
+                    disabled={actionBusy}
+                    onClick={async () => {
+                      setActionBusy(true);
+                      try {
+                        await cancelReturn(doc.id);
+                        toast.show('Возврат отменён');
+                        onMutate?.();
+                        reloadDoc();
+                      } catch (e) {
+                        toast.show(getApiErrorMessage(e, 'Не удалось отменить'), 'error');
+                      } finally {
+                        setActionBusy(false);
+                      }
+                    }}
+                  >
+                    Отменить
+                  </button>
+                </>
+              )}
+              {doc.status === 'completed' && (
+                <button type="button" className="btn btn--secondary" onClick={() => onEdit(doc)}>
+                  Редактировать реквизиты
+                </button>
+              )}
+              {doc.status === 'completed' && (
+                <button
+                  type="button"
+                  className="btn btn--danger"
+                  disabled={actionBusy}
+                  onClick={async () => {
+                    setActionBusy(true);
+                    try {
+                      await cancelReturn(doc.id);
+                      toast.show('Возврат отменён');
+                      onMutate?.();
+                      reloadDoc();
+                    } catch (e) {
+                      toast.show(getApiErrorMessage(e, 'Не удалось отменить'), 'error');
+                    } finally {
+                      setActionBusy(false);
+                    }
+                  }}
+                >
+                  Отменить возврат
+                </button>
+              )}
+              {doc.status !== 'canceled' && (
+                <button type="button" className="btn btn--primary" onClick={() => onDownloadWaybill(doc)}>Накладная</button>
+              )}
             </div>
           </div>
         )}

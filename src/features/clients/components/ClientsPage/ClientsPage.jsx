@@ -109,8 +109,8 @@ const ClientsPage = () => {
   };
 
   return (
-    <div className="page page--clients">
-      <div className="ds-toolbar ds-toolbar--stack-mobile">
+    <div className="page page--clients commercial-page">
+      <div className="ds-toolbar ds-toolbar--stack-mobile commercial-toolbar">
         <div className="ds-toolbar__start">
           <input
             type="text"
@@ -137,7 +137,8 @@ const ClientsPage = () => {
       {error && error.status !== 404 && <ErrorState error={error} onRetry={refetch} />}
       {!loading && (!error || error.status === 404) && items.length === 0 && <EmptyState title="Нет клиентов" />}
       {!loading && (!error || error.status === 404) && items.length > 0 && (
-        <table className="data-table data-table--fixed data-table--row-actions data-table--clickable data-table--clients">
+        <div className="commercial-table-wrap">
+          <table className="data-table data-table--row-actions data-table--clickable data-table--clients">
           <thead>
             <tr>
               <th>Клиент</th>
@@ -193,7 +194,8 @@ const ClientsPage = () => {
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </div>
       )}
       {!loading && (!error || error.status === 404) && (
         <Pagination meta={listMeta} onPageChange={(nextPage) => setQueryState((p) => ({ ...p, page: nextPage }))} />

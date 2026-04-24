@@ -100,9 +100,9 @@ const PaymentsPage = () => {
   };
 
   return (
-    <div className="page">
-      <div className="ds-toolbar ds-toolbar--stack-mobile">
-        <div className="ds-toolbar__start" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+    <div className="page commercial-page">
+      <div className="ds-toolbar ds-toolbar--stack-mobile commercial-toolbar">
+        <div className="ds-toolbar__start commercial-toolbar__filters">
           <Select
             value={queryState.client}
             onChange={(v) => setQueryState((p) => ({ ...p, client: v, page: 1 }))}
@@ -115,16 +115,16 @@ const PaymentsPage = () => {
             placeholder="Тип оплаты"
             options={[{ value: '', label: 'Все типы' }, ...PAYMENT_TYPES]}
           />
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ whiteSpace: 'nowrap', fontSize: '0.875rem' }}>С</span>
+          <label className="commercial-date-filter">
+            <span className="commercial-date-filter__label">С</span>
             <input
               type="date"
               value={queryState.date_from}
               onChange={(e) => setQueryState((p) => ({ ...p, date_from: e.target.value, page: 1 }))}
             />
           </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ whiteSpace: 'nowrap', fontSize: '0.875rem' }}>По</span>
+          <label className="commercial-date-filter">
+            <span className="commercial-date-filter__label">По</span>
             <input
               type="date"
               value={queryState.date_to}
@@ -137,18 +137,13 @@ const PaymentsPage = () => {
         </div>
       </div>
 
-      <p style={{ margin: '0 0 12px', fontSize: '0.8125rem', opacity: 0.8 }}>
-        В контракте GET /api/payments/ нет параметра search — отбор по клиенту, типу и периоду (date_from / date_to).
-        Долг и аванс в блоке ниже — только из ответа GET /api/payments/summary/.
-      </p>
-
       {summary && queryState.client && (
-        <div className="card" style={{ padding: 12, marginBottom: 12 }}>
-          <strong>Сводка по клиенту</strong>
+        <div className="commercial-summary">
+          <p className="commercial-summary__title">Сводка по клиенту</p>
           {summary.client_name && (
             <div style={{ marginTop: 6 }}>{summary.client_name}</div>
           )}
-          <div style={{ marginTop: 8, display: 'grid', gap: 4, fontSize: '0.9375rem' }}>
+          <div className="commercial-summary__grid" style={{ marginTop: 8 }}>
             <div>Оплачено (брутто): {formatQuantityDisplay(summary.total_paid_gross ?? 0)} сом</div>
             <div>Возвратов денег: {formatQuantityDisplay(summary.total_refunded ?? 0)} сом</div>
             <div>Оплачено (нетто): {formatQuantityDisplay(summary.total_paid_net ?? 0)} сом</div>
@@ -163,7 +158,8 @@ const PaymentsPage = () => {
       {error && error.status !== 404 && <ErrorState error={error} onRetry={refetch} />}
       {!loading && (!error || error.status === 404) && items.length === 0 && <EmptyState title="Нет оплат" />}
       {!loading && (!error || error.status === 404) && items.length > 0 && (
-        <table className="data-table data-table--fixed data-table--row-actions">
+        <div className="commercial-table-wrap">
+          <table className="data-table data-table--fixed data-table--row-actions">
           <thead>
             <tr>
               <th>Платеж</th>
@@ -196,7 +192,8 @@ const PaymentsPage = () => {
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </div>
       )}
 
       {!loading && (!error || error.status === 404) && (

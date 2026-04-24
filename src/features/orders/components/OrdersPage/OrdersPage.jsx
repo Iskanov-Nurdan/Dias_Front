@@ -196,8 +196,8 @@ const OrdersPage = () => {
   };
 
   return (
-    <div className="page">
-      <div className="ds-toolbar ds-toolbar--stack-mobile">
+    <div className="page commercial-page">
+      <div className="ds-toolbar ds-toolbar--stack-mobile commercial-toolbar">
         <div className="ds-toolbar__start">
           <input
             type="text"
@@ -228,7 +228,8 @@ const OrdersPage = () => {
       {error && error.status !== 404 && <ErrorState error={error} onRetry={refetch} />}
       {!loading && (!error || error.status === 404) && items.length === 0 && <EmptyState title="Нет заявок" />}
       {!loading && (!error || error.status === 404) && items.length > 0 && (
-        <table className="data-table data-table--fixed data-table--row-actions">
+        <div className="commercial-table-wrap">
+          <table className="data-table data-table--fixed data-table--row-actions">
           <thead>
             <tr>
               <th>Номер</th>
@@ -279,7 +280,8 @@ const OrdersPage = () => {
               );
             })}
           </tbody>
-        </table>
+          </table>
+        </div>
       )}
       {!loading && (!error || error.status === 404) && (
         <Pagination meta={meta} onPageChange={(nextPage) => setQueryState((p) => ({ ...p, page: nextPage }))} />

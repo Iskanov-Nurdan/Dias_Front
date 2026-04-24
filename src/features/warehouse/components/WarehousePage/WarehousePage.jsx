@@ -99,8 +99,8 @@ const WarehousePage = () => {
   };
 
   return (
-    <div className="page page--warehouse">
-      <div className="page--warehouse__toolbar ds-toolbar ds-toolbar--page-head ds-toolbar--stack-mobile">
+    <div className="page page--warehouse commercial-page">
+      <div className="page--warehouse__toolbar ds-toolbar ds-toolbar--page-head ds-toolbar--stack-mobile commercial-toolbar">
         <div className="ds-toolbar__start page--warehouse__filters">
           <input
             type="text"
@@ -174,7 +174,8 @@ const WarehousePage = () => {
         <EmptyState title="Нет партий" />
       )}
       {!loading && (!error || error.status === 404) && rows.length > 0 && (
-        <table className="data-table data-table--fixed data-table--warehouse data-table--row-actions data-table--clickable">
+        <div className="commercial-table-wrap">
+          <table className="data-table data-table--fixed data-table--warehouse data-table--row-actions data-table--clickable">
           <thead>
             <tr>
               <th>Продукт</th>
@@ -266,7 +267,8 @@ const WarehousePage = () => {
               );
             })}
           </tbody>
-        </table>
+          </table>
+        </div>
       )}
       {!loading && (!error || error.status === 404) && (
         <Pagination meta={listMeta} onPageChange={(nextPage) => setQueryState((p) => ({ ...p, page: nextPage }))} />

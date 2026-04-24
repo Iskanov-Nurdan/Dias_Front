@@ -272,9 +272,9 @@ const SalesPage = () => {
   };
 
   return (
-    <div className="page page--sales">
-      <div className="ds-toolbar ds-toolbar--stack-mobile">
-        <div className="ds-toolbar__start" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+    <div className="page page--sales commercial-page">
+      <div className="ds-toolbar ds-toolbar--stack-mobile commercial-toolbar">
+        <div className="ds-toolbar__start commercial-toolbar__filters">
           <Select
             value={queryState.sale_status}
             onChange={(v) => setQueryState((p) => ({ ...p, sale_status: v, page: 1 }))}
@@ -287,16 +287,16 @@ const SalesPage = () => {
             placeholder="Клиент"
             options={[{ value: '', label: 'Все клиенты' }, ...clients.map((c) => ({ value: String(c.id), label: c.name || `Клиент #${c.id}` }))]}
           />
-          <label className="sales-page__date-filter" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span className="sales-page__date-label" style={{ whiteSpace: 'nowrap', fontSize: '0.875rem' }}>С</span>
+          <label className="commercial-date-filter">
+            <span className="commercial-date-filter__label">С</span>
             <input
               type="date"
               value={queryState.date_from}
               onChange={(e) => setQueryState((p) => ({ ...p, date_from: e.target.value, page: 1 }))}
             />
           </label>
-          <label className="sales-page__date-filter" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span className="sales-page__date-label" style={{ whiteSpace: 'nowrap', fontSize: '0.875rem' }}>По</span>
+          <label className="commercial-date-filter">
+            <span className="commercial-date-filter__label">По</span>
             <input
               type="date"
               value={queryState.date_to}
@@ -310,15 +310,12 @@ const SalesPage = () => {
           </button>
         </div>
       </div>
-      <p className="sales-page__api-note" style={{ margin: '0 0 12px', fontSize: '0.8125rem', opacity: 0.8 }}>
-        В контракте GET /api/sales/ нет параметра search — отбор по клиенту, статусу и периоду (date_from / date_to).
-      </p>
-
       {loading && <Loading />}
       {error && error.status !== 404 && <ErrorState error={error} onRetry={refetch} />}
       {!loading && (!error || error.status === 404) && items.length === 0 && <EmptyState title="Нет продаж" />}
       {!loading && (!error || error.status === 404) && items.length > 0 && (
-        <table className="data-table data-table--fixed data-table--sales data-table--row-actions">
+        <div className="commercial-table-wrap">
+          <table className="data-table data-table--fixed data-table--sales data-table--row-actions">
           <thead>
             <tr>
               <th>Дата</th>
@@ -379,7 +376,8 @@ const SalesPage = () => {
               );
             })}
           </tbody>
-        </table>
+          </table>
+        </div>
       )}
 
       {!loading && (!error || error.status === 404) && (

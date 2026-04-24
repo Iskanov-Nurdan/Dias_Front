@@ -79,7 +79,9 @@
 }
 
 .action-menu__dropdown {
-  min-width: min(168px, calc(100vw - 24px));
+  min-width: 160px;
+  width: max-content;
+  max-width: min(260px, calc(100vw - 24px));
   margin: 0;
   padding: var(--space-1);
   list-style: none;

@@ -10,12 +10,45 @@
 .data-table--clients {
   th:nth-child(1),
   td:nth-child(1) {
-    width: 42%;
+    width: 28%;
   }
 
   th:nth-child(2),
   td:nth-child(2) {
-    width: 36%;
+    width: 20%;
+  }
+
+  th:nth-child(3),
+  td:nth-child(3) {
+    width: 16%;
+  }
+
+  th:nth-child(4),
+  td:nth-child(4) {
+    width: 10%;
+    white-space: nowrap;
+  }
+
+  th:nth-child(5),
+  td:nth-child(5) {
+    width: 14%;
+    white-space: nowrap;
+  }
+
+  th:nth-child(6),
+  td:nth-child(6) {
+    width: 124px;
+    white-space: nowrap;
+  }
+
+  th:nth-child(7),
+  td:nth-child(7) {
+    width: 72px;
+    min-width: 72px;
+  }
+
+  td:nth-child(6) .badge {
+    max-width: 100%;
   }
 
   @include responsive-tables {

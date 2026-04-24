@@ -125,8 +125,8 @@ const DefectsPage = () => {
     : '';
 
   return (
-    <div className="page">
-      <div className="ds-toolbar ds-toolbar--stack-mobile">
+    <div className="page commercial-page">
+      <div className="ds-toolbar ds-toolbar--stack-mobile commercial-toolbar">
         <div className="ds-toolbar__start">
           <Select
             value={queryState.status}
@@ -145,7 +145,8 @@ const DefectsPage = () => {
       {!loading && (!error || error.status === 404) && items.length === 0 && <EmptyState title="Нет записей брака" />}
       {!loading && (!error || error.status === 404) && items.length > 0 && (
         <>
-          <table className="data-table data-table--fixed data-table--row-actions">
+          <div className="commercial-table-wrap">
+            <table className="data-table data-table--fixed data-table--row-actions">
             <thead>
               <tr>
                 <th>Продукт</th>
@@ -218,7 +219,8 @@ const DefectsPage = () => {
                 );
               })}
             </tbody>
-          </table>
+            </table>
+          </div>
           <Pagination meta={listMeta} onPageChange={(nextPage) => setQueryState((p) => ({ ...p, page: nextPage }))} />
         </>
       )}

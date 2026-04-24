@@ -188,8 +188,8 @@ const ReworkRequestsPage = () => {
   })), [warehouseBatches]);
 
   return (
-    <div className="page">
-      <div className="ds-toolbar ds-toolbar--stack-mobile">
+    <div className="page commercial-page">
+      <div className="ds-toolbar ds-toolbar--stack-mobile commercial-toolbar">
         <div className="ds-toolbar__start">
           <Select
             value={queryState.status}
@@ -207,7 +207,8 @@ const ReworkRequestsPage = () => {
       {!loading && (!error || error.status === 404) && items.length === 0 && <EmptyState title="Нет запросов переделки" />}
       {!loading && (!error || error.status === 404) && items.length > 0 && (
         <>
-          <table className="data-table data-table--fixed data-table--row-actions">
+          <div className="commercial-table-wrap">
+            <table className="data-table data-table--fixed data-table--row-actions">
             <thead>
               <tr>
                 <th>Номер</th>
@@ -263,7 +264,8 @@ const ReworkRequestsPage = () => {
                 );
               })}
             </tbody>
-          </table>
+            </table>
+          </div>
           <Pagination meta={listMeta} onPageChange={(nextPage) => setQueryState((p) => ({ ...p, page: nextPage }))} />
         </>
       )}
@@ -323,7 +325,7 @@ const ReworkRequestsPage = () => {
                 ×
               </button>
             </div>
-            <p style={{ margin: '0 0 8px', fontSize: '0.875rem', opacity: 0.85 }}>
+            <p className="commercial-note">
               Укажите партию склада с результатом переработки — без неё завершение недоступно.
             </p>
             <label>Результирующая партия *</label>

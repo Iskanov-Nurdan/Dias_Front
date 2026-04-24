@@ -140,25 +140,25 @@ const ReturnsPage = () => {
   };
 
   return (
-    <div className="page">
-      <div className="ds-toolbar ds-toolbar--stack-mobile">
-        <div className="ds-toolbar__start" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+    <div className="page commercial-page">
+      <div className="ds-toolbar ds-toolbar--stack-mobile commercial-toolbar">
+        <div className="ds-toolbar__start commercial-toolbar__filters">
           <Select
             value={queryState.client}
             onChange={(v) => setQueryState((p) => ({ ...p, client: v, page: 1 }))}
             placeholder="Клиент"
             options={[{ value: '', label: 'Все клиенты' }, ...clients.map((c) => ({ value: String(c.id), label: c.name || `Клиент #${c.id}` }))]}
           />
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ whiteSpace: 'nowrap', fontSize: '0.875rem' }}>С</span>
+          <label className="commercial-date-filter">
+            <span className="commercial-date-filter__label">С</span>
             <input
               type="date"
               value={queryState.date_from}
               onChange={(e) => setQueryState((p) => ({ ...p, date_from: e.target.value, page: 1 }))}
             />
           </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ whiteSpace: 'nowrap', fontSize: '0.875rem' }}>По</span>
+          <label className="commercial-date-filter">
+            <span className="commercial-date-filter__label">По</span>
             <input
               type="date"
               value={queryState.date_to}
@@ -170,15 +170,12 @@ const ReturnsPage = () => {
           <button type="button" className="btn btn--primary" onClick={() => setModalDoc({})}>Создать возврат</button>
         </div>
       </div>
-      <p style={{ margin: '0 0 12px', fontSize: '0.8125rem', opacity: 0.8 }}>
-        В контракте GET /api/returns/ нет search и поля статуса возврата в списке — фильтры: клиент, период (date_from / date_to).
-      </p>
-
       {loading && <Loading />}
       {error && error.status !== 404 && <ErrorState error={error} onRetry={refetch} />}
       {!loading && (!error || error.status === 404) && items.length === 0 && <EmptyState title="Нет возвратов" />}
       {!loading && (!error || error.status === 404) && items.length > 0 && (
-        <table className="data-table data-table--fixed data-table--row-actions">
+        <div className="commercial-table-wrap">
+          <table className="data-table data-table--fixed data-table--row-actions">
           <thead>
             <tr>
               <th>Номер</th>
@@ -214,7 +211,8 @@ const ReturnsPage = () => {
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </div>
       )}
 
       {!loading && (!error || error.status === 404) && (

@@ -27,6 +27,18 @@ const REWORK_DEFECT_SOURCE_LABELS = {
   manual: 'Вручную',
 };
 
+const isDefectSelectableForRework = (d) => {
+  if (!d || typeof d !== 'object') return false;
+  if (String(d.status) === 'closed') return false;
+  const avail = d.available_quantity_pcs != null && d.available_quantity_pcs !== ''
+    ? Number(d.available_quantity_pcs)
+    : Number(d.quantity_pcs ?? NaN);
+  const qp = Number(d.quantity_pcs ?? 0);
+  if (!Number.isFinite(avail) || avail <= 0) return false;
+  if (!Number.isFinite(qp) || qp <= 0) return false;
+  return true;
+};
+
 const defectRecordSelectLabel = (d) => {
   if (!d) return '';
   const name = (d.product || d.profile_name || '').trim() || '—';
@@ -552,10 +564,12 @@ const ReworkModal = ({
     label: returnRefLabel(r) || 'Возврат',
   })), [returnsList]);
 
-  const defectOptions = useMemo(() => defectsList.map((d) => ({
-    value: String(d.id),
-    label: defectRecordSelectLabel(d),
-  })), [defectsList]);
+  const defectOptions = useMemo(() => defectsList
+    .filter(isDefectSelectableForRework)
+    .map((d) => ({
+      value: String(d.id),
+      label: defectRecordSelectLabel(d),
+    })), [defectsList]);
 
   const saleOptions = useMemo(() => salesList.map((s) => ({
     value: String(s.id),

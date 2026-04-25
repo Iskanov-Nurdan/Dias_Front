@@ -21,6 +21,7 @@ const STATUS_OPTIONS = [
   { value: 'reworked', label: 'Переделан' },
   { value: 'sold', label: 'Продан' },
   { value: 'written_off', label: 'Списан' },
+  { value: 'closed', label: 'Закрыт' },
 ];
 
 const statusLabel = (v) => STATUS_OPTIONS.find((x) => x.value === v)?.label || v || '—';
@@ -33,6 +34,7 @@ const statusVariant = (v) => {
     case 'reworked': return 'success';
     case 'sold': return 'success';
     case 'written_off': return 'danger';
+    case 'closed': return 'default';
     default: return 'default';
   }
 };
@@ -60,18 +62,36 @@ const defectAvailablePcs = (d) => {
 /** Подпись колонки «Количество» из API или из остатка. */
 const defectQuantityLabel = (d) => {
   if (!d) return '—';
+  if (d.status === 'closed') {
+    const lbl = d.display_quantity_label;
+    if (lbl != null && String(lbl).trim() !== '') return String(lbl).trim();
+    return '0 шт';
+  }
   const lbl = d.display_quantity_label;
   if (lbl != null && String(lbl).trim() !== '') return String(lbl).trim();
   const a = defectAvailablePcs(d);
   return a > 0 ? `${formatQuantityDisplay(a)} шт` : '—';
 };
 
+const defectQuantityPcsRaw = (d) => {
+  if (!d) return 0;
+  const n = Number(d.quantity_pcs ?? 0);
+  return Number.isFinite(n) ? n : 0;
+};
+
 const canEditDefect = (s) => ['new', 'on_stock'].includes(s);
+/** Операции sell / writeoff / send-to-rework — только при открытом остатке и не в финальном closed. */
 const canMutateDefectStock = (d) => {
   if (!d) return false;
+  if (d.status === 'closed') return false;
   if (defectAvailablePcs(d) <= 0) return false;
+  if (defectQuantityPcsRaw(d) <= 0) return false;
   return ['new', 'on_stock', 'reworked'].includes(d.status);
 };
+
+const defectCounterPcsLine = (label, value) => (
+  <p><strong>{label}</strong> {`${formatQuantityDisplay(value == null || value === '' ? 0 : value)} шт`}</p>
+);
 
 const DefectsPage = ({ onSentToReworkSuccess }) => {
   const toast = useToast();
@@ -95,8 +115,11 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
   const [writeoffBusy, setWriteoffBusy] = useState(false);
   const [sellBusy, setSellBusy] = useState(false);
   const [sellComment, setSellComment] = useState('');
+  const [detailReloadKey, setDetailReloadKey] = useState(0);
   const { items, meta, raw, loading, error, refetch } = useServerQuery('defects/', queryState, { enabled: true });
-  useOperationalRefetch(['defect_record', 'sale', 'rework_request'], refetch, true);
+  useOperationalRefetch(['defect_record', 'sale', 'rework_request', 'warehouse_batch'], refetch, true);
+
+  const bumpDefectDetail = () => setDetailReloadKey((k) => k + 1);
 
   const defectByWarehouseSourceId = useMemo(() => {
     const m = new Map();
@@ -259,6 +282,7 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
       {detailDefectId && (
         <DefectDetailModal
           defectId={detailDefectId}
+          reloadKey={detailReloadKey}
           onClose={() => setDetailDefectId(null)}
           onEdit={(defect) => {
             setDetailDefectId(null);
@@ -326,6 +350,7 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
             const body = Math.round(q) >= Math.round(avail) ? {} : { quantity: String(Math.round(q)) };
             await sendDefectToRework(sendReworkTarget.id, body);
             await refetch();
+            bumpDefectDetail();
             setSendReworkTarget(null);
             setSendReworkQty('');
             toast.show('Брак отправлен в переделку');
@@ -391,6 +416,7 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
             }
             await writeoffDefect(writeoffTarget.id, payload);
             await refetch();
+            bumpDefectDetail();
             setWriteoffTarget(null);
             setWriteoffReason('');
             setWriteoffQty('');
@@ -482,6 +508,7 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
             if (c) body.comment = c;
             await sellDefect(sellTarget.id, body);
             await refetch();
+            bumpDefectDetail();
             setSellTarget(null);
             setSellComment('');
             toast.show(Math.round(qty) >= Math.round(avail) ? 'Брак продан' : 'Часть брака продана');
@@ -686,6 +713,7 @@ const DefectModal = ({
 
 const DefectDetailModal = ({
   defectId,
+  reloadKey = 0,
   onClose,
   onEdit,
   onSendToRework,
@@ -714,10 +742,11 @@ const DefectDetailModal = ({
     };
     load();
     return () => { alive = false; };
-  }, [defectId]);
+  }, [defectId, reloadKey]);
 
   const st = defect?.status;
   const hideDefectEdit = defect && ['warehouse', 'qc', 'otk', 'return'].includes(String(defect.source_type));
+  const isClosed = st === 'closed';
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -734,11 +763,24 @@ const DefectDetailModal = ({
               <h4>Данные</h4>
               <p><strong>Источник:</strong> {sourceLabel(defect.source_type)}</p>
               <p><strong>Брак / продукт:</strong> {defect.product || '—'}</p>
-              <p><strong>Количество:</strong> {defectQuantityLabel(defect)}</p>
-              {defect.original_quantity_pcs != null && defect.original_quantity_pcs !== '' ? (
-                <p><strong>Всего поступило:</strong> {`${formatQuantityDisplay(defect.original_quantity_pcs)} шт`}</p>
-              ) : null}
-              <p><strong>Статус:</strong> <Badge variant={statusVariant(st)}>{statusLabel(st)}</Badge></p>
+              {isClosed ? (
+                <>
+                  <p><strong>Статус:</strong> <Badge variant={statusVariant(st)}>{statusLabel(st)}</Badge></p>
+                  <p><strong>Количество:</strong> 0 шт</p>
+                  {defectCounterPcsLine('Всего поступило:', defect.original_quantity_pcs)}
+                  {defectCounterPcsLine('Продано:', defect.sold_quantity_pcs)}
+                  {defectCounterPcsLine('Списано:', defect.written_off_quantity_pcs)}
+                  {defectCounterPcsLine('Передано в переделку:', defect.sent_to_rework_quantity_pcs)}
+                </>
+              ) : (
+                <>
+                  <p><strong>Количество:</strong> {defectQuantityLabel(defect)}</p>
+                  {defect.original_quantity_pcs != null && defect.original_quantity_pcs !== '' ? (
+                    <p><strong>Всего поступило:</strong> {`${formatQuantityDisplay(defect.original_quantity_pcs)} шт`}</p>
+                  ) : null}
+                  <p><strong>Статус:</strong> <Badge variant={statusVariant(st)}>{statusLabel(st)}</Badge></p>
+                </>
+              )}
               <p><strong>Причина:</strong> {defect.defect_reason || defect.writeoff_reason || '—'}</p>
               {defect.comment ? <p><strong>Комментарий:</strong> {defect.comment}</p> : null}
             </section>
@@ -751,7 +793,7 @@ const DefectDetailModal = ({
                   <button type="button" className="btn btn--danger" onClick={() => onWriteoff(defect)}>Списать</button>
                 </>
               ) : null}
-              {st === 'sent_to_rework' ? (
+              {st === 'sent_to_rework' && !isClosed ? (
                 <p style={{ margin: 0, fontSize: '0.875rem', opacity: 0.85 }}>
                   Завершение — во вкладке «Переделка», кнопка «Завершить» у запроса.
                 </p>

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import './ReturnsPage.scss';
 import { apiClient } from '../../../../shared/api';
 import { useOperationalRefetch } from '../../../../shared/realtime';
 import { useServerQuery, formatQuantityDisplay, getApiErrorMessage, parseLocaleNumber } from '../../../../shared/lib';
@@ -25,13 +26,53 @@ const CONDITIONS = [
   { value: 'defect', label: 'Брак' },
 ];
 
+const TARGET_HINTS = {
+  warehouse: 'Если товар годный.',
+  defect: 'Если товар испорчен.',
+  rework: 'Если можно исправить.',
+};
+
+const defaultConditionForTarget = (t) => {
+  if (t === 'warehouse') return 'good';
+  if (t === 'defect') return 'defect';
+  if (t === 'rework') return 'damaged';
+  return 'good';
+};
+
 const targetLabel = (code) => TARGETS.find((t) => t.value === code)?.label || code || '—';
 
-const saleListLabel = (s) => s.order_number || s.sale_number || 'Продажа';
+const selectSourcesBucket = (res) => {
+  const bucket = res.data?.items;
+  if (bucket != null && typeof bucket === 'object' && !Array.isArray(bucket)) return bucket;
+  return null;
+};
+
+const saleListLabel = (s) => {
+  if (!s) return 'Продажа';
+  if (s.label != null && String(s.label).trim() !== '') return String(s.label).trim();
+  const num = s.order_number || s.sale_number || s.number || '';
+  const client = (s.client_name || s.client?.name || '').trim();
+  const prod = (s.product_name || s.product || s.primary_product || '').trim();
+  const q = s.total_quantity ?? s.quantity;
+  const qtyPart = q != null && q !== '' ? `${formatQuantityDisplay(q)} шт` : '';
+  const parts = [];
+  if (num) parts.push(String(num));
+  if (client) parts.push(`Клиент: ${client}`);
+  if (prod) parts.push(prod);
+  if (qtyPart) parts.push(qtyPart);
+  return parts.length ? parts.join(' — ') : 'Продажа';
+};
 
 const returnTableSaleLabel = (r) => r.sale_order_number || r.order_number || '—';
 
 const returnTableClientLabel = (r) => r.client_name || '—';
+
+const returnRowTargetsLabel = (r) => {
+  const lines = Array.isArray(r.lines) ? r.lines : [];
+  const codes = [...new Set(lines.map((l) => l.return_target).filter(Boolean))];
+  if (codes.length === 0) return '—';
+  return codes.map((c) => targetLabel(c)).join(', ');
+};
 
 const initialSaleIdFromDoc = (doc) => {
   if (!doc?.id) return '';
@@ -40,34 +81,31 @@ const initialSaleIdFromDoc = (doc) => {
   return '';
 };
 
-/**
- * Верхняя граница количества к возврату по строке: только поля ответа API (без выдуманных формул).
- * Если бэкенд отдаёт только quantity строки продажи — это ориентир; учёт уже возвращённого — на сервере.
- */
+/** Доступно к возврату (шт) — только `returnable_quantity` из ответа API. */
 const saleLineReturnableCap = (sl) => {
+  if (!sl || sl.returnable_quantity == null || sl.returnable_quantity === '') return null;
+  const n = Number(sl.returnable_quantity);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+};
+
+const saleLineSoldQty = (sl) => {
   if (!sl) return null;
-  const keys = [
-    'returnable_quantity',
-    'remaining_return_quantity',
-    'available_for_return',
-    'max_return_quantity',
-  ];
-  for (const k of keys) {
-    if (sl[k] != null && sl[k] !== '') {
-      const n = Number(sl[k]);
-      if (Number.isFinite(n) && n >= 0) return n;
-    }
-  }
-  if (sl.already_returned_quantity != null && sl.quantity != null) {
-    const q = Number(sl.quantity);
-    const ar = Number(sl.already_returned_quantity);
-    if (Number.isFinite(q) && Number.isFinite(ar)) return Math.max(0, q - ar);
-  }
-  if (sl.quantity != null) {
-    const q = Number(sl.quantity);
-    if (Number.isFinite(q) && q >= 0) return q;
-  }
-  return null;
+  const v = sl.quantity ?? sl.quantity_sold;
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+const saleLineSelectLabel = (x) => {
+  if (!x) return '—';
+  if (x.label != null && String(x.label).trim() !== '') return String(x.label).trim();
+  const prod = (x.product || x.product_name || '').trim() || '—';
+  const sold = saleLineSoldQty(x);
+  const cap = saleLineReturnableCap(x);
+  const parts = [prod];
+  if (sold != null) parts.push(`продано ${formatQuantityDisplay(sold)} шт`);
+  if (cap != null) parts.push(`доступно ${formatQuantityDisplay(cap)} шт`);
+  return parts.join(' — ');
 };
 
 const ReturnsPage = () => {
@@ -80,6 +118,7 @@ const ReturnsPage = () => {
     date_to: '',
   });
   const [sales, setSales] = useState([]);
+  const [salesLoading, setSalesLoading] = useState(true);
   const [filterClients, setFilterClients] = useState([]);
   const [modalDoc, setModalDoc] = useState(null);
   const [detailDocId, setDetailDocId] = useState(null);
@@ -87,17 +126,21 @@ const ReturnsPage = () => {
   const [cancelDocTarget, setCancelDocTarget] = useState(null);
   const [submitError, setSubmitError] = useState('');
   const [waybillBusyId, setWaybillBusyId] = useState(null);
+  const [completeBusy, setCompleteBusy] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
 
   const { items, meta, loading, error, refetch } = useServerQuery('returns/', queryState, { enabled: true });
-  useOperationalRefetch(['return', 'defect_record', 'rework_request', 'sale'], refetch, true);
+  useOperationalRefetch(['return', 'defect_record', 'rework_request', 'sale', 'warehouse_batch'], refetch, true);
 
   const loadRefs = useCallback(() => {
+    setSalesLoading(true);
     getReturnSelectSources()
       .then((res) => {
-        const data = res.data || {};
-        setSales(Array.isArray(data.sales) ? data.sales : []);
+        const data = selectSourcesBucket(res);
+        setSales(data && Array.isArray(data.sales) ? data.sales : []);
       })
-      .catch(() => setSales([]));
+      .catch(() => setSales([]))
+      .finally(() => setSalesLoading(false));
   }, []);
 
   useEffect(() => { loadRefs(); }, [loadRefs]);
@@ -116,15 +159,16 @@ const ReturnsPage = () => {
       setModalDoc(null);
       refetch();
       loadRefs();
-      toast.show('Возврат сохранён');
+      toast.show(modalDoc?.id ? 'Возврат обновлён' : 'Черновик сохранён');
     } catch (e) {
       setSubmitError(getApiErrorMessage(e, 'Ошибка сохранения возврата'));
     }
   };
 
   const onComplete = async () => {
-    if (!completeTarget?.id) return;
+    if (!completeTarget?.id || completeBusy) return;
     setSubmitError('');
+    setCompleteBusy(true);
     try {
       await completeReturn(completeTarget.id);
       setCompleteTarget(null);
@@ -133,12 +177,15 @@ const ReturnsPage = () => {
       toast.show('Возврат проведён');
     } catch (e) {
       setSubmitError(getApiErrorMessage(e, 'Ошибка проведения'));
+    } finally {
+      setCompleteBusy(false);
     }
   };
 
   const onCancelDoc = async () => {
-    if (!cancelDocTarget?.id) return;
+    if (!cancelDocTarget?.id || cancelBusy) return;
     setSubmitError('');
+    setCancelBusy(true);
     try {
       await cancelReturn(cancelDocTarget.id);
       setCancelDocTarget(null);
@@ -147,6 +194,8 @@ const ReturnsPage = () => {
       toast.show('Возврат отменён');
     } catch (e) {
       setSubmitError(getApiErrorMessage(e, 'Ошибка отмены'));
+    } finally {
+      setCancelBusy(false);
     }
   };
 
@@ -205,12 +254,13 @@ const ReturnsPage = () => {
           <table className="data-table data-table--fixed data-table--row-actions">
           <thead>
             <tr>
-              <th>Номер</th>
-              <th>Дата</th>
-              <th>Продажа</th>
+              <th>№ возврата</th>
               <th>Клиент</th>
+              <th>Продажа</th>
+              <th>Дата</th>
               <th>Статус</th>
               <th>Причина</th>
+              <th>Куда вернули</th>
               <th aria-hidden />
             </tr>
           </thead>
@@ -222,11 +272,12 @@ const ReturnsPage = () => {
                     {r.return_number || '—'}
                   </button>
                 </td>
-                <td>{(r.date || r.created_at || '').toString().slice(0, 10) || '—'}</td>
-                <td>{returnTableSaleLabel(r)}</td>
                 <td>{returnTableClientLabel(r)}</td>
+                <td>{returnTableSaleLabel(r)}</td>
+                <td>{(r.date || r.created_at || '').toString().slice(0, 10) || '—'}</td>
                 <td>{r.status === 'completed' ? 'Проведён' : r.status === 'canceled' ? 'Отменён' : r.status === 'draft' ? 'Черновик' : (r.status || '—')}</td>
                 <td>{r.return_reason || '—'}</td>
+                <td>{returnRowTargetsLabel(r)}</td>
                 <td>
                   <ActionMenu
                     ariaLabel="Действия"
@@ -242,7 +293,7 @@ const ReturnsPage = () => {
                       if (r.status === 'completed') {
                         menu.push(
                           { label: 'Редактировать реквизиты', onClick: () => setModalDoc(r) },
-                          { label: 'Отменить возврат', danger: true, onClick: () => { setCancelDocTarget(r); setSubmitError(''); } },
+                          { label: 'Отменить', danger: true, onClick: () => { setCancelDocTarget(r); setSubmitError(''); } },
                         );
                       }
                       if (r.status !== 'canceled') {
@@ -271,6 +322,7 @@ const ReturnsPage = () => {
         <ReturnModal
           doc={modalDoc?.id ? modalDoc : null}
           sales={sales}
+          salesLoading={salesLoading}
           onSubmit={onSubmit}
           onClose={() => { setModalDoc(null); setSubmitError(''); }}
           error={submitError}
@@ -296,8 +348,9 @@ const ReturnsPage = () => {
         title="Провести возврат?"
         message={completeTarget ? `Провести возврат${completeTarget.return_number ? ` «${completeTarget.return_number}»` : ''}? Склад и связанные движения выполнит сервер.` : ''}
         confirmText="Провести"
+        confirmBusy={completeBusy}
         onConfirm={onComplete}
-        onCancel={() => { setCompleteTarget(null); setSubmitError(''); }}
+        onCancel={() => { if (!completeBusy) { setCompleteTarget(null); setSubmitError(''); } }}
         error={completeTarget ? submitError : undefined}
       />
       <ConfirmModal
@@ -305,24 +358,27 @@ const ReturnsPage = () => {
         title="Отменить возврат?"
         message={cancelDocTarget ? `Отменить возврат${cancelDocTarget.return_number ? ` «${cancelDocTarget.return_number}»` : ''}?` : ''}
         confirmText="Отменить"
+        confirmBusy={cancelBusy}
         onConfirm={onCancelDoc}
-        onCancel={() => { setCancelDocTarget(null); setSubmitError(''); }}
+        onCancel={() => { if (!cancelBusy) { setCancelDocTarget(null); setSubmitError(''); } }}
         error={cancelDocTarget ? submitError : undefined}
       />
     </div>
   );
 };
 
-const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
+const ReturnModal = ({ doc, sales, salesLoading, onSubmit, onClose, error }) => {
   const isCompletedLimited = doc?.status === 'completed';
+  const isDraftEdit = Boolean(doc?.id) && doc?.status === 'draft';
+  const saleLocked = isDraftEdit;
   const [sale, setSale] = useState(() => initialSaleIdFromDoc(doc));
   const [date, setDate] = useState((doc?.date || '').toString().slice(0, 10) || new Date().toISOString().slice(0, 10));
   const [reason, setReason] = useState(doc?.return_reason || '');
   const [comment, setComment] = useState(doc?.comment || '');
   const [invoiceNumber, setInvoiceNumber] = useState(doc?.invoice_number || '');
   const [lineError, setLineError] = useState('');
-  const [saleDetail, setSaleDetail] = useState(null);
   const [saleLines, setSaleLines] = useState([]);
+  const [linesLoading, setLinesLoading] = useState(false);
   const [lines, setLines] = useState(
     Array.isArray(doc?.lines) && doc.lines.length
       ? doc.lines.map((x) => ({
@@ -330,7 +386,7 @@ const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
         product: x.product || '',
         quantity: x.quantity != null ? String(x.quantity) : '',
         return_target: x.return_target || 'warehouse',
-        condition_type: x.condition_type || 'good',
+        condition_type: x.condition_type || defaultConditionForTarget(x.return_target || 'warehouse'),
         comment: x.comment || '',
       }))
       : [{ sale_line: '', product: '', quantity: '', return_target: 'warehouse', condition_type: 'good', comment: '' }],
@@ -338,21 +394,26 @@ const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
 
   useEffect(() => {
     if (!sale) {
-      setSaleDetail(null);
       setSaleLines([]);
-      return;
+      setLinesLoading(false);
+      return undefined;
     }
+    let alive = true;
+    setLinesLoading(true);
     getReturnSelectSources(sale)
       .then((res) => {
-        const data = res.data || {};
-        setSaleDetail((Array.isArray(data.sales) ? data.sales.find((x) => String(x.id) === String(sale)) : null) || null);
-        setSaleLines(Array.isArray(data.sale_lines) ? data.sale_lines : []);
+        if (!alive) return;
+        const data = selectSourcesBucket(res);
+        setSaleLines(data && Array.isArray(data.sale_lines) ? data.sale_lines : []);
       })
       .catch(() => {
-        setSaleDetail(null);
+        if (!alive) return;
         setSaleLines([]);
+      })
+      .finally(() => {
+        if (alive) setLinesLoading(false);
       });
-    return undefined;
+    return () => { alive = false; };
   }, [sale]);
 
   const lineById = useMemo(() => {
@@ -368,23 +429,47 @@ const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
     const cap = saleLineReturnableCap(sl);
     setLines((prev) => prev.map((x, i) => {
       if (i !== idx) return x;
+      const prod = sl ? (sl.product || sl.product_name || '').trim() : '';
+      const qtyParsed = parseLocaleNumber(x.quantity);
+      const qtyNext = cap != null && (!x.quantity || !Number.isFinite(qtyParsed) || qtyParsed > cap)
+        ? String(cap)
+        : x.quantity;
       return {
         ...x,
         sale_line: saleLineId,
-        product: sl ? (sl.product || sl.sale_line_label || x.product) : x.product,
-        quantity: cap != null && (!x.quantity || Number(parseLocaleNumber(x.quantity)) > cap) ? String(cap) : x.quantity,
+        product: prod,
+        quantity: qtyNext,
       };
     }));
   };
 
+  const setReturnTargetAt = (idx, v) => {
+    setLines((prev) => prev.map((x, i) => (i === idx
+      ? { ...x, return_target: v, condition_type: defaultConditionForTarget(v) }
+      : x)));
+  };
+
+  const hasValidDraftLines = useMemo(() => {
+    if (isCompletedLimited) return true;
+    return lines.some((l) => {
+      const qty = parseLocaleNumber(l.quantity);
+      return l.sale_line && Number.isFinite(qty) && qty > 0;
+    });
+  }, [lines, isCompletedLimited]);
+
+  const submitDisabled = isCompletedLimited
+    ? false
+    : (!sale || salesLoading || linesLoading || !hasValidDraftLines);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
+      <div className="modal modal--wide return-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
           <h3>{isCompletedLimited ? 'Реквизиты возврата' : doc ? 'Возврат' : 'Новый возврат'}</h3>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <form
+          className="return-modal__form"
           onSubmit={(e) => {
             e.preventDefault();
             setLineError('');
@@ -403,13 +488,13 @@ const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
               const qty = parseLocaleNumber(l.quantity);
               if (!(qty > 0)) continue;
               if (!l.sale_line) {
-                setLineError(`Строка ${i + 1}: выберите строку продажи.`);
+                setLineError(`Товар ${i + 1}: выберите строку продажи.`);
                 return;
               }
               const sl = l.sale_line ? lineById.get(String(l.sale_line)) : null;
               const cap = saleLineReturnableCap(sl);
               if (cap != null && qty > cap) {
-                setLineError(`Строка ${i + 1}: не больше ${formatQuantityDisplay(cap)} по данным строки продажи.`);
+                setLineError(`Товар ${i + 1}: не больше ${formatQuantityDisplay(cap)} шт.`);
                 return;
               }
               payloadLines.push({
@@ -425,137 +510,137 @@ const ReturnModal = ({ doc, sales, onSubmit, onClose, error }) => {
               sale: Number(sale),
               date,
               return_reason: reason.trim() || undefined,
+              invoice_number: invoiceNumber.trim() || undefined,
               comment: comment.trim() || undefined,
               lines: payloadLines,
             });
           }}
         >
-          {!isCompletedLimited && (
-            <>
-              <label>Продажа *</label>
-              <Select
-                value={sale}
-                onChange={(v) => { setLineError(''); setSale(v); }}
-                options={[
-                  { value: '', label: 'Выберите продажу' },
-                  ...sales.map((s) => ({ value: String(s.id), label: saleListLabel(s) })),
-                ]}
-              />
-              {saleDetail && (
-                <p style={{ margin: '6px 0 0', fontSize: '0.875rem', opacity: 0.85 }}>
-                  {saleDetail.client_name || saleDetail.client?.name
-                    ? `Клиент: ${saleDetail.client_name || saleDetail.client?.name}`
-                    : null}
-                </p>
-              )}
-
-              <label>Дата</label>
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            </>
-          )}
-          <label>Причина возврата</label>
-          <input value={reason} onChange={(e) => setReason(e.target.value)} />
-          <label>Комментарий</label>
-          <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} />
-          <label>Номер счёта / накладной</label>
-          <input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="Необязательно" />
-
-          {!isCompletedLimited && (
-          <div style={{ marginTop: 12 }}>
-            <strong>Строки возврата</strong>
-            {lines.map((line, idx) => {
-              const sl = line.sale_line ? lineById.get(String(line.sale_line)) : null;
-              const cap = saleLineReturnableCap(sl);
-              return (
-                <div key={idx} className="card" style={{ marginTop: 8, padding: 8 }}>
-                  <label>Строка продажи</label>
+          <div className="return-modal__scroll">
+            <section className="return-modal__section">
+              <h4 className="return-modal__section-title">Документ</h4>
+              {!isCompletedLimited && (
+                <>
+                  <label>Продажа *</label>
                   <Select
-                    value={line.sale_line}
-                    onChange={(v) => applySaleLineSelection(idx, v)}
+                    value={sale}
+                    onChange={(v) => { setLineError(''); setSale(v); }}
+                    disabled={saleLocked || salesLoading}
                     options={[
-                      { value: '', label: 'Не выбрана' },
-                      ...saleLines.map((x) => {
-                        const c = saleLineReturnableCap(x);
-                        const capLabel = c != null ? ` · макс. ${formatQuantityDisplay(c)}` : '';
-                        return {
-                          value: String(x.id),
-                          label: `${x.sale_line_label || x.product || 'Позиция'}${capLabel}`,
-                        };
-                      }),
+                      { value: '', label: salesLoading ? 'Загрузка…' : 'Выберите продажу' },
+                      ...sales.map((s) => ({ value: String(s.id), label: saleListLabel(s) })),
                     ]}
                   />
-                  {cap != null && (
-                    <p style={{ margin: '6px 0 0', fontSize: '0.8125rem', opacity: 0.85 }}>
-                      Не больше {formatQuantityDisplay(cap)} по данным строки продажи
-                      {sl?.already_returned_quantity != null
-                        ? ' (учтено уже возвращённое, если отдал бэкенд).'
-                        : '; окончательная проверка с учётом других возвратов — при сохранении на сервере.'}
-                    </p>
-                  )}
-                  <label>Товар</label>
-                  <input
-                    value={line.product}
-                    disabled
-                    readOnly
-                  />
-                  <p style={{ margin: '4px 0 0', fontSize: '0.8125rem', opacity: 0.75 }}>
-                    Подставляется из строки продажи.
-                  </p>
-                  <label>Количество *</label>
-                  <input
-                    type="number"
-                    min="0.0001"
-                    step="any"
-                    value={line.quantity}
-                    onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, quantity: e.target.value } : x)))}
-                  />
-                  <label>Куда вернуть</label>
-                  <Select
-                    value={line.return_target}
-                    onChange={(v) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, return_target: v } : x)))}
-                    options={TARGETS}
-                  />
-                  <p style={{ margin: '4px 0 0', fontSize: '0.8125rem', opacity: 0.8 }}>
-                    Маршрут: {targetLabel(line.return_target)}
-                  </p>
-                  <label>Состояние</label>
-                  <Select
-                    value={line.condition_type}
-                    onChange={(v) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, condition_type: v } : x)))}
-                    options={CONDITIONS}
-                  />
-                  <label>Комментарий</label>
-                  <input
-                    value={line.comment}
-                    onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, comment: e.target.value } : x)))}
-                  />
-                  <button type="button" className="btn btn--secondary" onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}>
-                    Удалить строку
-                  </button>
-                </div>
-              );
-            })}
-            <button
-              type="button"
-              className="btn btn--secondary"
-              style={{ marginTop: 8 }}
-              onClick={() => setLines((prev) => [...prev, {
-                sale_line: '',
-                product: '',
-                quantity: '',
-                return_target: 'warehouse',
-                condition_type: 'good',
-                comment: '',
-              }])}
-            >
-              Добавить строку
-            </button>
+                  <label>Дата</label>
+                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={!sale} />
+                </>
+              )}
+              <label>Причина возврата</label>
+              <input value={reason} onChange={(e) => setReason(e.target.value)} />
+              <label>Номер счёта / накладной</label>
+              <input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="Необязательно" />
+              <label>Комментарий</label>
+              <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="К документу" />
+            </section>
+
+            {!isCompletedLimited && (
+              <section className="return-modal__section">
+                <h4 className="return-modal__section-title">Товар</h4>
+                {linesLoading && sale ? <p className="return-modal__hint">Загрузка строк продажи…</p> : null}
+                {lines.map((line, idx) => {
+                  const sl = line.sale_line ? lineById.get(String(line.sale_line)) : null;
+                  const cap = saleLineReturnableCap(sl);
+                  return (
+                    <div key={`ret-line-${idx}`} className="return-modal__line-card">
+                      <div className="return-modal__line-head">
+                        <span>Товар {idx + 1}</span>
+                        {lines.length > 1 ? (
+                          <button
+                            type="button"
+                            className="btn btn--ghost return-modal__line-remove"
+                            onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}
+                          >
+                            Удалить
+                          </button>
+                        ) : null}
+                      </div>
+                      <label>Строка продажи *</label>
+                      <Select
+                        value={line.sale_line}
+                        onChange={(v) => applySaleLineSelection(idx, v)}
+                        disabled={!sale || linesLoading}
+                        options={[
+                          { value: '', label: sale ? 'Выберите строку' : 'Сначала выберите продажу' },
+                          ...saleLines.map((x) => ({
+                            value: String(x.id),
+                            label: saleLineSelectLabel(x),
+                          })),
+                        ]}
+                      />
+                      <label>Товар</label>
+                      {line.product?.trim()
+                        ? <div className="return-modal__readonly">{line.product}</div>
+                        : <div className="return-modal__readonly return-modal__readonly--placeholder">Выберите строку продажи</div>}
+                      {cap != null ? (
+                        <>
+                          <label>Доступно к возврату</label>
+                          <div className="return-modal__readonly">{`${formatQuantityDisplay(cap)} шт`}</div>
+                        </>
+                      ) : null}
+                      <label>Количество *</label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={line.quantity}
+                        onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, quantity: e.target.value } : x)))}
+                      />
+                      <label>Куда вернуть *</label>
+                      <Select
+                        value={line.return_target}
+                        onChange={(v) => setReturnTargetAt(idx, v)}
+                        options={TARGETS}
+                      />
+                      <p className="return-modal__hint">{TARGET_HINTS[line.return_target] || ''}</p>
+                      <label>Состояние *</label>
+                      <Select
+                        value={line.condition_type}
+                        onChange={(v) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, condition_type: v } : x)))}
+                        options={CONDITIONS}
+                      />
+                      <label>Комментарий к строке</label>
+                      <input
+                        value={line.comment}
+                        onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, comment: e.target.value } : x)))}
+                        placeholder="Необязательно"
+                      />
+                    </div>
+                  );
+                })}
+                <button
+                  type="button"
+                  className="btn btn--secondary"
+                  style={{ marginTop: 4 }}
+                  disabled={!sale || linesLoading}
+                  onClick={() => setLines((prev) => [...prev, {
+                    sale_line: '',
+                    product: '',
+                    quantity: '',
+                    return_target: 'warehouse',
+                    condition_type: defaultConditionForTarget('warehouse'),
+                    comment: '',
+                  }])}
+                >
+                  Добавить строку
+                </button>
+              </section>
+            )}
+            {(lineError || error) ? <p className="modal__error">{lineError || error}</p> : null}
           </div>
-          )}
-          {(lineError || error) && <p className="modal__error">{lineError || error}</p>}
-          <div className="modal__actions">
+          <div className="return-modal__footer">
             <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary">Сохранить</button>
+            <button type="submit" className="btn btn--primary" disabled={submitDisabled}>
+              {isCompletedLimited ? 'Сохранить' : (doc?.id ? 'Сохранить черновик' : 'Создать черновик')}
+            </button>
           </div>
         </form>
       </div>
@@ -646,7 +731,7 @@ const ReturnDetailModal = ({ returnId, onClose, onEdit, onDownloadWaybill, onMut
                   <tr>
                     <th>Товар</th>
                     <th className="data-table__cell--num">Количество</th>
-                    <th>Маршрут</th>
+                    <th>Куда вернули</th>
                     <th>Состояние</th>
                   </tr>
                 </thead>

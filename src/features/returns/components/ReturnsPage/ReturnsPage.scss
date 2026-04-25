@@ -1,0 +1,119 @@
+.return-modal {
+  max-height: 90vh;
+
+  .return-modal__form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: calc(90vh - 3.25rem);
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  .return-modal__scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0.65rem 1rem 0.75rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .return-modal__footer {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0.65rem 1rem 0.85rem;
+    border-top: 1px solid var(--border-subtle);
+    background: var(--card);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    align-items: center;
+  }
+
+  .return-modal__section {
+    margin-bottom: 0.85rem;
+
+    &:last-of-type {
+      margin-bottom: 0.35rem;
+    }
+  }
+
+  .return-modal__section-title {
+    margin: 0 0 0.45rem;
+    font-size: var(--font-xs);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .return-modal__hint {
+    margin: 0.15rem 0 0.45rem;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    color: var(--text-muted);
+    max-width: 42rem;
+  }
+
+  .return-modal__readonly {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 2.125rem;
+    padding: 0.4rem 0.65rem;
+    margin-bottom: 0.5rem;
+    background: var(--bg-hover);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    color: var(--text);
+    font-size: var(--font-body);
+    line-height: 1.4;
+  }
+
+  .return-modal__readonly--placeholder {
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  .return-modal__line-card {
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 0.55rem 0.65rem;
+    margin-bottom: 0.45rem;
+    background: var(--bg-hover);
+
+    .return-modal__line-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.45rem;
+      font-size: var(--font-sm);
+      font-weight: var(--weight-medium);
+    }
+
+    .return-modal__line-remove {
+      padding: 0.15rem 0.45rem;
+      font-size: var(--font-xs);
+      flex-shrink: 0;
+    }
+  }
+
+  textarea {
+    min-height: 2.25rem;
+    margin-bottom: 0.5rem;
+  }
+
+  label {
+    margin-bottom: 0.15rem;
+  }
+
+  input:not([type='checkbox']):not([type='radio']),
+  .dias-select {
+    margin-bottom: 0.45rem;
+  }
+}

@@ -1,42 +1,41 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiClient } from '../../../../shared/api';
 import { useOperationalRefetch } from '../../../../shared/realtime';
-import { useServerQuery, parseLocaleNumber, formatQuantityDisplay, getApiErrorMessage, parseApiListResponse } from '../../../../shared/lib';
+import { useServerQuery, parseLocaleNumber, formatQuantityDisplay, getApiErrorMessage } from '../../../../shared/lib';
 import { ActionMenu, Badge, ConfirmModal, EmptyState, ErrorState, IntegerInput, Loading, Pagination, Select, useToast } from '../../../../shared/ui';
 import {
   cancelOrder,
   createOrder,
   downloadOrderWaybill,
-  getOrderReservations,
   getOrderSelectSources,
   patchOrderStatus,
   updateOrder,
 } from '../../api/ordersApi';
+import './OrdersPage.scss';
 
 const ORDER_STATUS_OPTIONS = [
   { value: 'new', label: 'Новая' },
   { value: 'confirmed', label: 'Подтверждена' },
   { value: 'in_progress', label: 'В работе' },
-  { value: 'partially_shipped', label: 'Частично отгружена' },
-  { value: 'shipped', label: 'Отгружена' },
+  { value: 'partially_shipped', label: 'Частично продана' },
+  { value: 'shipped', label: 'Продана' },
   { value: 'closed', label: 'Закрыта' },
   { value: 'canceled', label: 'Отменена' },
 ];
+
+/** В фильтре списка не предлагаем статусы только из legacy backend. */
+const ORDER_STATUS_FILTER_OPTIONS = ORDER_STATUS_OPTIONS.filter(
+  (x) => x.value !== 'partially_shipped' && x.value !== 'shipped',
+);
 
 const SALE_STATUS_OPTIONS = [
   { value: 'draft', label: 'Черновик' },
   { value: 'confirmed', label: 'Подтверждена' },
-  { value: 'partially_shipped', label: 'Частично отгружена' },
-  { value: 'shipped', label: 'Отгружена' },
+  { value: 'partially_shipped', label: 'Частично продана' },
+  { value: 'shipped', label: 'Продана' },
   { value: 'closed', label: 'Закрыта' },
   { value: 'canceled', label: 'Отменена' },
 ];
-
-const RESERVATION_STATUS_LABELS = {
-  active: 'Активен',
-  released: 'Снят',
-  fulfilled: 'Исполнен',
-};
 
 const SOURCE_TYPE_LABELS = {
   cashier: 'Кассир',
@@ -45,8 +44,56 @@ const SOURCE_TYPE_LABELS = {
   other: 'Другое',
 };
 
-const statusLabel = (value) => ORDER_STATUS_OPTIONS.find((x) => x.value === value)?.label || value || '—';
+const isBadClientToken = (s) => {
+  const t = String(s || '').trim().toLowerCase();
+  return !t || t === 'клиент' || t === 'client' || t === 'без клиента';
+};
+
+const clientOptionLabel = (c) => {
+  if (c == null) return '—';
+  const rawLabel = typeof c.label === 'string' ? c.label.trim() : '';
+  if (rawLabel && !isBadClientToken(rawLabel)) return rawLabel;
+  const nameCandidates = [c.name, c.client_name, c.title].filter((x) => x != null && String(x).trim());
+  const name = nameCandidates.map((x) => String(x).trim()).find((s) => !isBadClientToken(s)) || '';
+  const phone = (c.phone || c.phone_number || '').toString().trim();
+  const parts = [name, phone].filter((x) => x && String(x).trim());
+  if (parts.length) return parts.join(' · ');
+  return c.id != null ? String(c.id) : '—';
+};
+
+const profileOptionLabel = (p) => {
+  if (p == null) return '—';
+  const id = p.id;
+  const isBad = (s) => {
+    const t = String(s || '').trim().toLowerCase();
+    return !t || /^профиль\s*#?\d*\s*$/i.test(t) || t === `профиль #${id}`.toLowerCase();
+  };
+  const rawLabel = typeof p.label === 'string' ? p.label.trim() : '';
+  if (rawLabel && !isBad(rawLabel)) return rawLabel;
+  for (const key of ['name', 'title', 'display_name', 'code']) {
+    const v = p[key];
+    if (typeof v === 'string' && v.trim() && !isBad(v.trim())) return v.trim();
+  }
+  const bits = [p.width_mm, p.height_mm, p.color, p.coating, p.material].filter((x) => x != null && String(x).trim() !== '');
+  if (bits.length) return bits.map((x) => String(x).trim()).join(' ');
+  return `Профиль #${id}`;
+};
+
+const normalizeOrderStatus = (value) => {
+  const v = String(value || '').toLowerCase();
+  if (v === 'cancelled') return 'canceled';
+  return v;
+};
+
+const orderStatusKey = (status) => String(normalizeOrderStatus(status) || '').toLowerCase();
+
+const statusLabel = (value) => {
+  const key = orderStatusKey(value);
+  return ORDER_STATUS_OPTIONS.find((x) => x.value === key)?.label || value || '—';
+};
+
 const statusVariant = (value) => {
+  const key = orderStatusKey(value);
   const map = {
     new: 'default',
     confirmed: 'primary',
@@ -56,11 +103,18 @@ const statusVariant = (value) => {
     closed: 'success',
     canceled: 'danger',
   };
-  return map[value] || 'default';
+  return map[key] || 'default';
 };
 
-const saleStatusLabel = (value) => SALE_STATUS_OPTIONS.find((x) => x.value === value)?.label || value || '—';
+const saleStatusKey = (value) => String(value || '').toLowerCase();
+
+const saleStatusLabel = (value) => {
+  const key = saleStatusKey(value);
+  return SALE_STATUS_OPTIONS.find((x) => x.value === key)?.label || value || '—';
+};
+
 const saleStatusVariant = (value) => {
+  const key = saleStatusKey(value);
   const map = {
     draft: 'default',
     confirmed: 'primary',
@@ -69,12 +123,7 @@ const saleStatusVariant = (value) => {
     closed: 'success',
     canceled: 'danger',
   };
-  return map[value] || 'default';
-};
-
-const reservationStatusVariant = (value) => {
-  const map = { active: 'primary', released: 'default', fulfilled: 'success' };
-  return map[value] || 'default';
+  return map[key] || 'default';
 };
 
 const formatDate = (value) => (value ? String(value).slice(0, 10) : '—');
@@ -87,35 +136,39 @@ const apiActionEnabled = (availableActions, key) => {
   return false;
 };
 
-const orderClientId = (order) => {
-  if (!order) return null;
-  if (order.client_id != null) return Number(order.client_id);
-  const c = order.client;
-  if (c != null && typeof c === 'object' && c.id != null) return Number(c.id);
-  if (c != null && (typeof c === 'number' || typeof c === 'string')) return Number(c);
-  return null;
-};
-
 const formatLineQty = (v) => (v != null && v !== '' ? formatQuantityDisplay(v) : '—');
 const formatLineMoneyCell = (v) => (v != null && v !== '' ? toMoney(v) : '—');
 
-const getRemainingToShip = (order) => (order?.remaining_to_ship != null ? Number(order.remaining_to_ship) || 0 : 0);
+const orderEditableByStatus = (status) => {
+  const k = orderStatusKey(status);
+  return k === 'new' || k === 'confirmed' || k === 'in_progress';
+};
 
-const canEditOrder = (actions) => apiActionEnabled(actions, 'edit');
-const canCreateShipment = (actions) => apiActionEnabled(actions, 'create_shipment');
-const canAcceptPayment = (actions) => apiActionEnabled(actions, 'accept_payment');
+const transitionActionLabel = (fromStatus, toStatus) => {
+  const from = orderStatusKey(fromStatus);
+  const to = orderStatusKey(toStatus);
+  if (to === 'canceled' || to === 'cancelled') return 'Отменить';
+  if (to === 'confirmed' && from === 'new') return 'Подтвердить';
+  if (to === 'in_progress' && from === 'confirmed') return 'В работу';
+  if (to === 'closed') return 'Закрыть';
+  return `→ ${statusLabel(toStatus)}`;
+};
 
-const lineToPayload = (line) => ({
-  ...(line.id ? { id: line.id } : {}),
-  product: String(line.product || '').trim(),
-  product_type: String(line.product_type || 'профиль').trim(),
-  ...(line.profile ? { profile: Number(line.profile) } : {}),
-  ordered_quantity: String(parseLocaleNumber(line.ordered_quantity) || 0),
-  ...(line.unit_price !== '' && line.unit_price != null
-    ? { unit_price: String(parseLocaleNumber(line.unit_price)) }
-    : {}),
-  comment: String(line.comment || '').trim() || undefined,
-});
+const isHiddenOrderStatusTransitionTarget = (status) => {
+  const k = orderStatusKey(status);
+  return k === 'partially_shipped' || k === 'shipped';
+};
+
+const orderMenuShowsCancel = (availableActions, allowedNext) => {
+  if (apiActionEnabled(availableActions, 'cancel')) return true;
+  return allowedNext.some((st) => {
+    const k = String(st?.status || st).toLowerCase();
+    return k === 'canceled' || k === 'cancelled';
+  });
+};
+
+const orderShippedMoney = (o) => (o?.shipped_amount != null && o?.shipped_amount !== '' ? o.shipped_amount : null);
+const orderRemainingMoney = (o) => (o?.remaining_amount != null && o?.remaining_amount !== '' ? o.remaining_amount : null);
 
 const OrdersPage = () => {
   const toast = useToast();
@@ -124,8 +177,6 @@ const OrdersPage = () => {
   const [profiles, setProfiles] = useState([]);
   const [modalOrder, setModalOrder] = useState(null);
   const [detailOrderId, setDetailOrderId] = useState(null);
-  const [paymentTarget, setPaymentTarget] = useState(null);
-  const [shipmentTarget, setShipmentTarget] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [errorText, setErrorText] = useState('');
   const [busyId, setBusyId] = useState(null);
@@ -203,12 +254,16 @@ const OrdersPage = () => {
             value={queryState.status}
             onChange={(v) => setQueryState((p) => ({ ...p, status: v, page: 1 }))}
             placeholder="Статус"
-            options={[{ value: '', label: 'Все статусы' }, ...ORDER_STATUS_OPTIONS]}
+            options={[{ value: '', label: 'Все статусы' }, ...ORDER_STATUS_FILTER_OPTIONS]}
           />
           <button
             type="button"
             className="btn btn--primary"
-            onClick={() => setModalOrder({ lines: [{ profile: '', product: '', ordered_quantity: '', unit_price: '', comment: '' }] })}
+            onClick={() =>
+              setModalOrder({
+                _key: Date.now(),
+                lines: [{ profile: '', product: '', ordered_quantity: '', unit_price: '0', comment: '' }],
+              })}
           >
             Создать заявку
           </button>
@@ -220,23 +275,59 @@ const OrdersPage = () => {
       {!loading && (!error || error.status === 404) && items.length === 0 && <EmptyState title="Нет заявок" />}
       {!loading && (!error || error.status === 404) && items.length > 0 && (
         <div className="commercial-table-wrap">
-          <table className="data-table data-table--fixed data-table--row-actions">
+          <table className="data-table data-table--fixed data-table--row-actions data-table--orders">
           <thead>
             <tr>
-              <th>Номер</th>
-              <th>Дата</th>
+              <th>№ заявки</th>
               <th>Клиент</th>
+              <th>Дата</th>
               <th>Статус</th>
               <th className="data-table__cell--num">Сумма</th>
-              <th className="data-table__cell--num">Оплачено</th>
-              <th className="data-table__cell--num">Осталось отгрузить</th>
-              <th aria-hidden />
+              <th className="data-table__cell--num">Продано</th>
+              <th className="data-table__cell--num">Осталось</th>
+              <th className="data-table__cell--actions">Действия</th>
             </tr>
           </thead>
           <tbody>
             {items.map((o) => {
               const allowedNext = Array.isArray(o.available_status_transitions) ? o.available_status_transitions : [];
               const availableActions = o.available_actions;
+              const nextStatuses = allowedNext.map((st) => st?.status || st);
+              const nextKey = (s) => String(s || '').toLowerCase();
+              const transitionsForMenu = nextStatuses.filter((ns) => {
+                const k = nextKey(ns);
+                if (k === 'canceled' || k === 'cancelled') return false;
+                return !isHiddenOrderStatusTransitionTarget(ns);
+              });
+
+              const menuItems = [{ label: 'Открыть', onClick: () => setDetailOrderId(o.id) }];
+              if (orderEditableByStatus(o.status)) {
+                menuItems.push({
+                  label: 'Редактировать',
+                  onClick: () => setModalOrder(o),
+                });
+              }
+              transitionsForMenu.forEach((nextStatus) => {
+                menuItems.push({
+                  label: transitionActionLabel(o.status, nextStatus),
+                  onClick: () => onChangeStatus(o, nextStatus),
+                });
+              });
+              if (orderMenuShowsCancel(availableActions, allowedNext)) {
+                menuItems.push({
+                  label: 'Отменить',
+                  danger: true,
+                  onClick: () => {
+                    if (apiActionEnabled(availableActions, 'cancel')) setCancelTarget(o);
+                    else onChangeStatus(o, 'canceled');
+                  },
+                });
+              }
+              menuItems.push({
+                label: 'Накладная',
+                onClick: () => downloadOrderWaybill(o.id),
+              });
+
               return (
                 <tr key={o.id}>
                   <td>
@@ -244,34 +335,14 @@ const OrdersPage = () => {
                       {o.order_number || `Заявка ${o.id}`}
                     </button>
                   </td>
-                  <td>{formatDate(o.date || o.created_at)}</td>
                   <td>{o.client_name || '—'}</td>
+                  <td>{formatDate(o.date || o.created_at)}</td>
                   <td><Badge variant={statusVariant(o.status)}>{statusLabel(o.status)}</Badge></td>
                   <td className="data-table__cell--num">{toMoney(o.total_amount)}</td>
-                  <td className="data-table__cell--num">{toMoney(o.paid_amount)}</td>
-                  <td className="data-table__cell--num">{formatQuantityDisplay(getRemainingToShip(o))}</td>
-                  <td>
-                    <ActionMenu
-                      ariaLabel="Действия"
-                      items={[
-                        { label: 'Открыть', onClick: () => setDetailOrderId(o.id) },
-                        { label: 'Редактировать', disabled: !canEditOrder(availableActions), onClick: () => setModalOrder(o) },
-                        { label: 'Создать отгрузку', disabled: !canCreateShipment(availableActions), onClick: () => setShipmentTarget(o) },
-                        { label: 'Принять оплату', disabled: !canAcceptPayment(availableActions), onClick: () => setPaymentTarget(o) },
-                        { label: 'Накладная', onClick: () => downloadOrderWaybill(o.id) },
-                        ...allowedNext.map((st) => {
-                          const nextStatus = st?.status || st;
-                          return ({
-                          label: `→ ${statusLabel(nextStatus)}`,
-                          disabled: busyId === o.id,
-                          onClick: () => onChangeStatus(o, nextStatus),
-                        });
-                        }),
-                        ...(apiActionEnabled(availableActions, 'cancel')
-                          ? [{ label: 'Отменить заявку', danger: true, onClick: () => setCancelTarget(o) }]
-                          : []),
-                      ]}
-                    />
+                  <td className="data-table__cell--num">{toMoney(orderShippedMoney(o))}</td>
+                  <td className="data-table__cell--num">{toMoney(orderRemainingMoney(o))}</td>
+                  <td className="data-table__cell--actions">
+                    <ActionMenu ariaLabel="Действия" items={menuItems} />
                   </td>
                 </tr>
               );
@@ -287,7 +358,7 @@ const OrdersPage = () => {
       {errorText && !modalOrder && <p className="modal__error">{errorText}</p>}
       {modalOrder && (
         <OrderModal
-          order={modalOrder?.id ? modalOrder : null}
+          draft={modalOrder}
           clients={clients}
           profiles={profiles}
           onClose={() => { setModalOrder(null); setErrorText(''); }}
@@ -300,30 +371,9 @@ const OrdersPage = () => {
           orderId={detailOrderId}
           onClose={() => setDetailOrderId(null)}
           onEdit={(order) => setModalOrder(order)}
-          onCreateShipment={(order) => setShipmentTarget(order)}
-          onAcceptPayment={(order) => setPaymentTarget(order)}
           onStatusChange={onChangeStatus}
+          onCancelRequest={(order) => setCancelTarget(order)}
           busyId={busyId}
-        />
-      )}
-      {shipmentTarget && (
-        <CreateShipmentFromOrderModal
-          order={shipmentTarget}
-          onClose={() => setShipmentTarget(null)}
-          onSuccess={() => {
-            setShipmentTarget(null);
-            refetch();
-          }}
-        />
-      )}
-      {paymentTarget && (
-        <AcceptPaymentModal
-          order={paymentTarget}
-          onClose={() => setPaymentTarget(null)}
-          onSuccess={() => {
-            setPaymentTarget(null);
-            refetch();
-          }}
         />
       )}
       <ConfirmModal
@@ -339,337 +389,255 @@ const OrdersPage = () => {
   );
 };
 
-const OrderModal = ({ order, clients, profiles, onClose, onSubmit, error }) => {
-  const [saleDate, setSaleDate] = useState((order?.date || '').toString().slice(0, 10) || new Date().toISOString().slice(0, 10));
-  const [client, setClient] = useState(order?.client_id != null ? String(order.client_id) : '');
-  const [sourceType, setSourceType] = useState(order?.source_type || 'manager');
-  const [comment, setComment] = useState(order?.comment || '');
-  const [lines, setLines] = useState(
-    Array.isArray(order?.lines) && order.lines.length
-      ? order.lines.map((x) => ({
-        id: x.id,
-        profile: x.profile_id != null ? String(x.profile_id) : (x.profile != null ? String(typeof x.profile === 'object' ? x.profile.id : x.profile) : ''),
-        product: x.product || '',
-        ordered_quantity: x.ordered_quantity != null ? String(x.ordered_quantity) : '',
-        unit_price: x.unit_price != null ? String(x.unit_price) : '',
-        comment: x.comment || '',
-      }))
-      : [{ profile: '', product: '', ordered_quantity: '', unit_price: '', comment: '' }],
+const OrderModal = ({ draft, clients, profiles, onClose, onSubmit, error }) => {
+  const isEdit = Boolean(draft?.id);
+  const profileList = useMemo(() => (Array.isArray(profiles) ? profiles : []), [profiles]);
+
+  const [saleDate, setSaleDate] = useState('');
+  const [client, setClient] = useState('');
+  const [sourceType, setSourceType] = useState('manager');
+  const [comment, setComment] = useState('');
+  const [lines, setLines] = useState([]);
+
+  const draftKey = useMemo(
+    () => (draft?.id != null ? `id:${draft.id}` : `new:${draft?._key ?? 0}`),
+    [draft?.id, draft?._key],
   );
+
+  const profileLabel = useCallback(
+    (profileId) => {
+      const p = profileList.find((x) => String(x.id) === String(profileId));
+      return p ? profileOptionLabel(p) : '';
+    },
+    [profileList],
+  );
+
+  useEffect(() => {
+    const o = draft;
+    if (!o) return;
+    setSaleDate((o.date || '').toString().slice(0, 10) || new Date().toISOString().slice(0, 10));
+    const cid =
+      o.client_id != null
+        ? String(o.client_id)
+        : o.client != null && typeof o.client === 'object' && o.client.id != null
+          ? String(o.client.id)
+          : '';
+    setClient(cid || '');
+    setSourceType(o.source_type || 'manager');
+    setComment(o.comment || '');
+    if (Array.isArray(o.lines) && o.lines.length) {
+      setLines(
+        o.lines.map((x) => {
+          const pid =
+            x.profile_id != null
+              ? String(x.profile_id)
+              : x.profile != null
+                ? String(typeof x.profile === 'object' ? x.profile.id : x.profile)
+                : '';
+          const picked = pid ? profileList.find((p) => String(p.id) === String(pid)) : null;
+          const autoName = picked ? profileOptionLabel(picked) : '';
+          return {
+            id: x.id,
+            profile: pid,
+            product: x.product || autoName || '',
+            ordered_quantity: x.ordered_quantity != null ? String(x.ordered_quantity) : '',
+            unit_price: x.unit_price != null ? String(x.unit_price) : '0',
+            comment: x.comment || '',
+          };
+        }),
+      );
+    } else {
+      setLines([{ profile: '', product: '', ordered_quantity: '', unit_price: '0', comment: '' }]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- сброс формы только при смене заявки / нового черновика
+  }, [draftKey]);
+
+  const clientOptions = useMemo(
+    () => (clients || []).map((c) => ({ value: String(c.id), label: clientOptionLabel(c) })),
+    [clients],
+  );
+
+  const lineProductText = useCallback((line) => {
+    const manual = String(line.product || '').trim();
+    if (manual) return manual;
+    if (line.profile) return profileLabel(line.profile) || '';
+    return '';
+  }, [profileLabel]);
+
+  const canSave = useMemo(() => {
+    if (!client) return false;
+    if (!lines.length) return false;
+    for (const line of lines) {
+      if (!lineProductText(line)) return false;
+      const q = parseLocaleNumber(line.ordered_quantity);
+      if (!(q > 0)) return false;
+      const price = parseLocaleNumber(line.unit_price);
+      if (Number.isNaN(price) || price < 0) return false;
+    }
+    return true;
+  }, [client, lines, lineProductText]);
+
+  const buildPayloadLines = () =>
+    lines
+      .map((line) => {
+        const profileId = line.profile ? Number(line.profile) : null;
+        const product = lineProductText(line);
+        const q = parseLocaleNumber(line.ordered_quantity);
+        const rawPrice = parseLocaleNumber(line.unit_price);
+        const price = Number.isNaN(rawPrice) ? 0 : rawPrice;
+        return {
+          ...(line.id ? { id: line.id } : {}),
+          product,
+          product_type: profileId ? 'профиль' : 'товар',
+          ...(profileId ? { profile: profileId } : {}),
+          ordered_quantity: String(q > 0 ? q : 0),
+          unit_price: String(price),
+          comment: String(line.comment || '').trim() || undefined,
+        };
+      })
+      .filter((x) => x.product && parseLocaleNumber(x.ordered_quantity) > 0);
 
   const total = lines.reduce((sum, line) => {
     const q = parseLocaleNumber(line.ordered_quantity);
     const p = parseLocaleNumber(line.unit_price);
-    if (!(q > 0) || !(p >= 0)) return sum;
-    return sum + q * p;
+    const pr = Number.isNaN(p) ? 0 : p;
+    if (!(q > 0) || pr < 0) return sum;
+    return sum + q * pr;
   }, 0);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
+      <div className="modal modal--wide orders-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
-          <h3>{order ? 'Заявка' : 'Новая заявка'}</h3>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+          <h3>{isEdit ? 'Заявка' : 'Новая заявка'}</h3>
+          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
+            ×
+          </button>
         </div>
         <form
+          className="orders-modal__form"
           onSubmit={(e) => {
             e.preventDefault();
-            const filteredLines = lines
-              .map(lineToPayload)
-              .filter((x) => x.product && (parseLocaleNumber(x.ordered_quantity) > 0));
-            if (!filteredLines.length) return;
+            const payloadLines = buildPayloadLines();
+            if (!client || !payloadLines.length) return;
             onSubmit({
-              ...(client ? { client: Number(client) } : {}),
+              client: Number(client),
               date: saleDate,
               source_type: sourceType,
-              comment: comment.trim() || undefined,
-              lines: filteredLines,
+              comment: comment.trim(),
+              lines: payloadLines,
             });
           }}
         >
-          <label>Дата</label>
-          <input type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} />
-          <label>Клиент</label>
-          <Select
-            value={client}
-            onChange={setClient}
-            options={[{ value: '', label: 'Без клиента' }, ...clients.map((c) => ({ value: String(c.id), label: c.name || 'Клиент' }))]}
-          />
-          <label>Источник</label>
-          <Select
-            value={sourceType}
-            onChange={setSourceType}
-            options={[
-              { value: 'cashier', label: 'Кассир' },
-              { value: 'manager', label: 'Менеджер' },
-              { value: 'boss', label: 'Руководитель' },
-              { value: 'other', label: 'Другое' },
-            ]}
-          />
-          <label>Комментарий</label>
-          <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} />
+          <div className="orders-modal__scroll">
+            <fieldset className="orders-modal__section">
+              <legend className="orders-modal__legend">Документ</legend>
+              <label>Дата</label>
+              <input type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} required />
+              <label>Клиент *</label>
+              <Select
+                value={client}
+                onChange={setClient}
+                options={clientOptions}
+                placeholder="Выберите клиента"
+              />
+              <label>Источник</label>
+              <Select
+                value={sourceType}
+                onChange={setSourceType}
+                options={[
+                  { value: 'cashier', label: 'Кассир' },
+                  { value: 'manager', label: 'Менеджер' },
+                  { value: 'boss', label: 'Руководитель' },
+                  { value: 'other', label: 'Другое' },
+                ]}
+              />
+              <label>Комментарий</label>
+              <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Необязательно" />
+            </fieldset>
 
-          <div style={{ marginTop: 12 }}>
-            <strong>Строки заявки</strong>
-            {lines.map((line, idx) => (
-              <div key={line.id || idx} className="card" style={{ marginTop: 8, padding: 8 }}>
-                <label>Товар *</label>
-                <label>Профиль</label>
-                <Select
-                  value={line.profile}
-                  onChange={(v) => {
-                    const picked = (profiles || []).find((p) => String(p.id) === String(v));
-                    setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, profile: v, product: picked?.name || x.product } : x)));
-                  }}
-                  options={[
-                    { value: '', label: 'Не выбран' },
-                    ...(profiles || []).map((p) => ({ value: String(p.id), label: p.name || `Профиль #${p.id}` })),
-                  ]}
-                />
-                <label>Товар *</label>
-                <input value={line.product} onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, product: e.target.value } : x)))} />
-                <label>Количество *</label>
-                <IntegerInput min={1} value={line.ordered_quantity} onChange={(v) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, ordered_quantity: v } : x)))} />
-                <label>Цена</label>
-                <input value={line.unit_price} onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, unit_price: e.target.value } : x)))} />
-                <label>Комментарий</label>
-                <input value={line.comment} onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, comment: e.target.value } : x)))} />
-                <button type="button" className="btn btn--secondary" onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}>Удалить строку</button>
-              </div>
-            ))}
-            <button
-              type="button"
-              className="btn btn--secondary"
-              style={{ marginTop: 8 }}
-              onClick={() => setLines((prev) => [...prev, { profile: '', product: '', ordered_quantity: '', unit_price: '', comment: '' }])}
-            >
-              Добавить строку
+            <fieldset className="orders-modal__section">
+              <legend className="orders-modal__legend">Товары</legend>
+              {lines.map((line, idx) => (
+                <div key={line.id || `line-${idx}`} className="orders-line-card">
+                  <div className="orders-line-card__title">Товар {idx + 1}</div>
+                  <label>Профиль / товар *</label>
+                  <Select
+                    value={line.profile}
+                    onChange={(v) => {
+                      const picked = profileList.find((p) => String(p.id) === String(v));
+                      const auto = picked ? profileOptionLabel(picked) : '';
+                      setLines((prev) =>
+                        prev.map((x, i) => (i === idx ? { ...x, profile: v, product: v ? auto : '' } : x)),
+                      );
+                    }}
+                    options={[
+                      { value: '', label: '— без профиля (название вручную) —' },
+                      ...profileList.map((p) => ({ value: String(p.id), label: profileOptionLabel(p) })),
+                    ]}
+                  />
+                  <input
+                    value={line.profile ? (profileLabel(line.profile) || line.product) : line.product}
+                    onChange={(e) => {
+                      if (line.profile) return;
+                      setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, product: e.target.value } : x)));
+                    }}
+                    readOnly={Boolean(line.profile)}
+                    placeholder={line.profile ? '' : 'Название, если профиль не выбран'}
+                  />
+                  <label>Количество *</label>
+                  <IntegerInput
+                    min={1}
+                    value={line.ordered_quantity}
+                    onChange={(v) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, ordered_quantity: v } : x)))}
+                  />
+                  <label>Цена *</label>
+                  <input
+                    inputMode="decimal"
+                    value={line.unit_price}
+                    onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, unit_price: e.target.value } : x)))}
+                    placeholder="0"
+                  />
+                  <label>Комментарий</label>
+                  <input
+                    value={line.comment}
+                    onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, comment: e.target.value } : x)))}
+                  />
+                  {lines.length > 1 && (
+                    <button
+                      type="button"
+                      className="btn btn--secondary orders-line-card__remove"
+                      onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}
+                    >
+                      Удалить строку
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                className="btn btn--secondary"
+                onClick={() =>
+                  setLines((prev) => [...prev, { profile: '', product: '', ordered_quantity: '', unit_price: '0', comment: '' }])
+                }
+              >
+                Добавить строку
+              </button>
+            </fieldset>
+            <p className="orders-modal__total">
+              Итого: <strong>{formatQuantityDisplay(total)} сом</strong>
+            </p>
+            {error && <p className="modal__error">{error}</p>}
+          </div>
+          <div className="modal__actions orders-modal__footer">
+            <button type="button" className="btn btn--secondary" onClick={onClose}>
+              Отмена
+            </button>
+            <button type="submit" className="btn btn--primary" disabled={!canSave}>
+              {isEdit ? 'Сохранить' : 'Создать заявку'}
             </button>
           </div>
-          <p style={{ marginTop: 8 }}>Итого: <strong>{formatQuantityDisplay(total)} сом</strong></p>
-          {error && <p className="modal__error">{error}</p>}
-          <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary">Сохранить</button>
-          </div>
         </form>
-      </div>
-    </div>
-  );
-};
-
-const OrderDetailModal = ({ orderId, onClose, onEdit, onCreateShipment, onAcceptPayment, onStatusChange, busyId }) => {
-  const [order, setOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [reservations, setReservations] = useState([]);
-
-  useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const [orderRes, reservationsRes] = await Promise.all([
-          apiClient.get(`orders/${orderId}/`),
-          getOrderReservations(orderId).catch(() => ({ data: [] })),
-        ]);
-        if (!alive) return;
-        setOrder(orderRes.data || null);
-        setReservations(parseApiListResponse(reservationsRes.data));
-      } catch (e) {
-        if (!alive) return;
-        setError(getApiErrorMessage(e, 'Не удалось загрузить карточку заявки'));
-      } finally {
-        if (alive) setLoading(false);
-      }
-    };
-    load();
-    return () => { alive = false; };
-  }, [orderId]);
-
-  const allowedNext = order && Array.isArray(order.available_status_transitions)
-    ? order.available_status_transitions
-    : [];
-  const availableActions = order?.available_actions;
-  const relatedSales = Array.isArray(order?.linked_entities?.sales) ? order.linked_entities.sales : [];
-  const relatedPayments = Array.isArray(order?.linked_entities?.payments) ? order.linked_entities.payments : [];
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
-        <div className="modal__head">
-          <h3>Карточка заявки</h3>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
-        </div>
-        {loading && <Loading />}
-        {!loading && error && <p className="modal__error">{error}</p>}
-        {!loading && !error && order && (
-          <div style={{ padding: '0 1.5rem 1.5rem' }}>
-
-            <section className="card" style={{ padding: 12, marginBottom: 12 }}>
-              <h4>Общее</h4>
-              <p><strong>Номер:</strong> {order.order_number || `Заявка ${order.id}`}</p>
-              <p><strong>Дата:</strong> {formatDate(order.date || order.created_at)}</p>
-              <p><strong>Клиент:</strong> {order.client_name || '—'}</p>
-              <p><strong>Источник:</strong> {SOURCE_TYPE_LABELS[order.source_type] || order.source_type || '—'}</p>
-              <p><strong>Статус:</strong> <Badge variant={statusVariant(order.status)}>{statusLabel(order.status)}</Badge></p>
-              {order.has_company_debt_by_goods && (
-                <p><Badge variant="warning">Есть неотгруженные позиции</Badge></p>
-              )}
-              <p><strong>Сумма:</strong> {toMoney(order.total_amount)}</p>
-              <p><strong>Отгружено:</strong> {toMoney(order.shipped_amount)}</p>
-              <p><strong>Осталось отгрузить:</strong> {toMoney(order.remaining_amount)}</p>
-              <p><strong>Оплачено:</strong> {toMoney(order.paid_amount)}</p>
-              {order.comment && <p><strong>Комментарий:</strong> {order.comment}</p>}
-            </section>
-
-            <section className="card" style={{ padding: 12, marginBottom: 12 }}>
-              <h4>Строки заявки</h4>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Товар</th>
-                    <th className="data-table__cell--num">Заказано</th>
-                    <th className="data-table__cell--num">Отгружено</th>
-                    <th className="data-table__cell--num">Зарезервировано</th>
-                    <th className="data-table__cell--num">Осталось</th>
-                    <th className="data-table__cell--num">Доступно</th>
-                    <th className="data-table__cell--num">Цена</th>
-                    <th className="data-table__cell--num">Сумма</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(Array.isArray(order.lines) ? order.lines : []).map((line, idx) => (
-                    <tr key={line.id || idx}>
-                      <td>{line.product || '—'}</td>
-                      <td className="data-table__cell--num">{formatLineQty(line.ordered_quantity)}</td>
-                      <td className="data-table__cell--num">{formatLineQty(line.shipped_quantity)}</td>
-                      <td className="data-table__cell--num">{formatLineQty(line.reserved_quantity)}</td>
-                      <td className="data-table__cell--num">{formatLineQty(line.remaining_quantity)}</td>
-                      <td className="data-table__cell--num">{formatLineQty(line.available_to_ship)}</td>
-                      <td className="data-table__cell--num">{formatLineMoneyCell(line.unit_price)}</td>
-                      <td className="data-table__cell--num">{formatLineMoneyCell(line.line_total)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-
-            <section className="card" style={{ padding: 12, marginBottom: 12 }}>
-              <h4>Резервы</h4>
-              {reservations.length === 0 ? (
-                <p style={{ margin: 0, opacity: 0.75 }}>Резервов по заявке нет.</p>
-              ) : (
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Товар заявки</th>
-                      <th>Партия</th>
-                      <th className="data-table__cell--num">Кол-во</th>
-                      <th className="data-table__cell--num">Исполнено</th>
-                      <th>Статус</th>
-                      <th>Дата</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {reservations.map((r) => (
-                      <tr key={r.id ?? `${r.order_line}-${r.warehouse_batch}-${r.created_at}`}>
-                        <td>{r.order_line_product || '—'}</td>
-                        <td>{r.warehouse_batch_product || '—'}</td>
-                        <td className="data-table__cell--num">{formatQuantityDisplay(r.quantity)}</td>
-                        <td className="data-table__cell--num">{formatQuantityDisplay(r.fulfilled_quantity ?? 0)}</td>
-                        <td>
-                          <Badge variant={reservationStatusVariant(r.status)}>
-                            {RESERVATION_STATUS_LABELS[r.status] || r.status || '—'}
-                          </Badge>
-                        </td>
-                        <td>{formatDate(r.created_at)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </section>
-
-            <section className="card" style={{ padding: 12, marginBottom: 12 }}>
-              <h4>Связанные отгрузки</h4>
-              {relatedSales.length === 0 ? <p>Нет связанных отгрузок</p> : (
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Номер</th>
-                      <th>Дата</th>
-                      <th>Статус</th>
-                      <th className="data-table__cell--num">Выручка</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {relatedSales.map((sale) => (
-                      <tr key={sale.id}>
-                        <td>{sale.order_number || sale.sale_number || `Отгрузка ${sale.id}`}</td>
-                        <td>{formatDate(sale.date || sale.sale_date || sale.created_at)}</td>
-                        <td>
-                          <Badge variant={saleStatusVariant(sale.sale_status)}>
-                            {saleStatusLabel(sale.sale_status)}
-                          </Badge>
-                        </td>
-                        <td className="data-table__cell--num">{toMoney(sale.revenue)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </section>
-
-            <section className="card" style={{ padding: 12, marginBottom: 12 }}>
-              <h4>Связанные оплаты</h4>
-              {relatedPayments.length === 0 ? <p>Нет связанных оплат</p> : (
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Дата</th>
-                      <th>Тип</th>
-                      <th>Способ</th>
-                      <th className="data-table__cell--num">Сумма</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {relatedPayments.map((payment) => (
-                      <tr key={payment.id}>
-                        <td>{formatDate(payment.date || payment.created_at)}</td>
-                        <td>{PAYMENT_TYPE_LABELS[payment.payment_type] || payment.payment_type || '—'}</td>
-                        <td>{PAYMENT_METHOD_LABELS[payment.payment_method] || payment.payment_method || '—'}</td>
-                        <td className="data-table__cell--num">{toMoney(payment.amount)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </section>
-
-            <div className="modal__actions">
-              <button type="button" className="btn btn--secondary" onClick={() => onEdit(order)} disabled={!canEditOrder(availableActions)}>Редактировать</button>
-              <button type="button" className="btn btn--secondary" onClick={() => onCreateShipment(order)} disabled={!canCreateShipment(availableActions)}>Создать отгрузку</button>
-              <button type="button" className="btn btn--secondary" onClick={() => onAcceptPayment(order)} disabled={!canAcceptPayment(availableActions)}>Принять оплату</button>
-              {allowedNext.length > 0 && (
-                <Select
-                  value=""
-                  onChange={(nextStatus) => nextStatus && onStatusChange(order, nextStatus)}
-                  placeholder={busyId === order.id ? 'Обновление...' : 'Сменить статус'}
-                  options={[
-                    { value: '', label: 'Сменить статус' },
-                    ...allowedNext.map((st) => {
-                      const nextStatus = st?.status || st;
-                      return { value: nextStatus, label: statusLabel(nextStatus) };
-                    }),
-                  ]}
-                />
-              )}
-              <button type="button" className="btn btn--primary" onClick={() => downloadOrderWaybill(order.id)}>Накладная</button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -689,170 +657,256 @@ const PAYMENT_METHOD_LABELS = {
   other: 'Другое',
 };
 
-const CreateShipmentFromOrderModal = ({ order, onClose, onSuccess }) => {
-  const toast = useToast();
-  const [submitting, setSubmitting] = useState(false);
+const OrderDetailModal = ({
+  orderId,
+  onClose,
+  onEdit,
+  onStatusChange,
+  onCancelRequest,
+  busyId,
+}) => {
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [lines, setLines] = useState(
-    Array.isArray(order?.lines) && order.lines.length
-      ? order.lines.map((line) => ({
-        order_line: line.id,
-        product: line.product || '',
-        quantity: String(line.ordered_quantity || ''),
-        unit_price: String(line.unit_price || ''),
-      }))
-      : [],
-  );
 
-  const submit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setError('');
-    try {
-      const payloadLines = lines
-        .map((line) => ({
-          ...(line.order_line ? { order_line: Number(line.order_line) } : {}),
-          product: String(line.product || '').trim(),
-          quantity: parseLocaleNumber(line.quantity) || 0,
-          ...(line.unit_price ? { unit_price: parseLocaleNumber(line.unit_price) } : {}),
-        }))
-        .filter((line) => line.product && line.quantity > 0);
-      if (payloadLines.length === 0) {
-        setError('Добавьте хотя бы одну строку с товаром и количеством.');
-        return;
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const orderRes = await apiClient.get(`orders/${orderId}/`);
+        if (!alive) return;
+        setOrder(orderRes.data || null);
+      } catch (e) {
+        if (!alive) return;
+        setError(getApiErrorMessage(e, 'Не удалось загрузить карточку заявки'));
+      } finally {
+        if (alive) setLoading(false);
       }
-      const cid = orderClientId(order);
-      await apiClient.post('sales/', {
-        date,
-        ...(cid != null ? { client: cid } : {}),
-        linked_order: Number(order.id),
-        lines: payloadLines,
-      });
-      toast.show('Отгрузка создана');
-      onSuccess();
-    } catch (e2) {
-      setError(getApiErrorMessage(e2, 'Не удалось создать отгрузку из заявки'));
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    };
+    load();
+    return () => { alive = false; };
+  }, [orderId]);
 
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
-        <div className="modal__head">
-          <h3>Создать отгрузку из заявки</h3>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
-        </div>
-        <form onSubmit={submit}>
-          <label>Дата отгрузки</label>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-          <label>Клиент</label>
-          <input value={order?.client_name || 'Без клиента'} disabled />
-          <div style={{ marginTop: 12 }}>
-            <strong>Строки отгрузки</strong>
-            {lines.map((line, idx) => (
-              <div key={line.order_line || idx} className="card" style={{ marginTop: 8, padding: 8 }}>
-                <label>Товар</label>
-                <input value={line.product} onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, product: e.target.value } : x)))} />
-                <label>Количество</label>
-                <IntegerInput min={1} value={line.quantity} onChange={(v) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, quantity: v } : x)))} />
-                <label>Цена</label>
-                <input value={line.unit_price} onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, unit_price: e.target.value } : x)))} />
-              </div>
-            ))}
-          </div>
-          {error && <p className="modal__error">{error}</p>}
-          <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary" disabled={submitting}>{submitting ? 'Создание...' : 'Создать отгрузку'}</button>
-          </div>
-        </form>
-      </div>
+  const allowedNext = order && Array.isArray(order.available_status_transitions)
+    ? order.available_status_transitions
+    : [];
+  const availableActions = order?.available_actions;
+  const relatedSales = Array.isArray(order?.linked_entities?.sales) ? order.linked_entities.sales : [];
+  const relatedPayments = Array.isArray(order?.linked_entities?.payments) ? order.linked_entities.payments : [];
+  const statusTransitionTargets = allowedNext
+    .map((st) => st?.status || st)
+    .filter((ns) => {
+      const k = String(ns).toLowerCase();
+      if (k === 'canceled' || k === 'cancelled') return false;
+      return !isHiddenOrderStatusTransitionTarget(ns);
+    });
+
+  const detailDlRow = (label, value) => (
+    <div className="orders-detail__dl-row">
+      <dt>{label}</dt>
+      <dd>{value}</dd>
     </div>
   );
-};
 
-const AcceptPaymentModal = ({ order, onClose, onSuccess }) => {
-  const toast = useToast();
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [paymentType, setPaymentType] = useState('prepayment');
-  const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [amount, setAmount] = useState('');
+  const renderFooter = () => {
+    if (!order) return null;
+    const sk = orderStatusKey(order.status);
+    const isTerminal = sk === 'closed' || sk === 'canceled';
 
-  const submit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setError('');
-    try {
-      const parsedAmount = parseLocaleNumber(amount);
-      if (!(parsedAmount > 0)) {
-        setError('Сумма должна быть больше нуля.');
-        return;
-      }
-      const cid = orderClientId(order);
-      await apiClient.post('payments/', {
-        date,
-        ...(cid != null ? { client: cid } : {}),
-        linked_order: Number(order.id),
-        payment_type: paymentType,
-        payment_method: paymentMethod,
-        amount: parsedAmount,
-      });
-      toast.show('Оплата принята');
-      onSuccess();
-    } catch (e2) {
-      setError(getApiErrorMessage(e2, 'Не удалось принять оплату'));
-    } finally {
-      setSubmitting(false);
-    }
+    return (
+      <div className="modal__actions orders-detail-modal__footer">
+        <div className="orders-detail-modal__footer-inner">
+          {!isTerminal && (
+            <>
+              {orderEditableByStatus(order.status) && (
+                <button type="button" className="btn btn--secondary" disabled={busyId === order.id} onClick={() => onEdit(order)}>
+                  Редактировать
+                </button>
+              )}
+              {statusTransitionTargets.map((nextStatus, ti) => (
+                <button
+                  key={`${String(nextStatus)}-${ti}`}
+                  type="button"
+                  className="btn btn--secondary"
+                  disabled={busyId === order.id}
+                  onClick={() => onStatusChange(order, nextStatus)}
+                >
+                  {transitionActionLabel(order.status, nextStatus)}
+                </button>
+              ))}
+              {orderMenuShowsCancel(availableActions, allowedNext) && (
+                <button
+                  type="button"
+                  className="btn btn--danger"
+                  disabled={busyId === order.id}
+                  onClick={() => {
+                    if (apiActionEnabled(availableActions, 'cancel')) onCancelRequest(order);
+                    else onStatusChange(order, 'canceled');
+                  }}
+                >
+                  Отменить
+                </button>
+              )}
+            </>
+          )}
+          <span className="orders-detail-modal__footer-spacer" aria-hidden />
+          <button
+            type="button"
+            className="btn btn--secondary orders-detail-modal__waybill"
+            disabled={busyId === order.id}
+            onClick={() => downloadOrderWaybill(order.id)}
+          >
+            Накладная
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal__head">
-          <h3>Принять оплату по заявке</h3>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
-        </div>
-        <form onSubmit={submit}>
-          <label>Дата</label>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-          <label>Клиент</label>
-          <input value={order?.client_name || 'Без клиента'} disabled />
-          <label>Тип оплаты</label>
-          <Select
-            value={paymentType}
-            onChange={setPaymentType}
-            options={[
-              { value: 'prepayment', label: 'Предоплата' },
-              { value: 'payment', label: 'Оплата' },
-              { value: 'surcharge', label: 'Доплата' },
-              { value: 'refund', label: 'Возврат денег' },
-            ]}
-          />
-          <label>Способ оплаты</label>
-          <Select
-            value={paymentMethod}
-            onChange={setPaymentMethod}
-            options={[
-              { value: 'cash', label: 'Наличные' },
-              { value: 'transfer', label: 'Перевод' },
-              { value: 'card', label: 'Карта' },
-              { value: 'other', label: 'Другое' },
-            ]}
-          />
-          <label>Сумма</label>
-          <input value={amount} onChange={(e) => setAmount(e.target.value)} required />
-          {error && <p className="modal__error">{error}</p>}
-          <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary" disabled={submitting}>{submitting ? 'Сохранение...' : 'Принять оплату'}</button>
+      <div className="modal modal--wide orders-detail-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal__head orders-detail-modal__head">
+          <div className="orders-detail-modal__head-text">
+            <h3>Карточка заявки</h3>
+            {!loading && !error && order && (
+              <div className="orders-detail-modal__head-meta">
+                <span className="orders-detail-modal__number">{order.order_number || `Заявка ${order.id}`}</span>
+                <Badge variant={statusVariant(order.status)}>{statusLabel(order.status)}</Badge>
+              </div>
+            )}
           </div>
-        </form>
+          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
+            ×
+          </button>
+        </div>
+        {loading && <Loading />}
+        {!loading && error && <p className="modal__error">{error}</p>}
+        {!loading && !error && order && (
+          <>
+            <div className="orders-detail-modal__body">
+              <section className="orders-detail__block">
+                <h4 className="orders-detail__block-title">Документ</h4>
+                <dl className="orders-detail__dl">
+                  {detailDlRow('Номер', order.order_number || `Заявка ${order.id}`)}
+                  {detailDlRow('Дата', formatDate(order.date || order.created_at))}
+                  {detailDlRow('Клиент', order.client_name || '—')}
+                  {detailDlRow('Источник', SOURCE_TYPE_LABELS[order.source_type] || order.source_type || '—')}
+                  {detailDlRow('Комментарий', order.comment && String(order.comment).trim() ? order.comment : '—')}
+                </dl>
+              </section>
+
+              <section className="orders-detail__block">
+                <h4 className="orders-detail__block-title">Финансы</h4>
+                <dl className="orders-detail__dl">
+                  {detailDlRow('Сумма', toMoney(order.total_amount))}
+                  {detailDlRow('Продано', toMoney(order.shipped_amount))}
+                  {detailDlRow('Осталось', toMoney(order.remaining_amount))}
+                  {detailDlRow('Оплачено', toMoney(order.paid_amount))}
+                </dl>
+              </section>
+
+              <section className="orders-detail__block">
+                <h4 className="orders-detail__block-title">Строки заявки</h4>
+                <div className="commercial-table-wrap">
+                  <table className="data-table data-table--order-detail-lines">
+                    <thead>
+                      <tr>
+                        <th>Товар</th>
+                        <th className="data-table__cell--num">Заказано</th>
+                        <th className="data-table__cell--num">Продано</th>
+                        <th className="data-table__cell--num">Осталось</th>
+                        <th className="data-table__cell--num">Цена</th>
+                        <th className="data-table__cell--num">Сумма</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(Array.isArray(order.lines) ? order.lines : []).map((line, idx) => (
+                        <tr key={line.id || idx}>
+                          <td>{line.product || '—'}</td>
+                          <td className="data-table__cell--num">{formatLineQty(line.ordered_quantity)}</td>
+                          <td className="data-table__cell--num">{formatLineQty(line.shipped_quantity)}</td>
+                          <td className="data-table__cell--num">{formatLineQty(line.remaining_quantity)}</td>
+                          <td className="data-table__cell--num">{formatLineMoneyCell(line.unit_price)}</td>
+                          <td className="data-table__cell--num">{formatLineMoneyCell(line.line_total)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section className="orders-detail__block">
+                <h4 className="orders-detail__block-title">Связанные документы</h4>
+                <div className="orders-detail__sub">
+                  <strong className="orders-detail__sub-title">Связанные продажи</strong>
+                  {relatedSales.length === 0 ? (
+                    <p className="orders-detail__muted">Нет.</p>
+                  ) : (
+                    <div className="commercial-table-wrap">
+                      <table className="data-table data-table--order-detail-lines">
+                        <thead>
+                          <tr>
+                            <th>Номер</th>
+                            <th>Дата</th>
+                            <th>Статус</th>
+                            <th className="data-table__cell--num">Выручка</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {relatedSales.map((sale) => (
+                            <tr key={sale.id}>
+                              <td>{sale.order_number || sale.sale_number || `Продажа ${sale.id}`}</td>
+                              <td>{formatDate(sale.date || sale.sale_date || sale.created_at)}</td>
+                              <td>
+                                <Badge variant={saleStatusVariant(sale.sale_status)}>
+                                  {saleStatusLabel(sale.sale_status)}
+                                </Badge>
+                              </td>
+                              <td className="data-table__cell--num">{toMoney(sale.revenue)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+                <div className="orders-detail__sub">
+                  <strong className="orders-detail__sub-title">Оплаты</strong>
+                  {relatedPayments.length === 0 ? (
+                    <p className="orders-detail__muted">Нет.</p>
+                  ) : (
+                    <div className="commercial-table-wrap">
+                      <table className="data-table data-table--order-detail-lines">
+                        <thead>
+                          <tr>
+                            <th>Дата</th>
+                            <th>Тип</th>
+                            <th>Способ</th>
+                            <th className="data-table__cell--num">Сумма</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {relatedPayments.map((payment) => (
+                            <tr key={payment.id}>
+                              <td>{formatDate(payment.date || payment.created_at)}</td>
+                              <td>{PAYMENT_TYPE_LABELS[payment.payment_type] || payment.payment_type || '—'}</td>
+                              <td>{PAYMENT_METHOD_LABELS[payment.payment_method] || payment.payment_method || '—'}</td>
+                              <td className="data-table__cell--num">{toMoney(payment.amount)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </section>
+            </div>
+            {renderFooter()}
+          </>
+        )}
       </div>
     </div>
   );

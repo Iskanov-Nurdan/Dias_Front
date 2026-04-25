@@ -374,18 +374,20 @@ const ClientDetailModal = ({ client, onClose, onEdit, onOpenHistory }) => {
       setDetailError('');
       return;
     }
-    setFull(client);
+    const row = client;
+    setFull(row);
     setDetailLoading(true);
     setDetailError('');
-    getClient(client.id)
+    getClient(row.id)
       .then((res) => {
         setFull(res.data);
       })
       .catch((err) => {
         setDetailError(getApiErrorMessage(err, 'Не удалось загрузить клиента'));
-        setFull(client);
+        setFull(row);
       })
       .finally(() => setDetailLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- по id строки
   }, [client?.id]);
 
   const c = full || client;

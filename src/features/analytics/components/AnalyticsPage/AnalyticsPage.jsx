@@ -95,12 +95,12 @@ const profileDisplayName = (p) => {
 
 const clientDisplayName = (c) => {
   const n = (c?.client_name || '').trim();
-  return n || 'Клиент';
+  return n || '—';
 };
 
 const lineDisplayName = (l) => {
   const n = (l?.line_name || '').trim();
-  return n || 'Линия';
+  return n || '—';
 };
 
 const purchaseTotalFromCards = (c) =>

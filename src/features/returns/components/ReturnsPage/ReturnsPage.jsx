@@ -1,19 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import './ReturnsPage.scss';
-import { apiClient } from '../../../../shared/api';
 import { useOperationalRefetch } from '../../../../shared/realtime';
 import { useServerQuery, formatQuantityDisplay, getApiErrorMessage, parseLocaleNumber } from '../../../../shared/lib';
-import { ActionMenu, ConfirmModal, EmptyState, ErrorState, Loading, Pagination, Select, useToast } from '../../../../shared/ui';
+import { ActionMenu, Badge, ConfirmModal, EmptyState, ErrorState, Loading, Pagination, SearchableSelect, useToast } from '../../../../shared/ui';
 import {
   cancelReturn,
   completeReturn,
   createReturn,
-  downloadReturnWaybill,
+  getReturn,
+  getReturnWaybillUrl,
   getReturnSelectSources,
   updateReturn,
 } from '../../api/returnsApi';
-import { getClients } from '../../../clients/api/clientsApi';
 
 const TARGETS = [
   { value: 'warehouse', label: 'На склад' },
@@ -35,6 +35,46 @@ const defaultConditionForTarget = (t) => {
 };
 
 const targetLabel = (code) => TARGETS.find((t) => t.value === code)?.label || code || '—';
+const returnStatusLabel = (s) => (s === 'completed' ? 'Проведён' : s === 'canceled' ? 'Отменён' : s === 'draft' ? 'Черновик' : '—');
+const returnStatusVariant = (s) => (s === 'completed' ? 'success' : s === 'canceled' ? 'default' : 'warning');
+
+const RETURN_STATUS_OPTIONS = [
+  { value: '', label: 'Все' },
+  { value: 'draft', label: 'Черновик' },
+  { value: 'completed', label: 'Проведён' },
+  { value: 'canceled', label: 'Отменён' },
+];
+
+const RETURN_ERROR_TEXT = {
+  missing_sale: 'Выберите продажу.',
+  invalid_sale_status: 'Продажа недоступна для возврата.',
+  missing_lines: 'Добавьте хотя бы одну строку возврата.',
+  missing_sale_line: 'Выберите строку продажи.',
+  sale_line_not_in_sale: 'Строка продажи не относится к выбранной продаже.',
+  invalid_quantity: 'Количество должно быть больше 0.',
+  return_quantity_exceeded: 'Количество превышает доступное к возврату.',
+  invalid_return_target: 'Выберите корректное направление возврата.',
+  invalid_condition_type: 'Выберите корректное состояние.',
+  return_status_create_forbidden: 'Нельзя создать возврат сразу в этом статусе.',
+  return_status_update_forbidden: 'Статус возврата меняется только действиями.',
+  return_update_forbidden: 'Редактирование этого возврата запрещено.',
+  return_line_update_forbidden: 'Строки возврата нельзя редактировать.',
+  return_already_completed: 'Возврат уже проведён.',
+  return_already_canceled: 'Возврат уже отменён.',
+  return_complete_failed: 'Не удалось провести возврат.',
+  return_rollback_failed: 'Не удалось откатить возврат.',
+  warehouse_rollback_negative: 'Отмена невозможна: отрицательный остаток на складе.',
+  downstream_used: 'Нельзя отменить возврат: downstream-операции уже использованы.',
+  refund_payment_exists: 'Нельзя отменить возврат: уже есть активный возврат денег.',
+  no_lines: 'Добавьте строки возврата.',
+  delete_disabled: 'Удаление возвратов отключено.',
+};
+
+const returnErrorMessage = (e, fallback) => {
+  const code = String(e?.response?.data?.code || '').toLowerCase();
+  if (RETURN_ERROR_TEXT[code]) return RETURN_ERROR_TEXT[code];
+  return getApiErrorMessage(e, fallback);
+};
 
 const downstreamTypeLabel = (raw) => {
   const k = String(raw || '').toLowerCase().replace(/-/g, '_');
@@ -52,7 +92,8 @@ const downstreamTypeLabel = (raw) => {
 const selectSourcesBucket = (res) => {
   const bucket = res.data?.items;
   if (bucket != null && typeof bucket === 'object' && !Array.isArray(bucket)) return bucket;
-  return null;
+  if (res.data && typeof res.data === 'object' && !Array.isArray(res.data)) return res.data;
+  return {};
 };
 
 const saleListLabel = (s) => {
@@ -118,11 +159,14 @@ const saleLineSelectLabel = (x) => {
 
 const ReturnsPage = () => {
   const toast = useToast();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [queryState, setQueryState] = useState({
     page: 1,
     page_size: 20,
+    search: '',
     client_id: '',
+    status: '',
     date_from: '',
     date_to: '',
   });
@@ -147,6 +191,11 @@ const ReturnsPage = () => {
       .then((res) => {
         const data = selectSourcesBucket(res);
         setSales(data && Array.isArray(data.sales) ? data.sales : []);
+        setFilterClients(
+          data && Array.isArray(data.sales)
+            ? [...new Map(data.sales.map((s) => [String(s.client), { id: s.client, name: s.client_name || '—' }])).values()]
+            : [],
+        );
       })
       .catch(() => setSales([]))
       .finally(() => setSalesLoading(false));
@@ -163,12 +212,6 @@ const ReturnsPage = () => {
     setSearchParams(next, { replace: true });
   }, [searchParams, modalDoc, setSearchParams]);
 
-  useEffect(() => {
-    getClients({ page_size: 500 })
-      .then((r) => setFilterClients(Array.isArray(r.data?.items) ? r.data.items : []))
-      .catch(() => setFilterClients([]));
-  }, []);
-
   const onSubmit = async (payload) => {
     setSubmitError('');
     try {
@@ -179,7 +222,7 @@ const ReturnsPage = () => {
       loadRefs();
       toast.show(modalDoc?.id ? 'Возврат обновлён' : 'Черновик сохранён');
     } catch (e) {
-      setSubmitError(getApiErrorMessage(e, 'Ошибка сохранения возврата'));
+      setSubmitError(returnErrorMessage(e, 'Ошибка сохранения возврата'));
     }
   };
 
@@ -194,7 +237,7 @@ const ReturnsPage = () => {
       loadRefs();
       toast.show('Возврат проведён');
     } catch (e) {
-      setSubmitError(getApiErrorMessage(e, 'Ошибка проведения'));
+      setSubmitError(returnErrorMessage(e, 'Ошибка проведения'));
     } finally {
       setCompleteBusy(false);
     }
@@ -211,7 +254,7 @@ const ReturnsPage = () => {
       loadRefs();
       toast.show('Возврат отменён');
     } catch (e) {
-      setSubmitError(getApiErrorMessage(e, 'Ошибка отмены'));
+      setSubmitError(returnErrorMessage(e, 'Ошибка отмены'));
     } finally {
       setCancelBusy(false);
     }
@@ -221,20 +264,37 @@ const ReturnsPage = () => {
     if (!row?.id) return;
     setWaybillBusyId(row.id);
     try {
-      await downloadReturnWaybill(row.id);
-      toast.show('Акт скачан');
+      const token = localStorage.getItem('token');
+      const res = await fetch(getReturnWaybillUrl(row.id), {
+        headers: {
+          Accept: 'text/html,*/*',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) throw new Error('Не удалось открыть накладную');
+      const html = await res.text();
+      const url = window.URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+      window.open(url, '_blank', 'noopener,noreferrer');
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 60000);
     } catch (e) {
-      toast.show(e?.message || 'Не удалось скачать акт', 'error');
+      toast.show(e?.message || 'Не удалось открыть накладную', 'error');
     } finally {
       setWaybillBusyId(null);
     }
   };
 
   return (
-    <div className="page commercial-page">
+    <div className="page commercial-page page--returns">
       <div className="ds-toolbar ds-toolbar--stack-mobile commercial-toolbar">
         <div className="ds-toolbar__start commercial-toolbar__filters">
-          <Select
+          <input
+            type="text"
+            className="ds-toolbar__search"
+            placeholder="Поиск"
+            value={queryState.search}
+            onChange={(e) => setQueryState((p) => ({ ...p, search: e.target.value, page: 1 }))}
+          />
+          <SearchableSelect
             value={queryState.client_id}
             onChange={(v) => setQueryState((p) => ({ ...p, client_id: v, page: 1 }))}
             placeholder="Клиент"
@@ -243,22 +303,12 @@ const ReturnsPage = () => {
               ...filterClients.map((c) => ({ value: String(c.id), label: (c.name || '').trim() || '—' })),
             ]}
           />
-          <label className="commercial-date-filter">
-            <span className="commercial-date-filter__label">С</span>
-            <input
-              type="date"
-              value={queryState.date_from}
-              onChange={(e) => setQueryState((p) => ({ ...p, date_from: e.target.value, page: 1 }))}
-            />
-          </label>
-          <label className="commercial-date-filter">
-            <span className="commercial-date-filter__label">По</span>
-            <input
-              type="date"
-              value={queryState.date_to}
-              onChange={(e) => setQueryState((p) => ({ ...p, date_to: e.target.value, page: 1 }))}
-            />
-          </label>
+          <SearchableSelect
+            value={queryState.status}
+            onChange={(v) => setQueryState((p) => ({ ...p, status: v, page: 1 }))}
+            placeholder="Статус"
+            options={RETURN_STATUS_OPTIONS}
+          />
         </div>
         <div className="ds-toolbar__end">
           <button type="button" className="btn btn--primary" onClick={() => setModalDoc({})}>Создать возврат</button>
@@ -269,7 +319,7 @@ const ReturnsPage = () => {
       {!loading && (!error || error.status === 404) && items.length === 0 && <EmptyState title="Нет возвратов" />}
       {!loading && (!error || error.status === 404) && items.length > 0 && (
         <div className="commercial-table-wrap">
-          <table className="data-table data-table--fixed data-table--row-actions">
+          <table className="data-table data-table--fixed data-table--row-actions data-table--returns">
           <thead>
             <tr>
               <th>№ возврата</th>
@@ -293,7 +343,7 @@ const ReturnsPage = () => {
                 <td>{returnTableClientLabel(r)}</td>
                 <td>{returnTableSaleLabel(r)}</td>
                 <td>{(r.date || r.created_at || '').toString().slice(0, 10) || '—'}</td>
-                <td>{r.status === 'completed' ? 'Проведён' : r.status === 'canceled' ? 'Отменён' : r.status === 'draft' ? 'Черновик' : '—'}</td>
+                <td><Badge variant={returnStatusVariant(r.status)}>{returnStatusLabel(r.status)}</Badge></td>
                 <td>{r.return_reason || '—'}</td>
                 <td>{returnRowTargetsLabel(r)}</td>
                 <td>
@@ -311,10 +361,11 @@ const ReturnsPage = () => {
                       if (r.status === 'completed') {
                         menu.push(
                           { label: 'Редактировать реквизиты', onClick: () => setModalDoc(r) },
+                          { label: 'Возврат денег', onClick: () => navigate(`/payments?return_id=${r.id}`) },
                           { label: 'Отменить', danger: true, onClick: () => { setCancelDocTarget(r); setSubmitError(''); } },
                         );
                       }
-                      if (r.status === 'completed') {
+                      if (r.status === 'completed' || r.status === 'canceled' || r.status === 'draft') {
                         menu.push({
                           label: 'Накладная',
                           disabled: waybillBusyId === r.id,
@@ -419,7 +470,7 @@ const ReturnModal = ({ doc, initialSaleId = '', sales, salesLoading, onSubmit, o
     }
     let alive = true;
     setLinesLoading(true);
-    getReturnSelectSources(sale)
+    getReturnSelectSources({ sale_id: sale })
       .then((res) => {
         if (!alive) return;
         const data = selectSourcesBucket(res);
@@ -470,11 +521,16 @@ const ReturnModal = ({ doc, initialSaleId = '', sales, salesLoading, onSubmit, o
 
   const hasValidDraftLines = useMemo(() => {
     if (isCompletedLimited) return true;
-    return lines.some((l) => {
+    return lines.length > 0 && lines.every((l) => {
       const qty = parseLocaleNumber(l.quantity);
-      return l.sale_line && Number.isFinite(qty) && qty > 0;
+      if (!l.sale_line || !l.return_target || !l.condition_type) return false;
+      if (!(Number.isFinite(qty) && qty > 0)) return false;
+      const sl = lineById.get(String(l.sale_line));
+      const cap = saleLineReturnableCap(sl);
+      if (cap != null && qty > cap) return false;
+      return true;
     });
-  }, [lines, isCompletedLimited]);
+  }, [lines, isCompletedLimited, lineById]);
 
   const submitDisabled = isCompletedLimited
     ? false
@@ -541,7 +597,7 @@ const ReturnModal = ({ doc, initialSaleId = '', sales, salesLoading, onSubmit, o
               {!isCompletedLimited && (
                 <>
                   <label>Продажа *</label>
-                  <Select
+                  <SearchableSelect
                     value={sale}
                     onChange={(v) => { setLineError(''); setSale(v); }}
                     disabled={saleLocked || salesLoading}
@@ -584,7 +640,7 @@ const ReturnModal = ({ doc, initialSaleId = '', sales, salesLoading, onSubmit, o
                         ) : null}
                       </div>
                       <label>Строка продажи *</label>
-                      <Select
+                      <SearchableSelect
                         value={line.sale_line}
                         onChange={(v) => applySaleLineSelection(idx, v)}
                         disabled={!sale || linesLoading}
@@ -614,13 +670,13 @@ const ReturnModal = ({ doc, initialSaleId = '', sales, salesLoading, onSubmit, o
                         onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, quantity: e.target.value } : x)))}
                       />
                       <label>Куда вернуть *</label>
-                      <Select
+                      <SearchableSelect
                         value={line.return_target}
                         onChange={(v) => setReturnTargetAt(idx, v)}
                         options={TARGETS}
                       />
                       <label>Состояние *</label>
-                      <Select
+                      <SearchableSelect
                         value={line.condition_type}
                         onChange={(v) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, condition_type: v } : x)))}
                         options={CONDITIONS}
@@ -675,7 +731,7 @@ const ReturnDetailModal = ({ returnId, onClose, onEdit, onDownloadWaybill, onMut
   const [detailConfirmError, setDetailConfirmError] = useState('');
 
   const reloadDoc = () => {
-    apiClient.get(`returns/${returnId}/`)
+    getReturn(returnId)
       .then((res) => setDoc(res.data || null))
       .catch(() => {});
   };
@@ -686,12 +742,12 @@ const ReturnDetailModal = ({ returnId, onClose, onEdit, onDownloadWaybill, onMut
       setLoading(true);
       setError('');
       try {
-        const res = await apiClient.get(`returns/${returnId}/`);
+        const res = await getReturn(returnId);
         if (!alive) return;
         setDoc(res.data || null);
       } catch (e) {
         if (!alive) return;
-        setError(getApiErrorMessage(e, 'Не удалось загрузить карточку возврата'));
+        setError(returnErrorMessage(e, 'Не удалось загрузить карточку возврата'));
       } finally {
         if (alive) setLoading(false);
       }
@@ -716,7 +772,7 @@ const ReturnDetailModal = ({ returnId, onClose, onEdit, onDownloadWaybill, onMut
       onMutate?.();
       reloadDoc();
     } catch (e) {
-      setDetailConfirmError(getApiErrorMessage(e, detailConfirm === 'complete' ? 'Не удалось провести' : 'Не удалось отменить'));
+      setDetailConfirmError(returnErrorMessage(e, detailConfirm === 'complete' ? 'Не удалось провести' : 'Не удалось отменить'));
     } finally {
       setActionBusy(false);
     }
@@ -747,9 +803,9 @@ const ReturnDetailModal = ({ returnId, onClose, onEdit, onDownloadWaybill, onMut
                   <div className="return-detail-modal__dl-row"><dt>Комментарий</dt><dd>{doc.comment && String(doc.comment).trim() ? doc.comment : '—'}</dd></div>
                 </dl>
               </section>
-              {Array.isArray(doc.downstream_links) && doc.downstream_links.length > 0 ? (
-                <section className="return-detail-modal__section">
-                  <h4 className="return-detail-modal__section-title">Связанные последствия</h4>
+              <section className="return-detail-modal__section">
+                <h4 className="return-detail-modal__section-title">Последствия</h4>
+                {Array.isArray(doc.downstream_links) && doc.downstream_links.length > 0 ? (
                   <div className="commercial-table-wrap">
                     <table className="data-table">
                       <thead>
@@ -768,8 +824,10 @@ const ReturnDetailModal = ({ returnId, onClose, onEdit, onDownloadWaybill, onMut
                       </tbody>
                     </table>
                   </div>
-                </section>
-              ) : null}
+                ) : (
+                  <p className="return-detail-modal__empty">Последствий пока нет.</p>
+                )}
+              </section>
               <section className="return-detail-modal__section">
                 <h4 className="return-detail-modal__section-title">Строки возврата</h4>
                 <div className="commercial-table-wrap">
@@ -795,6 +853,33 @@ const ReturnDetailModal = ({ returnId, onClose, onEdit, onDownloadWaybill, onMut
                   </table>
                 </div>
               </section>
+              <section className="return-detail-modal__section">
+                <h4 className="return-detail-modal__section-title">Связанные документы</h4>
+                {Array.isArray(doc.downstream_links) && doc.downstream_links.some((x) => String(x.type || '').toLowerCase() === 'payment') ? (
+                  <div className="commercial-table-wrap">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Тип</th>
+                          <th>Документ</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {doc.downstream_links
+                          .filter((x) => String(x.type || '').toLowerCase() === 'payment')
+                          .map((x, idx) => (
+                            <tr key={`p-${x.id || idx}`}>
+                              <td>Возврат денег</td>
+                              <td>{x.label || x.number || '—'}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="return-detail-modal__empty">Нет связанных документов.</p>
+                )}
+              </section>
             </div>
             <div className="modal__actions">
               {doc.status === 'draft' && (
@@ -815,14 +900,16 @@ const ReturnDetailModal = ({ returnId, onClose, onEdit, onDownloadWaybill, onMut
                   <button type="button" className="btn btn--secondary" disabled={actionBusy} onClick={() => onEdit(doc)}>
                     Редактировать реквизиты
                   </button>
+                  <button type="button" className="btn btn--secondary" onClick={() => window.location.assign(`/payments?return_id=${doc.id}`)}>
+                    Возврат денег
+                  </button>
                   <button type="button" className="btn btn--danger" disabled={actionBusy} onClick={() => { setDetailConfirmError(''); setDetailConfirm('cancel'); }}>
                     Отменить
                   </button>
                 </>
               )}
-              {doc.status === 'completed' && (
-                <button type="button" className="btn btn--secondary" onClick={() => onDownloadWaybill(doc)}>Накладная</button>
-              )}
+              <button type="button" className="btn btn--secondary" onClick={() => onDownloadWaybill(doc)}>Накладная</button>
+              <button type="button" className="btn btn--secondary" onClick={onClose}>Закрыть</button>
             </div>
           </>
         )}

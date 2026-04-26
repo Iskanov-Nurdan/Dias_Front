@@ -1,10 +1,16 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { apiClient } from '../../../../shared/api';
+import { formatDate } from '../../../../shared/constants/common';
 import { useOperationalRefetch } from '../../../../shared/realtime';
 import { useServerQuery, formatQuantityDisplay, getApiErrorMessage, parseLocaleNumber } from '../../../../shared/lib';
-import { ActionMenu, ConfirmModal, EmptyState, ErrorState, Loading, Pagination, Select, useToast } from '../../../../shared/ui';
-import { cancelPayment, createPayment, getPaymentSummary } from '../../api/paymentsApi';
+import { ActionMenu, Badge, ConfirmModal, EmptyState, ErrorState, Loading, Pagination, SearchableSelect, useToast } from '../../../../shared/ui';
+import {
+  cancelPayment,
+  createPayment,
+  getPayment,
+  getPaymentsSummary,
+  getPaymentSelectSources,
+} from '../../api/paymentsApi';
 import './PaymentsPage.scss';
 
 const PAYMENT_TYPES = [
@@ -20,8 +26,13 @@ const PAYMENT_METHODS = [
   { value: 'other', label: 'Другое' },
 ];
 
-const typeLabel = (v) => PAYMENT_TYPES.find((x) => x.value === v)?.label || '—';
-const methodLabel = (v) => PAYMENT_METHODS.find((x) => x.value === v)?.label || '—';
+const STATUS_OPTIONS = [
+  { value: 'active', label: 'Активна' },
+  { value: 'canceled', label: 'Отменена' },
+];
+
+const typeLabel = (v) => PAYMENT_TYPES.find((x) => x.value === String(v || '').toLowerCase())?.label || '—';
+const methodLabel = (v) => PAYMENT_METHODS.find((x) => x.value === String(v || '').toLowerCase())?.label || '—';
 
 const paymentStatusLabel = (v) => {
   const k = String(v || '').toLowerCase();
@@ -30,33 +41,56 @@ const paymentStatusLabel = (v) => {
   return '—';
 };
 
-const formatDate = (v) => (v ? String(v).slice(0, 10) : '—');
+const paymentSummaryStatusLabel = (v) => {
+  const k = String(v || '').toLowerCase();
+  if (k === 'unpaid') return 'Не оплачено';
+  if (k === 'partially_paid') return 'Частично оплачено';
+  if (k === 'paid') return 'Оплачено';
+  if (k === 'overpaid') return 'Переплата';
+  if (k === 'refunded') return 'Возврат денег';
+  return '—';
+};
+
+const toMoney = (v) => (v != null && v !== '' ? `${formatQuantityDisplay(v)} сом` : '—');
+const textOrDash = (v) => (v == null || v === '' ? '—' : String(v));
+
+const PAYMENT_ERROR_TEXT = {
+  missing_client: 'Выберите клиента.',
+  inactive_client: 'Клиент неактивен.',
+  invalid_amount: 'Сумма должна быть больше 0.',
+  invalid_payment_type: 'Выберите корректный тип оплаты.',
+  invalid_payment_method: 'Выберите корректный способ оплаты.',
+  missing_linked_entity: 'Выберите продажу, заявку или возврат.',
+  client_mismatch: 'Клиент не совпадает со связанным документом.',
+  refund_reason_required: 'Укажите причину ручного возврата.',
+  refund_return_required: 'Выберите возврат для возврата денег.',
+  refund_return_not_completed: 'Возврат товара еще не проведен.',
+  refund_amount_exceeded: 'Сумма возврата денег превышает доступную.',
+  payment_status_update_forbidden: 'Статус оплаты нельзя менять вручную.',
+  payment_already_canceled: 'Оплата уже отменена.',
+  delete_disabled: 'Удаление оплат отключено.',
+  not_found: 'Клиент не найден.',
+};
+
+const paymentErrorMessage = (err, fallback) => {
+  const code = String(err?.response?.data?.code || '').toLowerCase();
+  if (PAYMENT_ERROR_TEXT[code]) return PAYMENT_ERROR_TEXT[code];
+  return getApiErrorMessage(err, fallback);
+};
 
 const clientFilterLabel = (c) => {
   const n = (c?.name || '').trim();
   return n || '—';
 };
 
-const paymentSaleCol = (p) => {
-  const n = (p?.linked_sale_number || p?.sale_number || p?.sale?.sale_number || p?.sale?.order_number || '').trim();
-  return n || '—';
-};
+const paymentSaleCol = (p) => textOrDash(p?.linked_sale_number || p?.sale_number || p?.sale?.sale_number || p?.sale?.order_number);
 
-const paymentOrderCol = (p) => {
-  const n = (p?.linked_order_number || p?.order_number || p?.linked_order?.order_number || '').trim();
-  return n || '—';
-};
+const paymentOrderCol = (p) => textOrDash(p?.linked_order_number || p?.order_number || p?.linked_order?.order_number);
+const paymentReturnCol = (p) => textOrDash(p?.linked_return_number || p?.return_number || p?.linked_return?.return_number);
 
-const saleOptionLabel = (x) => {
-  const a = (x.sale_number || '').trim();
-  const b = (x.order_number || '').trim();
-  const parts = [a, b].filter(Boolean);
-  return parts.length ? parts.join(' — ') : '—';
-};
-
-const orderOptionLabel = (x) => ((x.order_number || '').trim() || '—');
-
-const returnOptionLabel = (x) => (x.return_number || '').trim() || '—';
+const saleOptionLabel = (x) => textOrDash(x.label || x.sale_number || x.order_number);
+const orderOptionLabel = (x) => textOrDash(x.label || x.order_number);
+const returnOptionLabel = (x) => textOrDash(x.label || x.return_number);
 
 const PaymentsPage = () => {
   const toast = useToast();
@@ -64,79 +98,111 @@ const PaymentsPage = () => {
   const [queryState, setQueryState] = useState({
     page: 1,
     page_size: 20,
+    search: '',
+    payment_method: '',
+    status: '',
     payment_type: '',
     client_id: '',
-    date_from: '',
-    date_to: '',
   });
-  const [clients, setClients] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [sales, setSales] = useState([]);
-  const [createPreset, setCreatePreset] = useState(null);
-  const [detailPayment, setDetailPayment] = useState(null);
+  const [selectSources, setSelectSources] = useState({ clients: [], orders: [], sales: [], returns: [] });
+  const [createOpen, setCreateOpen] = useState(false);
+  const [detailPaymentId, setDetailPaymentId] = useState(null);
+  const [detailRefreshKey, setDetailRefreshKey] = useState(0);
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [summary, setSummary] = useState(null);
+  const [summaryError, setSummaryError] = useState('');
+  const [summaryLoading, setSummaryLoading] = useState(false);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [submitError, setSubmitError] = useState('');
+  const [urlPreset, setUrlPreset] = useState(null);
 
   const { items, meta, loading, error, refetch } = useServerQuery('payments/', queryState, { enabled: true });
 
-  const loadSummary = useCallback(() => {
-    const clientId = queryState.client_id;
+  const loadSelectSources = useCallback(async (params = {}) => {
+    try {
+      const res = await getPaymentSelectSources(params);
+      const d = res.data || {};
+      setSelectSources({
+        clients: Array.isArray(d.clients) ? d.clients : [],
+        orders: Array.isArray(d.orders) ? d.orders : [],
+        sales: Array.isArray(d.sales) ? d.sales : [],
+        returns: Array.isArray(d.returns) ? d.returns : [],
+      });
+    } catch {
+      setSelectSources({ clients: [], orders: [], sales: [], returns: [] });
+    }
+  }, []);
+
+  const loadSummary = useCallback(async (clientId) => {
     if (!clientId) {
       setSummary(null);
+      setSummaryError('');
       return;
     }
-    getPaymentSummary(clientId)
-      .then((r) => setSummary(r.data || null))
-      .catch(() => setSummary(null));
-  }, [queryState.client_id]);
+    setSummaryLoading(true);
+    setSummaryError('');
+    try {
+      const r = await getPaymentsSummary(clientId);
+      setSummary(r.data || null);
+    } catch (e) {
+      setSummary(null);
+      setSummaryError(paymentErrorMessage(e, 'Клиент не найден.'));
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, []);
 
   const reloadOperational = useCallback(() => {
     refetch();
-    loadSummary();
-  }, [refetch, loadSummary]);
+    loadSummary(queryState.client_id);
+  }, [refetch, loadSummary, queryState.client_id]);
 
   useOperationalRefetch(['payment', 'sale', 'order', 'return'], reloadOperational, true);
 
   useEffect(() => {
-    apiClient.get('clients/', { params: { page_size: 500 } }).then((r) => setClients(r.data?.items || [])).catch(() => setClients([]));
-    apiClient.get('orders/', { params: { page_size: 500 } }).then((r) => setOrders(r.data?.items || [])).catch(() => setOrders([]));
-    apiClient.get('sales/', { params: { page_size: 500 } }).then((r) => setSales(r.data?.items || [])).catch(() => setSales([]));
-  }, []);
+    loadSelectSources();
+  }, [loadSelectSources]);
 
   useEffect(() => {
     const sid = searchParams.get('sale_id');
     const oid = searchParams.get('order_id');
-    if (createPreset != null || detailPayment != null) return;
-    if (!sid && !oid) return;
+    const rid = searchParams.get('return_id');
+    if (createOpen || detailPaymentId != null) return;
+    if (!sid && !oid && !rid) return;
     const preset = {};
     const next = new URLSearchParams(searchParams);
     if (sid) {
-      preset.linked_sale_id = sid;
+      preset.sale_id = sid;
       next.delete('sale_id');
     }
     if (oid) {
-      preset.linked_order_id = oid;
+      preset.order_id = oid;
       next.delete('order_id');
     }
-    setCreatePreset(preset);
+    if (rid) {
+      preset.return_id = rid;
+      next.delete('return_id');
+    }
+    setUrlPreset(preset);
+    setCreateOpen(true);
     setSearchParams(next, { replace: true });
-  }, [searchParams, createPreset, detailPayment, setSearchParams]);
+  }, [searchParams, createOpen, detailPaymentId, setSearchParams]);
 
   useEffect(() => {
-    loadSummary();
-  }, [loadSummary]);
+    loadSummary(queryState.client_id);
+  }, [loadSummary, queryState.client_id]);
 
   const onCreateSubmit = async (payload) => {
     setSubmitError('');
     try {
       await createPayment(payload);
-      setCreatePreset(null);
+      setCreateOpen(false);
+      setUrlPreset(null);
       refetch();
-      loadSummary();
+      loadSummary(payload.client);
       toast.show('Оплата сохранена');
     } catch (e) {
-      setSubmitError(getApiErrorMessage(e, 'Ошибка сохранения оплаты'));
+      setSubmitError(paymentErrorMessage(e, 'Ошибка сохранения оплаты'));
     }
   };
 
@@ -146,88 +212,83 @@ const PaymentsPage = () => {
     try {
       await cancelPayment(cancelTarget.id);
       setCancelTarget(null);
-      setDetailPayment(null);
+      setDetailPaymentId(null);
+      setDetailRefreshKey((x) => x + 1);
       refetch();
-      loadSummary();
+      if (queryState.client_id) loadSummary(queryState.client_id);
       toast.show('Платёж отменён');
     } catch (e) {
-      setSubmitError(getApiErrorMessage(e, 'Ошибка отмены'));
+      setSubmitError(paymentErrorMessage(e, 'Ошибка отмены'));
     }
   };
 
+  const clients = selectSources.clients;
+
   return (
-    <div className="page commercial-page">
+    <div className="page commercial-page page--payments">
       <div className="ds-toolbar ds-toolbar--stack-mobile commercial-toolbar">
         <div className="ds-toolbar__start commercial-toolbar__filters">
-          <Select
+          <input
+            type="text"
+            className="ds-toolbar__search"
+            placeholder="Поиск"
+            value={queryState.search}
+            onChange={(e) => setQueryState((p) => ({ ...p, search: e.target.value, page: 1 }))}
+          />
+          <SearchableSelect
             value={queryState.client_id}
             onChange={(v) => setQueryState((p) => ({ ...p, client_id: v, page: 1 }))}
             placeholder="Клиент"
             options={[{ value: '', label: 'Все клиенты' }, ...clients.map((c) => ({ value: String(c.id), label: clientFilterLabel(c) }))]}
           />
-          <Select
+          <SearchableSelect
             value={queryState.payment_type}
             onChange={(v) => setQueryState((p) => ({ ...p, payment_type: v, page: 1 }))}
             placeholder="Тип оплаты"
             options={[{ value: '', label: 'Все типы' }, ...PAYMENT_TYPES]}
           />
-          <label className="commercial-date-filter">
-            <span className="commercial-date-filter__label">С</span>
-            <input
-              type="date"
-              value={queryState.date_from}
-              onChange={(e) => setQueryState((p) => ({ ...p, date_from: e.target.value, page: 1 }))}
-            />
-          </label>
-          <label className="commercial-date-filter">
-            <span className="commercial-date-filter__label">По</span>
-            <input
-              type="date"
-              value={queryState.date_to}
-              onChange={(e) => setQueryState((p) => ({ ...p, date_to: e.target.value, page: 1 }))}
-            />
-          </label>
+          <SearchableSelect
+            value={queryState.payment_method}
+            onChange={(v) => setQueryState((p) => ({ ...p, payment_method: v, page: 1 }))}
+            placeholder="Способ оплаты"
+            options={[{ value: '', label: 'Все способы' }, ...PAYMENT_METHODS]}
+          />
+          <SearchableSelect
+            value={queryState.status}
+            onChange={(v) => setQueryState((p) => ({ ...p, status: v, page: 1 }))}
+            placeholder="Статус"
+            options={[{ value: '', label: 'Все' }, ...STATUS_OPTIONS]}
+          />
         </div>
         <div className="ds-toolbar__end">
-          <button type="button" className="btn btn--primary" onClick={() => setCreatePreset({})}>Добавить оплату</button>
+          <button type="button" className="btn btn--secondary" onClick={() => setSummaryOpen(true)} disabled={!queryState.client_id}>
+            Сводка клиента
+          </button>
+          <button type="button" className="btn btn--primary" onClick={() => { setUrlPreset(null); setCreateOpen(true); }}>
+            Создать оплату
+          </button>
         </div>
       </div>
-
-      {summary && queryState.client_id && (
-        <div className="commercial-summary">
-          <p className="commercial-summary__title">Сводка по клиенту</p>
-          {summary.client_name && (
-            <div style={{ marginTop: 6 }}>{summary.client_name}</div>
-          )}
-          <div className="commercial-summary__grid" style={{ marginTop: 8 }}>
-            <div>Оплачено (брутто): {formatQuantityDisplay(summary.total_paid_gross ?? 0)} сом</div>
-            <div>Возвратов денег: {formatQuantityDisplay(summary.total_refunded ?? 0)} сом</div>
-            <div>Оплачено (нетто): {formatQuantityDisplay(summary.total_paid_net ?? 0)} сом</div>
-            <div>Выручка: {formatQuantityDisplay(summary.total_revenue ?? 0)} сом</div>
-            <div>Долг: {formatQuantityDisplay(summary.client_debt_money ?? 0)} сом</div>
-            <div>Аванс: {formatQuantityDisplay(summary.client_advance_amount ?? 0)} сом</div>
-          </div>
-        </div>
-      )}
 
       {loading && <Loading />}
       {error && error.status !== 404 && <ErrorState error={error} onRetry={refetch} />}
       {!loading && (!error || error.status === 404) && items.length === 0 && <EmptyState title="Нет оплат" />}
       {!loading && (!error || error.status === 404) && items.length > 0 && (
         <div className="commercial-table-wrap">
-          <table className="data-table data-table--fixed data-table--row-actions">
+          <table className="data-table data-table--fixed data-table--row-actions data-table--payments">
             <thead>
               <tr>
                 <th>№ оплаты</th>
                 <th>Клиент</th>
                 <th>Продажа</th>
                 <th>Заявка</th>
+                <th>Возврат</th>
                 <th>Дата</th>
                 <th>Тип</th>
                 <th>Способ</th>
                 <th className="data-table__cell--num">Сумма</th>
                 <th>Статус</th>
-                <th aria-hidden />
+                <th className="data-table__cell--actions">Действия</th>
               </tr>
             </thead>
             <tbody>
@@ -237,18 +298,26 @@ const PaymentsPage = () => {
                   <td>{p.client_name || p.client?.name || '—'}</td>
                   <td>{paymentSaleCol(p)}</td>
                   <td>{paymentOrderCol(p)}</td>
+                  <td>{paymentReturnCol(p)}</td>
                   <td>{formatDate(p.date || p.created_at)}</td>
                   <td>{typeLabel(p.payment_type)}</td>
                   <td>{methodLabel(p.payment_method)}</td>
-                  <td className="data-table__cell--num">{p.amount != null ? `${formatQuantityDisplay(p.amount)} сом` : '—'}</td>
-                  <td>{paymentStatusLabel(p.status)}</td>
+                  <td className="data-table__cell--num">{toMoney(p.amount)}</td>
+                  <td>
+                    <Badge variant={String(p.status || '').toLowerCase() === 'active' ? 'success' : 'default'}>
+                      {paymentStatusLabel(p.status)}
+                    </Badge>
+                  </td>
                   <td>
                     <ActionMenu
                       ariaLabel="Действия"
                       items={[
-                        { label: 'Открыть', onClick: () => setDetailPayment(p) },
+                        { label: 'Открыть', onClick: () => setDetailPaymentId(p.id) },
                         ...(p.status === 'active'
-                          ? [{ label: 'Отменить платёж', danger: true, onClick: () => setCancelTarget(p) }]
+                          ? [{ label: 'Отменить', danger: true, onClick: () => setCancelTarget(p) }]
+                          : []),
+                        ...(p.client || p.client_id
+                          ? [{ label: 'Финсводка клиента', onClick: () => setQueryState((s) => ({ ...s, client_id: String(p.client_id || p.client?.id || s.client_id) })) }]
                           : []),
                       ]}
                     />
@@ -264,31 +333,37 @@ const PaymentsPage = () => {
         <Pagination meta={meta} onPageChange={(nextPage) => setQueryState((p) => ({ ...p, page: nextPage }))} />
       )}
 
-      {createPreset !== null && (
+      {createOpen && (
         <PaymentCreateModal
-          defaults={createPreset}
-          clients={clients}
-          orders={orders}
-          sales={sales}
+          defaults={urlPreset || {}}
           onSubmit={onCreateSubmit}
-          onClose={() => { setCreatePreset(null); setSubmitError(''); }}
+          onClose={() => { setCreateOpen(false); setSubmitError(''); setUrlPreset(null); }}
           error={submitError}
         />
       )}
-      {detailPayment && (
+      {detailPaymentId && (
         <PaymentDetailModal
-          payment={detailPayment}
-          onClose={() => setDetailPayment(null)}
+          paymentId={detailPaymentId}
+          refreshKey={detailRefreshKey}
+          onClose={() => setDetailPaymentId(null)}
           onRequestCancel={(p) => {
-            setDetailPayment(null);
+            setDetailPaymentId(null);
             setCancelTarget(p);
           }}
         />
       )}
+      <PaymentSummaryModal
+        open={summaryOpen}
+        summary={summary}
+        loading={summaryLoading}
+        error={summaryError}
+        clientId={queryState.client_id}
+        onClose={() => setSummaryOpen(false)}
+      />
       <ConfirmModal
         open={!!cancelTarget}
         title="Отменить платёж?"
-        message={cancelTarget ? `Отменить платёж${cancelTarget.payment_number ? ` «${cancelTarget.payment_number}»` : ''}? Сумму и привязки менять нельзя — только отмена записи.` : ''}
+        message={cancelTarget ? `Отменить платёж${cancelTarget.payment_number ? ` «${cancelTarget.payment_number}»` : ''}?` : ''}
         confirmText="Отменить"
         onConfirm={onCancelPayment}
         onCancel={() => { setCancelTarget(null); setSubmitError(''); }}
@@ -298,7 +373,61 @@ const PaymentsPage = () => {
   );
 };
 
-const PaymentDetailModal = ({ payment, onClose, onRequestCancel }) => {
+const PaymentDetailModal = ({ paymentId, refreshKey, onClose, onRequestCancel }) => {
+  const [payment, setPayment] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    const run = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await getPayment(paymentId);
+        if (!alive) return;
+        setPayment(res.data || null);
+      } catch (e) {
+        if (!alive) return;
+        setError(paymentErrorMessage(e, 'Не удалось загрузить оплату.'));
+      } finally {
+        if (alive) setLoading(false);
+      }
+    };
+    run();
+    return () => {
+      alive = false;
+    };
+  }, [paymentId, refreshKey]);
+
+  if (loading) {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal modal--wide payment-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal__head">
+            <h3>Оплата</h3>
+            <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+          </div>
+          <div className="payment-modal__scroll"><Loading /></div>
+        </div>
+      </div>
+    );
+  }
+  if (error || !payment) {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal modal--wide payment-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal__head">
+            <h3>Оплата</h3>
+            <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+          </div>
+          <div className="payment-modal__scroll"><ErrorState error={{ userMessage: error || 'Оплата не найдена' }} /></div>
+          <div className="modal__actions"><button type="button" className="btn btn--primary" onClick={onClose}>Закрыть</button></div>
+        </div>
+      </div>
+    );
+  }
+
   if (payment.status === 'canceled' || payment.status === 'cancelled') {
     return (
       <div className="modal-overlay" onClick={onClose}>
@@ -312,7 +441,7 @@ const PaymentDetailModal = ({ payment, onClose, onRequestCancel }) => {
             <dl className="payment-modal__dl">
               <div className="payment-modal__dl-row"><dt>№ оплаты</dt><dd>{payment.payment_number || '—'}</dd></div>
               <div className="payment-modal__dl-row"><dt>Дата</dt><dd>{formatDate(payment.date || payment.created_at)}</dd></div>
-              <div className="payment-modal__dl-row"><dt>Сумма</dt><dd>{payment.amount != null ? `${formatQuantityDisplay(payment.amount)} сом` : '—'}</dd></div>
+              <div className="payment-modal__dl-row"><dt>Сумма</dt><dd>{toMoney(payment.amount)}</dd></div>
             </dl>
           </div>
           <div className="modal__actions">
@@ -337,8 +466,16 @@ const PaymentDetailModal = ({ payment, onClose, onRequestCancel }) => {
               <div className="payment-modal__dl-row"><dt>№ оплаты</dt><dd>{payment.payment_number || '—'}</dd></div>
               <div className="payment-modal__dl-row"><dt>Дата</dt><dd>{formatDate(payment.date || payment.created_at)}</dd></div>
               <div className="payment-modal__dl-row"><dt>Клиент</dt><dd>{payment.client_name || payment.client?.name || '—'}</dd></div>
+              <div className="payment-modal__dl-row"><dt>Статус</dt><dd>{paymentStatusLabel(payment.status)}</dd></div>
+              <div className="payment-modal__dl-row"><dt>Комментарий</dt><dd>{payment.comment && String(payment.comment).trim() ? payment.comment : '—'}</dd></div>
+            </dl>
+          </section>
+          <section className="payment-modal__section">
+            <h4 className="payment-modal__section-title">Связь</h4>
+            <dl className="payment-modal__dl">
               <div className="payment-modal__dl-row"><dt>Связанная продажа</dt><dd>{paymentSaleCol(payment)}</dd></div>
               <div className="payment-modal__dl-row"><dt>Связанная заявка</dt><dd>{paymentOrderCol(payment)}</dd></div>
+              <div className="payment-modal__dl-row"><dt>Связанный возврат</dt><dd>{paymentReturnCol(payment)}</dd></div>
             </dl>
           </section>
           <section className="payment-modal__section">
@@ -346,24 +483,21 @@ const PaymentDetailModal = ({ payment, onClose, onRequestCancel }) => {
             <dl className="payment-modal__dl">
               <div className="payment-modal__dl-row"><dt>Тип</dt><dd>{typeLabel(payment.payment_type)}</dd></div>
               <div className="payment-modal__dl-row"><dt>Способ</dt><dd>{methodLabel(payment.payment_method)}</dd></div>
-              <div className="payment-modal__dl-row"><dt>Сумма</dt><dd>{payment.amount != null ? `${formatQuantityDisplay(payment.amount)} сом` : '—'}</dd></div>
-              <div className="payment-modal__dl-row"><dt>Статус</dt><dd>{paymentStatusLabel(payment.status)}</dd></div>
+              <div className="payment-modal__dl-row"><dt>Сумма</dt><dd>{toMoney(payment.amount)}</dd></div>
               {payment.payment_type === 'refund' && (
                 <>
-                  <div className="payment-modal__dl-row"><dt>Связанный возврат</dt><dd>{(payment.linked_return_number || '').trim() || '—'}</dd></div>
                   {payment.manual_refund_reason ? (
                     <div className="payment-modal__dl-row"><dt>Причина возврата денег</dt><dd>{payment.manual_refund_reason}</dd></div>
                   ) : null}
                 </>
               )}
-              <div className="payment-modal__dl-row"><dt>Комментарий</dt><dd>{payment.comment && String(payment.comment).trim() ? payment.comment : '—'}</dd></div>
             </dl>
           </section>
         </div>
         <div className="modal__actions">
           <button type="button" className="btn btn--secondary" onClick={onClose}>Закрыть</button>
           {payment.status === 'active' && (
-            <button type="button" className="btn btn--danger" onClick={() => onRequestCancel(payment)}>Отменить платёж</button>
+            <button type="button" className="btn btn--danger" onClick={() => onRequestCancel(payment)}>Отменить</button>
           )}
         </div>
       </div>
@@ -371,70 +505,84 @@ const PaymentDetailModal = ({ payment, onClose, onRequestCancel }) => {
   );
 };
 
-const PaymentCreateModal = ({ defaults = {}, clients, orders, sales, onSubmit, onClose, error }) => {
+const PaymentCreateModal = ({ defaults = {}, onSubmit, onClose, error }) => {
   const [localError, setLocalError] = useState('');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [client, setClient] = useState('');
-  const [linkedOrder, setLinkedOrder] = useState(defaults.linked_order_id != null ? String(defaults.linked_order_id) : '');
-  const [linkedSale, setLinkedSale] = useState(defaults.linked_sale_id != null ? String(defaults.linked_sale_id) : '');
-  const [linkedReturn, setLinkedReturn] = useState('');
+  const [linkedOrder, setLinkedOrder] = useState(defaults.order_id != null ? String(defaults.order_id) : '');
+  const [linkedSale, setLinkedSale] = useState(defaults.sale_id != null ? String(defaults.sale_id) : '');
+  const [linkedReturn, setLinkedReturn] = useState(defaults.return_id != null ? String(defaults.return_id) : '');
   const [manualRefundReason, setManualRefundReason] = useState('');
   const [type, setType] = useState('payment');
   const [method, setMethod] = useState('cash');
   const [amount, setAmount] = useState('');
   const [comment, setComment] = useState('');
-  const [returns, setReturns] = useState([]);
+  const [selectSources, setSelectSources] = useState({ clients: [], orders: [], sales: [], returns: [] });
 
-  useEffect(() => {
-    const sid = defaults.linked_sale_id;
-    if (!sid) return undefined;
-    let alive = true;
-    apiClient.get(`sales/${sid}/`)
-      .then((r) => {
-        if (!alive) return;
-        const s = r.data || {};
-        const cid = s.client_id ?? s.client?.id;
-        if (cid != null) setClient(String(cid));
-      })
-      .catch(() => {});
-    return () => { alive = false; };
-  }, [defaults.linked_sale_id]);
-
-  useEffect(() => {
-    const oid = defaults.linked_order_id;
-    if (!oid) return undefined;
-    let alive = true;
-    apiClient.get(`orders/${oid}/`)
-      .then((r) => {
-        if (!alive) return;
-        const o = r.data || {};
-        const cid = o.client_id ?? o.client?.id;
-        if (cid != null) setClient(String(cid));
-      })
-      .catch(() => {});
-    return () => { alive = false; };
-  }, [defaults.linked_order_id]);
-
-  useEffect(() => {
-    if (type !== 'refund' || !client) {
-      setReturns([]);
-      return undefined;
-    }
-    let alive = true;
-    apiClient.get('returns/', { params: { client_id: client, page_size: 200 } })
-      .then((r) => {
-        if (!alive) return;
-        setReturns(Array.isArray(r.data?.items) ? r.data.items : []);
-      })
-      .catch(() => {
-        if (!alive) return;
-        setReturns([]);
+  const loadSources = useCallback(async (params = {}) => {
+    try {
+      const res = await getPaymentSelectSources(params);
+      const d = res.data || {};
+      setSelectSources({
+        clients: Array.isArray(d.clients) ? d.clients : [],
+        orders: Array.isArray(d.orders) ? d.orders : [],
+        sales: Array.isArray(d.sales) ? d.sales : [],
+        returns: Array.isArray(d.returns) ? d.returns : [],
       });
-    return () => { alive = false; };
-  }, [type, client]);
+      return d;
+    } catch {
+      setSelectSources({ clients: [], orders: [], sales: [], returns: [] });
+      return {};
+    }
+  }, []);
 
-  const saleLocked = Boolean(defaults.linked_sale_id);
-  const orderLocked = Boolean(defaults.linked_order_id);
+  useEffect(() => {
+    loadSources();
+  }, [loadSources]);
+
+  useEffect(() => {
+    const run = async () => {
+      if (defaults.sale_id) {
+        const d = await loadSources({ sale_id: defaults.sale_id });
+        const s = Array.isArray(d.sales) ? d.sales.find((x) => String(x.id) === String(defaults.sale_id)) : null;
+        if (s?.client_id != null) setClient(String(s.client_id));
+        setLinkedSale(String(defaults.sale_id));
+        setType('payment');
+        if (s?.debt_amount != null) setAmount(String(s.debt_amount));
+      } else if (defaults.order_id) {
+        const d = await loadSources({ order_id: defaults.order_id });
+        const o = Array.isArray(d.orders) ? d.orders.find((x) => String(x.id) === String(defaults.order_id)) : null;
+        if (o?.client_id != null) setClient(String(o.client_id));
+        setLinkedOrder(String(defaults.order_id));
+        setType('prepayment');
+        if (o?.debt_amount != null) setAmount(String(o.debt_amount));
+      } else if (defaults.return_id) {
+        const d = await loadSources({ return_id: defaults.return_id });
+        const r = Array.isArray(d.returns) ? d.returns.find((x) => String(x.id) === String(defaults.return_id)) : null;
+        if (r?.client_id != null) setClient(String(r.client_id));
+        setLinkedReturn(String(defaults.return_id));
+        setType('refund');
+        if (r?.return_amount != null) setAmount(String(r.return_amount));
+      }
+    };
+    run();
+  }, [defaults.order_id, defaults.return_id, defaults.sale_id, loadSources]);
+
+  useEffect(() => {
+    if (!client) return;
+    loadSources({ client_id: client });
+  }, [client, loadSources]);
+
+  const canSubmit = useMemo(() => {
+    const amt = parseLocaleNumber(amount);
+    if (!client) return false;
+    if (!(amt > 0)) return false;
+    if (!type || !method) return false;
+    if (type === 'prepayment') return Boolean(linkedOrder);
+    if (type === 'payment' || type === 'surcharge') return Boolean(linkedSale || linkedOrder);
+    if (type === 'refund') return Boolean(linkedReturn || manualRefundReason.trim());
+    return false;
+  }, [amount, client, linkedOrder, linkedReturn, linkedSale, manualRefundReason, method, type]);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -482,53 +630,48 @@ const PaymentCreateModal = ({ defaults = {}, clients, orders, sales, onSubmit, o
           <div className="payment-modal__scroll">
             <section className="payment-modal__section">
               <h4 className="payment-modal__section-title">Документ</h4>
-              <label className="payment-modal__label">Клиент *</label>
-              <Select
-                value={client}
-                onChange={setClient}
-                options={[{ value: '', label: 'Выберите клиента' }, ...clients.map((x) => ({ value: String(x.id), label: clientFilterLabel(x) }))]}
-              />
-              <label className="payment-modal__label">Связанная продажа</label>
-              <Select
-                value={linkedSale}
-                onChange={setLinkedSale}
-                disabled={saleLocked}
-                options={[{ value: '', label: 'Не выбрана' }, ...sales.map((x) => ({ value: String(x.id), label: saleOptionLabel(x) }))]}
-              />
-              <label className="payment-modal__label">Связанная заявка</label>
-              <Select
-                value={linkedOrder}
-                onChange={setLinkedOrder}
-                disabled={orderLocked}
-                options={[{ value: '', label: 'Не выбрана' }, ...orders.map((x) => ({ value: String(x.id), label: orderOptionLabel(x) }))]}
-              />
               <label className="payment-modal__label">Дата</label>
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <label className="payment-modal__label">Клиент *</label>
+              <SearchableSelect
+                value={client}
+                onChange={setClient}
+                options={[{ value: '', label: 'Выберите клиента' }, ...selectSources.clients.map((x) => ({ value: String(x.id), label: clientFilterLabel(x) }))]}
+              />
+            </section>
+            <section className="payment-modal__section">
+              <h4 className="payment-modal__section-title">Связь</h4>
+              <label className="payment-modal__label">Продажа</label>
+              <SearchableSelect
+                value={linkedSale}
+                onChange={setLinkedSale}
+                options={[{ value: '', label: 'Не выбрана' }, ...selectSources.sales.map((x) => ({ value: String(x.id), label: saleOptionLabel(x) }))]}
+              />
+              <label className="payment-modal__label">Заявка</label>
+              <SearchableSelect
+                value={linkedOrder}
+                onChange={setLinkedOrder}
+                options={[{ value: '', label: 'Не выбрана' }, ...selectSources.orders.map((x) => ({ value: String(x.id), label: orderOptionLabel(x) }))]}
+              />
+              <label className="payment-modal__label">Возврат</label>
+              <SearchableSelect
+                value={linkedReturn}
+                onChange={setLinkedReturn}
+                options={[{ value: '', label: 'Не выбран' }, ...selectSources.returns.map((x) => ({ value: String(x.id), label: returnOptionLabel(x) }))]}
+              />
             </section>
             <section className="payment-modal__section">
               <h4 className="payment-modal__section-title">Оплата</h4>
               <label className="payment-modal__label">Тип оплаты *</label>
-              <Select value={type} onChange={setType} options={PAYMENT_TYPES} />
+              <SearchableSelect value={type} onChange={setType} options={PAYMENT_TYPES} />
               <label className="payment-modal__label">Сумма *</label>
               <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
               <label className="payment-modal__label">Способ оплаты *</label>
-              <Select value={method} onChange={setMethod} options={PAYMENT_METHODS} />
+              <SearchableSelect value={method} onChange={setMethod} options={PAYMENT_METHODS} />
               <label className="payment-modal__label">Комментарий</label>
               <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} />
               {type === 'refund' && (
                 <>
-                  <label className="payment-modal__label">Связанный возврат</label>
-                  <Select
-                    value={linkedReturn}
-                    onChange={setLinkedReturn}
-                    options={[
-                      { value: '', label: 'Не выбран' },
-                      ...returns.map((x) => ({
-                        value: String(x.id),
-                        label: returnOptionLabel(x),
-                      })),
-                    ]}
-                  />
                   <label className="payment-modal__label">Причина ручного возврата денег</label>
                   <textarea rows={2} value={manualRefundReason} onChange={(e) => setManualRefundReason(e.target.value)} placeholder="Если возврат не привязан к документу" />
                 </>
@@ -538,9 +681,41 @@ const PaymentCreateModal = ({ defaults = {}, clients, orders, sales, onSubmit, o
           </div>
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary">Сохранить оплату</button>
+            <button type="submit" className="btn btn--primary" disabled={!canSubmit}>Сохранить оплату</button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+};
+
+const PaymentSummaryModal = ({ open, summary, loading, error, clientId, onClose }) => {
+  if (!open) return null;
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal payment-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal__head">
+          <h3>Сводка клиента</h3>
+          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+        </div>
+        <div className="payment-modal__scroll">
+          {!clientId && <EmptyState title="Выберите клиента в фильтре" />}
+          {loading && <Loading />}
+          {!loading && error && <ErrorState error={{ userMessage: error }} />}
+          {!loading && !error && summary && (
+            <section className="payment-modal__section">
+              <dl className="payment-modal__dl">
+                <div className="payment-modal__dl-row"><dt>Выручка</dt><dd>{toMoney(summary.total_revenue)}</dd></div>
+                <div className="payment-modal__dl-row"><dt>Оплачено</dt><dd>{toMoney(summary.total_paid_net)}</dd></div>
+                <div className="payment-modal__dl-row"><dt>Возвращено</dt><dd>{toMoney(summary.total_refunded)}</dd></div>
+                <div className="payment-modal__dl-row"><dt>Долг</dt><dd>{toMoney(summary.client_debt_money)}</dd></div>
+                <div className="payment-modal__dl-row"><dt>Аванс</dt><dd>{toMoney(summary.client_advance_amount)}</dd></div>
+                <div className="payment-modal__dl-row"><dt>Статус оплаты</dt><dd>{paymentSummaryStatusLabel(summary.payment_status)}</dd></div>
+              </dl>
+            </section>
+          )}
+        </div>
+        <div className="modal__actions"><button type="button" className="btn btn--primary" onClick={onClose}>Закрыть</button></div>
       </div>
     </div>
   );

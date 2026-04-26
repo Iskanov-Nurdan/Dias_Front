@@ -1,18 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './DefectsPage.scss';
-import { apiClient } from '../../../../shared/api';
 import { useOperationalRefetch } from '../../../../shared/realtime';
 import { useServerQuery, formatQuantityDisplay, getApiErrorMessage, parseLocaleNumber, readWarehouseDefectReason } from '../../../../shared/lib';
-import { ActionMenu, Badge, ConfirmModal, EmptyState, ErrorState, Loading, Pagination, Select, useToast } from '../../../../shared/ui';
+import { ActionMenu, Badge, ConfirmModal, EmptyState, ErrorState, Loading, Pagination, SearchableSelect, useToast } from '../../../../shared/ui';
 import {
   createDefect,
-  getDefects,
-  getDefectsSelectSources,
+  getDefect,
+  getDefectSelectSources,
   sellDefect,
   sendDefectToRework,
   updateDefect,
   writeoffDefect,
 } from '../../api/defectsApi';
+import { getPaymentSelectSources } from '../../../payments/api/paymentsApi';
 
 const STATUS_OPTIONS = [
   { value: 'new', label: 'Новый' },
@@ -41,12 +41,20 @@ const statusVariant = (v) => {
 
 const SOURCE_LABELS = {
   otk: 'ОТК',
-  qc: 'Контроль качества',
+  qc: 'ОТК',
   warehouse: 'Склад',
   return: 'Возврат',
   manual: 'Вручную',
 };
 const sourceLabel = (t) => SOURCE_LABELS[t] || t || '—';
+const FINAL_STATUSES = new Set(['sold', 'written_off', 'closed']);
+const SOURCE_OPTIONS = [
+  { value: '', label: 'Все источники' },
+  { value: 'warehouse', label: 'Склад' },
+  { value: 'return', label: 'Возврат' },
+  { value: 'otk', label: 'ОТК' },
+  { value: 'manual', label: 'Вручную' },
+];
 
 /** Доступный остаток (шт) для sell / writeoff / send-to-rework. */
 const defectAvailablePcs = (d) => {
@@ -79,23 +87,53 @@ const defectQuantityPcsRaw = (d) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-const canEditDefect = (s) => ['new', 'on_stock'].includes(s);
 /** Операции sell / writeoff / send-to-rework — только при открытом остатке и не в финальном closed. */
 const canMutateDefectStock = (d) => {
   if (!d) return false;
-  if (d.status === 'closed') return false;
+  if (FINAL_STATUSES.has(String(d.status))) return false;
   if (defectAvailablePcs(d) <= 0) return false;
   if (defectQuantityPcsRaw(d) <= 0) return false;
   return ['new', 'on_stock', 'reworked'].includes(d.status);
 };
 
-const defectCounterPcsLine = (label, value) => (
-  <p><strong>{label}</strong> {`${formatQuantityDisplay(value == null || value === '' ? 0 : value)} шт`}</p>
-);
+const defectErrorMessage = (e, fallback) => {
+  const code = String(e?.response?.data?.code || '').toLowerCase();
+  const map = {
+    invalid_status: 'Недопустимый статус операции.',
+    invalid_transition: 'Недопустимый переход статуса.',
+    missing_defect: 'Не указан брак.',
+    no_defect: 'Брак не найден.',
+    defect_already_exists: 'Запись брака уже существует.',
+    missing_quantity: 'Укажите количество.',
+    invalid_quantity: 'Количество должно быть больше 0.',
+    negative_quantity: 'Количество не может быть отрицательным.',
+    quantity_exceeded: 'Количество превышает доступный остаток.',
+    qty_too_high: 'Количество превышает доступный остаток.',
+    defect_not_available: 'Этот брак уже недоступен для операции.',
+    missing_client: 'Выберите клиента.',
+    inactive_client: 'Клиент неактивен.',
+    missing_price: 'Укажите цену.',
+    invalid_price: 'Цена должна быть больше 0.',
+    missing_reason: 'Укажите причину.',
+    warehouse_apply: 'Ошибка складской операции.',
+    warehouse_rollback: 'Ошибка отката складской операции.',
+    rework_active: 'По этому браку уже есть активная переделка.',
+    rework_already_completed: 'Переделка уже завершена.',
+    rework_already_canceled: 'Переделка уже отменена.',
+    rework_complete_forbidden: 'Завершение переделки недоступно в этом статусе.',
+    rework_cancel_forbidden: 'Отмена переделки недоступна в этом статусе.',
+    use_rework_complete: 'Завершайте переделку во вкладке Переделка.',
+    defect_update_forbidden: 'Редактирование полей брака ограничено.',
+    rework_update_forbidden: 'Редактирование переделки в этом состоянии запрещено.',
+    delete_disabled: 'Удаление отключено.',
+  };
+  if (map[code]) return map[code];
+  return getApiErrorMessage(e, fallback);
+};
 
 const DefectsPage = ({ onSentToReworkSuccess }) => {
   const toast = useToast();
-  const [queryState, setQueryState] = useState({ page: 1, page_size: 20, status: '' });
+  const [queryState, setQueryState] = useState({ page: 1, page_size: 20, status: '', source_type: '', search: '' });
   const [modalDefect, setModalDefect] = useState(null);
   const [detailDefectId, setDetailDefectId] = useState(null);
   const [writeoffTarget, setWriteoffTarget] = useState(null);
@@ -143,8 +181,15 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
   }, [meta, raw, queryState.page, queryState.page_size]);
 
   useEffect(() => {
-    apiClient.get('clients/', { params: { page_size: 500 } }).then((r) => setClients(r.data?.items || [])).catch(() => setClients([]));
-    getDefectsSelectSources()
+    getPaymentSelectSources()
+      .then((r) => {
+        const list = Array.isArray(r.data?.clients) ? r.data.clients : [];
+        setClients(
+          list.filter((client) => client?.is_active === true || String(client?.status || '').toLowerCase() === 'active'),
+        );
+      })
+      .catch(() => setClients([]));
+    getDefectSelectSources()
       .then((res) => {
         const data = res.data || {};
         setReturnLines(Array.isArray(data.return_lines) ? data.return_lines : []);
@@ -165,19 +210,32 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
       refetch();
       toast.show('Запись брака сохранена');
     } catch (e) {
-      setSubmitError(getApiErrorMessage(e, 'Ошибка сохранения записи брака'));
+      setSubmitError(defectErrorMessage(e, 'Ошибка сохранения записи брака'));
     }
   };
 
   return (
-    <div className="page commercial-page">
+    <div className="page commercial-page page--defects">
       <div className="ds-toolbar ds-toolbar--stack-mobile commercial-toolbar">
-        <div className="ds-toolbar__start">
-          <Select
+        <div className="ds-toolbar__start commercial-toolbar__filters">
+          <input
+            type="text"
+            className="ds-toolbar__search"
+            placeholder="Поиск"
+            value={queryState.search}
+            onChange={(e) => setQueryState((p) => ({ ...p, search: e.target.value, page: 1 }))}
+          />
+          <SearchableSelect
             value={queryState.status}
             onChange={(v) => setQueryState((p) => ({ ...p, status: v, page: 1 }))}
             options={[{ value: '', label: 'Все статусы' }, ...STATUS_OPTIONS]}
             placeholder="Статус"
+          />
+          <SearchableSelect
+            value={queryState.source_type}
+            onChange={(v) => setQueryState((p) => ({ ...p, source_type: v, page: 1 }))}
+            options={SOURCE_OPTIONS}
+            placeholder="Источник"
           />
         </div>
         <div className="ds-toolbar__end">
@@ -191,14 +249,15 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
       {!loading && (!error || error.status === 404) && items.length > 0 && (
         <>
           <div className="commercial-table-wrap">
-            <table className="data-table data-table--fixed data-table--row-actions">
+            <table className="data-table data-table--fixed data-table--row-actions data-table--defects">
             <thead>
               <tr>
-                <th>Продукт</th>
-                <th className="data-table__cell--num">Количество</th>
+                <th>№ брака</th>
+                <th>Брак / продукт</th>
                 <th>Источник</th>
-                <th>Статус</th>
                 <th>Причина</th>
+                <th className="data-table__cell--num">Количество</th>
+                <th>Статус</th>
                 <th aria-hidden />
               </tr>
             </thead>
@@ -212,7 +271,7 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
                       label: 'Отправить в переделку',
                       onClick: () => {
                         setSendReworkTarget(d);
-                        setSendReworkQty(String(defectAvailablePcs(d)));
+                        setSendReworkQty('');
                         setSubmitError('');
                       },
                     },
@@ -222,12 +281,12 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
                       onClick: () => {
                         setWriteoffTarget(d);
                         setWriteoffReason('');
-                        setWriteoffQty(String(defectAvailablePcs(d)));
+                        setWriteoffQty('');
                         setSubmitError('');
                       },
                     },
                     {
-                      label: 'Продать как брак',
+                      label: 'Продать',
                       onClick: () => {
                         setSellTarget(d);
                         setSellQty(String(defectAvailablePcs(d)));
@@ -243,18 +302,19 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
                   <tr key={d.id}>
                     <td>
                       <button type="button" className="btn btn--ghost" onClick={() => setDetailDefectId(d.id)}>
-                        {d.product || '—'}
+                        {`Брак #${d.id}`}
                       </button>
                     </td>
-                    <td className="data-table__cell--num">{defectQuantityLabel(d)}</td>
-                    <td>{sourceLabel(d.source_type)}</td>
-                    <td><Badge variant={statusVariant(st)}>{statusLabel(st)}</Badge></td>
+                    <td>{d.product || d.profile_name || d.product_name || '—'}</td>
+                    <td>{d.source_label || sourceLabel(d.source_type)}</td>
                     <td>{d.defect_reason || d.writeoff_reason || '—'}</td>
+                    <td className="data-table__cell--num">{defectQuantityLabel(d)}</td>
+                    <td><Badge variant={statusVariant(st)}>{statusLabel(st)}</Badge></td>
                     <td>
                       {menuItems.length ? (
                         <ActionMenu ariaLabel="Действия" items={menuItems} />
                       ) : (
-                        <span style={{ opacity: 0.5 }}>—</span>
+                        <span className="defects-table__empty-action">—</span>
                       )}
                     </td>
                   </tr>
@@ -284,14 +344,10 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
           defectId={detailDefectId}
           reloadKey={detailReloadKey}
           onClose={() => setDetailDefectId(null)}
-          onEdit={(defect) => {
-            setDetailDefectId(null);
-            setModalDefect(defect);
-          }}
           onSendToRework={(defect) => {
             setDetailDefectId(null);
             setSendReworkTarget(defect);
-            setSendReworkQty(String(defectAvailablePcs(defect)));
+            setSendReworkQty('');
             setSubmitError('');
           }}
           onSell={(defect) => {
@@ -307,7 +363,7 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
             setDetailDefectId(null);
             setWriteoffTarget(defect);
             setWriteoffReason('');
-            setWriteoffQty(String(defectAvailablePcs(defect)));
+            setWriteoffQty('');
             setSubmitError('');
           }}
         />
@@ -318,7 +374,7 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
         title="Отправить в переделку"
         message={sendReworkTarget ? (
           <div className="defects-sell-fields">
-            <p style={{ margin: 0 }}>Будет создан запрос на переделку. Доступно: {defectQuantityLabel(sendReworkTarget)}</p>
+            <p className="defects-inline-note">Будет создан запрос на переделку. Доступно: {defectQuantityLabel(sendReworkTarget)}</p>
             <div>
               <label htmlFor="defect-send-rework-qty">Количество к отправке (шт) *</label>
               <input
@@ -335,9 +391,10 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
         onConfirm={async () => {
           if (!sendReworkTarget?.id || sendReworkBusy) return;
           const avail = defectAvailablePcs(sendReworkTarget);
-          const q = parseLocaleNumber(String(sendReworkQty).trim());
+          const raw = String(sendReworkQty).trim();
+          const q = raw === '' ? avail : parseLocaleNumber(raw);
           if (!Number.isFinite(q) || q <= 0) {
-            setSubmitError('Укажите количество');
+            setSubmitError('Укажите корректное количество');
             return;
           }
           if (q > avail) {
@@ -356,7 +413,7 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
             toast.show('Брак отправлен в переделку');
             onSentToReworkSuccess?.();
           } catch (e) {
-            setSubmitError(getApiErrorMessage(e, 'Ошибка операции'));
+            setSubmitError(defectErrorMessage(e, 'Ошибка операции'));
           } finally {
             setSendReworkBusy(false);
           }
@@ -422,7 +479,7 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
             setWriteoffQty('');
             toast.show('Списание выполнено');
           } catch (e) {
-            setSubmitError(getApiErrorMessage(e, 'Ошибка операции'));
+            setSubmitError(defectErrorMessage(e, 'Ошибка операции'));
           } finally {
             setWriteoffBusy(false);
           }
@@ -433,12 +490,12 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
 
       <ConfirmModal
         open={!!sellTarget}
-        title="Продать как брак"
+        title="Продать брак"
         message={(
           <div className="defects-sell-fields">
             <div>
               <label htmlFor="defect-sell-client">Клиент *</label>
-              <Select
+              <SearchableSelect
                 value={sellClient}
                 onChange={setSellClient}
                 options={[{ value: '', label: 'Выберите клиента' }, ...clients.map((c) => ({ value: String(c.id), label: c.name || 'Без названия' }))]}
@@ -457,7 +514,7 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
                 disabled={sellBusy}
               />
               {sellTarget ? (
-                <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', opacity: 0.85 }}>
+                <p className="defects-inline-hint">
                   Доступно: {defectQuantityLabel(sellTarget)}
                 </p>
               ) : null}
@@ -513,7 +570,7 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
             setSellComment('');
             toast.show(Math.round(qty) >= Math.round(avail) ? 'Брак продан' : 'Часть брака продана');
           } catch (e) {
-            setSubmitError(getApiErrorMessage(e, 'Ошибка операции'));
+            setSubmitError(defectErrorMessage(e, 'Ошибка операции'));
           } finally {
             setSellBusy(false);
           }
@@ -571,7 +628,6 @@ const DefectModal = ({
   const [sourceId, setSourceId] = useState(defect?.source_id != null ? String(defect.source_id) : '');
   const [product, setProduct] = useState(defect?.product || '');
   const [quantityPcs, setQuantityPcs] = useState(defect?.quantity_pcs != null ? String(defect.quantity_pcs) : '');
-  const [kgCoeff, setKgCoeff] = useState(defect?.kg_coefficient != null ? String(defect.kg_coefficient) : '');
   const [reason, setReason] = useState(defect?.defect_reason || '');
   const [comment, setComment] = useState(defect?.comment || '');
 
@@ -608,57 +664,74 @@ const DefectModal = ({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
+      <div className="modal modal--wide defects-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
           <h3>{defect ? 'Брак' : 'Новая запись брака'}</h3>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <form
+          className="defects-modal__form"
           onSubmit={async (e) => {
             e.preventDefault();
             setLocalError('');
             if (!defect && sourceType === 'warehouse' && sourceId) {
               const sid = Number(sourceId);
               if (defectListItems.some((row) => row.source_type === 'warehouse' && Number(row.source_id) === sid)) {
-                setLocalError('Этот брак уже есть в списке. Откройте запись через меню «…» у строки в таблице.');
-                return;
-              }
-              try {
-                const res = await getDefects({ page_size: 500, source_type: 'warehouse' });
-                const list = Array.isArray(res.data?.items) ? res.data.items : [];
-                if (list.some((row) => Number(row.source_id) === sid)) {
-                  setLocalError('Этот брак уже есть в списке. Откройте запись через меню «…» у строки в таблице.');
-                  return;
-                }
-              } catch {
-                setLocalError('Не удалось проверить список брака');
+                setLocalError('Этот брак уже есть в списке.');
                 return;
               }
             }
+            if (!sourceType) {
+              setLocalError('Выберите источник брака.');
+              return;
+            }
+            if ((sourceType === 'warehouse' || sourceType === 'return') && !sourceId) {
+              setLocalError('Выберите источник.');
+              return;
+            }
+            if (sourceType === 'manual' || sourceType === 'otk') {
+              const qty = parseLocaleNumber(quantityPcs);
+              if (!product.trim()) {
+                setLocalError('Укажите товар.');
+                return;
+              }
+              if (!Number.isFinite(qty) || qty <= 0) {
+                setLocalError('Количество должно быть больше 0.');
+                return;
+              }
+            }
+            if (!reason.trim()) {
+              setLocalError('Укажите причину брака.');
+              return;
+            }
             onSubmit({
               source_type: sourceType,
-              source_id: Number(sourceId),
-              product: product.trim() || undefined,
-              quantity_pcs: parseLocaleNumber(quantityPcs) || undefined,
-              ...(kgCoeff ? { kg_coefficient: parseLocaleNumber(kgCoeff) } : {}),
-              defect_reason: reason.trim() || undefined,
+              ...(sourceType === 'warehouse' ? { warehouse_batch: Number(sourceId) } : {}),
+              ...(sourceType === 'return' ? { source_id: Number(sourceId) } : {}),
+              ...((sourceType === 'manual' || sourceType === 'otk')
+                ? { product: product.trim(), quantity_pcs: String(Math.round(parseLocaleNumber(quantityPcs))) }
+                : {}),
+              defect_reason: reason.trim(),
               comment: comment.trim() || undefined,
             });
           }}
         >
-          <label>Источник</label>
-          <Select
-            value={sourceType}
-            onChange={(v) => { setSourceType(v); setSourceId(''); }}
-            options={[
-              { value: 'return', label: 'Возврат клиента' },
-              { value: 'warehouse', label: 'Склад (партия брака)' },
-            ]}
-          />
+          <div className="defects-modal__scroll">
+            <label>Источник брака *</label>
+            <SearchableSelect
+              value={sourceType}
+              onChange={(v) => { setSourceType(v); setSourceId(''); }}
+              options={[
+                { value: 'manual', label: 'Вручную' },
+                { value: 'warehouse', label: 'Склад' },
+                { value: 'return', label: 'Возврат' },
+                { value: 'otk', label: 'ОТК' },
+              ]}
+            />
           {sourceType === 'return' && (
             <>
               <label>Строка возврата *</label>
-              <Select
+              <SearchableSelect
                 value={sourceId}
                 onChange={setSourceId}
                 options={[
@@ -671,7 +744,7 @@ const DefectModal = ({
           {sourceType === 'warehouse' && (
             <>
               <label>Партия брака на складе *</label>
-              <Select
+              <SearchableSelect
                 value={sourceId}
                 onChange={setSourceId}
                 options={[
@@ -684,24 +757,33 @@ const DefectModal = ({
               />
             </>
           )}
-          <label>Продукт</label>
-          <input value={product} readOnly />
-          <label>Количество</label>
-          <input value={quantityPcs ? `${formatQuantityDisplay(quantityPcs)} шт` : ''} readOnly />
-          <label>Коэффициент кг/ед.</label>
-          <input value={kgCoeff} onChange={(e) => setKgCoeff(e.target.value)} />
+          <label>Товар{sourceType === 'manual' || sourceType === 'otk' ? ' *' : ''}</label>
+          <input
+            value={product}
+            readOnly={!(sourceType === 'manual' || sourceType === 'otk')}
+            onChange={(e) => setProduct(e.target.value)}
+          />
+          <label>Количество{sourceType === 'manual' || sourceType === 'otk' ? ' *' : ''}</label>
+          <input
+            value={(sourceType === 'manual' || sourceType === 'otk')
+              ? quantityPcs
+              : (quantityPcs ? `${formatQuantityDisplay(quantityPcs)} шт` : '')}
+            readOnly={!(sourceType === 'manual' || sourceType === 'otk')}
+            onChange={(e) => setQuantityPcs(e.target.value)}
+          />
           {sourceType === 'warehouse' && sourceId ? (
             <>
               <label>Источник</label>
               <input value="Склад" readOnly />
             </>
           ) : null}
-          <label>Причина</label>
-          <input value={reason} onChange={(e) => setReason(e.target.value)} readOnly={sourceType === 'warehouse' && Boolean(sourceId)} />
+          <label>Причина брака *</label>
+          <input value={reason} onChange={(e) => setReason(e.target.value)} />
           <label>Комментарий</label>
           <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} />
           {(error || localError) && <p className="modal__error">{localError || error}</p>}
-          <div className="modal__actions">
+          </div>
+          <div className="modal__actions defects-modal__footer">
             <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
             <button type="submit" className="btn btn--primary">Сохранить</button>
           </div>
@@ -715,7 +797,6 @@ const DefectDetailModal = ({
   defectId,
   reloadKey = 0,
   onClose,
-  onEdit,
   onSendToRework,
   onSell,
   onWriteoff,
@@ -730,7 +811,7 @@ const DefectDetailModal = ({
       setLoading(true);
       setError('');
       try {
-        const res = await apiClient.get(`defects/${defectId}/`);
+        const res = await getDefect(defectId);
         if (!alive) return;
         setDefect(res.data || null);
       } catch (e) {
@@ -745,12 +826,10 @@ const DefectDetailModal = ({
   }, [defectId, reloadKey]);
 
   const st = defect?.status;
-  const hideDefectEdit = defect && ['warehouse', 'qc', 'otk', 'return'].includes(String(defect.source_type));
-  const isClosed = st === 'closed';
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
+      <div className="modal modal--wide defects-detail-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
           <h3>Карточка брака</h3>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
@@ -758,48 +837,63 @@ const DefectDetailModal = ({
         {loading && <Loading />}
         {!loading && error && <p className="modal__error">{error}</p>}
         {!loading && !error && defect && (
-          <div style={{ padding: '0 1.5rem 1.5rem' }}>
-            <section className="card" style={{ padding: 12, marginBottom: 12 }}>
-              <h4>Данные</h4>
-              <p><strong>Источник:</strong> {sourceLabel(defect.source_type)}</p>
-              <p><strong>Брак / продукт:</strong> {defect.product || '—'}</p>
-              {isClosed ? (
-                <>
-                  <p><strong>Статус:</strong> <Badge variant={statusVariant(st)}>{statusLabel(st)}</Badge></p>
-                  <p><strong>Количество:</strong> 0 шт</p>
-                  {defectCounterPcsLine('Всего поступило:', defect.original_quantity_pcs)}
-                  {defectCounterPcsLine('Продано:', defect.sold_quantity_pcs)}
-                  {defectCounterPcsLine('Списано:', defect.written_off_quantity_pcs)}
-                  {defectCounterPcsLine('Передано в переделку:', defect.sent_to_rework_quantity_pcs)}
-                </>
-              ) : (
-                <>
-                  <p><strong>Количество:</strong> {defectQuantityLabel(defect)}</p>
-                  {defect.original_quantity_pcs != null && defect.original_quantity_pcs !== '' ? (
-                    <p><strong>Всего поступило:</strong> {`${formatQuantityDisplay(defect.original_quantity_pcs)} шт`}</p>
+          <>
+            <div className="defects-detail-modal__scroll">
+              <section className="defects-detail-modal__section">
+                <h4>Основное</h4>
+                <p><strong>№ брака:</strong> {`Брак #${defect.id}`}</p>
+                <p><strong>Брак / продукт:</strong> {defect.product || defect.product_name || '—'}</p>
+                <p><strong>Источник:</strong> {defect.source_label || sourceLabel(defect.source_type)}</p>
+                <p><strong>Причина:</strong> {defect.defect_reason || defect.writeoff_reason || '—'}</p>
+                <p><strong>Статус:</strong> <Badge variant={statusVariant(st)}>{statusLabel(st)}</Badge></p>
+                <p><strong>Комментарий:</strong> {defect.comment || '—'}</p>
+              </section>
+
+              <section className="defects-detail-modal__section">
+                <h4>Количество</h4>
+                <p><strong>display_quantity_label:</strong> {defect.display_quantity_label || '—'}</p>
+                <p><strong>Всего поступило:</strong> {`${formatQuantityDisplay(defect.original_quantity_pcs ?? 0)} шт`}</p>
+                <p><strong>Доступно:</strong> {`${formatQuantityDisplay(defect.available_quantity_pcs ?? defect.quantity_pcs ?? 0)} шт`}</p>
+                <p><strong>Продано:</strong> {`${formatQuantityDisplay(defect.sold_quantity_pcs ?? 0)} шт`}</p>
+                <p><strong>Списано:</strong> {`${formatQuantityDisplay(defect.written_off_quantity_pcs ?? 0)} шт`}</p>
+                <p><strong>Отправлено в переделку:</strong> {`${formatQuantityDisplay(defect.sent_to_rework_quantity_pcs ?? 0)} шт`}</p>
+              </section>
+
+              <section className="defects-detail-modal__section">
+                <h4>Связи</h4>
+                <ul className="defects-detail-modal__links">
+                  {defect.warehouse_batch ? <li><strong>warehouse_batch:</strong> {typeof defect.warehouse_batch === 'object' ? (defect.warehouse_batch.label || defect.warehouse_batch.id || '—') : defect.warehouse_batch}</li> : null}
+                  {defect.source_type === 'return' || defect.source_id != null ? <li><strong>return source:</strong> {defect.source_label || defect.source_id || '—'}</li> : null}
+                  {defect.sale ? <li><strong>sale defect:</strong> {typeof defect.sale === 'object' ? (defect.sale.sale_number || defect.sale.id || '—') : defect.sale}</li> : null}
+                  {Array.isArray(defect.rework_requests) && defect.rework_requests.length > 0 ? (
+                    <li>
+                      <strong>rework requests:</strong> {defect.rework_requests.map((x) => x.rework_number || x.id || '—').join(', ')}
+                    </li>
                   ) : null}
-                  <p><strong>Статус:</strong> <Badge variant={statusVariant(st)}>{statusLabel(st)}</Badge></p>
-                </>
-              )}
-              <p><strong>Причина:</strong> {defect.defect_reason || defect.writeoff_reason || '—'}</p>
-              {defect.comment ? <p><strong>Комментарий:</strong> {defect.comment}</p> : null}
-            </section>
-            <div className="modal__actions">
-              {canEditDefect(st) && !hideDefectEdit ? <button type="button" className="btn btn--secondary" onClick={() => onEdit(defect)}>Редактировать</button> : null}
+                  {Array.isArray(defect.linked_entities) && defect.linked_entities.length > 0 ? (
+                    <li><strong>linked_entities:</strong> {defect.linked_entities.map((x) => x.label || x.id || '—').join(', ')}</li>
+                  ) : null}
+                </ul>
+                {!defect.warehouse_batch
+                  && !(defect.source_type === 'return' || defect.source_id != null)
+                  && !defect.sale
+                  && !(Array.isArray(defect.rework_requests) && defect.rework_requests.length > 0)
+                  && !(Array.isArray(defect.linked_entities) && defect.linked_entities.length > 0) ? (
+                    <p>Связей пока нет.</p>
+                  ) : null}
+              </section>
+            </div>
+            <div className="modal__actions defects-detail-modal__footer">
               {canMutateDefectStock(defect) ? (
                 <>
                   <button type="button" className="btn btn--secondary" onClick={() => onSendToRework(defect)}>Отправить в переделку</button>
-                  <button type="button" className="btn btn--secondary" onClick={() => onSell(defect)}>Продать как брак</button>
+                  <button type="button" className="btn btn--secondary" onClick={() => onSell(defect)}>Продать</button>
                   <button type="button" className="btn btn--danger" onClick={() => onWriteoff(defect)}>Списать</button>
                 </>
               ) : null}
-              {st === 'sent_to_rework' && !isClosed ? (
-                <p style={{ margin: 0, fontSize: '0.875rem', opacity: 0.85 }}>
-                  Завершение — во вкладке «Переделка», кнопка «Завершить» у запроса.
-                </p>
-              ) : null}
+              <button type="button" className="btn btn--primary" onClick={onClose}>Закрыть</button>
             </div>
-          </div>
+          </>
         )}
       </div>
     </div>

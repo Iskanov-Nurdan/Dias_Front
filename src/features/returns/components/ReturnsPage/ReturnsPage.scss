@@ -1,5 +1,85 @@
 @use '../../../../shared/styles/mixins' as *;
 
+.returns-page__title {
+  margin: 0;
+  margin-right: var(--space-3);
+  font-size: var(--font-h2);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.commercial-toolbar__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1 1 auto;
+
+  .ds-toolbar__search {
+    flex: 0 1 320px;
+    min-width: 260px;
+    max-width: 340px;
+  }
+
+  .dias-select {
+    flex: 0 1 220px;
+    min-width: 200px;
+    max-width: 260px;
+  }
+
+  .commercial-date-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .commercial-date-filter input {
+    width: 200px;
+    min-width: 180px;
+  }
+}
+
+.commercial-toolbar {
+  margin-bottom: var(--space-4);
+
+  .ds-toolbar__end {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    margin-left: 0;
+  }
+
+  .btn {
+    min-height: var(--control-height);
+  }
+
+  @include lg {
+    .commercial-toolbar__filters .ds-toolbar__search,
+    .commercial-toolbar__filters .dias-select {
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+    }
+  }
+}
+
+.data-table--returns {
+  min-width: 1050px;
+
+  th,
+  td {
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+    vertical-align: middle;
+  }
+}
+
+.page--returns .empty-state {
+  min-height: 180px;
+  padding: var(--space-6) var(--space-4);
+}
+
 .modal.return-modal {
   > form.return-modal__form {
     display: flex;
@@ -109,6 +189,11 @@
     margin-top: var(--space-2);
     align-self: flex-start;
   }
+
+  .btn:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+  }
 }
 
 .modal.return-detail-modal {
@@ -169,5 +254,11 @@
       font-size: var(--font-body);
       color: var(--text);
     }
+  }
+
+  &__empty {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--font-label);
   }
 }

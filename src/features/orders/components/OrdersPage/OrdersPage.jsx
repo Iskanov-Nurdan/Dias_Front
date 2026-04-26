@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { apiClient } from '../../../../shared/api';
 import { useOperationalRefetch } from '../../../../shared/realtime';
 import { useServerQuery, parseLocaleNumber, formatQuantityDisplay, getApiErrorMessage } from '../../../../shared/lib';
-import { ActionMenu, Badge, ConfirmModal, EmptyState, ErrorState, IntegerInput, Loading, Pagination, Select, useToast } from '../../../../shared/ui';
+import { formatDate } from '../../../../shared/constants/common';
+import { ActionMenu, Badge, ConfirmModal, EmptyState, ErrorState, IntegerInput, Loading, Pagination, SearchableSelect, useToast } from '../../../../shared/ui';
 import {
   cancelOrder,
   createOrder,
-  downloadOrderWaybill,
+  getOrder,
+  getOrderHistory,
+  getOrderWaybillUrl,
   getOrderSelectSources,
   patchOrderStatus,
   updateOrder,
@@ -26,7 +28,13 @@ const ORDER_STATUS_OPTIONS = [
 /** В фильтре списка не предлагаем статусы только из legacy backend. */
 const ORDER_STATUS_FILTER_OPTIONS = ORDER_STATUS_OPTIONS.filter(
   (x) => x.value !== 'partially_shipped' && x.value !== 'shipped',
-);
+).map((x) => {
+  if (x.value === 'new') return { ...x, label: 'Новые' };
+  if (x.value === 'confirmed') return { ...x, label: 'Подтверждённые' };
+  if (x.value === 'closed') return { ...x, label: 'Закрытые' };
+  if (x.value === 'canceled') return { ...x, label: 'Отменённые' };
+  return x;
+});
 
 const SALE_STATUS_OPTIONS = [
   { value: 'draft', label: 'Черновик' },
@@ -42,6 +50,44 @@ const SOURCE_TYPE_LABELS = {
   manager: 'Менеджер',
   boss: 'Руководитель',
   other: 'Другое',
+};
+
+const PAYMENT_STATUS_LABELS = {
+  unpaid: 'Не оплачено',
+  partially_paid: 'Частично оплачено',
+  paid: 'Оплачено',
+  overpaid: 'Переплата',
+  refunded: 'Возврат денег',
+};
+
+const ORDER_ERROR_TEXT = {
+  missing_client: 'Выберите клиента.',
+  inactive_client: 'Клиент неактивен. Выберите активного клиента.',
+  missing_lines: 'Добавьте хотя бы один товар.',
+  product_or_profile_required: 'Укажите товар или профиль в каждой строке.',
+  ordered_quantity_required: 'Укажите количество.',
+  ordered_quantity_invalid: 'Количество должно быть больше 0.',
+  unit_price_negative: 'Цена не может быть отрицательной.',
+  status_update_forbidden: 'Статус заявки меняется только через действия.',
+  order_update_forbidden: 'Редактирование этой заявки запрещено.',
+  order_lines_update_forbidden: 'Строки заявки сейчас нельзя редактировать.',
+  order_line_locked: 'Строка заявки заблокирована и не может быть изменена.',
+  missing_status: 'Укажите статус для действия.',
+  invalid_status_transition: 'Недопустимый переход статуса.',
+  order_status_blocked: 'Невозможно выполнить переход статуса.',
+  delete_disabled: 'Удаление заявок отключено. Используйте отмену.',
+  not_found: 'Заявка не найдена.',
+};
+
+const toKey = (v) => String(v || '').trim().toLowerCase();
+
+const getOrderErrorText = (err, fallback) => {
+  const code = toKey(err?.response?.data?.code);
+  if (ORDER_ERROR_TEXT[code]) return ORDER_ERROR_TEXT[code];
+  if (err?.response?.status === 401) return 'Сессия истекла. Войдите снова.';
+  if (err?.response?.status === 403) return 'Нет доступа к заявкам.';
+  if (err?.response?.status === 404) return 'Заявка не найдена.';
+  return getApiErrorMessage(err, fallback);
 };
 
 const isBadClientToken = (s) => {
@@ -126,8 +172,8 @@ const saleStatusVariant = (value) => {
   return map[key] || 'default';
 };
 
-const formatDate = (value) => (value ? String(value).slice(0, 10) : '—');
 const toMoney = (value) => (value != null ? `${formatQuantityDisplay(value)} сом` : '—');
+const paymentStatusLabel = (v) => PAYMENT_STATUS_LABELS[toKey(v)] || '—';
 
 const apiActionEnabled = (availableActions, key) => {
   if (availableActions == null) return false;
@@ -177,6 +223,7 @@ const OrdersPage = () => {
   const [profiles, setProfiles] = useState([]);
   const [modalOrder, setModalOrder] = useState(null);
   const [detailOrderId, setDetailOrderId] = useState(null);
+  const [historyOrderId, setHistoryOrderId] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [errorText, setErrorText] = useState('');
   const [busyId, setBusyId] = useState(null);
@@ -206,7 +253,7 @@ const OrdersPage = () => {
       refetch();
       toast.show('Заявка сохранена');
     } catch (e) {
-      setErrorText(getApiErrorMessage(e, 'Ошибка сохранения заявки'));
+      setErrorText(getOrderErrorText(e, 'Ошибка сохранения заявки'));
     }
   };
 
@@ -219,7 +266,7 @@ const OrdersPage = () => {
       refetch();
       toast.show('Заявка отменена');
     } catch (e) {
-      setErrorText(getApiErrorMessage(e, 'Ошибка отмены заявки'));
+      setErrorText(getOrderErrorText(e, 'Ошибка отмены заявки'));
     }
   };
 
@@ -231,16 +278,45 @@ const OrdersPage = () => {
       refetch();
       toast.show('Статус обновлён');
     } catch (e) {
-      setErrorText(getApiErrorMessage(e, 'Ошибка смены статуса'));
+      setErrorText(getOrderErrorText(e, 'Ошибка смены статуса'));
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const openWaybill = async (orderId) => {
+    try {
+      const url = getOrderWaybillUrl(orderId);
+      const token = localStorage.getItem('token');
+      const res = await fetch(url, {
+        headers: {
+          Accept: 'text/html,*/*',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) {
+        let message = 'Не удалось открыть накладную.';
+        try {
+          const data = await res.json();
+          message = getOrderErrorText({ response: { status: res.status, data } }, message);
+        } catch {
+          message = getOrderErrorText({ response: { status: res.status, data: {} } }, message);
+        }
+        throw new Error(message);
+      }
+      const html = await res.text();
+      const blobUrl = window.URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+      window.open(blobUrl, '_blank', 'noopener,noreferrer');
+      window.setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
+    } catch (e) {
+      toast.show(e?.message || 'Не удалось открыть накладную.');
     }
   };
 
   return (
     <div className="page commercial-page">
       <div className="ds-toolbar ds-toolbar--stack-mobile commercial-toolbar">
-        <div className="ds-toolbar__start">
+        <div className="ds-toolbar__start commercial-toolbar__filters">
           <input
             type="text"
             className="ds-toolbar__search ds-toolbar__search--full"
@@ -248,14 +324,17 @@ const OrdersPage = () => {
             value={queryState.search}
             onChange={(e) => setQueryState((p) => ({ ...p, search: e.target.value, page: 1 }))}
           />
-        </div>
-        <div className="ds-toolbar__end">
-          <Select
+          <SearchableSelect
             value={queryState.status}
             onChange={(v) => setQueryState((p) => ({ ...p, status: v, page: 1 }))}
             placeholder="Статус"
-            options={[{ value: '', label: 'Все статусы' }, ...ORDER_STATUS_FILTER_OPTIONS]}
+            options={[
+              { value: '', label: 'Все' },
+              ...ORDER_STATUS_FILTER_OPTIONS,
+            ]}
           />
+        </div>
+        <div className="ds-toolbar__end">
           <button
             type="button"
             className="btn btn--primary"
@@ -300,7 +379,10 @@ const OrdersPage = () => {
                 return !isHiddenOrderStatusTransitionTarget(ns);
               });
 
-              const menuItems = [{ label: 'Открыть', onClick: () => setDetailOrderId(o.id) }];
+              const menuItems = [
+                { label: 'Открыть', onClick: () => setDetailOrderId(o.id) },
+                { label: 'История', onClick: () => setHistoryOrderId(o.id) },
+              ];
               if (orderEditableByStatus(o.status)) {
                 menuItems.push({
                   label: 'Редактировать',
@@ -325,7 +407,7 @@ const OrdersPage = () => {
               }
               menuItems.push({
                 label: 'Накладная',
-                onClick: () => downloadOrderWaybill(o.id),
+                onClick: () => openWaybill(o.id),
               });
 
               return (
@@ -373,7 +455,15 @@ const OrdersPage = () => {
           onEdit={(order) => setModalOrder(order)}
           onStatusChange={onChangeStatus}
           onCancelRequest={(order) => setCancelTarget(order)}
+          onOpenHistory={(id) => setHistoryOrderId(id)}
+          onOpenWaybill={openWaybill}
           busyId={busyId}
+        />
+      )}
+      {historyOrderId && (
+        <OrderHistoryModal
+          orderId={historyOrderId}
+          onClose={() => setHistoryOrderId(null)}
         />
       )}
       <ConfirmModal
@@ -398,6 +488,7 @@ const OrderModal = ({ draft, clients, profiles, onClose, onSubmit, error }) => {
   const [sourceType, setSourceType] = useState('manager');
   const [comment, setComment] = useState('');
   const [lines, setLines] = useState([]);
+  const [formErrors, setFormErrors] = useState({});
 
   const draftKey = useMemo(
     () => (draft?.id != null ? `id:${draft.id}` : `new:${draft?._key ?? 0}`),
@@ -425,6 +516,7 @@ const OrderModal = ({ draft, clients, profiles, onClose, onSubmit, error }) => {
     setClient(cid || '');
     setSourceType(o.source_type || 'manager');
     setComment(o.comment || '');
+    setFormErrors({});
     if (Array.isArray(o.lines) && o.lines.length) {
       setLines(
         o.lines.map((x) => {
@@ -477,6 +569,23 @@ const OrderModal = ({ draft, clients, profiles, onClose, onSubmit, error }) => {
     return true;
   }, [client, lines, lineProductText]);
 
+  const validateForm = () => {
+    const nextErrors = {};
+    if (!client) nextErrors.client = 'Выберите клиента.';
+    if (!lines.length) nextErrors.lines = 'Добавьте хотя бы один товар.';
+    lines.forEach((line, idx) => {
+      const rowErrors = {};
+      if (!lineProductText(line)) rowErrors.product = 'Укажите профиль или название товара.';
+      const q = parseLocaleNumber(line.ordered_quantity);
+      if (!(q > 0)) rowErrors.ordered_quantity = 'Количество должно быть больше 0.';
+      const price = parseLocaleNumber(line.unit_price);
+      if (Number.isNaN(price) || price < 0) rowErrors.unit_price = 'Цена не может быть отрицательной.';
+      if (Object.keys(rowErrors).length) nextErrors[`line_${idx}`] = rowErrors;
+    });
+    setFormErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
   const buildPayloadLines = () =>
     lines
       .map((line) => {
@@ -488,7 +597,7 @@ const OrderModal = ({ draft, clients, profiles, onClose, onSubmit, error }) => {
         return {
           ...(line.id ? { id: line.id } : {}),
           product,
-          product_type: profileId ? 'профиль' : 'товар',
+          product_type: profileId ? 'profile' : 'product',
           ...(profileId ? { profile: profileId } : {}),
           ordered_quantity: String(q > 0 ? q : 0),
           unit_price: String(price),
@@ -518,6 +627,7 @@ const OrderModal = ({ draft, clients, profiles, onClose, onSubmit, error }) => {
           className="orders-modal__form"
           onSubmit={(e) => {
             e.preventDefault();
+            if (!validateForm()) return;
             const payloadLines = buildPayloadLines();
             if (!client || !payloadLines.length) return;
             onSubmit({
@@ -535,14 +645,15 @@ const OrderModal = ({ draft, clients, profiles, onClose, onSubmit, error }) => {
               <label>Дата</label>
               <input type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} required />
               <label>Клиент *</label>
-              <Select
+              <SearchableSelect
                 value={client}
                 onChange={setClient}
                 options={clientOptions}
                 placeholder="Выберите клиента"
               />
+              {formErrors.client && <p className="orders-modal__field-error">{formErrors.client}</p>}
               <label>Источник</label>
-              <Select
+              <SearchableSelect
                 value={sourceType}
                 onChange={setSourceType}
                 options={[
@@ -560,9 +671,12 @@ const OrderModal = ({ draft, clients, profiles, onClose, onSubmit, error }) => {
               <legend className="orders-modal__legend">Товары</legend>
               {lines.map((line, idx) => (
                 <div key={line.id || `line-${idx}`} className="orders-line-card">
+                  {formErrors[`line_${idx}`]?.product && (
+                    <p className="orders-modal__field-error">{formErrors[`line_${idx}`].product}</p>
+                  )}
                   <div className="orders-line-card__title">Товар {idx + 1}</div>
-                  <label>Профиль / товар *</label>
-                  <Select
+                  <label>Профиль</label>
+                  <SearchableSelect
                     value={line.profile}
                     onChange={(v) => {
                       const picked = profileList.find((p) => String(p.id) === String(v));
@@ -576,6 +690,7 @@ const OrderModal = ({ draft, clients, profiles, onClose, onSubmit, error }) => {
                       ...profileList.map((p) => ({ value: String(p.id), label: profileOptionLabel(p) })),
                     ]}
                   />
+                  <label>Название товара</label>
                   <input
                     value={line.profile ? (profileLabel(line.profile) || line.product) : line.product}
                     onChange={(e) => {
@@ -591,6 +706,9 @@ const OrderModal = ({ draft, clients, profiles, onClose, onSubmit, error }) => {
                     value={line.ordered_quantity}
                     onChange={(v) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, ordered_quantity: v } : x)))}
                   />
+                  {formErrors[`line_${idx}`]?.ordered_quantity && (
+                    <p className="orders-modal__field-error">{formErrors[`line_${idx}`].ordered_quantity}</p>
+                  )}
                   <label>Цена *</label>
                   <input
                     inputMode="decimal"
@@ -598,6 +716,9 @@ const OrderModal = ({ draft, clients, profiles, onClose, onSubmit, error }) => {
                     onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, unit_price: e.target.value } : x)))}
                     placeholder="0"
                   />
+                  {formErrors[`line_${idx}`]?.unit_price && (
+                    <p className="orders-modal__field-error">{formErrors[`line_${idx}`].unit_price}</p>
+                  )}
                   <label>Комментарий</label>
                   <input
                     value={line.comment}
@@ -623,6 +744,7 @@ const OrderModal = ({ draft, clients, profiles, onClose, onSubmit, error }) => {
               >
                 Добавить строку
               </button>
+              {formErrors.lines && <p className="orders-modal__field-error">{formErrors.lines}</p>}
             </fieldset>
             <p className="orders-modal__total">
               Итого: <strong>{formatQuantityDisplay(total)} сом</strong>
@@ -657,12 +779,19 @@ const PAYMENT_METHOD_LABELS = {
   other: 'Другое',
 };
 
+const PAYMENT_DOC_STATUS_LABELS = {
+  active: 'Активен',
+  canceled: 'Отменен',
+};
+
 const OrderDetailModal = ({
   orderId,
   onClose,
   onEdit,
   onStatusChange,
   onCancelRequest,
+  onOpenHistory,
+  onOpenWaybill,
   busyId,
 }) => {
   const [order, setOrder] = useState(null);
@@ -675,12 +804,12 @@ const OrderDetailModal = ({
       setLoading(true);
       setError('');
       try {
-        const orderRes = await apiClient.get(`orders/${orderId}/`);
+        const orderRes = await getOrder(orderId);
         if (!alive) return;
         setOrder(orderRes.data || null);
       } catch (e) {
         if (!alive) return;
-        setError(getApiErrorMessage(e, 'Не удалось загрузить карточку заявки'));
+        setError(getOrderErrorText(e, 'Не удалось загрузить карточку заявки'));
       } finally {
         if (alive) setLoading(false);
       }
@@ -695,6 +824,7 @@ const OrderDetailModal = ({
   const availableActions = order?.available_actions;
   const relatedSales = Array.isArray(order?.linked_entities?.sales) ? order.linked_entities.sales : [];
   const relatedPayments = Array.isArray(order?.linked_entities?.payments) ? order.linked_entities.payments : [];
+  const relatedReturns = Array.isArray(order?.linked_entities?.returns) ? order.linked_entities.returns : [];
   const statusTransitionTargets = allowedNext
     .map((st) => st?.status || st)
     .filter((ns) => {
@@ -749,6 +879,14 @@ const OrderDetailModal = ({
                   Отменить
                 </button>
               )}
+              <button
+                type="button"
+                className="btn btn--secondary"
+                disabled={busyId === order.id}
+                onClick={() => onOpenHistory(order.id)}
+              >
+                История
+              </button>
             </>
           )}
           <span className="orders-detail-modal__footer-spacer" aria-hidden />
@@ -756,9 +894,12 @@ const OrderDetailModal = ({
             type="button"
             className="btn btn--secondary orders-detail-modal__waybill"
             disabled={busyId === order.id}
-            onClick={() => downloadOrderWaybill(order.id)}
+            onClick={() => onOpenWaybill(order.id)}
           >
             Накладная
+          </button>
+          <button type="button" className="btn btn--secondary" onClick={onClose}>
+            Закрыть
           </button>
         </div>
       </div>
@@ -794,6 +935,7 @@ const OrderDetailModal = ({
                   {detailDlRow('Дата', formatDate(order.date || order.created_at))}
                   {detailDlRow('Клиент', order.client_name || '—')}
                   {detailDlRow('Источник', SOURCE_TYPE_LABELS[order.source_type] || order.source_type || '—')}
+                  {detailDlRow('Статус', statusLabel(order.status))}
                   {detailDlRow('Комментарий', order.comment && String(order.comment).trim() ? order.comment : '—')}
                 </dl>
               </section>
@@ -805,6 +947,8 @@ const OrderDetailModal = ({
                   {detailDlRow('Продано', toMoney(order.shipped_amount))}
                   {detailDlRow('Осталось', toMoney(order.remaining_amount))}
                   {detailDlRow('Оплачено', toMoney(order.paid_amount))}
+                  {detailDlRow('Долг', toMoney(order.debt_amount))}
+                  {detailDlRow('Статус оплаты', paymentStatusLabel(order.payment_status))}
                 </dl>
               </section>
 
@@ -902,11 +1046,210 @@ const OrderDetailModal = ({
                     </div>
                   )}
                 </div>
+                <div className="orders-detail__sub">
+                  <strong className="orders-detail__sub-title">Возвраты</strong>
+                  {relatedReturns.length === 0 ? (
+                    <p className="orders-detail__muted">Нет.</p>
+                  ) : (
+                    <div className="commercial-table-wrap">
+                      <table className="data-table data-table--order-detail-lines">
+                        <thead>
+                          <tr>
+                            <th>Номер</th>
+                            <th>Дата</th>
+                            <th>Статус</th>
+                            <th>Причина</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {relatedReturns.map((ret) => (
+                            <tr key={ret.id}>
+                              <td>{ret.return_number || `Возврат ${ret.id}`}</td>
+                              <td>{formatDate(ret.date || ret.created_at)}</td>
+                              <td>
+                                <Badge variant={statusVariant(ret.status)}>{statusLabel(ret.status)}</Badge>
+                              </td>
+                              <td>{ret.return_reason || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </section>
             </div>
             {renderFooter()}
           </>
         )}
+      </div>
+    </div>
+  );
+};
+
+const OrderHistoryModal = ({ orderId, onClose }) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    const run = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await getOrderHistory(orderId);
+        if (!alive) return;
+        setData(res.data || {});
+      } catch (e) {
+        if (!alive) return;
+        setError(getOrderErrorText(e, 'Не удалось загрузить историю заявки'));
+      } finally {
+        if (alive) setLoading(false);
+      }
+    };
+    run();
+    return () => {
+      alive = false;
+    };
+  }, [orderId]);
+
+  const sales = Array.isArray(data?.sales) ? data.sales : [];
+  const payments = Array.isArray(data?.payments) ? data.payments : [];
+  const returns = Array.isArray(data?.returns) ? data.returns : [];
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal modal--wide orders-detail-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal__head">
+          <h3>История заявки</h3>
+          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
+            ×
+          </button>
+        </div>
+        <div className="orders-detail-modal__body">
+          {loading && <Loading />}
+          {!loading && error && <ErrorState error={{ userMessage: error }} />}
+          {!loading && !error && !sales.length && !payments.length && !returns.length && (
+            <EmptyState title="Нет данных истории" />
+          )}
+          {!loading && !error && (
+            <>
+              <section className="orders-detail__block">
+                <h4 className="orders-detail__block-title">Продажи</h4>
+                {sales.length ? (
+                  <div className="commercial-table-wrap">
+                    <table className="data-table data-table--order-detail-lines">
+                      <thead>
+                        <tr>
+                          <th>Номер</th>
+                          <th>Дата</th>
+                          <th>Статус</th>
+                          <th className="data-table__cell--num">Сумма</th>
+                          <th className="data-table__cell--num">Оплачено</th>
+                          <th className="data-table__cell--num">Долг</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sales.map((sale) => (
+                          <tr key={sale.id}>
+                            <td>{sale.sale_number || sale.order_number || `Продажа ${sale.id}`}</td>
+                            <td>{formatDate(sale.date || sale.created_at)}</td>
+                            <td>
+                              <Badge variant={saleStatusVariant(sale.sale_status || sale.status)}>
+                                {saleStatusLabel(sale.sale_status || sale.status)}
+                              </Badge>
+                            </td>
+                            <td className="data-table__cell--num">{toMoney(sale.revenue || sale.total_amount)}</td>
+                            <td className="data-table__cell--num">{toMoney(sale.paid_amount)}</td>
+                            <td className="data-table__cell--num">{toMoney(sale.debt_amount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <EmptyState title="Нет продаж" />
+                )}
+              </section>
+
+              <section className="orders-detail__block">
+                <h4 className="orders-detail__block-title">Оплаты</h4>
+                {payments.length ? (
+                  <div className="commercial-table-wrap">
+                    <table className="data-table data-table--order-detail-lines">
+                      <thead>
+                        <tr>
+                          <th>Номер</th>
+                          <th>Дата</th>
+                          <th>Тип</th>
+                          <th>Способ</th>
+                          <th className="data-table__cell--num">Сумма</th>
+                          <th>Статус</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {payments.map((payment) => (
+                          <tr key={payment.id}>
+                            <td>{payment.payment_number || `Платеж ${payment.id}`}</td>
+                            <td>{formatDate(payment.date || payment.created_at)}</td>
+                            <td>{PAYMENT_TYPE_LABELS[payment.payment_type] || payment.payment_type || '—'}</td>
+                            <td>{PAYMENT_METHOD_LABELS[payment.payment_method] || payment.payment_method || '—'}</td>
+                            <td className="data-table__cell--num">{toMoney(payment.amount)}</td>
+                            <td>
+                              <Badge variant={statusVariant(payment.status)}>
+                                {PAYMENT_DOC_STATUS_LABELS[toKey(payment.status)] || statusLabel(payment.status)}
+                              </Badge>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <EmptyState title="Нет оплат" />
+                )}
+              </section>
+
+              <section className="orders-detail__block">
+                <h4 className="orders-detail__block-title">Возвраты</h4>
+                {returns.length ? (
+                  <div className="commercial-table-wrap">
+                    <table className="data-table data-table--order-detail-lines">
+                      <thead>
+                        <tr>
+                          <th>Номер</th>
+                          <th>Дата</th>
+                          <th>Статус</th>
+                          <th>Причина</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {returns.map((ret) => (
+                          <tr key={ret.id}>
+                            <td>{ret.return_number || `Возврат ${ret.id}`}</td>
+                            <td>{formatDate(ret.date || ret.created_at)}</td>
+                            <td>
+                              <Badge variant={statusVariant(ret.status)}>{statusLabel(ret.status)}</Badge>
+                            </td>
+                            <td>{ret.return_reason || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <EmptyState title="Нет возвратов" />
+                )}
+              </section>
+            </>
+          )}
+        </div>
+        <div className="modal__actions orders-detail-modal__footer">
+          <button type="button" className="btn btn--secondary" onClick={onClose}>
+            Закрыть
+          </button>
+        </div>
       </div>
     </div>
   );

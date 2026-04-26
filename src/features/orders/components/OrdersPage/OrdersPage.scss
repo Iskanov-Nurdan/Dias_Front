@@ -1,6 +1,60 @@
 @use '../../../../shared/styles/variables' as *;
 @use '../../../../shared/styles/mixins' as *;
 
+.orders-page__title {
+  margin: 0;
+  margin-right: var(--space-3);
+  font-size: var(--font-h2);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.commercial-toolbar {
+  margin-bottom: var(--space-4);
+
+  .commercial-toolbar__filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .commercial-toolbar__filters .ds-toolbar__search {
+    flex: 0 1 320px;
+    min-width: 260px;
+    max-width: 340px;
+  }
+
+  .ds-toolbar__end {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    margin-left: 0;
+  }
+
+  .ds-toolbar__end .dias-select {
+    flex: 0 1 220px;
+    min-width: 200px;
+    max-width: 260px;
+  }
+
+  .btn {
+    min-height: var(--control-height);
+  }
+
+  @include lg {
+    .commercial-toolbar__filters .ds-toolbar__search,
+    .commercial-toolbar__filters .dias-select {
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+    }
+  }
+}
+
 .modal.orders-modal {
   > form.orders-modal__form {
     display: flex;
@@ -47,6 +101,12 @@
   font-size: var(--font-body);
 }
 
+.orders-modal__field-error {
+  margin: var(--space-1) 0 var(--space-2);
+  color: var(--danger);
+  font-size: var(--font-caption);
+}
+
 .orders-line-card {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -67,6 +127,15 @@
 }
 
 .data-table--orders {
+  min-width: 1050px;
+
+  th,
+  td {
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+    vertical-align: middle;
+  }
+
   th:nth-child(1),
   td:nth-child(1) {
     width: 14%;
@@ -166,6 +235,13 @@
   }
 }
 
+.page.commercial-page {
+  .empty-state {
+    min-height: 180px;
+    padding: var(--space-6) var(--space-4);
+  }
+}
+
 .modal.orders-detail-modal {
   display: flex;
   flex-direction: column;
@@ -234,6 +310,11 @@
 
   .orders-detail-modal__waybill {
     flex-shrink: 0;
+  }
+
+  .btn:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
   }
 }
 

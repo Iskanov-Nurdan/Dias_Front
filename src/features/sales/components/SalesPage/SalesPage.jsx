@@ -1,1178 +1,1367 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
+import { useNavigate } from 'react-router-dom';
 import {
   useServerQuery,
-  formatNumberForInput,
   formatQuantityDisplay,
   parseLocaleNumber,
+  getApiErrorMessage,
   resolveInventoryForm,
   inventoryFormLabel,
-  getApiErrorMessage,
-  getWarehouseQuantityPresentation,
-  formatPacksByPiecesPhrase,
-  readCatalogProductIdFromWarehouseBatch,
-  sameWarehouseProductKey,
-  readWarehouseQuality,
-  readWarehouseDefectReason,
 } from '../../../../shared/lib';
 import {
+  ActionMenu,
+  Badge,
   ConfirmModal,
-  Collapse,
   EmptyState,
   ErrorState,
   Loading,
-  ActionMenu,
+  Pagination,
+  SearchableSelect,
   useToast,
-  DecimalInput,
-  IntegerInput,
-  Select,
 } from '../../../../shared/ui';
-import { apiClient } from '../../../../shared/api';
+import { useAuth } from '../../../auth/model/AuthProvider';
 import { useOperationalRefetch } from '../../../../shared/realtime';
-import { downloadSaleWaybill } from '../../api/salesApi';
+import {
+  cancelSale,
+  createSale,
+  getSale,
+  getSaleCreditCheck,
+  getSaleReceiptUrl,
+  getSaleSelectSources,
+  getSaleWaybillUrl,
+  patchSaleStatus,
+  updateSale,
+} from '../../api/salesApi';
 import './SalesPage.scss';
 
-/** Поля упаковки с записи склада ГП (имена с бэка могут отличаться). */
-function getPackagingMeta(batch) {
-  if (!batch) {
-    return { unitMeters: NaN, piecesPerPackage: NaN, packageTotalMeters: NaN };
-  }
-  const unitMeters = parseLocaleNumber(
-    batch.length_per_piece
-    ?? batch.unit_meters
-    ?? batch.unit_length_m
-    ?? batch.piece_length_m
-    ?? batch.piece_meters,
-  );
-  const piecesPerPackage = parseLocaleNumber(
-    batch.pieces_per_package ?? batch.pieces_in_package ?? batch.pieces_per_pack,
-  );
-  const packageTotalMeters = parseLocaleNumber(
-    batch.package_total_meters ?? batch.package_meters ?? batch.pack_total_meters,
-  );
-  return { unitMeters, piecesPerPackage, packageTotalMeters };
-}
+const SALE_STATUS_OPTIONS = [
+  { value: 'draft', label: 'Черновик' },
+  { value: 'confirmed', label: 'Подтверждена' },
+  { value: 'partially_shipped', label: 'Частично продана' },
+  { value: 'shipped', label: 'Продана' },
+  { value: 'closed', label: 'Закрыта' },
+  { value: 'canceled', label: 'Отменена' },
+];
 
-function computePiecesForApi({ saleUnit, qtyInput, meta, overridePiecesPerPackage }) {
-  const q = parseLocaleNumber(qtyInput);
-  if (!(q > 0)) return { pieces: NaN, error: 'Укажите количество больше 0' };
+const saleStatusKey = (v) => String(v || '').toLowerCase();
 
-  const pp =
-    Number.isFinite(overridePiecesPerPackage) && overridePiecesPerPackage > 0
-      ? overridePiecesPerPackage
-      : meta.piecesPerPackage;
-
-  if (saleUnit === 'piece') {
-    return { pieces: Math.floor(q), error: null };
-  }
-  if (saleUnit === 'package') {
-    if (!(Number.isFinite(pp) && pp > 0)) {
-      return {
-        pieces: NaN,
-        error: 'Укажите штук в упаковке (из партии или вручную).',
-      };
-    }
-    return { pieces: Math.floor(q * pp), error: null };
-  }
-  return { pieces: Math.floor(q), error: null };
-}
-
-const unitLabel = (u) => {
-  if (u === 'package') return 'упак.';
-  if (u === 'meter') return 'м'; // старые записи в таблице
-  return 'шт';
+const statusLabel = (v) => {
+  const k = saleStatusKey(v);
+  return SALE_STATUS_OPTIONS.find((x) => x.value === k)?.label || v || '—';
 };
 
-function batchProductTitle(batch) {
-  if (!batch) return '';
-  const s = (v) => (v != null && String(v).trim() ? String(v).trim() : '');
-  return (
-    s(batch.profile_name)
-    || s(batch.product_name)
-    || s(batch.product?.name)
-    || (typeof batch.product === 'string' ? s(batch.product) : '')
-    || ''
-  );
-}
-
-function formatBatchSelectOptionLabel(p) {
-  const q = readWarehouseQuality(p);
-  const base = batchProductTitle(p) || p.batch || p.lot || 'Партия';
-  const pres = getWarehouseQuantityPresentation(p);
-  const detail = [pres.primary, pres.secondary].filter(Boolean).join(' · ');
-  const prefix = q === 'defect' ? 'Брак · ' : '';
-  return `${prefix}${base}${detail ? ` — ${detail}` : ''}`;
-}
-
-/** Качество в продаже: только `quality` на записи продажи или на вложенной `warehouse_batch`. */
-const saleWarehouseQualityKey = (s) => {
-  if (!s || typeof s !== 'object') return 'good';
-  if (s.warehouse_batch && typeof s.warehouse_batch === 'object') {
-    return readWarehouseQuality(s.warehouse_batch);
-  }
-  return readWarehouseQuality(s);
-};
-
-const saleStorageFormLabel = (s) => {
-  const pseudo = {
-    inventory_form: s.inventory_form ?? s.stock_form,
-    packaging_state: s.packaging_state,
-    packaging_status: s.packaging_status,
+const statusVariant = (v) => {
+  const k = saleStatusKey(v);
+  const map = {
+    draft: 'default',
+    confirmed: 'primary',
+    partially_shipped: 'warning',
+    shipped: 'success',
+    closed: 'success',
+    canceled: 'danger',
   };
-  return inventoryFormLabel(resolveInventoryForm(pseudo));
+  return map[k] || 'default';
 };
 
-function saleRowRevenueText(s) {
-  if (s.revenue != null && s.revenue !== '') return `${formatQuantityDisplay(s.revenue)} сом`;
-  if (s.price != null && s.price !== '') return `${formatQuantityDisplay(s.price)} сом`;
-  if (s.total != null && s.total !== '') return `${formatQuantityDisplay(s.total)} сом`;
-  return '—';
-}
+const isBadClientToken = (s) => {
+  const t = String(s || '').trim().toLowerCase();
+  return !t || t === 'клиент' || t === 'client' || t === 'без клиента';
+};
 
-function saleRowCostText(s) {
-  if (s.cost_total != null && s.cost_total !== '') return `${formatQuantityDisplay(s.cost_total)} сом`;
-  if (s.cost != null && s.cost !== '') return `${formatQuantityDisplay(s.cost)} сом`;
-  return '—';
-}
+const clientOptionLabel = (c) => {
+  if (c == null) return '—';
+  const rawLabel = typeof c.label === 'string' ? c.label.trim() : '';
+  if (rawLabel && !isBadClientToken(rawLabel)) return rawLabel;
+  const nameCandidates = [c.name, c.client_name, c.title].filter((x) => x != null && String(x).trim());
+  const name = nameCandidates.map((x) => String(x).trim()).find((s) => !isBadClientToken(s)) || '';
+  const phone = (c.phone || c.phone_number || '').toString().trim();
+  const parts = [name, phone].filter((x) => x && String(x).trim());
+  if (parts.length) return parts.join(' · ');
+  return c.id != null ? String(c.id) : '—';
+};
 
-function saleRowProfitText(s) {
-  if (s.profit != null && s.profit !== '') return `${formatQuantityDisplay(s.profit)} сом`;
-  return '—';
-}
+const saleDebtMoney = (s) => {
+  if (s?.debt != null && s.debt !== '') return s.debt;
+  if (s?.debt_amount != null && s.debt_amount !== '') return s.debt_amount;
+  const rev = parseLocaleNumber(s?.revenue);
+  const paid = parseLocaleNumber(s?.paid_amount);
+  if (Number.isFinite(rev) && Number.isFinite(paid)) return Math.max(0, rev - paid);
+  return null;
+};
 
-function saleQtySummaryLine(s) {
-  if (!s) return '—';
-  if (
-    s.quantity_unit === 'package' &&
-    s.quantity_input != null &&
-    String(s.quantity_input).trim() !== ''
-  ) {
-    return `${formatQuantityDisplay(s.quantity_input)} ${unitLabel(s.quantity_unit)} · ${formatQuantityDisplay(s.quantity)} шт · ${saleStorageFormLabel(s)}`;
-  }
-  return `${formatQuantityDisplay(s.quantity)} ${s.quantity_unit ? unitLabel(s.quantity_unit) : 'шт'} · ${saleStorageFormLabel(s)}`;
-}
+const saleIsDefectSale = (s) => Boolean(
+  s?.defect_flag
+  || s?.is_defect_sale
+  || s?.defect_sale
+  || (Array.isArray(s?.sale_lines) && s.sale_lines.some((l) => l.defect_flag)),
+);
 
-/** Поля для локального HTML накладной (совпадают с модалкой «Накладная»). */
-function buildWaybillDraftSnapshot(sale) {
-  if (!sale?.id) return { id: sale?.id };
-  const dateStr =
-    (sale.sale_date || sale.date || sale.created_at || '').toString().slice(0, 10) || '—';
-  const clientStr = sale.client_name || sale.client?.name || sale.client || '—';
-  const productTitle = batchProductTitle(sale) || '—';
-  const batchNo =
-    sale.warehouse_batch_id != null || sale.batch_id != null
-      ? `№${sale.warehouse_batch_id ?? sale.batch_id ?? sale.warehouse_batch?.id}`
-      : null;
-  const defect = saleWarehouseQualityKey(sale) === 'defect';
-  const batchParts = [productTitle];
-  if (batchNo) batchParts.push(batchNo);
-  if (defect) batchParts.push('Брак');
-  return {
-    id: sale.id,
-    date_display: dateStr,
-    client_display: clientStr,
-    batch_display: batchParts.join(' '),
-    quantity_display: saleQtySummaryLine(sale),
-    revenue_display: saleRowRevenueText(sale),
-    cost_display: saleRowCostText(sale),
-    profit_display: saleRowProfitText(sale),
-    comment: sale.comment,
+const paymentStatusLabel = (v) => {
+  const k = String(v || '').toLowerCase();
+  const map = {
+    unpaid: 'Не оплачено',
+    partially_paid: 'Частично оплачено',
+    paid: 'Оплачено',
+    overpaid: 'Переплата',
+    refunded: 'Возврат денег',
   };
-}
+  return map[k] || '—';
+};
 
-const SaleWaybillModal = ({ sale, onClose, onDownloadPdf, downloading }) => {
-  if (!sale?.id) return null;
-  const dateStr = (sale.sale_date || sale.date || sale.created_at || '').toString().slice(0, 10) || '—';
-  const clientStr = sale.client_name || sale.client?.name || sale.client || '—';
-  const productTitle = batchProductTitle(sale) || '—';
-  const batchNo =
-    sale.warehouse_batch_id != null || sale.batch_id != null
-      ? `№${sale.warehouse_batch_id ?? sale.batch_id ?? sale.warehouse_batch?.id}`
-      : null;
+const paymentDocStatusLabel = (v) => {
+  const k = String(v || '').toLowerCase();
+  if (k === 'active') return 'Активен';
+  if (k === 'canceled') return 'Отменен';
+  return '—';
+};
 
-  return (
-    <div className="modal-overlay" onClick={onClose} role="presentation">
-      <div className="modal sales-modal sales-modal--waybill" onClick={(e) => e.stopPropagation()}>
-        <div className="modal__head">
-          <h3>Накладная</h3>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
-            ×
-          </button>
-        </div>
-        <div className="modal__body sales-waybill__body">
-          <p className="sales-waybill__intro">Продажа №{sale.id}</p>
-          <dl className="sales-waybill__dl">
-            <div className="sales-waybill__row">
-              <dt>Дата</dt>
-              <dd>{dateStr}</dd>
-            </div>
-            <div className="sales-waybill__row">
-              <dt>Клиент</dt>
-              <dd>{clientStr}</dd>
-            </div>
-            <div className="sales-waybill__row">
-              <dt>Партия</dt>
-              <dd>
-                {productTitle}
-                {batchNo ? <span className="sales-waybill__batch-no"> {batchNo}</span> : null}
-                {saleWarehouseQualityKey(sale) === 'defect' ? (
-                  <span className="warehouse-quality-badge warehouse-quality-badge--defect sales-waybill__defect-badge">
-                    Брак
-                  </span>
-                ) : null}
-              </dd>
-            </div>
-            <div className="sales-waybill__row">
-              <dt>Количество</dt>
-              <dd>{saleQtySummaryLine(sale)}</dd>
-            </div>
-            <div className="sales-waybill__row">
-              <dt>Выручка</dt>
-              <dd>{saleRowRevenueText(sale)}</dd>
-            </div>
-            <div className="sales-waybill__row">
-              <dt>Себестоимость</dt>
-              <dd>{saleRowCostText(sale)}</dd>
-            </div>
-            <div className="sales-waybill__row">
-              <dt>Прибыль</dt>
-              <dd>{saleRowProfitText(sale)}</dd>
-            </div>
-            {sale.comment ? (
-              <div className="sales-waybill__row">
-                <dt>Комментарий</dt>
-                <dd>{sale.comment}</dd>
-              </div>
-            ) : null}
-          </dl>
-        </div>
-        <div className="modal__actions sales-waybill__actions">
-          <button type="button" className="btn btn--secondary" onClick={onClose}>
-            Закрыть
-          </button>
-          <button
-            type="button"
-            className="btn btn--primary"
-            disabled={downloading}
-            onClick={() => onDownloadPdf(sale)}
-          >
-            {downloading ? 'Формирование…' : 'Скачать PDF'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+const formatDate = (v) => (v ? String(v).slice(0, 10) : '—');
+const toMoney = (v) => (v != null ? `${formatQuantityDisplay(v)} сом` : '—');
+
+const saleClientIdFromRow = (sale) => {
+  if (sale?.client_id != null) return String(sale.client_id);
+  const c = sale?.client;
+  if (c != null && typeof c === 'object' && c.id != null) return String(c.id);
+  if (c != null && (typeof c === 'number' || typeof c === 'string')) return String(c);
+  return '';
+};
+const saleLinkedOrderIdFromRow = (sale) => {
+  if (sale?.linked_order_id != null) return String(sale.linked_order_id);
+  const lo = sale?.linked_order;
+  if (lo != null && typeof lo === 'object' && lo.id != null) return String(lo.id);
+  if (lo != null && (typeof lo === 'number' || typeof lo === 'string')) return String(lo);
+  return '';
+};
+
+const formatApiErrorDetail = (data, fallback) => {
+  let msg = fallback;
+  if (data?.credit_limit) {
+    msg = `Кредитный лимит: ${Array.isArray(data.credit_limit) ? data.credit_limit.join(', ') : data.credit_limit}`;
+  } else if (typeof data?.detail === 'string' && data.detail) {
+    msg = data.detail;
+  } else if (data?.code === 'CREDIT_LIMIT_BLOCKED' && typeof data?.error === 'string') {
+    msg = data.error;
+  } else if (typeof data?.error === 'string' && data.error) {
+    msg = data.error;
+  }
+  return msg;
+};
+
+const SALE_ERROR_TEXT = {
+  sale_status_update_forbidden: 'Статус продажи меняется только через действия.',
+  sale_update_forbidden: 'Эту продажу нельзя редактировать.',
+  sale_lines_update_forbidden: 'Позиции продажи нельзя редактировать.',
+  sale_locked_by_payment: 'Продажа заблокирована оплатой.',
+  sale_locked_by_return: 'Продажа заблокирована возвратом.',
+  sale_locked_by_warehouse: 'Продажа заблокирована складской операцией.',
+  missing_client: 'Выберите клиента.',
+  inactive_client: 'Клиент неактивен.',
+  missing_sale_lines: 'Добавьте хотя бы одну позицию продажи.',
+  product_or_order_line_required: 'Укажите товар или строку заявки.',
+  sale_quantity_required: 'Укажите количество.',
+  sale_quantity_invalid: 'Количество должно быть больше 0.',
+  unit_price_negative: 'Цена не может быть отрицательной.',
+  closed_create_forbidden: 'Нельзя создавать продажу сразу в статусе "Закрыта".',
+  missing_warehouse_batch: 'Выберите партию склада.',
+  defect_batch_forbidden: 'Продажа брака оформляется отдельным сценарием.',
+  insufficient_stock: 'Недостаточно остатка на складе.',
+  order_line_quantity_exceeded: 'Количество больше остатка по заявке.',
+  missing_status: 'Укажите статус для действия.',
+  invalid_status_transition: 'Недопустимый переход статуса.',
+  ship_blocked: 'Продажа не может быть проведена в текущем состоянии.',
+  credit_limit_blocked: 'Превышен кредитный лимит.',
+  warehouse_apply: 'Ошибка проведения складской операции.',
+  has_payments: 'Продажа заблокирована оплатами.',
+  has_returns: 'Продажа заблокирована возвратами.',
+  warehouse_rollback: 'Ошибка отката складской операции.',
+  delete_disabled: 'Удаление продаж отключено.',
+};
+
+const saleErrorMessage = (err, fallback) => {
+  const data = err?.response?.data;
+  const code = String(data?.code || '').toLowerCase();
+  if (SALE_ERROR_TEXT[code]) return SALE_ERROR_TEXT[code];
+  return formatApiErrorDetail(data, getApiErrorMessage(err, fallback));
+};
+
+const apiActionEnabled = (availableActions, key) => {
+  if (availableActions == null) return false;
+  if (Array.isArray(availableActions)) return availableActions.includes(key);
+  if (typeof availableActions === 'object') return Boolean(availableActions[key]);
+  return false;
+};
+
+const saleEditableByStatus = (saleStatus) => {
+  const k = saleStatusKey(saleStatus);
+  return k === 'draft' || k === 'confirmed';
+};
+
+const saleTransitionMenuLabel = (fromStatus, toStatus) => {
+  const f = saleStatusKey(fromStatus);
+  const t = saleStatusKey(toStatus);
+  if (t === 'shipped' && (f === 'draft' || f === 'confirmed')) return 'Продать';
+  if (t === 'closed') return 'Закрыть';
+  if (t === 'canceled') return 'Отменить';
+  return `→ ${statusLabel(toStatus)}`;
+};
+
+const saleAllowsReturnAction = (availableActions) => (
+  apiActionEnabled(availableActions, 'return')
+  || apiActionEnabled(availableActions, 'create_return')
+);
+
+const isCreditLimitError = (err) => {
+  const d = err?.response?.data;
+  if (!d) return false;
+  if (d.credit_limit) return true;
+  if (d.code === 'CREDIT_LIMIT_BLOCKED') return true;
+  return false;
+};
+
+/** По BACKEND_MASTER: право override — credit_limit_override и/или is_staff. */
+const canForceCreditOverride = (user) => {
+  if (!user) return false;
+  if (user.is_staff === true || user.is_superuser === true) return true;
+  if (user.credit_limit_override === true) return true;
+  const acc = user.accesses;
+  return Array.isArray(acc) && acc.includes('credit_limit_override');
 };
 
 const SalesPage = () => {
   const toast = useToast();
-  const [queryState] = useState({ page: 1, page_size: 20 });
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [queryState, setQueryState] = useState({
+    page: 1,
+    page_size: 20,
+    search: '',
+    sale_status: '',
+    client_id: '',
+  });
   const [clients, setClients] = useState([]);
-  const [products, setProducts] = useState([]);
-
   const [modalSale, setModalSale] = useState(null);
-  const [waybillSale, setWaybillSale] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [detailSaleId, setDetailSaleId] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
   const [submitError, setSubmitError] = useState('');
-  const [waybillLoadingId, setWaybillLoadingId] = useState(null);
+  const [busyId, setBusyId] = useState(null);
+  const [creditOverride, setCreditOverride] = useState(null);
+  const [creditOverrideBusy, setCreditOverrideBusy] = useState(false);
+  const [creditOverrideError, setCreditOverrideError] = useState('');
 
-  const { items, loading, error, refetch } = useServerQuery('sales/', queryState, { enabled: true });
+  const { items, meta, loading, error, refetch } = useServerQuery('sales/', queryState, { enabled: true });
 
-  const loadClientsAndProducts = useCallback(() => {
-    apiClient
-      .get('clients/', { params: { page_size: 500 } })
+  const loadSelectSources = useCallback((clientId = '') => {
+    getSaleSelectSources(clientId ? { client_id: clientId } : {})
       .then((res) => {
-        const raw = res.data?.items || [];
-        setClients(raw.filter((c) => c.is_active !== false && c.active !== false));
+        const data = res.data || {};
+        setClients(Array.isArray(data.clients) ? data.clients : []);
       })
       .catch(() => setClients([]));
-    apiClient
-      .get('warehouse/batches/', { params: { page_size: 500, status: 'available' } })
-      .then((res) => setProducts(res.data?.items || []))
-      .catch(() => setProducts([]));
   }, []);
 
-  useEffect(() => {
-    loadClientsAndProducts();
-  }, [loadClientsAndProducts]);
+  useEffect(() => { loadSelectSources(); }, [loadSelectSources]);
 
-  const reloadSalesOperational = useCallback(() => {
+  const reloadOperational = useCallback(() => {
     refetch();
-    loadClientsAndProducts();
-  }, [refetch, loadClientsAndProducts]);
+    loadSelectSources(queryState.client_id);
+  }, [refetch, loadSelectSources, queryState.client_id]);
 
-  useOperationalRefetch(['sale', 'warehouse_batch'], reloadSalesOperational, true);
+  useOperationalRefetch(['sale', 'warehouse_batch', 'order', 'payment', 'return'], reloadOperational, true);
 
   const handleSubmit = async (payload) => {
     setSubmitError('');
     try {
       if (modalSale?.id) {
-        await apiClient.patch(`sales/${modalSale.id}/`, payload);
+        const res = await updateSale(modalSale.id, payload);
         refetch();
         toast.show('Сохранено');
-        setSubmitError('');
-        return { id: modalSale.id };
+        return { id: res.data?.id || modalSale.id };
       }
-      const res = await apiClient.post('sales/', payload);
-      refetch();
-      toast.show('Создано');
-      setSubmitError('');
-      return { id: res.data?.id };
+      try {
+        const res = await createSale(payload);
+        refetch();
+        toast.show('Сохранено');
+        return { id: res.data?.id };
+      } catch (err) {
+        const data = err.response?.data;
+        if (isCreditLimitError(err)) {
+          setSubmitError(saleErrorMessage(err, 'Превышен кредитный лимит'));
+          return null;
+        }
+        let msg = saleErrorMessage(err, 'Ошибка сохранения');
+        if (data?.details && typeof data.details === 'object' && typeof msg === 'string') {
+          const details = Object.entries(data.details)
+            .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+            .join('; ');
+          if (details) msg = [msg, details].filter(Boolean).join('. ');
+        }
+        setSubmitError(msg);
+        return null;
+      }
     } catch (err) {
-      const data = err.response?.data;
-      let msg = getApiErrorMessage(err, 'Ошибка');
-      if (data?.details && typeof data.details === 'object' && typeof msg === 'string') {
-        const details = Object.entries(data.details)
-          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
-          .join('; ');
-        if (details) msg = [msg, details].filter(Boolean).join('. ');
-      }
-      setSubmitError(msg);
+      setSubmitError(saleErrorMessage(err, 'Ошибка сохранения'));
       return null;
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
+  const openHtmlDocument = async (url, fallbackError) => {
+    const token = localStorage.getItem('token');
+    const res = await fetch(url, {
+      headers: {
+        Accept: 'text/html,*/*',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (!res.ok) {
+      let message = fallbackError;
+      try {
+        const data = await res.json();
+        message = saleErrorMessage({ response: { status: res.status, data } }, fallbackError);
+      } catch {
+        message = fallbackError;
+      }
+      throw new Error(message);
+    }
+    const html = await res.text();
+    const blobUrl = window.URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+    window.open(blobUrl, '_blank', 'noopener,noreferrer');
+    window.setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
+  };
+
+  const handleChangeStatus = async (sale, status, options = {}) => {
+    const { forceCreditOverride = false } = options;
+    setBusyId(sale.id);
     setSubmitError('');
     try {
-      await apiClient.delete(`sales/${deleteTarget.id}/`);
-      setDeleteTarget(null);
+      await patchSaleStatus(sale.id, status, forceCreditOverride ? { force_credit_override: true } : {});
       refetch();
-      toast.show('Удалено');
+      toast.show('Статус обновлён');
     } catch (err) {
-      setSubmitError(getApiErrorMessage(err, 'Ошибка удаления'));
+      if (!forceCreditOverride && isCreditLimitError(err) && canForceCreditOverride(user)) {
+        setCreditOverride({
+          mode: 'status',
+          saleId: sale.id,
+          status,
+          message: formatApiErrorDetail(err.response?.data, getApiErrorMessage(err, 'Превышен кредитный лимит')),
+        });
+      } else {
+        const msg = saleErrorMessage(err, 'Ошибка смены статуса');
+        toast.show(msg, 'error');
+      }
+    } finally {
+      setBusyId(null);
     }
   };
 
-  const onDownloadWaybill = useCallback(
-    async (saleRow) => {
-      if (!saleRow?.id) return;
-      setWaybillLoadingId(saleRow.id);
+  const onConfirmCreditOverride = async () => {
+    if (!creditOverride || creditOverrideBusy) return;
+    setCreditOverrideError('');
+    setCreditOverrideBusy(true);
+    try {
+      await patchSaleStatus(creditOverride.saleId, creditOverride.status, { force_credit_override: true });
       try {
-        const { source } = await downloadSaleWaybill(saleRow.id, buildWaybillDraftSnapshot(saleRow));
-        toast.show(source === 'server' ? 'Накладная скачана' : 'Скачан черновик накладной');
-      } catch (e) {
-        toast.show(e?.userMessage || e?.message || 'Не удалось скачать накладную', 'error');
-      } finally {
-        setWaybillLoadingId(null);
+        await getSaleCreditCheck(creditOverride.saleId);
+      } catch {
+        // дополнительная проверка не должна ломать основной сценарий
       }
-    },
-    [toast],
-  );
+      setCreditOverride(null);
+      refetch();
+      toast.show('Статус обновлён');
+    } catch (err) {
+      setCreditOverrideError(saleErrorMessage(err, 'Операция не выполнена'));
+    } finally {
+      setCreditOverrideBusy(false);
+    }
+  };
+
+  const handleCancelSale = async () => {
+    if (!cancelTarget) return;
+    setSubmitError('');
+    try {
+      await cancelSale(cancelTarget.id);
+      setCancelTarget(null);
+      refetch();
+      toast.show('Продажа отменена');
+    } catch (err) {
+      setSubmitError(saleErrorMessage(err, 'Ошибка отмены'));
+    }
+  };
+
+  const onOpenWaybill = async (saleRow) => {
+    if (!saleRow?.id) return;
+    setBusyId(saleRow.id);
+    try {
+      await openHtmlDocument(getSaleWaybillUrl(saleRow.id), 'Не удалось открыть накладную');
+    } catch (e) {
+      toast.show(e?.message || 'Не удалось открыть накладную', 'error');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const onDownloadReceipt = async (saleRow) => {
+    if (!saleRow?.id) return;
+    setBusyId(saleRow.id);
+    try {
+      await openHtmlDocument(getSaleReceiptUrl(saleRow.id), 'Не удалось открыть квитанцию');
+    } catch (e) {
+      toast.show(e?.userMessage || e?.message || 'Не удалось открыть квитанцию', 'error');
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   return (
-    <div className="page page--sales">
-      <div className="ds-toolbar ds-toolbar--page-head ds-toolbar--stack-mobile">
-        <div className="ds-toolbar__end" style={{ marginLeft: 'auto' }}>
-          <button
-            type="button"
-            className="btn btn--primary ds-hide-mobile"
-            onClick={() => {
-              setWaybillSale(null);
-              setModalSale({});
-            }}
-          >
-            Создать
+    <div className="page page--sales commercial-page">
+      <div className="ds-toolbar ds-toolbar--stack-mobile commercial-toolbar">
+        <div className="ds-toolbar__start commercial-toolbar__filters">
+          <input
+            type="text"
+            className="ds-toolbar__search"
+            placeholder="Поиск"
+            value={queryState.search}
+            onChange={(e) => setQueryState((p) => ({ ...p, search: e.target.value, page: 1 }))}
+          />
+          <SearchableSelect
+            value={queryState.sale_status}
+            onChange={(v) => setQueryState((p) => ({ ...p, sale_status: v, page: 1 }))}
+            placeholder="Статус"
+            options={[{ value: '', label: 'Все' }, ...SALE_STATUS_OPTIONS]}
+          />
+          <SearchableSelect
+            value={queryState.client_id}
+            onChange={(v) => setQueryState((p) => ({ ...p, client_id: v, page: 1 }))}
+            placeholder="Клиент"
+            options={[{ value: '', label: 'Все клиенты' }, ...clients.map((c) => ({ value: String(c.id), label: clientOptionLabel(c) }))]}
+          />
+        </div>
+        <div className="ds-toolbar__end">
+          <button type="button" className="btn btn--primary" onClick={() => setModalSale({})}>
+            Создать продажу
           </button>
         </div>
       </div>
-
-      <div className="ds-sticky-mobile-actions">
-        <button
-          type="button"
-          className="btn btn--primary"
-          onClick={() => {
-            setWaybillSale(null);
-            setModalSale({});
-          }}
-        >
-          Создать
-        </button>
-      </div>
-
       {loading && <Loading />}
       {error && error.status !== 404 && <ErrorState error={error} onRetry={refetch} />}
       {!loading && (!error || error.status === 404) && items.length === 0 && <EmptyState title="Нет продаж" />}
       {!loading && (!error || error.status === 404) && items.length > 0 && (
-        <table className="data-table data-table--fixed data-table--sales data-table--row-actions data-table--clickable">
+        <div className="commercial-table-wrap">
+          <table className="data-table data-table--fixed data-table--sales data-table--row-actions">
           <thead>
             <tr>
-              <th>Дата</th>
+              <th>№ продажи</th>
               <th>Клиент</th>
-              <th>Партия</th>
-              <th>Количество</th>
-              <th>Выручка</th>
-              <th>Себестоимость</th>
-              <th>Прибыль</th>
-              <th aria-hidden />
+              <th>Заявка</th>
+              <th>Дата</th>
+              <th>Статус</th>
+              <th className="data-table__cell--num">Сумма</th>
+              <th className="data-table__cell--num">Оплачено</th>
+              <th className="data-table__cell--num">Долг</th>
+              <th className="data-table__cell--actions">Действия</th>
             </tr>
           </thead>
           <tbody>
-            {items.map((s) => (
-              <tr
-                key={s.id}
-                tabIndex={0}
-                role="button"
-                aria-label={`Накладная, продажа №${s.id}`}
-                onClick={() => setWaybillSale(s)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    setWaybillSale(s);
-                  }
-                }}
-              >
-                <td className="data-table__cell--muted sales-table__date-cell">
-                  {(s.sale_date || s.date || s.created_at || '').toString().slice(0, 10) || '—'}
-                </td>
-                <td className="data-table__cell--lead">{s.client_name || s.client?.name || s.client || '—'}</td>
-                <td className="data-table__cell--lead">
-                  <div className="sales-table__product-cell">
-                    <span className="sales-table__product-title">
-                      {batchProductTitle(s) || '—'}
-                    </span>
-                    {saleWarehouseQualityKey(s) === 'defect' ? (
-                      <span className="warehouse-quality-badge warehouse-quality-badge--defect sales-table__quality-badge">
-                        Брак
-                      </span>
-                    ) : null}
-                    {s.warehouse_batch_id != null || s.batch_id != null ? (
-                      <span className="sales-table__batch-hint">
-                        №{s.warehouse_batch_id ?? s.batch_id ?? s.warehouse_batch?.id}
-                      </span>
-                    ) : null}
-                  </div>
-                </td>
-                <td className="sales-table__qty-cell">
-                  <span className="sales-table__qty-line">
-                    {s.quantity_unit === 'package' &&
-                    s.quantity_input != null &&
-                    String(s.quantity_input).trim() !== '' ? (
-                      <>
-                        {formatQuantityDisplay(s.quantity_input)} {unitLabel(s.quantity_unit)}
-                        <span className="sales-table__qty-sub">
-                          {formatQuantityDisplay(s.quantity)} шт · {saleStorageFormLabel(s)}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        {formatQuantityDisplay(s.quantity)} {s.quantity_unit ? unitLabel(s.quantity_unit) : 'шт'}
-                        <span className="sales-table__qty-sub">{saleStorageFormLabel(s)}</span>
-                      </>
-                    )}
-                  </span>
-                </td>
-                <td className="sales-table__price data-table__cell--num">
-                  {s.revenue != null && s.revenue !== ''
-                    ? `${formatQuantityDisplay(s.revenue)} сом`
-                    : s.price != null && s.price !== ''
-                      ? `${formatQuantityDisplay(s.price)} сом`
-                      : s.total != null && s.total !== ''
-                        ? `${formatQuantityDisplay(s.total)} сом`
-                        : '—'}
-                </td>
-                <td className="data-table__cell--num data-table__cell--muted">
-                  {s.cost_total != null && s.cost_total !== ''
-                    ? `${formatQuantityDisplay(s.cost_total)} сом`
-                    : s.cost != null && s.cost !== ''
-                      ? `${formatQuantityDisplay(s.cost)} сом`
-                      : '—'}
-                </td>
-                <td className="data-table__cell--num">
-                  {s.profit != null && s.profit !== ''
-                    ? `${formatQuantityDisplay(s.profit)} сом`
-                    : '—'}
-                </td>
-                <td>
-                  <ActionMenu
-                    ariaLabel="Действия"
-                    items={[
-                      {
-                        label: 'Редактировать',
-                        onClick: () => {
-                          setWaybillSale(null);
-                          setModalSale(s);
-                        },
-                      },
-                      {
-                        label: 'Накладная',
-                        onClick: () => setWaybillSale(s),
-                      },
-                      {
-                        label: 'Удалить',
-                        danger: true,
-                        onClick: () =>
-                          setDeleteTarget({ id: s.id, name: s.product_name || s.product || 'Продажа' }),
-                      },
-                    ]}
-                  />
-                </td>
-              </tr>
-            ))}
+            {items.map((s) => {
+              const allowedNext = Array.isArray(s.available_status_transitions) ? s.available_status_transitions : [];
+              const availableActions = s.available_actions;
+              const sk = saleStatusKey(s.sale_status);
+              const debt = saleDebtMoney(s);
+              const defect = saleIsDefectSale(s);
+              const menu = [{ label: 'Открыть', onClick: () => setDetailSaleId(s.id) }];
+              const canShip = allowedNext.some((st) => saleStatusKey(st?.status || st) === 'shipped');
+              const canClose = allowedNext.some((st) => saleStatusKey(st?.status || st) === 'closed');
+              if ((sk === 'draft' || sk === 'confirmed') && !defect && saleEditableByStatus(s.sale_status)) {
+                menu.push({ label: 'Редактировать', onClick: () => setModalSale(s) });
+              }
+              if ((sk === 'draft' || sk === 'confirmed') && canShip) {
+                menu.push({ label: 'Продать', disabled: busyId === s.id, onClick: () => handleChangeStatus(s, 'shipped') });
+              }
+              if (sk === 'partially_shipped' && canClose) {
+                menu.push({ label: 'Закрыть', disabled: busyId === s.id, onClick: () => handleChangeStatus(s, 'closed') });
+              }
+              if (sk === 'shipped' && canClose) {
+                menu.push({ label: 'Закрыть', disabled: busyId === s.id, onClick: () => handleChangeStatus(s, 'closed') });
+              }
+              if (sk === 'shipped' || sk === 'partially_shipped' || (defect && sk !== 'canceled')) {
+                menu.push({ label: 'Принять оплату', onClick: () => navigate(`/payments?sale_id=${s.id}`) });
+                menu.push({ label: 'Возврат', onClick: () => navigate(`/returns?sale_id=${s.id}`) });
+              }
+              if (sk !== 'canceled') {
+                menu.push(
+                  { label: 'Накладная', disabled: busyId === s.id, onClick: () => onOpenWaybill(s) },
+                  { label: 'Квитанция', disabled: busyId === s.id, onClick: () => onDownloadReceipt(s) },
+                );
+              }
+              if (apiActionEnabled(availableActions, 'cancel')) {
+                menu.push({
+                  label: 'Отменить',
+                  danger: true,
+                  onClick: () => setCancelTarget({
+                    id: s.id,
+                    name: s.order_number || s.sale_number || `Продажа #${s.id}`,
+                  }),
+                });
+              }
+              return (
+                <tr key={s.id}>
+                  <td>
+                    <div className="sales-table__num-cell">
+                      <button type="button" className="btn btn--ghost" onClick={() => setDetailSaleId(s.id)}>
+                        {s.order_number || s.sale_number || `#${s.id}`}
+                      </button>
+                      {defect ? <Badge variant="warning" className="sales-table__defect-badge">Продажа брака</Badge> : null}
+                    </div>
+                  </td>
+                  <td>{s.client_name || '—'}</td>
+                  <td>{s.linked_order_number || '—'}</td>
+                  <td className="sales-table__date-cell">{formatDate(s.date || s.created_at)}</td>
+                  <td><Badge variant={statusVariant(s.sale_status)}>{statusLabel(s.sale_status)}</Badge></td>
+                  <td className="data-table__cell--num">{toMoney(s.revenue)}</td>
+                  <td className="data-table__cell--num">{toMoney(s.paid_amount)}</td>
+                  <td className="data-table__cell--num">{debt != null ? toMoney(debt) : '—'}</td>
+                  <td className="data-table__cell--actions">
+                    <ActionMenu ariaLabel="Действия" items={menu} />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
-        </table>
-      )}
-      {submitError && !modalSale && !deleteTarget && (
-        <p className="modal__error sales-page__error">{submitError}</p>
+          </table>
+        </div>
       )}
 
-      {waybillSale && (
-        <SaleWaybillModal
-          sale={waybillSale}
-          onClose={() => setWaybillSale(null)}
-          onDownloadPdf={onDownloadWaybill}
-          downloading={waybillLoadingId === waybillSale.id}
-        />
+      {!loading && (!error || error.status === 404) && (
+        <Pagination meta={meta} onPageChange={(nextPage) => setQueryState((p) => ({ ...p, page: nextPage }))} />
+      )}
+
+      {submitError && !modalSale && !cancelTarget && (
+        <p className="modal__error sales-page__error">{submitError}</p>
       )}
 
       {modalSale !== null && (
         <SaleModal
           sale={modalSale?.id ? modalSale : null}
           clients={clients}
-          products={products}
           onSubmit={handleSubmit}
-          onClose={() => {
-            setModalSale(null);
-            setSubmitError('');
-          }}
+          onClose={() => { setModalSale(null); setSubmitError(''); }}
           error={submitError}
-          onDownloadWaybill={onDownloadWaybill}
+        />
+      )}
+
+      {detailSaleId && (
+        <SaleDetailModal
+          saleId={detailSaleId}
+          onClose={() => setDetailSaleId(null)}
+          onEdit={(sale) => {
+            setDetailSaleId(null);
+            setModalSale(sale);
+          }}
+          onOpenWaybillPreview={(sale) => onOpenWaybill(sale)}
+          onDownloadReceipt={(sale) => onDownloadReceipt(sale)}
+          onChangeStatus={(sale, status) => handleChangeStatus(sale, status)}
+          onAcceptPayment={(sale) => { setDetailSaleId(null); navigate(`/payments?sale_id=${sale.id}`); }}
+          onReturn={(sale) => { setDetailSaleId(null); navigate(`/returns?sale_id=${sale.id}`); }}
+          onCancelRequest={(s) => setCancelTarget({
+            id: s.id,
+            name: s.order_number || s.sale_number || `Продажа #${s.id}`,
+          })}
+          busyId={busyId}
         />
       )}
 
       <ConfirmModal
-        open={!!deleteTarget}
-        title="Удалить продажу?"
-        message={deleteTarget ? `Удалить "${deleteTarget.name}"?` : ''}
-        confirmText="Удалить"
-        onConfirm={handleDelete}
-        onCancel={() => { setDeleteTarget(null); setSubmitError(''); }}
-        error={deleteTarget ? submitError : undefined}
+        open={!!cancelTarget}
+        title="Отменить продажу?"
+        message={cancelTarget ? `Отменить «${cancelTarget.name}»?` : ''}
+        confirmText="Отменить"
+        onConfirm={handleCancelSale}
+        onCancel={() => { setCancelTarget(null); setSubmitError(''); }}
+        error={cancelTarget ? submitError : undefined}
+      />
+
+      <ConfirmModal
+        open={!!creditOverride}
+        title="Кредитный лимит"
+        message={
+          creditOverride
+            ? `${creditOverride.message || 'Превышен кредитный лимит.'} Подтвердить смену статуса с превышением лимита?`
+            : ''
+        }
+        confirmText="Провести с превышением лимита"
+        cancelText="Отмена"
+        onConfirm={onConfirmCreditOverride}
+        onCancel={() => { setCreditOverride(null); setCreditOverrideError(''); }}
+        error={creditOverrideError || undefined}
       />
     </div>
   );
 };
 
-const SaleModal = ({ sale, clients, products, onSubmit, onClose, error, onDownloadWaybill }) => {
-  const [phase, setPhase] = useState('form');
-  const [savedId, setSavedId] = useState(null);
-  const [client, setClient] = useState('');
-  const [product, setProduct] = useState('');
-  const [saleUnit, setSaleUnit] = useState('piece');
-  const [qtyInput, setQtyInput] = useState('');
-  const [price, setPrice] = useState('');
-  const [comment, setComment] = useState('');
-  const [overridePiecesPerPackage, setOverridePiecesPerPackage] = useState('');
-  const [localSubmitting, setLocalSubmitting] = useState(false);
-  const [waybillBusy, setWaybillBusy] = useState(false);
-  const [syncing, setSyncing] = useState(true);
-  const [saleDate, setSaleDate] = useState('');
+const batchFreeQty = (b) => {
+  const fq = parseLocaleNumber(b?.free_quantity);
+  if (Number.isFinite(fq) && fq >= 0) return fq;
+  return parseLocaleNumber(b?.available_quantity);
+};
 
-  useEffect(() => {
-    setSyncing(true);
-    setPhase('form');
-    setSavedId(null);
-    if (sale?.id) {
-      setClient(sale.client_id ?? sale.client?.id ?? sale.client ?? '');
-      const wb =
-        sale.warehouse_batch_id ??
-        sale.warehouse_batch?.id ??
-        sale.batch_id ??
-        sale.stock_batch_id;
-      if (wb != null && String(wb).trim() !== '') {
-        setProduct(String(wb));
-      } else {
-        setProduct('');
-      }
-      const qu = sale.quantity_unit;
-      setSaleUnit(qu === 'meter' ? 'piece' : qu === 'package' || qu === 'piece' ? qu : 'piece');
-      setQtyInput(
-        sale.quantity_input != null && sale.quantity_input !== ''
-          ? formatNumberForInput(sale.quantity_input)
-          : sale.quantity != null
-            ? formatNumberForInput(sale.quantity)
-            : '',
-      );
-      setPrice(
-        sale.price != null && sale.price !== '' ? formatNumberForInput(sale.price) : '',
-      );
-      setComment(sale.comment ?? '');
-      const sd = sale.sale_date || sale.date || sale.created_at;
-      setSaleDate(
-        sd && String(sd).length >= 10 ? String(sd).slice(0, 10) : '',
-      );
-      setOverridePiecesPerPackage(
-        sale.override_pieces_per_package != null && sale.override_pieces_per_package !== ''
-          ? formatNumberForInput(sale.override_pieces_per_package)
-          : '',
-      );
-    } else {
-      setClient('');
-      setProduct('');
-      setSaleUnit('piece');
-      setQtyInput('');
-      setPrice('');
-      setComment('');
-      setOverridePiecesPerPackage('');
-      setSaleDate(new Date().toISOString().slice(0, 10));
-    }
-    setSyncing(false);
-  }, [sale]);
+const isBatchSelectableForSale = (b) => {
+  if (String(b?.quality || '').toLowerCase() !== 'good') return false;
+  if (String(b?.status || '').toLowerCase() !== 'available') return false;
+  return batchFreeQty(b) > 0;
+};
 
-  const saleWarehouseBatchId = useMemo(
-    () =>
-      sale?.warehouse_batch_id ??
-      sale?.warehouse_batch?.id ??
-      sale?.batch_id ??
-      sale?.stock_batch_id,
-    [sale?.warehouse_batch_id, sale?.warehouse_batch?.id, sale?.batch_id, sale?.stock_batch_id],
-  );
-  const saleProductRef = useMemo(
-    () => sale?.product_id ?? sale?.product?.id ?? sale?.product,
-    [sale?.product_id, sale?.product],
-  );
-  /** Пока в ответе продажи нет warehouse_batch_id — подобрать строку склада по product_id. */
-  useEffect(() => {
-    if (!sale?.id || !products.length) return;
-    if (saleWarehouseBatchId != null && String(saleWarehouseBatchId).trim() !== '') return;
-    if (saleProductRef == null || saleProductRef === '') return;
-    const match = products.find((b) => sameWarehouseProductKey(saleProductRef, b));
-    if (match) setProduct(String(match.id));
-  }, [sale?.id, saleProductRef, saleWarehouseBatchId, products]);
+const warehouseBatchOptionLabel = (b) => {
+  const id = b?.id != null ? `#${b.id}` : '—';
+  const product = b.product_name || b.product?.name || b.product || '—';
+  const free = batchFreeQty(b);
+  const freeStr = Number.isFinite(free) ? formatQuantityDisplay(free) : '—';
+  const qual = String(b?.quality || 'good').toLowerCase() === 'good' ? 'Годный' : 'Брак';
+  const pack = inventoryFormLabel(resolveInventoryForm(b));
+  return `${id} — ${product} — свободно ${freeStr} шт — ${qual} — ${pack}`;
+};
 
-  const saleFormSnapshot = useMemo(
-    () => ({
-      client: client === '' || client == null ? '' : String(client),
-      product: product === '' || product == null ? '' : String(product),
-      saleUnit,
-      qtyInput: String(qtyInput ?? '').trim(),
-      price: String(price ?? '').trim(),
-      comment: String(comment ?? '').trim(),
-      overridePiecesPerPackage: String(overridePiecesPerPackage ?? '').trim(),
-      saleDate: String(saleDate ?? '').trim(),
-    }),
-    [client, product, saleUnit, qtyInput, price, comment, overridePiecesPerPackage, saleDate],
-  );
-
-  const isDirtyForm = useDirtyFromBaseline(sale?.id ?? 'new', syncing, saleFormSnapshot);
-  const needConfirmClose = useCallback(
-    () => phase === 'form' && isDirtyForm(),
-    [phase, isDirtyForm],
-  );
-  const {
-    requestClose,
-    discardConfirmOpen,
-    confirmDiscardAndClose,
-    cancelDiscard,
-  } = useDiscardOnClose(onClose, needConfirmClose);
-
-  const selectedBatch = useMemo(
-    () => products.find((p) => String(p.id) === String(product)),
-    [products, product],
-  );
-  const meta = useMemo(() => getPackagingMeta(selectedBatch), [selectedBatch]);
-  const invForm = useMemo(
-    () => (selectedBatch ? resolveInventoryForm(selectedBatch) : 'unpacked'),
-    [selectedBatch],
-  );
-  const selectedBatchPackagingMeta = useMemo(
-    () => getPackagingMeta(selectedBatch),
-    [selectedBatch],
-  );
-
-  const batchQualityKey = useMemo(
-    () => (selectedBatch ? readWarehouseQuality(selectedBatch) : 'good'),
-    [selectedBatch],
-  );
-  const batchDefectReason = useMemo(
-    () => (selectedBatch ? readWarehouseDefectReason(selectedBatch) : ''),
-    [selectedBatch],
-  );
-
-  useEffect(() => {
-    if (!selectedBatch || sale?.id) return;
-    if (invForm === 'packed') {
-      setSaleUnit((u) => (u === 'piece' ? 'package' : u));
-    } else {
-      setSaleUnit((u) => (u === 'package' ? 'piece' : u));
-    }
-  }, [selectedBatch, invForm, sale?.id]);
-
-  /** Новая продажа: при смене партии подставить кратность упаковки только для «Упаковано». */
-  useEffect(() => {
-    if (sale?.id || !selectedBatch) return;
-    if (resolveInventoryForm(selectedBatch) !== 'packed') {
-      setOverridePiecesPerPackage('');
-      return;
-    }
-    if (
-      Number.isFinite(selectedBatchPackagingMeta.piecesPerPackage) &&
-      selectedBatchPackagingMeta.piecesPerPackage > 0
-    ) {
-      setOverridePiecesPerPackage(formatNumberForInput(selectedBatchPackagingMeta.piecesPerPackage));
-    } else {
-      setOverridePiecesPerPackage('');
-    }
-  }, [sale?.id, selectedBatch, selectedBatchPackagingMeta]);
-
-  /** Редактирование: в записи продажи нет override, в партии есть кратность — подставить в поле. */
-  useEffect(() => {
-    if (!sale?.id || !selectedBatch) return;
-    if (sale.quantity_unit !== 'package') return;
-    if (resolveInventoryForm(selectedBatch) !== 'packed') return;
-    const hasOverride =
-      sale.override_pieces_per_package != null && String(sale.override_pieces_per_package).trim() !== '';
-    if (hasOverride) return;
-    if (
-      Number.isFinite(selectedBatchPackagingMeta.piecesPerPackage) &&
-      selectedBatchPackagingMeta.piecesPerPackage > 0
-    ) {
-      setOverridePiecesPerPackage(formatNumberForInput(selectedBatchPackagingMeta.piecesPerPackage));
-    }
-  }, [
-    sale?.id,
-    sale?.quantity_unit,
-    sale?.override_pieces_per_package,
-    selectedBatch,
-    selectedBatchPackagingMeta,
-  ]);
-
-  /**
-   * Откуда списывать на бэке. Зависит от формы строки склада, не только от единицы продажи:
-   * при «Упаковано» и продаже упаковками piece_pick всё равно нужен (целые пломбированные упаковки).
-   */
-  const piecePickForApi = useMemo(() => {
-    if (invForm === 'packed') return 'from_sealed_package';
-    if (invForm === 'open_package') return 'from_open_package';
-    if (invForm === 'unpacked') return 'loose_remainder';
-    return null;
-  }, [invForm]);
-
-  const sendPiecePick = useMemo(() => {
-    if (!piecePickForApi) return false;
-    if (piecePickForApi === 'loose_remainder' && invForm === 'unpacked') return false;
-    return true;
-  }, [piecePickForApi, invForm]);
-
-  const effPiecesPerPackage = useMemo(() => {
-    const o = parseLocaleNumber(overridePiecesPerPackage);
-    if (Number.isFinite(o) && o > 0) return o;
-    return meta.piecesPerPackage;
-  }, [overridePiecesPerPackage, meta.piecesPerPackage]);
-
-  const derived = useMemo(
-    () =>
-      computePiecesForApi({
-        saleUnit,
-        qtyInput,
-        meta,
-        overridePiecesPerPackage: parseLocaleNumber(overridePiecesPerPackage),
-      }),
-    [saleUnit, qtyInput, meta, overridePiecesPerPackage],
-  );
-
-  const availPieces = useMemo(() => {
-    if (!selectedBatch) return NaN;
-    return parseLocaleNumber(selectedBatch.available_quantity ?? selectedBatch.quantity);
-  }, [selectedBatch]);
-
-  const maxPacksByStock = useMemo(() => {
-    if (saleUnit !== 'package') return null;
-    const ipp = effPiecesPerPackage;
-    if (!(Number.isFinite(ipp) && ipp > 0) || !Number.isFinite(availPieces) || availPieces < 1) return null;
-    return Math.floor(availPieces / ipp);
-  }, [saleUnit, effPiecesPerPackage, availPieces]);
-
-  const stockExceeded =
-    Number.isFinite(derived.pieces) &&
-    derived.pieces > 0 &&
-    Number.isFinite(availPieces) &&
-    availPieces >= 0 &&
-    derived.pieces > availPieces;
-
-  const catalogProductId = useMemo(
-    () => readCatalogProductIdFromWarehouseBatch(selectedBatch),
-    [selectedBatch],
-  );
-  const catalogProductMissing =
-    Boolean(selectedBatch) && catalogProductId == null;
-
-  const packagingHint = useMemo(() => {
-    const parts = [];
-    if (Number.isFinite(meta.unitMeters) && meta.unitMeters > 0) {
-      parts.push(`длина штуки ≈ ${formatQuantityDisplay(meta.unitMeters)} м`);
-    }
-    if (Number.isFinite(effPiecesPerPackage) && effPiecesPerPackage > 0) {
-      parts.push(`в упаковке ≈ ${formatQuantityDisplay(effPiecesPerPackage)} шт`);
-    }
-    if (Number.isFinite(meta.packageTotalMeters) && meta.packageTotalMeters > 0) {
-      parts.push(`метраж упаковки ≈ ${formatQuantityDisplay(meta.packageTotalMeters)} м`);
-    }
-    return parts.length ? parts.join(' · ') : null;
-  }, [meta.unitMeters, effPiecesPerPackage, meta.packageTotalMeters]);
-
-  const handleWaybill = async () => {
-    const id = savedId ?? sale?.id;
-    if (!id) return;
-    setWaybillBusy(true);
-    try {
-      if (sale?.id) {
-        await onDownloadWaybill(sale);
-      } else {
-        await onDownloadWaybill({
-          id,
-          client_name: clients.find((c) => String(c.id) === String(client))?.name,
-          product_name:
-            selectedBatch?.product_name || selectedBatch?.product?.name || selectedBatch?.product,
-          quantity: derived.pieces,
-          price,
-          comment,
-        });
-      }
-    } finally {
-      setWaybillBusy(false);
-    }
-  };
-
-  if (phase === 'success' && savedId) {
-    return (
-      <div className="modal-overlay" onClick={onClose}>
-        <div className="modal sales-modal sales-modal--success" onClick={(e) => e.stopPropagation()}>
-          <div className="modal__head">
-            <h3>Готово</h3>
-            <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
-              ×
-            </button>
-          </div>
-          <div className="modal__body sales-modal__success-body">
-            <p className="sales-modal__success-text">Продажа записана.</p>
-          </div>
-          <div className="modal__actions sales-modal__success-actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>
-              Закрыть
-            </button>
-            <button
-              type="button"
-              className="btn btn--primary"
-              disabled={waybillBusy}
-              onClick={handleWaybill}
-            >
-              {waybillBusy ? 'Скачивание…' : 'Накладная'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+const getOrderLineRemaining = (ol) => {
+  if (!ol) return null;
+  const r = parseLocaleNumber(ol.remaining_quantity);
+  if (Number.isFinite(r) && r >= 0) return r;
+  const ordered = parseLocaleNumber(ol.ordered_quantity);
+  const shipped = parseLocaleNumber(ol.shipped_quantity);
+  if (Number.isFinite(ordered)) {
+    const sh = Number.isFinite(shipped) ? shipped : 0;
+    return Math.max(0, ordered - sh);
   }
+  return null;
+};
 
-  const priceNum = parseLocaleNumber(price);
-  const qtyForTotal = saleUnit === 'package' ? parseLocaleNumber(qtyInput) : derived.pieces;
-  const lineTotal =
-    Number.isFinite(priceNum) && priceNum >= 0 && Number.isFinite(qtyForTotal) && qtyForTotal > 0
-      ? priceNum * qtyForTotal
-      : NaN;
+const orderLineOptionLabel = (ol) => {
+  const p = String(ol.product || '').trim() || '—';
+  const oq = ol.ordered_quantity;
+  const orderedStr = oq != null && oq !== '' ? formatQuantityDisplay(oq) : '—';
+  const rem = getOrderLineRemaining(ol);
+  const remStr = rem != null ? formatQuantityDisplay(rem) : '—';
+  return `${p} — заказано ${orderedStr} — осталось ${remStr}`;
+};
+
+const orderOptionLabel = (o) => {
+  const num = (o.order_number || '').trim() || '—';
+  const cn = (o.client_name || '').trim();
+  const lines = Array.isArray(o.lines) ? o.lines : [];
+  let mid = '';
+  if (lines.length) {
+    const first = lines[0];
+    const p = String(first.product || '').trim();
+    const rem = getOrderLineRemaining(first);
+    mid = [p, rem != null ? `осталось ${formatQuantityDisplay(rem)}` : ''].filter(Boolean).join(' — ');
+  }
+  const parts = [num, cn, mid].filter((x) => x && String(x).trim() && x !== '—');
+  return parts.length ? parts.join(' — ') : num;
+};
+
+const SaleModal = ({ sale, clients, onSubmit, onClose, error }) => {
+  const isEdit = Boolean(sale?.id);
+  const [sourceClients, setSourceClients] = useState(clients || []);
+  const [orders, setOrders] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [date, setDate] = useState(
+    (sale?.date || '').toString().slice(0, 10) || new Date().toISOString().slice(0, 10),
+  );
+  const [client, setClient] = useState(() => (sale ? saleClientIdFromRow(sale) : ''));
+  const [linkedOrder, setLinkedOrder] = useState(() => (sale ? saleLinkedOrderIdFromRow(sale) : ''));
+  const [comment, setComment] = useState(sale?.comment || '');
+  const [orderLinesFromOrder, setOrderLinesFromOrder] = useState([]);
+  const [lineError, setLineError] = useState('');
+  const [lines, setLines] = useState(
+    !isEdit
+      ? [{
+        order_line: '',
+        product: '',
+        warehouse_batch_id: '',
+        quantity: '',
+        unit_price: '',
+        comment: '',
+      }]
+      : [],
+  );
+
+  useEffect(() => {
+    if (!linkedOrder) {
+      setOrderLinesFromOrder([]);
+      return undefined;
+    }
+    let alive = true;
+    getSaleSelectSources(client ? { client_id: client, order_id: linkedOrder } : { order_id: linkedOrder })
+      .then((res) => {
+        if (!alive) return;
+        const data = res.data || {};
+        setOrderLinesFromOrder(Array.isArray(data.order_lines) ? data.order_lines : []);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setOrderLinesFromOrder([]);
+      });
+    return () => { alive = false; };
+  }, [linkedOrder, client]);
+
+  useEffect(() => {
+    setSourceClients(Array.isArray(clients) ? clients : []);
+  }, [clients]);
+
+  useEffect(() => {
+    getSaleSelectSources(client ? { client_id: client } : {})
+      .then((res) => {
+        const data = res.data || {};
+        setSourceClients(Array.isArray(data.clients) ? data.clients : []);
+        setOrders(Array.isArray(data.orders) ? data.orders : []);
+        setBatches(Array.isArray(data.warehouse_batches) ? data.warehouse_batches : []);
+      })
+      .catch(() => {
+        setSourceClients([]);
+        setOrders([]);
+        setBatches([]);
+      });
+  }, [client]);
+
+  const total = useMemo(
+    () => lines.reduce((sum, l) => {
+      const q = parseLocaleNumber(l.quantity);
+      const p = parseLocaleNumber(l.unit_price);
+      if (!(q > 0) || !(p >= 0)) return sum;
+      return sum + q * p;
+    }, 0),
+    [lines],
+  );
+
+  const selectableBatches = useMemo(
+    () => (Array.isArray(batches) ? batches.filter(isBatchSelectableForSale) : []),
+    [batches],
+  );
+
+  const batchSelectOptions = useMemo(() => {
+    if (!selectableBatches.length) {
+      return [{ value: '', label: 'Нет доступных партий на складе' }];
+    }
+    return [
+      { value: '', label: 'Выберите партию' },
+      ...selectableBatches.map((b) => ({ value: String(b.id), label: warehouseBatchOptionLabel(b) })),
+    ];
+  }, [selectableBatches]);
+
+  const canCreate = useMemo(() => {
+    if (isEdit) return true;
+    if (!client) return false;
+    if (!lines.length) return false;
+    for (const line of lines) {
+      const product = String(line.product || '').trim();
+      const wb = line.warehouse_batch_id ? Number(line.warehouse_batch_id) : null;
+      const qty = parseLocaleNumber(line.quantity);
+      const up = parseLocaleNumber(line.unit_price);
+      if (!product) return false;
+      if (!wb) return false;
+      if (!(qty > 0)) return false;
+      if (!Number.isFinite(up) || up < 0) return false;
+      const picked = selectableBatches.find((b) => Number(b.id) === wb);
+      if (!picked) return false;
+      const free = batchFreeQty(picked);
+      if (Number.isFinite(free) && qty > free) return false;
+      if (linkedOrder && line.order_line) {
+        const ol = orderLinesFromOrder.find((o) => String(o.id) === String(line.order_line));
+        const rem = getOrderLineRemaining(ol);
+        if (rem != null && qty > rem) return false;
+      }
+    }
+    return true;
+  }, [client, isEdit, lines, linkedOrder, orderLinesFromOrder, selectableBatches]);
 
   return (
-    <div className="modal-overlay" onClick={requestClose}>
-      <ConfirmModal
-        open={discardConfirmOpen}
-        title="Закрыть без сохранения?"
-        message="Введённые данные не будут сохранены."
-        confirmText="Закрыть"
-        onConfirm={confirmDiscardAndClose}
-        onCancel={cancelDiscard}
-      />
+    <div className="modal-overlay" onClick={onClose}>
       <div className="modal sales-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
-          <h3>Продажа</h3>
-          <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">
-            ×
-          </button>
+          <h3>{isEdit ? 'Редактировать продажу' : 'Новая продажа'}</h3>
+          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <form
           id="sales-modal-form"
           className="sales-modal__form"
           onSubmit={async (e) => {
             e.preventDefault();
-            if (!product) return;
-            const { pieces, error: convErr } = derived;
-            if (convErr) {
-              return;
-            }
-            if (!(Number.isFinite(pieces) && pieces > 0)) return;
-            if (stockExceeded) return;
-            if (catalogProductMissing || catalogProductId == null) return;
-
-            const qIn = parseLocaleNumber(qtyInput);
-            const lenM = parseLocaleNumber(
-              selectedBatch?.length_per_piece
-              ?? selectedBatch?.unit_meters
-              ?? selectedBatch?.unit_length_m
-              ?? selectedBatch?.piece_length_m
-              ?? selectedBatch?.piece_meters,
-            );
-            const packsInt = saleUnit === 'package' ? Math.floor(Number.isFinite(qIn) ? qIn : 0) : undefined;
-            const payload = {
-              ...(client ? { client_id: Number(client), client: Number(client) } : {}),
-              product: catalogProductId,
-              ...(selectedBatch?.id != null && String(selectedBatch.id).trim() !== ''
-                ? {
-                  warehouse_batch: Number(selectedBatch.id),
-                  warehouse_batch_id: Number(selectedBatch.id),
-                }
-                : {}),
-              sale_mode: saleUnit === 'package' ? 'packages' : 'pieces',
-              sold_pieces: pieces,
-              ...(saleUnit === 'package' && packsInt != null && packsInt >= 0
-                ? { sold_packages: packsInt }
-                : {}),
-              ...(Number.isFinite(lenM) && lenM > 0 ? { length_per_piece: lenM } : {}),
-              quantity: pieces,
-              quantity_unit: saleUnit,
-              quantity_input: Number.isFinite(qIn) ? qIn : pieces,
-              stock_form: invForm,
-              ...(sendPiecePick ? { piece_pick: piecePickForApi } : {}),
-              ...(Number.isFinite(parseLocaleNumber(overridePiecesPerPackage)) &&
-              parseLocaleNumber(overridePiecesPerPackage) > 0
-                ? { override_pieces_per_package: parseLocaleNumber(overridePiecesPerPackage) }
-                : {}),
-              ...(price !== '' && Number.isFinite(parseLocaleNumber(price))
-                ? { price: parseLocaleNumber(price) }
-                : {}),
-              ...(comment.trim() ? { comment: comment.trim() } : {}),
-              ...(saleDate.trim() ? { sale_date: saleDate.trim(), date: saleDate.trim() } : {}),
-            };
-
-            setLocalSubmitting(true);
-            try {
+            setLineError('');
+            if (isEdit) {
+              const payload = {
+                date,
+                ...(comment.trim() ? { comment: comment.trim() } : {}),
+              };
               const result = await onSubmit(payload);
-              if (result?.id && !sale) {
-                setSavedId(result.id);
-                setPhase('success');
-              } else if (result?.id && sale) {
-                onClose();
+              if (result?.id) onClose();
+            } else {
+              if (!client) {
+                setLineError('Выберите клиента.');
+                return;
               }
-            } finally {
-              setLocalSubmitting(false);
+              const payloadLines = [];
+              for (let i = 0; i < lines.length; i += 1) {
+                const line = lines[i];
+                const wb = line.warehouse_batch_id ? Number(line.warehouse_batch_id) : null;
+                const qty = parseLocaleNumber(line.quantity);
+                const up = parseLocaleNumber(line.unit_price);
+                if (!wb) {
+                  setLineError(`Позиция ${i + 1}: выберите партию склада.`);
+                  return;
+                }
+                if (!(qty > 0)) {
+                  setLineError(`Позиция ${i + 1}: количество должно быть больше 0.`);
+                  return;
+                }
+                if (!Number.isFinite(up) || !(up >= 0)) {
+                  setLineError(`Позиция ${i + 1}: цена не может быть отрицательной.`);
+                  return;
+                }
+                const picked = selectableBatches.find((b) => Number(b.id) === wb);
+                if (!picked) {
+                  setLineError(`Позиция ${i + 1}: выберите доступную партию.`);
+                  return;
+                }
+                const free = batchFreeQty(picked);
+                if (Number.isFinite(free) && qty > free) {
+                  setLineError(`Позиция ${i + 1}: не больше ${formatQuantityDisplay(free)} шт по партии.`);
+                  return;
+                }
+                if (linkedOrder) {
+                  if (!line.order_line) {
+                    setLineError(`Позиция ${i + 1}: выберите строку заявки.`);
+                    return;
+                  }
+                  const ol = orderLinesFromOrder.find((o) => String(o.id) === String(line.order_line));
+                  const rem = getOrderLineRemaining(ol);
+                  if (rem != null && qty > rem) {
+                    setLineError(`Позиция ${i + 1}: не больше ${formatQuantityDisplay(rem)} шт по заявке.`);
+                    return;
+                  }
+                }
+                const product = String(line.product || '').trim();
+                if (!product) {
+                  setLineError(`Позиция ${i + 1}: укажите товар.`);
+                  return;
+                }
+                const row = {
+                  product,
+                  warehouse_batch: wb,
+                  quantity: String(qty),
+                  unit_price: String(up),
+                  defect_flag: false,
+                  comment: String(line.comment ?? '').trim(),
+                };
+                if (line.order_line) row.order_line = Number(line.order_line);
+                payloadLines.push(row);
+              }
+              if (!payloadLines.length) {
+                setLineError('Добавьте хотя бы одну позицию с партией и количеством.');
+                return;
+              }
+              const payload = {
+                client: Number(client),
+                date,
+                sale_status: 'shipped',
+                sale_lines: payloadLines,
+                ...(linkedOrder ? { linked_order: Number(linkedOrder) } : {}),
+                comment: String(comment ?? '').trim(),
+              };
+              const result = await onSubmit(payload);
+              if (result?.id) onClose();
             }
           }}
         >
-          <div className="sales-modal__fields">
-            <label className="sales-modal__label" htmlFor="sales-modal-date">Дата продажи</label>
-            <input
-              id="sales-modal-date"
-              type="date"
-              value={saleDate}
-              onChange={(e) => setSaleDate(e.target.value)}
-              className="sales-modal__date-input"
-            />
+          <div className="sales-modal__scroll">
+            {!isEdit && (
+              <>
+                <section className="sales-modal__section">
+                <h4 className="sales-modal__section-title">Документ</h4>
+                <label className="sales-modal__label" htmlFor="sales-modal-date">Дата продажи</label>
+                <input
+                  id="sales-modal-date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="sales-modal__date-input"
+                />
+                <label className="sales-modal__label">Клиент *</label>
+                <SearchableSelect
+                  value={client}
+                  onChange={(v) => { setLineError(''); setClient(v); }}
+                  options={[
+                    { value: '', label: 'Выберите клиента' },
+                    ...sourceClients.map((c) => ({ value: String(c.id), label: clientOptionLabel(c) })),
+                  ]}
+                />
+                <label className="sales-modal__label">Комментарий</label>
+                <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} />
+                </section>
 
-            <label className="sales-modal__label">Клиент</label>
-            <Select
-              value={client === '' || client == null ? '' : String(client)}
-              onChange={setClient}
-              placeholder="Клиент"
-              options={[
-                { value: '', label: 'Без клиента' },
-                ...clients.map((c) => ({
-                  value: String(c.id),
-                  label: c.name || 'Клиент',
-                })),
-              ]}
-            />
-
-            <label className="sales-modal__label">Партия *</label>
-            <Select
-              value={product === '' || product == null ? '' : String(product)}
-              onChange={setProduct}
-              placeholder="Выберите партию"
-              options={products.map((p) => ({
-                value: String(p.id),
-                label: formatBatchSelectOptionLabel(p),
-              }))}
-            />
-
-            {selectedBatch && (
-              <div
-                className={`sales-modal__batch-strip sales-modal__batch-strip--${invForm}${
-                  batchQualityKey === 'defect' ? ' sales-modal__batch-strip--defect' : ''
-                }`}
-              >
-                <div className="sales-modal__batch-strip__top">
-                  <span className="sales-modal__batch-strip__name">
-                  {batchProductTitle(selectedBatch) || `Партия ${selectedBatch.id}`}
-                </span>
-                  {batchQualityKey === 'defect' ? (
-                    <span className="warehouse-quality-badge warehouse-quality-badge--defect">Брак</span>
-                  ) : (
-                    <span className="warehouse-quality-badge warehouse-quality-badge--good">Годный</span>
-                  )}
-                  <span className="sales-modal__batch-strip__form">{inventoryFormLabel(invForm)}</span>
-                </div>
-                <div className="sales-modal__batch-strip__avail">
-                  Доступно{' '}
-                  {Number.isFinite(availPieces) ? `${formatQuantityDisplay(availPieces)} шт` : '—'}
-                  {invForm === 'packed' && maxPacksByStock != null && maxPacksByStock >= 1
-                    ? ` · до ${formatQuantityDisplay(maxPacksByStock)} упак.`
-                    : ''}
-                </div>
-                {batchQualityKey === 'defect' && batchDefectReason ? (
-                  <p className="sales-modal__batch-strip__reason">{batchDefectReason}</p>
-                ) : null}
-                {packagingHint ? (
-                  <p className="sales-modal__batch-strip__hint">{packagingHint}</p>
-                ) : null}
-              </div>
-            )}
-
-            {selectedBatch && (
-              <div className="sales-modal__unit-line">
-                <span className="sales-modal__unit-line__k">Единица</span>
-                <span className="sales-modal__unit-line__v">
-                  {invForm === 'packed' ? 'Упаковки' : 'Штуки'}
-                </span>
-              </div>
-            )}
-
-            {selectedBatch && saleUnit === 'piece' && (
-              <div className="sales-modal__block">
-                <label className="sales-modal__label" htmlFor="sale-modal-qty-piece">Количество *</label>
-                <div className="sales-modal__inline-qty">
-                  <IntegerInput
-                    id="sale-modal-qty-piece"
-                    min={0}
-                    value={qtyInput}
-                    onChange={setQtyInput}
-                    required
-                    className="input sales-modal__inline-qty-input"
+                <section className="sales-modal__section">
+                  <h4 className="sales-modal__section-title">Заявка</h4>
+                  <label className="sales-modal__label">Связанная заявка</label>
+                  <SearchableSelect
+                    value={linkedOrder}
+                    onChange={(v) => { setLineError(''); setLinkedOrder(v); }}
+                    disabled={!client}
+                    options={[
+                      { value: '', label: client ? 'Не выбрана' : 'Сначала выберите клиента' },
+                      ...orders.map((o) => ({ value: String(o.id), label: orderOptionLabel(o) })),
+                    ]}
                   />
-                  {Number.isFinite(availPieces) && availPieces >= 1 ? (
-                    <button
-                      type="button"
-                      className="sales-modal__max-btn"
-                      onClick={() => setQtyInput(String(Math.floor(availPieces)))}
-                    >
-                      Макс.
-                    </button>
-                  ) : null}
-                </div>
-              </div>
+                </section>
+              </>
             )}
 
-            {selectedBatch && saleUnit === 'package' && (
-              <div className="sales-modal__block sales-modal__block--pack">
-                <div className="sales-modal__pack-grid">
-                  <div>
-                    <label className="sales-modal__label" htmlFor="sale-modal-packs">Упаковок *</label>
-                    <div className="sales-modal__inline-qty">
-                      <IntegerInput
-                        id="sale-modal-packs"
-                        min={1}
-                        value={qtyInput}
-                        onChange={setQtyInput}
-                        className="input sales-modal__inline-qty-input"
+            {isEdit && (
+              <>
+                <section className="sales-modal__section">
+                  <h4 className="sales-modal__section-title">Документ</h4>
+                  <label className="sales-modal__label" htmlFor="sales-modal-date-edit">Дата продажи</label>
+                  <input
+                    id="sales-modal-date-edit"
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="sales-modal__date-input"
+                  />
+                  <label className="sales-modal__label">Клиент</label>
+                  <input className="sales-modal__readonly" value={sale?.client_name || clientOptionLabel(sourceClients.find((c) => String(c.id) === String(client))) || '—'} readOnly />
+                  <label className="sales-modal__label">Заявка</label>
+                  <input className="sales-modal__readonly" value={sale?.linked_order_number || (linkedOrder ? `№ ${linkedOrder}` : '—')} readOnly />
+                  <label className="sales-modal__label">Комментарий</label>
+                  <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} />
+                </section>
+                {sale && (
+                  <div className="sales-modal__note card">
+                    <p className="sales-modal__note-title">Строки и партии</p>
+                    <p className="sales-modal__note-text">
+                      Изменить состав продажи после проведения нельзя. Статус меняется в карточке продажи.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {!isEdit && (
+              <section className="sales-modal__section">
+                <h4 className="sales-modal__section-title">Позиции продажи</h4>
+                {lines.map((line, idx) => {
+                  const ol = orderLinesFromOrder.find((o) => String(o.id) === String(line.order_line));
+                  const picked = selectableBatches.find((b) => String(b.id) === String(line.warehouse_batch_id));
+                  const rem = getOrderLineRemaining(ol);
+                  const free = picked ? batchFreeQty(picked) : null;
+                  let maxQty = null;
+                  if (Number.isFinite(rem) && Number.isFinite(free)) maxQty = Math.min(rem, free);
+                  else if (Number.isFinite(rem)) maxQty = rem;
+                  else if (Number.isFinite(free)) maxQty = free;
+                  return (
+                    <div key={idx} className="sales-modal__line-card card">
+                      {linkedOrder ? (
+                        <>
+                          <label className="sales-modal__label">Строка заявки</label>
+                          <SearchableSelect
+                            value={line.order_line}
+                            onChange={(v) => setLines((prev) => prev.map((x, i) => {
+                              if (i !== idx) return x;
+                              const oln = orderLinesFromOrder.find((o) => String(o.id) === String(v));
+                              const remN = getOrderLineRemaining(oln);
+                              const priceRaw = oln?.unit_price ?? oln?.line_unit_price ?? oln?.price;
+                              const priceStr = priceRaw != null && priceRaw !== '' ? String(priceRaw) : x.unit_price;
+                              return {
+                                ...x,
+                                order_line: v,
+                                product: oln ? String(oln.product || '').trim() : '',
+                                quantity: remN != null ? String(remN) : x.quantity,
+                                unit_price: priceStr,
+                              };
+                            }))}
+                            options={[
+                              { value: '', label: 'Выберите строку' },
+                              ...orderLinesFromOrder.map((o) => ({
+                                value: String(o.id),
+                                label: orderLineOptionLabel(o),
+                              })),
+                            ]}
+                          />
+                        </>
+                      ) : null}
+                      <label className="sales-modal__label">Товар</label>
+                      <input className="sales-modal__readonly" value={line.product || '—'} readOnly />
+                      <label className="sales-modal__label">Партия склада *</label>
+                      <SearchableSelect
+                        value={line.warehouse_batch_id}
+                        onChange={(v) => setLines((prev) => prev.map((x, i) => {
+                          if (i !== idx) return x;
+                          if (!linkedOrder) {
+                            const b = selectableBatches.find((bb) => String(bb.id) === String(v));
+                            const nm = b ? String(b.product_name || b.product?.name || b.product || '').trim() : '';
+                            return { ...x, warehouse_batch_id: v, product: nm };
+                          }
+                          return { ...x, warehouse_batch_id: v };
+                        }))}
+                        options={batchSelectOptions}
                       />
-                      {maxPacksByStock != null && maxPacksByStock >= 1 ? (
+                      <label className="sales-modal__label">Количество *</label>
+                      <input
+                        type="number"
+                        min="0.0001"
+                        max={maxQty != null ? maxQty : undefined}
+                        step="any"
+                        value={line.quantity}
+                        onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, quantity: e.target.value } : x)))}
+                      />
+                      <p className="sales-modal__hint-line">
+                        Доступно:
+                        {' '}
+                        {maxQty != null ? `${formatQuantityDisplay(maxQty)} шт` : '—'}
+                      </p>
+                      <label className="sales-modal__label">Цена *</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={line.unit_price}
+                        onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, unit_price: e.target.value } : x)))}
+                      />
+                      <label className="sales-modal__label">Комментарий</label>
+                      <input
+                        value={line.comment}
+                        onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, comment: e.target.value } : x)))}
+                      />
+                      {lines.length > 1 ? (
                         <button
                           type="button"
-                          className="sales-modal__max-btn"
-                          onClick={() => setQtyInput(String(maxPacksByStock))}
+                          className="btn btn--secondary sales-modal__remove-line"
+                          onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}
                         >
-                          Макс.
+                          Удалить строку
                         </button>
                       ) : null}
                     </div>
-                  </div>
-                  <div>
-                    <label className="sales-modal__label" htmlFor="sale-modal-ipp">Штук в упаковке *</label>
-                    <IntegerInput
-                      id="sale-modal-ipp"
-                      min={1}
-                      value={overridePiecesPerPackage}
-                      onChange={setOverridePiecesPerPackage}
-                      className="input"
-                    />
-                  </div>
-                  <div className="sales-modal__pack-grid__total">
-                    <span className="sales-modal__pack-grid__total-k">Итого шт</span>
-                    <span className="sales-modal__pack-grid__total-v">
-                      {Number.isFinite(derived.pieces) && derived.pieces > 0
-                        ? formatQuantityDisplay(derived.pieces)
-                        : '—'}
-                    </span>
-                  </div>
-                </div>
-                {(() => {
-                  const pk = parseLocaleNumber(qtyInput);
-                  const ippOk = Number.isFinite(effPiecesPerPackage) && effPiecesPerPackage > 0;
-                  if (!(Number.isFinite(pk) && pk >= 1 && ippOk)) return null;
-                  const phrase = formatPacksByPiecesPhrase(Math.floor(pk), Math.floor(effPiecesPerPackage));
-                  return phrase ? <p className="sales-modal__pack-phrase">{phrase}</p> : null;
-                })()}
-              </div>
+                  );
+                })}
+                <button
+                  type="button"
+                  className="btn btn--secondary sales-modal__add-line"
+                  onClick={() => setLines((prev) => [...prev, {
+                    order_line: '',
+                    product: '',
+                    warehouse_batch_id: '',
+                    quantity: '',
+                    unit_price: '',
+                    comment: '',
+                  }])}
+                >
+                  Добавить строку
+                </button>
+                {total > 0 ? (
+                  <p className="sales-modal__total-hint">
+                    Ориентировочно: <strong>{formatQuantityDisplay(total)} сом</strong>
+                    {' '}
+                    <span className="sales-modal__total-hint-sub">(итог на сервере)</span>
+                  </p>
+                ) : null}
+              </section>
             )}
 
-            {saleUnit === 'piece' &&
-              selectedBatch &&
-              Number.isFinite(derived.pieces) &&
-              derived.pieces >= 0 &&
-              !derived.error && (
-                <p className="sales-modal__hint-line">
-                  Списание: {formatQuantityDisplay(derived.pieces)} шт
-                  {Number.isFinite(availPieces) && availPieces >= 0 ? (
-                    <> · макс. {formatQuantityDisplay(availPieces)}</>
-                  ) : null}
-                </p>
-              )}
-            {derived.error ? <p className="modal__error">{derived.error}</p> : null}
-            {stockExceeded ? (
-              <p className="modal__error">
-                Недостаточно на складе (макс. {formatQuantityDisplay(availPieces)} шт).
-              </p>
-            ) : null}
-
-            <div className="sales-modal__block">
-              <label className="sales-modal__label" htmlFor="sale-modal-price">Цена</label>
-              <DecimalInput id="sale-modal-price" min={0} value={price} onChange={setPrice} placeholder="" />
-              {Number.isFinite(lineTotal) && lineTotal > 0 ? (
-                <p className="sales-modal__hint-line">
-                  Сумма: {formatQuantityDisplay(lineTotal)} сом
-                </p>
-              ) : null}
-            </div>
-
-            <Collapse title="Комментарий">
-              <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="" />
-            </Collapse>
-
-            {catalogProductMissing ? (
-              <p className="modal__error" role="alert">
-                Для этой партии нет продукта в каталоге — выберите другую.
-              </p>
-            ) : null}
+            {lineError ? <p className="modal__error">{lineError}</p> : null}
             {error ? <p className="modal__error">{error}</p> : null}
           </div>
+          <div className="modal__actions sales-modal__footer">
+            <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
+            <button type="submit" className="btn btn--primary" disabled={!canCreate}>
+              {isEdit ? 'Сохранить' : 'Создать продажу'}
+            </button>
+          </div>
         </form>
-        <div className="modal__actions sales-modal__footer">
-          <button type="button" className="btn btn--secondary" onClick={requestClose} disabled={localSubmitting}>
-            Отмена
-          </button>
+      </div>
+    </div>
+  );
+};
+
+const saleLineBatchLabel = (line) => {
+  const b = line?.warehouse_batch;
+  if (b && typeof b === 'object') {
+    return warehouseBatchOptionLabel(b);
+  }
+  if (line?.warehouse_batch_label || line?.batch_label) {
+    return line.warehouse_batch_label || line.batch_label;
+  }
+  return '—';
+};
+
+const SaleDetailModal = ({
+  saleId,
+  onClose,
+  onEdit,
+  onOpenWaybillPreview,
+  onDownloadReceipt,
+  onChangeStatus,
+  onAcceptPayment,
+  onReturn,
+  onCancelRequest,
+  busyId,
+}) => {
+  const [sale, setSale] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await getSale(saleId);
+        if (!alive) return;
+        setSale(res.data || null);
+      } catch (e) {
+        if (!alive) return;
+        setError(saleErrorMessage(e, 'Не удалось загрузить карточку продажи'));
+      } finally {
+        if (alive) setLoading(false);
+      }
+    };
+    load();
+    return () => { alive = false; };
+  }, [saleId]);
+
+  const allowedNext = sale && Array.isArray(sale.available_status_transitions)
+    ? sale.available_status_transitions
+    : [];
+  const availableActions = sale?.available_actions;
+  const sk = sale ? saleStatusKey(sale.sale_status) : '';
+  const defectDoc = sale ? saleIsDefectSale(sale) : false;
+  const relatedPayments = Array.isArray(sale?.linked_entities?.payments) ? sale.linked_entities.payments : [];
+  const relatedReturns = Array.isArray(sale?.linked_entities?.returns) ? sale.linked_entities.returns : [];
+  const debt = sale ? saleDebtMoney(sale) : null;
+
+  const renderFooter = () => {
+    if (!sale) return null;
+    if (defectDoc) {
+      const actions = [];
+      if (sk !== 'canceled') {
+        actions.push(
+          <button key="pay" type="button" className="btn btn--secondary" disabled={busyId === sale.id} onClick={() => onAcceptPayment(sale)}>Принять оплату</button>,
+        );
+      }
+      if ((sk === 'shipped' || sk === 'partially_shipped') && saleAllowsReturnAction(availableActions)) {
+        actions.push(
+          <button key="ret" type="button" className="btn btn--secondary" disabled={busyId === sale.id} onClick={() => onReturn(sale)}>Возврат</button>,
+        );
+      }
+      if (sk !== 'canceled') {
+        actions.push(
+          <button key="wb" type="button" className="btn btn--secondary" disabled={busyId === sale.id} onClick={() => onOpenWaybillPreview(sale)}>Накладная</button>,
+          <button key="rc" type="button" className="btn btn--secondary" disabled={busyId === sale.id} onClick={() => onDownloadReceipt(sale)}>Квитанция</button>,
+        );
+      }
+      if (apiActionEnabled(availableActions, 'cancel') && onCancelRequest) {
+        actions.push(
+          <button key="cx" type="button" className="btn btn--danger" disabled={busyId === sale.id} onClick={() => onCancelRequest(sale)}>Отменить</button>,
+        );
+      }
+      actions.push(
+        <button key="close" type="button" className="btn btn--secondary" onClick={onClose}>Закрыть</button>,
+      );
+      if (!actions.length) return null;
+      return <div className="modal__actions sales-detail-modal__footer">{actions}</div>;
+    }
+    if (sk === 'canceled') {
+      return null;
+    }
+    const actions = [];
+    if (sk === 'draft' && saleEditableByStatus(sale.sale_status)) {
+      actions.push(
+        <button key="edit" type="button" className="btn btn--secondary" disabled={busyId === sale.id} onClick={() => onEdit(sale)}>Редактировать</button>,
+      );
+    }
+    allowedNext
+      .filter((st) => saleStatusKey(st?.status || st) !== 'canceled' && saleStatusKey(st?.status || st) !== 'cancelled')
+      .forEach((st, i) => {
+        const nextStatus = st?.status || st;
+        actions.push(
           <button
-            type="submit"
-            form="sales-modal-form"
-            className="btn btn--primary"
-            disabled={
-              localSubmitting ||
-              !!derived.error ||
-              stockExceeded ||
-              catalogProductMissing ||
-              !(Number.isFinite(derived.pieces) && derived.pieces > 0)
-            }
+            key={`tr-${i}`}
+            type="button"
+            className="btn btn--secondary"
+            disabled={busyId === sale.id}
+            onClick={() => onChangeStatus(sale, nextStatus)}
           >
-            {localSubmitting ? 'Сохранение…' : 'Сохранить'}
-          </button>
+            {saleTransitionMenuLabel(sale.sale_status, nextStatus)}
+          </button>,
+        );
+      });
+    if (sk === 'shipped' || sk === 'partially_shipped') {
+      actions.push(
+        <button key="pay" type="button" className="btn btn--secondary" disabled={busyId === sale.id} onClick={() => onAcceptPayment(sale)}>Принять оплату</button>,
+        <button key="ret" type="button" className="btn btn--secondary" disabled={busyId === sale.id} onClick={() => onReturn(sale)}>Возврат</button>,
+      );
+    }
+    if (sk !== 'canceled') {
+      actions.push(
+        <button key="wb" type="button" className="btn btn--secondary" disabled={busyId === sale.id} onClick={() => onOpenWaybillPreview(sale)}>Накладная</button>,
+        <button key="rc" type="button" className="btn btn--secondary" disabled={busyId === sale.id} onClick={() => onDownloadReceipt(sale)}>Квитанция</button>,
+      );
+    }
+    if (apiActionEnabled(availableActions, 'cancel') && onCancelRequest) {
+      actions.push(
+        <button key="cx" type="button" className="btn btn--danger" disabled={busyId === sale.id} onClick={() => onCancelRequest(sale)}>Отменить</button>,
+      );
+    }
+    actions.push(
+      <button key="close" type="button" className="btn btn--secondary" onClick={onClose}>Закрыть</button>,
+    );
+    if (!actions.length) return null;
+    return <div className="modal__actions sales-detail-modal__footer">{actions}</div>;
+  };
+
+  const detailDl = (label, value) => (
+    <div className="sales-detail__dl-row">
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </div>
+  );
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal modal--wide sales-detail-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal__head sales-detail-modal__head">
+          <div>
+            <h3>Карточка продажи</h3>
+            {!loading && !error && sale && (
+              <div className="sales-detail-modal__head-meta">
+                <span className="sales-detail-modal__number">{sale.order_number || sale.sale_number || `#${sale.id}`}</span>
+                <Badge variant={statusVariant(sale.sale_status)}>{statusLabel(sale.sale_status)}</Badge>
+                {defectDoc ? <Badge variant="warning">Продажа брака</Badge> : null}
+              </div>
+            )}
+          </div>
+          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
+        <div className="sales-detail-modal__body">
+          {loading && <Loading />}
+          {!loading && error && <p className="modal__error">{error}</p>}
+          {!loading && !error && sale && (
+            <>
+              <section className="sales-detail__block">
+                <h4 className="sales-detail__block-title">Документ</h4>
+                <dl className="sales-detail__dl">
+                  {detailDl('Номер продажи', sale.order_number || sale.sale_number || `№ ${sale.id}`)}
+                  {detailDl('Дата', formatDate(sale.date || sale.created_at))}
+                  {detailDl('Клиент', sale.client_name || '—')}
+                  {detailDl('Заявка', sale.linked_order_number || '—')}
+                  {detailDl('Статус', statusLabel(sale.sale_status))}
+                  {detailDl('Комментарий', sale.comment && String(sale.comment).trim() ? sale.comment : '—')}
+                </dl>
+              </section>
+
+              <section className="sales-detail__block">
+                <h4 className="sales-detail__block-title">Финансы</h4>
+                <dl className="sales-detail__dl">
+                  {detailDl('Выручка', toMoney(sale.revenue))}
+                  {detailDl('Оплачено', toMoney(sale.paid_amount))}
+                  {detailDl('Долг', debt != null ? toMoney(debt) : '—')}
+                  {detailDl('Возврат денег', toMoney(sale.refund_amount))}
+                  {detailDl('Статус оплаты', paymentStatusLabel(sale.payment_status))}
+                </dl>
+              </section>
+
+              <section className="sales-detail__block">
+                <h4 className="sales-detail__block-title">Строки продажи</h4>
+                <div className="commercial-table-wrap">
+                  <table className="data-table data-table--order-detail-lines">
+                    <thead>
+                      <tr>
+                        <th>Товар</th>
+                        <th>Партия</th>
+                        <th className="data-table__cell--num">Количество</th>
+                        <th className="data-table__cell--num">Цена</th>
+                        <th className="data-table__cell--num">Сумма</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(Array.isArray(sale.sale_lines) ? sale.sale_lines : []).map((line, idx) => {
+                        const qty = parseLocaleNumber(line.quantity ?? 0) || 0;
+                        const price = parseLocaleNumber(line.unit_price ?? 0) || 0;
+                        const sum = Number((qty * price).toFixed(2));
+                        return (
+                          <tr key={line.id || idx}>
+                            <td>{line.product_name || line.product?.name || line.product || '—'}</td>
+                            <td>{saleLineBatchLabel(line)}</td>
+                            <td className="data-table__cell--num">{formatQuantityDisplay(qty)}</td>
+                            <td className="data-table__cell--num">{toMoney(price)}</td>
+                            <td className="data-table__cell--num">{toMoney(sum)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section className="sales-detail__block">
+                <h4 className="sales-detail__block-title">Связанные документы</h4>
+                <div className="sales-detail__sub">
+                  <strong className="sales-detail__sub-title">Оплаты</strong>
+                  {relatedPayments.length === 0 ? (
+                    <p className="sales-detail__muted">Нет.</p>
+                  ) : (
+                    <div className="commercial-table-wrap">
+                      <table className="data-table data-table--order-detail-lines">
+                        <thead>
+                          <tr>
+                            <th>Дата</th>
+                            <th>Статус</th>
+                            <th className="data-table__cell--num">Сумма</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {relatedPayments.map((p) => (
+                            <tr key={p.id}>
+                              <td>{formatDate(p.date || p.created_at)}</td>
+                              <td>{paymentDocStatusLabel(p.status)}</td>
+                              <td className="data-table__cell--num">{toMoney(p.amount)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+                <div className="sales-detail__sub">
+                  <strong className="sales-detail__sub-title">Возвраты</strong>
+                  {relatedReturns.length === 0 ? (
+                    <p className="sales-detail__muted">Нет.</p>
+                  ) : (
+                    <div className="commercial-table-wrap">
+                      <table className="data-table data-table--order-detail-lines">
+                        <thead>
+                          <tr>
+                            <th>Номер</th>
+                            <th>Дата</th>
+                            <th>Статус</th>
+                            <th>Причина</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {relatedReturns.map((r) => (
+                            <tr key={r.id}>
+                              <td>{r.return_number || r.number || `№ ${r.id}`}</td>
+                              <td>{formatDate(r.date || r.created_at)}</td>
+                              <td>{statusLabel(r.status)}</td>
+                              <td>{r.return_reason || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </section>
+            </>
+          )}
+        </div>
+        {!loading && !error && sale ? renderFooter() : null}
       </div>
     </div>
   );

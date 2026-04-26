@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
 import {
   useServerQuery,
@@ -8,13 +8,12 @@ import {
   inventoryFormLabel,
   inventoryFormBadgeModifier,
   warehouseStockStatusRu,
-  getWarehouseQuantityPresentation,
   readWarehouseQuality,
   readWarehouseDefectReason,
   warehouseQualityShortLabel,
 } from '../../../../shared/lib';
 import { buildWarehouseBatchCardRows } from '../warehouseBatchCard';
-import { EmptyState, ErrorState, Loading, useToast, DecimalInput, ConfirmModal, ActionMenu } from '../../../../shared/ui';
+import { EmptyState, ErrorState, Loading, useToast, DecimalInput, ConfirmModal, ActionMenu, Pagination, Badge } from '../../../../shared/ui';
 import Select from '../../../../shared/ui/Select/Select';
 import { apiClient } from '../../../../shared/api';
 import { useOperationalRefetch } from '../../../../shared/realtime';
@@ -23,9 +22,76 @@ import './WarehousePage.scss';
 
 const statusLabel = (status) => warehouseStockStatusRu(status);
 
+const readDisplayProduct = (b) => {
+  if (!b || typeof b !== 'object') return '—';
+  const own = typeof b.product === 'string' ? b.product.trim() : '';
+  if (own) return own;
+  const profileLabel = b.linked_entities?.profile?.label;
+  if (typeof profileLabel === 'string' && profileLabel.trim()) return profileLabel.trim();
+  return '—';
+};
+
+const readDisplayBatch = (b) => {
+  if (!b || typeof b !== 'object') return '—';
+  const sourceLabel = b.linked_entities?.source_batch?.label;
+  if (typeof sourceLabel === 'string' && sourceLabel.trim()) return sourceLabel.trim();
+  if (b.source_batch != null && b.source_batch !== '') return `#${b.source_batch}`;
+  return '—';
+};
+
 const WarehouseBatchDetailModal = ({ batch, onClose }) => {
-  if (!batch) return null;
-  const rows = buildWarehouseBatchCardRows(batch);
+  const [fullBatch, setFullBatch] = useState(batch || null);
+  const [resolvedLineName, setResolvedLineName] = useState('');
+  useEffect(() => {
+    let alive = true;
+    setResolvedLineName('');
+    if (!batch?.id) {
+      setFullBatch(batch || null);
+      return () => { alive = false; };
+    }
+    apiClient.get(`warehouse/batches/${batch.id}/`)
+      .then((res) => {
+        if (!alive) return;
+        const detail = res.data || {};
+        setFullBatch({ ...(batch || {}), ...detail });
+      })
+      .catch(() => {
+        if (!alive) return;
+        setFullBatch(batch || null);
+      });
+    return () => { alive = false; };
+  }, [batch]);
+  useEffect(() => {
+    let alive = true;
+    if (!batch?.id) return () => { alive = false; };
+    if (fullBatch?.line_name) return () => { alive = false; };
+    apiClient.get(`warehouse/batches/${batch.id}/trace/`)
+      .then((res) => {
+        if (!alive) return;
+        const lineId = res.data?.production_batch?.line_id;
+        if (!lineId) return;
+        return apiClient.get(`lines/${lineId}/`)
+          .then((lineRes) => {
+            if (!alive) return;
+            const name = (lineRes.data?.name || '').toString().trim();
+            if (name) setResolvedLineName(name);
+          })
+          .catch(() => {
+            if (!alive) return;
+            setResolvedLineName(`Линия #${lineId}`);
+          });
+      })
+      .catch(() => {
+        if (!alive) return;
+        setResolvedLineName('');
+      });
+    return () => { alive = false; };
+  }, [batch, fullBatch?.line_name]);
+  if (!fullBatch) return null;
+  const rows = buildWarehouseBatchCardRows({
+    ...fullBatch,
+    line_name: fullBatch.line_name || resolvedLineName,
+  });
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -66,24 +132,27 @@ const WarehousePage = () => {
   const [packError, setPackError] = useState('');
   const [submitError, setSubmitError] = useState('');
 
-  const { items, loading, error, refetch } = useServerQuery('warehouse/batches/', queryState, { enabled: true });
+  const { items, meta, raw, loading, error, refetch } = useServerQuery('warehouse/batches/', queryState, { enabled: true });
 
   useOperationalRefetch(['warehouse_batch', 'production_batch', 'batch'], refetch, true);
 
-  const rows = useMemo(() => {
-    const raw = items || [];
-    const q = queryState.quality;
-    if (!q) return raw;
-    return raw.filter((b) => readWarehouseQuality(b) === q);
-  }, [items, queryState.quality]);
+  const rows = items || [];
 
-  const handleReserve = async (batchId, quantity, saleId) => {
+  const listMeta = useMemo(() => {
+    if (meta) return meta;
+    const ps = Number(queryState.page_size) || 20;
+    if (raw && typeof raw.count === 'number' && ps > 0) {
+      return { page: queryState.page, pages: Math.max(1, Math.ceil(raw.count / ps)), total: raw.count };
+    }
+    return null;
+  }, [meta, raw, queryState.page, queryState.page_size]);
+
+  const handleReserve = async (batchId, quantity) => {
     setSubmitError('');
     try {
       await apiClient.post('warehouse/batches/reserve/', {
         batch_id: Number(batchId),
         quantity: Number(quantity),
-        ...(saleId ? { sale_id: Number(saleId) } : {}),
       });
       setReserveTarget(null);
       refetch();
@@ -96,8 +165,8 @@ const WarehousePage = () => {
   };
 
   return (
-    <div className="page page--warehouse">
-      <div className="page--warehouse__toolbar ds-toolbar ds-toolbar--page-head ds-toolbar--stack-mobile">
+    <div className="page page--warehouse commercial-page">
+      <div className="page--warehouse__toolbar ds-toolbar ds-toolbar--page-head ds-toolbar--stack-mobile commercial-toolbar">
         <div className="ds-toolbar__start page--warehouse__filters">
           <input
             type="text"
@@ -171,26 +240,33 @@ const WarehousePage = () => {
         <EmptyState title="Нет партий" />
       )}
       {!loading && (!error || error.status === 404) && rows.length > 0 && (
-        <table className="data-table data-table--fixed data-table--warehouse data-table--row-actions data-table--clickable">
+        <div className="commercial-table-wrap">
+          <table className="data-table data-table--fixed data-table--warehouse data-table--row-actions data-table--clickable">
           <thead>
             <tr>
+              <th>Продукт</th>
               <th>Статус</th>
               <th>Качество</th>
-              <th>Продукт</th>
-              <th>Количество</th>
+              <th className="data-table__cell--num">Физический остаток</th>
+              <th className="data-table__cell--num">Зарезервировано</th>
+              <th className="data-table__cell--num">Свободно</th>
               <th>Партия</th>
               <th aria-hidden />
             </tr>
           </thead>
           <tbody>
             {rows.map((b) => {
-              const qty = b.quantity ?? b.available_quantity ?? 0;
-              const canReserve = String(b.status || '').toLowerCase() === 'available';
-              const productLabel = (b.product_name && String(b.product_name).trim()) || b.product?.name || b.product || '—';
+              const qtyRaw = b.quantity;
+              const reservedRaw = b.reserved_quantity;
+              const availableRaw = b.available_quantity;
+              const qty = Number.isFinite(Number(availableRaw)) ? Number(availableRaw) : 0;
+              const productLabel = readDisplayProduct(b);
               const inv = resolveInventoryForm(b);
               const invMod = inventoryFormBadgeModifier(inv);
-              const qtyPres = getWarehouseQuantityPresentation(b);
               const qKey = readWarehouseQuality(b);
+              const canReserve =
+                String(b.status || '').toLowerCase() === 'available'
+                && qKey !== 'defect';
               const defectReason = readWarehouseDefectReason(b);
               const isDefect = qKey === 'defect';
               return (
@@ -207,11 +283,19 @@ const WarehousePage = () => {
                     }
                   }}
                 >
+                  <td className="data-table__cell--lead">
+                    <span className="warehouse-table__product-name">{productLabel}</span>
+                    {defectReason ? (
+                      <span className="warehouse-table__defect-hint" title={defectReason}>
+                        {defectReason.length > 48 ? `${defectReason.slice(0, 48)}…` : defectReason}
+                      </span>
+                    ) : null}
+                  </td>
                   <td>
                     <div className="warehouse-table__status-stack">
-                      <span className={`badge badge--${String(b.status || '').toLowerCase()}`}>
+                      <Badge variant={String(b.status || '').toLowerCase() === 'shipped' ? 'success' : String(b.status || '').toLowerCase() === 'reserved' ? 'warning' : 'default'}>
                         {statusLabel(b.status)}
-                      </span>
+                      </Badge>
                       <span className={`warehouse-inv-badge warehouse-inv-badge--${invMod} warehouse-inv-badge--inline`}>
                         {inventoryFormLabel(inv)}
                       </span>
@@ -225,49 +309,40 @@ const WarehousePage = () => {
                       {warehouseQualityShortLabel(qKey)}
                     </span>
                   </td>
-                  <td className="data-table__cell--lead">
-                    <span className="warehouse-table__product-name">{productLabel}</span>
-                    {defectReason ? (
-                      <span className="warehouse-table__defect-hint" title={defectReason}>
-                        {defectReason.length > 48 ? `${defectReason.slice(0, 48)}…` : defectReason}
-                      </span>
-                    ) : null}
-                  </td>
-                  <td
-                    className="data-table__qty-cell data-table__cell--num"
-                    title={qtyPres.title || undefined}
-                  >
-                    <div className="warehouse-qty-cell">
-                      <span className="warehouse-qty-cell__primary">{qtyPres.primary}</span>
-                      {qtyPres.secondary && (
-                        <span className="warehouse-qty-cell__secondary">{qtyPres.secondary}</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="warehouse-table__batch data-table__cell--muted data-table__cell--num">{b.batch || b.lot || '—'}</td>
+                  <td className="data-table__cell--num">{qtyRaw != null && qtyRaw !== '' ? formatNumberForInput(qtyRaw) : '—'}</td>
+                  <td className="data-table__cell--num">{reservedRaw != null && reservedRaw !== '' ? formatNumberForInput(reservedRaw) : '—'}</td>
+                  <td className="data-table__cell--num">{availableRaw != null && availableRaw !== '' ? formatNumberForInput(availableRaw) : '—'}</td>
+                  <td className="warehouse-table__batch data-table__cell--muted data-table__cell--num">{readDisplayBatch(b)}</td>
                   <td>
-                    <ActionMenu
-                      ariaLabel="Действия"
-                      items={[
-                        {
-                          label: 'Резерв',
-                          disabled: !canReserve,
-                          onClick: () => setReserveTarget({
-                            id: b.id,
-                            quantity: qty,
-                            product: productLabel,
-                            qualityKey: qKey,
-                            defectReason,
-                          }),
-                        },
-                      ]}
-                    />
+                    {canReserve ? (
+                      <ActionMenu
+                        ariaLabel="Действия"
+                        items={[
+                          {
+                            label: 'Резерв',
+                            onClick: () => setReserveTarget({
+                              id: b.id,
+                              quantity: qty,
+                              product: productLabel,
+                              qualityKey: qKey,
+                              defectReason,
+                            }),
+                          },
+                        ]}
+                      />
+                    ) : (
+                      <span className="data-table__cell--muted">—</span>
+                    )}
                   </td>
                 </tr>
               );
             })}
           </tbody>
-        </table>
+          </table>
+        </div>
+      )}
+      {!loading && (!error || error.status === 404) && (
+        <Pagination meta={listMeta} onPageChange={(nextPage) => setQueryState((p) => ({ ...p, page: nextPage }))} />
       )}
 
       {reserveTarget && (
@@ -306,11 +381,8 @@ const ReserveModal = ({ batch, onClose, onSubmit, error }) => {
       ? formatNumberForInput(batch.quantity)
       : '1',
   );
-  const [saleId, setSaleId] = useState('');
-
   const isDirty = useDirtyFromBaseline(String(batch?.id ?? ''), false, {
     quantity: String(quantity ?? '').trim(),
-    saleId: String(saleId ?? '').trim(),
   });
   const {
     requestClose,
@@ -340,7 +412,6 @@ const ReserveModal = ({ batch, onClose, onSubmit, error }) => {
             onSubmit(
               batch.id,
               parseLocaleNumber(quantity),
-              saleId ? Number(saleId) : undefined,
             );
           }}
         >
@@ -360,19 +431,6 @@ const ReserveModal = ({ batch, onClose, onSubmit, error }) => {
             <label>Количество *</label>
             <DecimalInput min={1} value={quantity} onChange={setQuantity} required />
           </div>
-          <details className="warehouse-reserve__more">
-            <summary>Дополнительно</summary>
-            <div className="modal__field">
-              <label>№ продажи</label>
-              <input
-                type="number"
-                min="1"
-                placeholder="Необязательно"
-                value={saleId}
-                onChange={(e) => setSaleId(e.target.value)}
-              />
-            </div>
-          </details>
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={requestClose}>Отмена</button>

@@ -9,13 +9,17 @@ import { UsersPage } from '../../features/users';
 import { AnalyticsPage } from '../../features/analytics';
 import { MaterialsPage } from '../../features/materials';
 import { ChemistryPage } from '../../features/chemistry';
-import { RecipesPage, PlasticProfilesPage } from '../../features/recipes';
 import { ProductionPage } from '../../features/production';
 import { OTKPage } from '../../features/otk';
 import { WarehousePage } from '../../features/warehouse';
 import { SalesPage } from '../../features/sales';
 import { ClientsPage } from '../../features/clients';
+import { OrdersPage } from '../../features/orders';
+import { PaymentsPage } from '../../features/payments';
+import { ReturnsPage } from '../../features/returns';
 import { MyShiftPage, ShiftsReportPage } from '../../features/shifts';
+import DefectsReworkPage from '../../features/defects/components/DefectsReworkPage/DefectsReworkPage';
+import ReferenceBooksPage from '../../features/recipes/components/ReferenceBooksPage/ReferenceBooksPage';
 import { getDefaultHomePath } from '../../shared/config/navigation';
 import { STAGE2_TABS_ENABLED } from '../../shared/config/constants';
 
@@ -50,8 +54,10 @@ const AppRoutes = () => (
       <Route path="production" element={<ProtectedRoute requiredAccess="production"><ProductionPage /></ProtectedRoute>} />
       <Route path="materials" element={<ProtectedRoute requiredAccess="materials"><MaterialsPage /></ProtectedRoute>} />
       <Route path="chemistry" element={<ProtectedRoute requiredAccess="chemistry"><ChemistryPage /></ProtectedRoute>} />
-      <Route path="recipes" element={<ProtectedRoute requiredAccess="recipes"><RecipesPage /></ProtectedRoute>} />
-      <Route path="profiles" element={<ProtectedRoute requiredAccess="recipes"><PlasticProfilesPage /></ProtectedRoute>} />
+      <Route path="directories" element={<ProtectedRoute requiredAccess="recipes"><ReferenceBooksPage /></ProtectedRoute>} />
+      <Route path="directories/recipes" element={<ProtectedRoute requiredAccess="recipes"><ReferenceBooksPage /></ProtectedRoute>} />
+      <Route path="recipes" element={<Navigate to="/directories/recipes" replace />} />
+      <Route path="profiles" element={<Navigate to="/directories" replace />} />
       <Route path="otk" element={<ProtectedRoute requiredAccess="otk"><OTKPage /></ProtectedRoute>} />
       <Route path="warehouse" element={<ProtectedRoute requiredAccess="warehouse"><WarehousePage /></ProtectedRoute>} />
       <Route path="analytics" element={<ProtectedRoute requiredAccess="analytics"><AnalyticsPage /></ProtectedRoute>} />
@@ -60,7 +66,14 @@ const AppRoutes = () => (
       {STAGE2_TABS_ENABLED && (
         <>
           <Route path="clients" element={<ProtectedRoute requiredAccess="clients"><ClientsPage /></ProtectedRoute>} />
+          <Route path="orders" element={<ProtectedRoute requiredAccess="client_orders"><OrdersPage /></ProtectedRoute>} />
           <Route path="sales" element={<ProtectedRoute requiredAccess="sales"><SalesPage /></ProtectedRoute>} />
+          <Route path="payments" element={<ProtectedRoute requiredAccess="payments"><PaymentsPage /></ProtectedRoute>} />
+          <Route path="returns" element={<ProtectedRoute requiredAccess="returns"><ReturnsPage /></ProtectedRoute>} />
+          <Route path="defects-rework" element={<ProtectedRoute requiredAccess="defects"><DefectsReworkPage /></ProtectedRoute>} />
+          <Route path="defects-rework/rework" element={<ProtectedRoute requiredAccess="defects"><DefectsReworkPage /></ProtectedRoute>} />
+          <Route path="defects" element={<Navigate to="/defects-rework" replace />} />
+          <Route path="rework-requests" element={<Navigate to="/defects-rework/rework" replace />} />
         </>
       )}
       <Route path="forbidden" element={<PlaceholderPage title="Нет доступа" />} />

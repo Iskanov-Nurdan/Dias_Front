@@ -292,3 +292,110 @@
   gap: var(--space-3);
   align-items: flex-end;
 }
+
+/* Unified commercial contour layout */
+.commercial-page {
+  gap: var(--space-4);
+}
+
+.commercial-toolbar {
+  margin-bottom: var(--space-3);
+}
+
+.commercial-toolbar__filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.commercial-toolbar__search {
+  width: 100%;
+  max-width: none;
+}
+
+.commercial-date-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--input-height);
+  width: 100%;
+}
+
+.commercial-date-filter__label {
+  font-size: var(--font-caption);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  min-width: 18px;
+}
+
+.commercial-date-filter input {
+  width: 100%;
+}
+
+.commercial-note {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: var(--font-caption);
+  line-height: var(--leading-normal);
+}
+
+.commercial-toolbar .btn--primary {
+  min-width: 168px;
+}
+
+.commercial-summary {
+  padding: var(--space-3);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+}
+
+.commercial-summary__title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-label);
+  font-weight: var(--weight-medium);
+}
+
+.commercial-summary__grid {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--font-caption);
+  color: var(--text-secondary);
+}
+
+.commercial-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.data-table--row-actions {
+  th:last-child,
+  td:last-child {
+    width: 72px;
+    min-width: 72px;
+    padding-right: var(--space-2);
+  }
+}
+
+.commercial-modal-section {
+  margin-top: var(--space-3);
+}
+
+.commercial-modal-cards {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.commercial-modal-card {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+}

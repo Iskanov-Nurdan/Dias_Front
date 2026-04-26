@@ -80,7 +80,9 @@ const UsersPage = () => {
     ordering: '',
   });
   const [userModal, setUserModal] = useState(null);
+  const [userDetail, setUserDetail] = useState(null);
   const [roleModal, setRoleModal] = useState(null);
+  const [roleDetail, setRoleDetail] = useState(null);
   const [accessModal, setAccessModal] = useState(null);
   const [reportModal, setReportModal] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -261,11 +263,11 @@ const UsersPage = () => {
                     tabIndex={locked ? undefined : 0}
                     role={locked ? undefined : 'button'}
                     className={locked ? 'data-table__row--no-actions' : undefined}
-                    onClick={locked ? undefined : () => setRoleModal(r)}
+                    onClick={locked ? undefined : () => setRoleDetail(r)}
                     onKeyDown={locked ? undefined : (e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        setRoleModal(r);
+                        setRoleDetail(r);
                       }
                     }}
                   >
@@ -275,6 +277,8 @@ const UsersPage = () => {
                       <ActionMenu
                         ariaLabel="Действия"
                         items={[
+                          { label: 'Открыть', onClick: () => setRoleDetail(r) },
+                          { label: 'Редактировать', onClick: () => setRoleModal(r) },
                           { label: 'Удалить', danger: true, onClick: () => setDeleteTarget({ type: 'role', id: r.id, name: r.name }) },
                         ]}
                       />
@@ -323,11 +327,11 @@ const UsersPage = () => {
                     key={u.id}
                     tabIndex={0}
                     role="button"
-                    onClick={() => setUserModal(u)}
+                    onClick={() => setUserDetail(u)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        setUserModal(u);
+                        setUserDetail(u);
                       }
                     }}
                   >
@@ -342,6 +346,8 @@ const UsersPage = () => {
                       <ActionMenu
                         ariaLabel="Действия"
                         items={[
+                          { label: 'Открыть', onClick: () => setUserDetail(u) },
+                          { label: 'Редактировать', onClick: () => setUserModal(u) },
                           { label: 'Доступы к разделам', onClick: () => setAccessModal(u) },
                           { label: 'Отчёт', onClick: () => setReportModal(u) },
                           { label: 'Удалить', danger: true, onClick: () => setDeleteTarget({ type: 'user', id: u.id, name: u.name }) },
@@ -363,6 +369,26 @@ const UsersPage = () => {
               onPageChange={handlePageChange}
             />
           )}
+        />
+      )}
+
+      {userDetail && (
+        <UserDetailModal
+          user={userDetail}
+          roleName={userDetail.role_name ?? (roles.find((r) => r.id === userDetail.role)?.name) ?? '—'}
+          onClose={() => setUserDetail(null)}
+          onEdit={(u) => {
+            setUserDetail(null);
+            setUserModal(u);
+          }}
+          onAccess={(u) => {
+            setUserDetail(null);
+            setAccessModal(u);
+          }}
+          onReport={(u) => {
+            setUserDetail(null);
+            setReportModal(u);
+          }}
         />
       )}
 
@@ -394,6 +420,17 @@ const UsersPage = () => {
         />
       )}
 
+      {roleDetail && (
+        <RoleDetailModal
+          role={roleDetail}
+          onClose={() => setRoleDetail(null)}
+          onEdit={(r) => {
+            setRoleDetail(null);
+            setRoleModal(r);
+          }}
+        />
+      )}
+
       {roleModal && (
         <RoleFormModal
           role={roleModal?.id ? roleModal : null}
@@ -414,6 +451,44 @@ const UsersPage = () => {
     </div>
   );
 };
+
+const UserDetailModal = ({ user, roleName, onClose, onEdit, onAccess, onReport }) => (
+  <div className="modal-overlay" onClick={onClose}>
+    <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal__head">
+        <h3>Карточка сотрудника</h3>
+        <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+      </div>
+      <div style={{ padding: '1.5rem' }}>
+        <p><strong>Имя:</strong> {user?.name || '—'}</p>
+        <p><strong>Роль:</strong> {roleName}</p>
+        <p><strong>Статус:</strong> {user?.is_active === false ? 'Неактивен' : 'Активен'}</p>
+      </div>
+      <div className="modal__actions">
+        <button type="button" className="btn btn--secondary" onClick={() => onAccess(user)}>Доступы</button>
+        <button type="button" className="btn btn--secondary" onClick={() => onReport(user)}>Отчёт</button>
+        <button type="button" className="btn btn--primary" onClick={() => onEdit(user)}>Редактировать</button>
+      </div>
+    </div>
+  </div>
+);
+
+const RoleDetailModal = ({ role, onClose, onEdit }) => (
+  <div className="modal-overlay" onClick={onClose}>
+    <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal__head">
+        <h3>Карточка роли</h3>
+        <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+      </div>
+      <div style={{ padding: '1.5rem' }}>
+        <p><strong>Название:</strong> {role?.name || '—'}</p>
+      </div>
+      <div className="modal__actions">
+        <button type="button" className="btn btn--primary" onClick={() => onEdit(role)}>Редактировать</button>
+      </div>
+    </div>
+  </div>
+);
 
 const AccessModal = ({ user, accessGroups, accessLabels, onSave, onClose, error }) => {
   const [selected, setSelected] = useState(new Set());

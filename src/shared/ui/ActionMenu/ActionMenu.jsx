@@ -21,6 +21,16 @@ const safeInsetBottom = () => {
   return Number.isFinite(n) ? n : 0;
 };
 
+const shouldUseSheetMenu = (vw) => {
+  if (typeof window === 'undefined') return false;
+  const isNarrow = vw <= SHEET_MAX;
+  const isTouch =
+    window.matchMedia?.('(pointer: coarse)')?.matches
+    || window.matchMedia?.('(hover: none)')?.matches
+    || (navigator?.maxTouchPoints ?? 0) > 0;
+  return isNarrow && isTouch;
+};
+
 const ActionMenu = ({ items, align = 'right', ariaLabel = 'Действия' }) => {
   const [open, setOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState({});
@@ -37,12 +47,12 @@ const ActionMenu = ({ items, align = 'right', ariaLabel = 'Действия' }) 
     const vh = window.innerHeight;
     const pad = safePad();
     const bottomInset = safeInsetBottom();
-    const useSheet = vw <= SHEET_MAX;
+    const useSheet = shouldUseSheetMenu(vw);
     setSheet(useSheet);
 
     const rect = trigger.getBoundingClientRect();
     const gap = 6;
-    const fallbackW = Math.min(280, vw - 2 * pad);
+    const fallbackW = Math.min(220, vw - 2 * pad);
 
     if (useSheet) {
       setMenuStyle({

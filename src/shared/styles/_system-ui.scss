@@ -13,6 +13,8 @@
 .otk-tabs,
 .chemistry-tabs,
 .lines-tabs,
+.production-main-tabs,
+.warehouse-tabs,
 .my-shift__tabs,
 .shifts-report__main-tabs,
 .page--users .page__tabs {
@@ -36,6 +38,8 @@
 .otk-tabs__tab,
 .chemistry-tabs__tab,
 .lines-tabs__tab,
+.production-main-tabs__btn,
+.warehouse-tabs__btn,
 .my-shift__tab,
 .shifts-report__main-tab,
 .page--users .page__tab {
@@ -91,6 +95,8 @@
 .otk-tabs__tab--active,
 .chemistry-tabs__tab--active,
 .lines-tabs__tab--active,
+.production-main-tabs__btn--active,
+.warehouse-tabs__btn.is-active,
 .my-shift__tab--active,
 .shifts-report__main-tab--active,
 .page--users .page__tab--active {

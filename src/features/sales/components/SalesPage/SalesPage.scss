@@ -41,13 +41,14 @@
 
 .commercial-toolbar {
   margin-bottom: var(--space-4);
+  align-items: center;
 
   .ds-toolbar__end {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
-    margin-left: 0;
+    margin-left: auto;
+    flex: 0 0 auto;
   }
 
   .btn {
@@ -55,12 +56,7 @@
   }
 
   @include lg {
-    .commercial-toolbar__filters .ds-toolbar__search,
-    .commercial-toolbar__filters .dias-select {
-      width: 100%;
-      max-width: none;
-      min-width: 0;
-    }
+    flex-wrap: wrap;
   }
 }
 
@@ -237,8 +233,8 @@
 }
 
 .modal.sales-modal {
-  min-width: min(400px, 92vw) !important;
-  max-width: min(840px, 97vw) !important;
+  min-width: min(760px, 96vw) !important;
+  max-width: min(1120px, 97vw) !important;
   max-height: 90vh;
   display: flex;
   flex-direction: column;

@@ -69,12 +69,33 @@ const orderLabel = (o) => {
   }
   return '—';
 };
+const isClosedOrder = (o) => {
+  const raw = String(o?.request_status || o?.status || o?.status_label || '').toLowerCase();
+  return raw.includes('closed')
+    || raw.includes('completed')
+    || raw.includes('done')
+    || raw.includes('rejected')
+    || raw.includes('declined')
+    || raw.includes('cancelled')
+    || raw.includes('canceled')
+    || raw.includes('закрыт')
+    || raw.includes('заверш')
+    || raw.includes('отказ');
+};
 
 const batchLabel = (b) => {
   if (!b) return '—';
   const t = (typeof b.display === 'string' && b.display.trim())
     || (typeof b.warehouse_batch_display === 'string' && b.warehouse_batch_display.trim());
   return t || '—';
+};
+const isGoodBatchForSale = (b) => {
+  const quality = String(b?.quality || '').toLowerCase();
+  if (quality === 'defect' || quality === 'bad') return false;
+  const status = String(b?.status || '').toLowerCase();
+  if (status && status !== 'available') return false;
+  if (status === 'shipped' || status === 'sold' || status === 'closed') return false;
+  return true;
 };
 
 const qtyUnitLabel = (unitType) => (unitType === 'packages' ? 'уп.' : 'шт.');
@@ -121,7 +142,7 @@ const SalesPage = () => {
 
   return (
     <div className="page page--sales commercial-page">
-      <div className="ds-toolbar ds-toolbar--stack-mobile commercial-toolbar">
+      <div className="ds-toolbar commercial-toolbar">
         <div className="ds-toolbar__start commercial-toolbar__filters">
           <SearchableSelect
             value={queryState.payment_filter}
@@ -345,6 +366,7 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
   const filteredOrders = useMemo(() => {
     if (!client) return [];
     return orders.filter((o) => {
+      if (isClosedOrder(o)) return false;
       const oid = o?.client_id ?? o?.client?.id ?? o?.client;
       if (oid == null || oid === '') return true;
       return String(oid) === String(client);
@@ -359,11 +381,29 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
     [clients],
   );
   const filteredBatches = useMemo(() => {
+    const source = batches.filter(isGoodBatchForSale);
     if (unitType === 'packages') {
-      return batches.filter((b) => toNumber(b.available_packages) > 0);
+      return source
+        .filter((b) => toNumber(b.available_packages) > 0)
+        .sort((a, b) => toNumber(b.available_packages) - toNumber(a.available_packages));
     }
-    return batches.filter((b) => toNumber(b.available_pieces) > 0 || toNumber(b.available_packages) > 0);
+    return source
+      .filter((b) => toNumber(b.available_pieces) > 0 || toNumber(b.available_packages) > 0)
+      .sort((a, b) => {
+        const ap = toNumber(a.available_pieces) + toNumber(a.available_packages);
+        const bp = toNumber(b.available_pieces) + toNumber(b.available_packages);
+        return bp - ap;
+      });
   }, [batches, unitType]);
+  useEffect(() => {
+    const allowedBatchIds = new Set(filteredBatches.map((b) => String(b.id)));
+    setSaleLines((prev) => prev.map((line) => {
+      if (!line.warehouse_batch) return line;
+      return allowedBatchIds.has(String(line.warehouse_batch))
+        ? line
+        : { ...line, warehouse_batch: '' };
+    }));
+  }, [filteredBatches]);
   const batchOptions = useMemo(
     () => [{ value: '', label: 'Выберите партию' }, ...filteredBatches.map((b) => ({ value: String(b.id), label: batchLabel(b) }))],
     [filteredBatches],
@@ -534,8 +574,6 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
                 onChange={(e) => setPaidAmount(e.target.value)}
                 placeholder={paymentType === 'full' ? 'Автоматически из общей суммы' : ''}
               />
-              {paymentType === 'debt' && <p className="sales-modal__hint-line">При типе "В долг" оплачено всегда 0, вся сумма уходит в долг.</p>}
-              {paymentType === 'full' && <p className="sales-modal__hint-line">При типе "Полная" оплачено равно общей сумме продажи.</p>}
               {previewLoading && <p className="sales-modal__hint-line">Расчет...</p>}
               {!previewLoading && preview && (
                 <p className="sales-modal__hint-line">
@@ -543,7 +581,6 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
                 </p>
               )}
               {!previewLoading && previewError && <p className="sales-modal__hint-line">{previewError}</p>}
-              <p className="sales-modal__hint-line">Сумма и долг рассчитываются на backend.</p>
             </section>
             {formError && <p className="modal__error">{formError}</p>}
           </div>

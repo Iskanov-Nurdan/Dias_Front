@@ -99,20 +99,18 @@ const selectSourcesBucket = (res) => {
 const saleListLabel = (s) => {
   if (!s) return '—';
   if (s.label != null && String(s.label).trim() !== '') return String(s.label).trim();
-  const num = s.order_number || s.sale_number || s.number || '';
   const client = (s.client_name || s.client?.name || '').trim();
   const prod = (s.product_name || s.product || s.primary_product || '').trim();
   const q = s.total_quantity ?? s.quantity;
   const qtyPart = q != null && q !== '' ? `${formatQuantityDisplay(q)} шт` : '';
   const parts = [];
-  if (num) parts.push(String(num));
   if (client) parts.push(client);
   if (prod) parts.push(prod);
   if (qtyPart) parts.push(qtyPart);
   return parts.length ? parts.join(' — ') : '—';
 };
 
-const returnTableSaleLabel = (r) => r.sale_order_number || r.order_number || '—';
+const returnTableSaleLabel = (r) => r.sale_display || r.display_sale || '—';
 
 const returnTableClientLabel = (r) => r.client_name || '—';
 
@@ -322,7 +320,7 @@ const ReturnsPage = () => {
           <table className="data-table data-table--fixed data-table--row-actions data-table--returns">
           <thead>
             <tr>
-              <th>№ возврата</th>
+              <th>Возврат</th>
               <th>Клиент</th>
               <th>Продажа</th>
               <th>Дата</th>
@@ -337,7 +335,7 @@ const ReturnsPage = () => {
               <tr key={r.id}>
                 <td>
                   <button type="button" className="btn btn--ghost" onClick={() => setDetailDocId(r.id)}>
-                    {r.return_number || '—'}
+                    {r.display || r.return_display || '—'}
                   </button>
                 </td>
                 <td>{returnTableClientLabel(r)}</td>

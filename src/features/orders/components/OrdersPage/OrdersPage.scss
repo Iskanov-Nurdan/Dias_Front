@@ -11,6 +11,7 @@
 
 .commercial-toolbar {
   margin-bottom: var(--space-4);
+  align-items: center;
 
   .commercial-toolbar__filters {
     display: flex;
@@ -29,10 +30,10 @@
 
   .ds-toolbar__end {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
-    margin-left: 0;
+    margin-left: auto;
+    flex: 0 0 auto;
   }
 
   .ds-toolbar__end .dias-select {
@@ -46,12 +47,7 @@
   }
 
   @include lg {
-    .commercial-toolbar__filters .ds-toolbar__search,
-    .commercial-toolbar__filters .dias-select {
-      width: 100%;
-      max-width: none;
-      min-width: 0;
-    }
+    flex-wrap: wrap;
   }
 }
 

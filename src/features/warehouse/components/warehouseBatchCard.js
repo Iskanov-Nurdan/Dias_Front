@@ -35,7 +35,6 @@ const productDisplay = (b) => {
 const sourceBatchDisplay = (b) => {
   const linked = b?.linked_entities?.source_batch?.label;
   if (typeof linked === 'string' && linked.trim()) return linked.trim();
-  if (b?.source_batch != null && b.source_batch !== '') return `#${b.source_batch}`;
   return '—';
 };
 

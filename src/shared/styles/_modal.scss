@@ -39,8 +39,8 @@
     var(--shadow-lg),
     0 0 0 1px var(--card-border);
   padding: 0;
-  min-width: min(400px, 92vw);
-  max-width: 92vw;
+  min-width: min(520px, 96vw);
+  max-width: 96vw;
   max-height: 90vh;
   overflow: hidden;
   display: flex;
@@ -48,16 +48,16 @@
   animation: modalIn 0.16s ease;
 
   &--wide {
-    min-width: min(560px, 92vw);
+    min-width: min(760px, 96vw);
 
     @include desktop-only {
-      max-width: min(800px, 94vw);
+      max-width: min(1120px, 96vw);
     }
   }
 
   @include desktop-only {
     &:not(.modal--fullscreen):not(.modal--wide) {
-      max-width: min(720px, 94vw);
+      max-width: min(920px, 96vw);
     }
   }
   &--sm {
@@ -380,7 +380,7 @@
 
   .modal:not(.modal--fullscreen) {
     width: 100%;
-    max-width: min(520px, 100%);
+    max-width: min(640px, 100%);
     min-width: 0 !important;
     max-height: min(85vh, calc(100dvh - var(--space-8)));
     border-radius: var(--radius-lg);

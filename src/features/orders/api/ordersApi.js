@@ -1,6 +1,13 @@
 import { apiClient } from '../../../shared/api';
 
 export const getOrders = (params) => apiClient.get('orders/', { params });
+export const getOrdersNoCache = (params, config = {}) => apiClient.get('orders/', {
+  ...config,
+  params: {
+    ...(params || {}),
+    _ts: Date.now(),
+  },
+});
 export const getOrder = (id) => apiClient.get(`orders/${id}/`);
 export const getOrderSelectSources = () => apiClient.get('orders/select-sources/');
 export const createOrder = (payload) => apiClient.post('orders/', payload);

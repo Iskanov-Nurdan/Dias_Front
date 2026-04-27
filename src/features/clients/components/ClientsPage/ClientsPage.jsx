@@ -369,7 +369,7 @@ const ClientProfileModal = ({ clientId, onClose, onPaymentSaved }) => {
   const totalPaidAmount = toNum(summaryPaid) > 0 ? summaryPaid : (derivedPaid > 0 ? String(derivedPaid) : summaryPaid);
 
   const debtSaleOptions = useMemo(
-    () => [{ value: '', label: 'Не выбрана' }, ...debtRows.map((d) => ({ value: String(d.id), label: textDisplay(d.display || d.label || d.sale_number || d.order_number) }))],
+    () => [{ value: '', label: 'Не выбрана' }, ...debtRows.map((d) => ({ value: String(d.id), label: textDisplay(d.display || d.label) }))],
     [debtRows],
   );
   const paymentMethodOptions = useMemo(
@@ -463,7 +463,7 @@ const ClientProfileModal = ({ clientId, onClose, onPaymentSaved }) => {
                     <table className="data-table data-table--order-detail-lines">
                       <thead><tr><th>Дата</th><th>Продажа</th><th className="data-table__cell--num">Сумма</th></tr></thead>
                       <tbody>{purchases.map((x) => (
-                        <tr key={x.id}><td>{formatDate(x.date || x.created_at)}</td><td>{textDisplay(x.display || x.sale_number || x.order_number)}</td><td className="data-table__cell--num">{toMoney(x.total_amount ?? x.revenue)}</td></tr>
+                        <tr key={x.id}><td>{formatDate(x.date || x.created_at)}</td><td>{textDisplay(x.display || x.label)}</td><td className="data-table__cell--num">{toMoney(x.total_amount ?? x.revenue)}</td></tr>
                       ))}</tbody>
                     </table>
                   </div>
@@ -476,7 +476,7 @@ const ClientProfileModal = ({ clientId, onClose, onPaymentSaved }) => {
                     <table className="data-table data-table--order-detail-lines">
                       <thead><tr><th>Заявка</th><th>Дата</th><th>Статус</th></tr></thead>
                       <tbody>{orders.map((x) => (
-                        <tr key={x.id}><td>{textDisplay(x.display || x.order_display || x.order_number)}</td><td>{formatDate(x.date || x.created_at)}</td><td>{textDisplay(x.status_label || x.request_status)}</td></tr>
+                        <tr key={x.id}><td>{textDisplay(x.display || x.order_display)}</td><td>{formatDate(x.date || x.created_at)}</td><td>{textDisplay(x.status_label || x.request_status)}</td></tr>
                       ))}</tbody>
                     </table>
                   </div>
@@ -490,7 +490,7 @@ const ClientProfileModal = ({ clientId, onClose, onPaymentSaved }) => {
                       <thead><tr><th>Продажа</th><th className="data-table__cell--num">Сумма</th><th className="data-table__cell--num">Долг</th></tr></thead>
                       <tbody>{debtRows.map((d, i) => (
                         <tr key={d.id != null ? `debt-${d.id}` : `debt-${i}`}>
-                          <td>{textDisplay(d.display || d.label || d.sale_number || d.order_number)}</td>
+                          <td>{textDisplay(d.display || d.label)}</td>
                           <td className="data-table__cell--num">{toMoney(d.total_amount ?? d.amount)}</td>
                           <td className="data-table__cell--num">{toMoney(d.debt_amount)}</td>
                         </tr>
@@ -506,7 +506,7 @@ const ClientProfileModal = ({ clientId, onClose, onPaymentSaved }) => {
                     <table className="data-table data-table--order-detail-lines">
                       <thead><tr><th>Возврат</th><th>Дата</th><th>Причина</th></tr></thead>
                       <tbody>{returns.map((x) => (
-                        <tr key={x.id}><td>{textDisplay(x.display || x.return_number)}</td><td>{formatDate(x.date || x.created_at)}</td><td>{textDisplay(x.return_reason)}</td></tr>
+                        <tr key={x.id}><td>{textDisplay(x.display || x.label)}</td><td>{formatDate(x.date || x.created_at)}</td><td>{textDisplay(x.return_reason)}</td></tr>
                       ))}</tbody>
                     </table>
                   </div>

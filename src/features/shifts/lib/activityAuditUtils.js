@@ -28,7 +28,7 @@ export function getActivitySummary(a) {
     a.summary ||
     a.description ||
     a.object_repr ||
-    (a.entity_type && a.entity_id != null ? `${a.entity_type} #${a.entity_id}` : '')
+    ''
   );
 }
 

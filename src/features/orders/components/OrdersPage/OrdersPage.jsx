@@ -14,6 +14,7 @@ import {
 import {
   approveOrder,
   createOrder,
+  getOrdersNoCache,
   getOrderSelectSources,
   recheckOrder,
   rejectOrder,
@@ -33,7 +34,7 @@ const pickClientName = (c) => {
     (typeof c.title === 'string' && c.title.trim()) ||
     (typeof c.client_name === 'string' && c.client_name.trim());
   if (n) return n;
-  return c.id != null ? `Клиент #${c.id}` : '';
+  return '';
 };
 
 const pickProfileName = (p) => {
@@ -47,7 +48,7 @@ const pickProfileName = (p) => {
     (typeof p.title === 'string' && p.title.trim()) ||
     (typeof p.code === 'string' && p.code.trim());
   if (n) return n;
-  return p.id != null ? `Профиль #${p.id}` : '';
+  return '';
 };
 
 const orderClientLabel = (o, clientList) => {
@@ -62,7 +63,7 @@ const orderClientLabel = (o, clientList) => {
     const row = clientList.find((c) => String(c.id) === String(rid));
     if (row) return pickClientName(row);
   }
-  if (rid != null) return `Клиент #${rid}`;
+  if (rid != null) return '—';
   return '—';
 };
 
@@ -78,7 +79,7 @@ const orderProfileLabel = (o, profileList) => {
     const row = profileList.find((p) => String(p.id) === String(rid));
     if (row) return pickProfileName(row);
   }
-  if (rid != null) return `Профиль #${rid}`;
+  if (rid != null) return '—';
   return '—';
 };
 
@@ -89,12 +90,25 @@ const requestStatusText = (s) => {
     not_ready: 'Не готово',
     ready: 'Готово',
     in_production: 'В производстве',
+    closed: 'Закрыта',
     approved: 'Принята',
     checking: 'Проверка',
     rejected: 'Отклонена',
   };
   return map[v] || (s != null && s !== '' ? String(s) : '—');
 };
+
+const resolveOrderStatusValue = (order) => (
+  order?.request_status
+  || order?.status
+  || ''
+);
+
+const resolveOrderStatusText = (order) => (
+  order?.request_status_label
+  || order?.status_label
+  || requestStatusText(resolveOrderStatusValue(order))
+);
 
 const requestStatusBadgeVariant = (s) => {
   const v = String(s || '').toLowerCase();
@@ -150,7 +164,13 @@ const OrdersPage = () => {
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState('');
 
-  const { items, meta, loading, error, refetch } = useServerQuery('orders/', queryState, { enabled: true });
+  const { items, meta, loading, error, refetch } = useServerQuery('orders/', queryState, {
+    enabled: true,
+    fetcher: async (params, signal) => {
+      const res = await getOrdersNoCache(params, { signal });
+      return res.data;
+    },
+  });
 
   useEffect(() => {
     getOrderSelectSources()
@@ -234,7 +254,7 @@ const OrdersPage = () => {
 
   return (
     <div className="page commercial-page orders-rq-page">
-      <div className="ds-toolbar ds-toolbar--stack-mobile commercial-toolbar">
+      <div className="ds-toolbar commercial-toolbar">
         <div className="ds-toolbar__start commercial-toolbar__filters">
           <SearchableSelect
             value={queryState.request_status}
@@ -270,7 +290,8 @@ const OrdersPage = () => {
             </thead>
             <tbody>
               {items.map((o) => {
-                const st = o.request_status;
+                const st = resolveOrderStatusValue(o);
+                const stText = resolveOrderStatusText(o);
                 const isOpen = expandedId === o.id;
                 return (
                   <React.Fragment key={o.id}>
@@ -290,7 +311,7 @@ const OrdersPage = () => {
                       <td>{o.length != null && o.length !== '' ? String(o.length) : '—'}</td>
                       <td>{o.quantity != null && o.quantity !== '' ? formatQuantityDisplay(o.quantity) : '—'}</td>
                       <td>
-                        <Badge variant={requestStatusBadgeVariant(st)}>{requestStatusText(st)}</Badge>
+                        <Badge variant={requestStatusBadgeVariant(st)}>{stText}</Badge>
                       </td>
                     </tr>
                     {isOpen && (

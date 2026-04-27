@@ -317,27 +317,7 @@
 }
 
 .production-main-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
   margin-bottom: 1rem;
-}
-
-.production-main-tabs__btn {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-md);
-  background: var(--card);
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-}
-
-.production-main-tabs__btn--active {
-  border-color: var(--primary, #0d6efd);
-  background: var(--input-bg, rgba(13, 110, 253, 0.08));
-  font-weight: var(--weight-medium, 600);
 }
 
 .production-card--client-requests {

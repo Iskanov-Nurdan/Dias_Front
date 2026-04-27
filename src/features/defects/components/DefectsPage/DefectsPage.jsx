@@ -302,7 +302,7 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
                   <tr key={d.id}>
                     <td>
                       <button type="button" className="btn btn--ghost" onClick={() => setDetailDefectId(d.id)}>
-                        {`Брак #${d.id}`}
+                        {d.display || 'Брак'}
                       </button>
                     </td>
                     <td>{d.product || d.profile_name || d.product_name || '—'}</td>
@@ -609,8 +609,7 @@ const warehouseBatchSelectLabel = (x, defectBySourceId) => {
     || '—'
   );
   const qs = q != null && q !== '' ? `${formatQuantityDisplay(q)} шт` : '—';
-  const idDisp = id != null ? id : '—';
-  return `#${idDisp} — ${name} — ${qs} — ${r}`;
+  return `${name} — ${qs} — ${r}`;
 };
 
 const DefectModal = ({
@@ -736,7 +735,7 @@ const DefectModal = ({
                 onChange={setSourceId}
                 options={[
                   { value: '', label: 'Выберите строку возврата' },
-                  ...returnLines.map((x) => ({ value: String(x.id), label: x.label || x.product || `Строка #${x.id}` })),
+                  ...returnLines.map((x) => ({ value: String(x.id), label: x.label || x.product || 'Строка' })),
                 ]}
               />
             </>
@@ -841,7 +840,7 @@ const DefectDetailModal = ({
             <div className="defects-detail-modal__scroll">
               <section className="defects-detail-modal__section">
                 <h4>Основное</h4>
-                <p><strong>№ брака:</strong> {`Брак #${defect.id}`}</p>
+                <p><strong>Брак:</strong> {defect.display || 'Карточка брака'}</p>
                 <p><strong>Брак / продукт:</strong> {defect.product || defect.product_name || '—'}</p>
                 <p><strong>Источник:</strong> {defect.source_label || sourceLabel(defect.source_type)}</p>
                 <p><strong>Причина:</strong> {defect.defect_reason || defect.writeoff_reason || '—'}</p>
@@ -851,7 +850,7 @@ const DefectDetailModal = ({
 
               <section className="defects-detail-modal__section">
                 <h4>Количество</h4>
-                <p><strong>display_quantity_label:</strong> {defect.display_quantity_label || '—'}</p>
+                <p><strong>Количество:</strong> {defect.display_quantity_label || '—'}</p>
                 <p><strong>Всего поступило:</strong> {`${formatQuantityDisplay(defect.original_quantity_pcs ?? 0)} шт`}</p>
                 <p><strong>Доступно:</strong> {`${formatQuantityDisplay(defect.available_quantity_pcs ?? defect.quantity_pcs ?? 0)} шт`}</p>
                 <p><strong>Продано:</strong> {`${formatQuantityDisplay(defect.sold_quantity_pcs ?? 0)} шт`}</p>
@@ -862,16 +861,16 @@ const DefectDetailModal = ({
               <section className="defects-detail-modal__section">
                 <h4>Связи</h4>
                 <ul className="defects-detail-modal__links">
-                  {defect.warehouse_batch ? <li><strong>warehouse_batch:</strong> {typeof defect.warehouse_batch === 'object' ? (defect.warehouse_batch.label || defect.warehouse_batch.id || '—') : defect.warehouse_batch}</li> : null}
-                  {defect.source_type === 'return' || defect.source_id != null ? <li><strong>return source:</strong> {defect.source_label || defect.source_id || '—'}</li> : null}
-                  {defect.sale ? <li><strong>sale defect:</strong> {typeof defect.sale === 'object' ? (defect.sale.sale_number || defect.sale.id || '—') : defect.sale}</li> : null}
+                  {defect.warehouse_batch ? <li><strong>Партия склада:</strong> {typeof defect.warehouse_batch === 'object' ? (defect.warehouse_batch.label || '—') : '—'}</li> : null}
+                  {defect.source_type === 'return' || defect.source_id != null ? <li><strong>Источник возврата:</strong> {defect.source_label || '—'}</li> : null}
+                  {defect.sale ? <li><strong>Связанная продажа:</strong> {typeof defect.sale === 'object' ? (defect.sale.display || defect.sale.sale_number || '—') : '—'}</li> : null}
                   {Array.isArray(defect.rework_requests) && defect.rework_requests.length > 0 ? (
                     <li>
-                      <strong>rework requests:</strong> {defect.rework_requests.map((x) => x.rework_number || x.id || '—').join(', ')}
+                      <strong>Запросы переделки:</strong> {defect.rework_requests.map((x) => x.rework_number || x.display || '—').join(', ')}
                     </li>
                   ) : null}
                   {Array.isArray(defect.linked_entities) && defect.linked_entities.length > 0 ? (
-                    <li><strong>linked_entities:</strong> {defect.linked_entities.map((x) => x.label || x.id || '—').join(', ')}</li>
+                    <li><strong>Связанные объекты:</strong> {defect.linked_entities.map((x) => x.label || '—').join(', ')}</li>
                   ) : null}
                 </ul>
                 {!defect.warehouse_batch

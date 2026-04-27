@@ -53,7 +53,7 @@ const pickCl = (c) => {
     (typeof c.title === 'string' && c.title.trim()) ||
     (typeof c.client_name === 'string' && c.client_name.trim());
   if (n) return n;
-  return c.id != null ? `Клиент #${c.id}` : '';
+  return '';
 };
 
 const pickPr = (p) => {
@@ -67,7 +67,7 @@ const pickPr = (p) => {
     (typeof p.title === 'string' && p.title.trim()) ||
     (typeof p.code === 'string' && p.code.trim());
   if (n) return n;
-  return p.id != null ? `Профиль #${p.id}` : '';
+  return '';
 };
 
 const rqClient = (o, list) => {
@@ -82,7 +82,7 @@ const rqClient = (o, list) => {
     const row = list.find((c) => String(c.id) === String(rid));
     if (row) return pickCl(row);
   }
-  if (rid != null) return `Клиент #${rid}`;
+  if (rid != null) return '—';
   return '—';
 };
 
@@ -98,7 +98,7 @@ const rqProfile = (o, list) => {
     const row = list.find((p) => String(p.id) === String(rid));
     if (row) return pickPr(row);
   }
-  if (rid != null) return `Профиль #${rid}`;
+  if (rid != null) return '—';
   return '—';
 };
 

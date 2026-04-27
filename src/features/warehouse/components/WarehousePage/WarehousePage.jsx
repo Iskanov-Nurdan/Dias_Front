@@ -21,6 +21,19 @@ import PackFromOtkModal from '../PackFromOtkModal';
 import './WarehousePage.scss';
 
 const statusLabel = (status) => warehouseStockStatusRu(status);
+const batchTime = (b) => {
+  const t = b?.updated_at || b?.created_at || b?.date;
+  const ts = Date.parse(String(t || ''));
+  return Number.isFinite(ts) ? ts : 0;
+};
+const statusRank = (status) => {
+  const s = String(status || '').toLowerCase();
+  if (s === 'available') return 0;
+  if (s === 'reserved') return 1;
+  if (s === 'in_use' || s === 'processing') return 2;
+  if (s === 'shipped' || s === 'sold' || s === 'closed') return 4;
+  return 3;
+};
 
 const readDisplayProduct = (b) => {
   if (!b || typeof b !== 'object') return '—';
@@ -35,7 +48,6 @@ const readDisplayBatch = (b) => {
   if (!b || typeof b !== 'object') return '—';
   const sourceLabel = b.linked_entities?.source_batch?.label;
   if (typeof sourceLabel === 'string' && sourceLabel.trim()) return sourceLabel.trim();
-  if (b.source_batch != null && b.source_batch !== '') return `#${b.source_batch}`;
   return '—';
 };
 
@@ -78,7 +90,7 @@ const WarehouseBatchDetailModal = ({ batch, onClose }) => {
           })
           .catch(() => {
             if (!alive) return;
-            setResolvedLineName(`Линия #${lineId}`);
+            setResolvedLineName('Линия');
           });
       })
       .catch(() => {
@@ -124,8 +136,8 @@ const WarehousePage = () => {
     status: '',
     search: '',
     inventory_form: '',
-    quality: '',
   });
+  const [stockTab, setStockTab] = useState('good');
   const [reserveTarget, setReserveTarget] = useState(null);
   const [detailBatch, setDetailBatch] = useState(null);
   const [packOpen, setPackOpen] = useState(false);
@@ -137,6 +149,27 @@ const WarehousePage = () => {
   useOperationalRefetch(['warehouse_batch', 'production_batch', 'batch'], refetch, true);
 
   const rows = items || [];
+  const filteredRows = useMemo(
+    () => rows.filter((b) => {
+      const qKey = readWarehouseQuality(b);
+      return stockTab === 'defect' ? qKey === 'defect' : qKey !== 'defect';
+    }),
+    [rows, stockTab],
+  );
+  const sortedRows = useMemo(
+    () => [...filteredRows].sort((a, b) => {
+      const ra = statusRank(a.status);
+      const rb = statusRank(b.status);
+      if (ra !== rb) return ra - rb;
+      const aAvail = Number(a.available_quantity ?? 0);
+      const bAvail = Number(b.available_quantity ?? 0);
+      const az = Number.isFinite(aAvail) ? aAvail : 0;
+      const bz = Number.isFinite(bAvail) ? bAvail : 0;
+      if (az !== bz) return bz - az;
+      return batchTime(b) - batchTime(a);
+    }),
+    [filteredRows],
+  );
 
   const listMeta = useMemo(() => {
     if (meta) return meta;
@@ -166,7 +199,23 @@ const WarehousePage = () => {
 
   return (
     <div className="page page--warehouse commercial-page">
-      <div className="page--warehouse__toolbar ds-toolbar ds-toolbar--page-head ds-toolbar--stack-mobile commercial-toolbar">
+      <div className="warehouse-tabs" role="tablist" aria-label="Тип партий">
+        <button
+          type="button"
+          className={`warehouse-tabs__btn${stockTab === 'good' ? ' is-active' : ''}`}
+          onClick={() => setStockTab('good')}
+        >
+          Годные
+        </button>
+        <button
+          type="button"
+          className={`warehouse-tabs__btn${stockTab === 'defect' ? ' is-active' : ''}`}
+          onClick={() => setStockTab('defect')}
+        >
+          Брак
+        </button>
+      </div>
+      <div className="page--warehouse__toolbar ds-toolbar ds-toolbar--page-head commercial-toolbar">
         <div className="ds-toolbar__start page--warehouse__filters">
           <input
             type="text"
@@ -200,17 +249,6 @@ const WarehousePage = () => {
               ]}
               onChange={(val) => setQueryState((p) => ({ ...p, inventory_form: val, page: 1 }))}
             />
-            <Select
-              className="page--warehouse__select"
-              value={queryState.quality}
-              placeholder="Качество"
-              options={[
-                { value: '', label: 'Все' },
-                { value: 'good', label: 'Годные' },
-                { value: 'defect', label: 'Брак' },
-              ]}
-              onChange={(val) => setQueryState((p) => ({ ...p, quality: val, page: 1 }))}
-            />
           </div>
         </div>
         <div className="ds-toolbar__end page--warehouse__toolbar-primary ds-hide-mobile">
@@ -236,10 +274,10 @@ const WarehousePage = () => {
 
       {loading && <Loading />}
       {error && error.status !== 404 && <ErrorState error={error} onRetry={refetch} />}
-      {!loading && (!error || error.status === 404) && rows.length === 0 && (
+      {!loading && (!error || error.status === 404) && sortedRows.length === 0 && (
         <EmptyState title="Нет партий" />
       )}
-      {!loading && (!error || error.status === 404) && rows.length > 0 && (
+      {!loading && (!error || error.status === 404) && sortedRows.length > 0 && (
         <div className="commercial-table-wrap">
           <table className="data-table data-table--fixed data-table--warehouse data-table--row-actions data-table--clickable">
           <thead>
@@ -255,7 +293,7 @@ const WarehousePage = () => {
             </tr>
           </thead>
           <tbody>
-            {rows.map((b) => {
+            {sortedRows.map((b) => {
               const qtyRaw = b.quantity;
               const reservedRaw = b.reserved_quantity;
               const availableRaw = b.available_quantity;

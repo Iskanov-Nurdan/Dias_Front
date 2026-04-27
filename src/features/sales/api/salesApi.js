@@ -10,6 +10,7 @@ export const patchSaleStatus = (id, status, extraPayload = {}) =>
 export const cancelSale = (id) => apiClient.patch(`sales/${id}/cancel/`, {});
 export const getSaleCreditCheck = (id) => apiClient.get(`sales/${id}/credit-check/`);
 export const getSaleWaybillUrl = (id) => `${apiClient.defaults.baseURL}sales/${id}/waybill/`;
+export const getSaleWaybillData = (id) => apiClient.get(`sales/${id}/waybill/`, { params: { format: 'json' } });
 export const getSaleReceiptUrl = (id) => `${apiClient.defaults.baseURL}sales/${id}/receipt/`;
 
 export const getSaleSelectSources = (params = {}) =>

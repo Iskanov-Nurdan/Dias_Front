@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   useServerQuery,
   parseLocaleNumber,
@@ -16,11 +16,19 @@ import {
   useToast,
 } from '../../../../shared/ui';
 import { useOperationalRefetch } from '../../../../shared/realtime';
-import { createSale, getSale, getSaleSelectSources, getSaleWaybillUrl, previewSale } from '../../api/salesApi';
+import {
+  createSale,
+  getSale,
+  getSaleSelectSources,
+  getSaleWaybillData,
+  previewSale,
+} from '../../api/salesApi';
 import { getClients } from '../../../clients/api/clientsApi';
 import './SalesPage.scss';
 import './WaybillPreviewModal.scss';
-import { WAYBILL_DEFAULT_UNIT, WAYBILL_SUPPLIER } from '../../config/waybillConfig';
+import { WAYBILL_DEFAULT_UNIT } from '../../config/waybillConfig';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const paymentStatusLabel = (v) => {
   const k = String(v || '').toLowerCase();
@@ -130,6 +138,206 @@ const toWaybillDate = (v) => {
   const s = String(v || '');
   if (s.length >= 10) return `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)}`;
   return '—';
+};
+const escapeHtml = (s) => String(s ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+const PACK_TEXT_CANDIDATES = (sale, ln) => [
+  ln?.warehouse_batch_display,
+  ln?.display,
+  ln?.batch_display,
+  ln?.order_display,
+  ln?.order_line_display,
+  sale?.order_display,
+  sale?.request_display,
+  sale?.order?.display,
+];
+const normalizeBatchId = (v) => (v != null && v !== '' ? String(v) : '');
+const parsePackFromText = (text) => {
+  const s = String(text || '');
+  const m = s.match(/(\d+(?:[.,]\d+)?)\s*шт\s*\/\s*(\d+(?:[.,]\d+)?)\s*уп/i);
+  if (!m) return null;
+  const pieces = toNumber(String(m[1]).replace(',', '.'));
+  const packs = toNumber(String(m[2]).replace(',', '.'));
+  if (!(pieces > 0) || !(packs > 0)) return null;
+  return {
+    totalPieces: pieces,
+    totalPacks: packs,
+    piecesPerPack: pieces / packs,
+  };
+};
+const parsePackagesFromText = (text) => {
+  const s = String(text || '');
+  if (!s) return 0;
+  const patterns = [
+    /(?:\/|остаток[:\s]*)\s*(\d+(?:[.,]\d+)?)\s*уп(?:ак)?\.?/i,
+    /(\d+(?:[.,]\d+)?)\s*уп(?:ак)?\.?/i,
+  ];
+  for (let i = 0; i < patterns.length; i += 1) {
+    const m = s.match(patterns[i]);
+    if (!m) continue;
+    const n = toNumber(String(m[1]).replace(',', '.'));
+    if (n > 0) return n;
+  }
+  return 0;
+};
+const resolvePackagesQty = (sale, ln, batchMeta) => {
+  const direct = toNumber(ln?.packages_quantity ?? ln?.quantity_packages ?? ln?.packages);
+  if (direct > 0) return direct;
+  const fromMeta = toNumber(
+    batchMeta?.packages_quantity
+    ?? batchMeta?.quantity_packages
+    ?? batchMeta?.packages
+    ?? batchMeta?.available_packages,
+  );
+  if (fromMeta > 0) return fromMeta;
+  const fromBatchObj = toNumber(
+    ln?.warehouse_batch?.packages_quantity
+    ?? ln?.warehouse_batch?.quantity_packages
+    ?? ln?.warehouse_batch?.packages
+    ?? ln?.warehouse_batch?.available_packages,
+  );
+  if (fromBatchObj > 0) return fromBatchObj;
+  const candidates = PACK_TEXT_CANDIDATES(sale, ln);
+  for (let i = 0; i < candidates.length; i += 1) {
+    const parsedPack = parsePackFromText(candidates[i]);
+    if (parsedPack?.totalPacks > 0) return parsedPack.totalPacks;
+    const packsOnly = parsePackagesFromText(candidates[i]);
+    if (packsOnly > 0) return packsOnly;
+  }
+  return 0;
+};
+const resolvePiecesPerPack = (ln, batchMeta) => {
+  const direct = toNumber(
+    ln?.pieces_per_package
+    ?? ln?.pieces_per_pack
+    ?? ln?.pack_size
+    ?? ln?.package_size
+    ?? ln?.pack_qty,
+  );
+  if (direct > 0) return direct;
+  const fromMeta = toNumber(
+    batchMeta?.pieces_per_package
+    ?? batchMeta?.pieces_per_pack
+    ?? batchMeta?.pack_size
+    ?? batchMeta?.package_size
+    ?? batchMeta?.pack_qty,
+  );
+  if (fromMeta > 0) return fromMeta;
+  const fromBatchObj = toNumber(
+    ln?.warehouse_batch?.pieces_per_package
+    ?? ln?.warehouse_batch?.pieces_per_pack
+    ?? ln?.warehouse_batch?.pack_size
+    ?? ln?.warehouse_batch?.package_size
+    ?? ln?.warehouse_batch?.pack_qty,
+  );
+  if (fromBatchObj > 0) return fromBatchObj;
+  const fromDisplay = parsePackFromText(ln?.warehouse_batch_display || ln?.display || ln?.batch_display);
+  if (fromDisplay?.piecesPerPack > 0) return fromDisplay.piecesPerPack;
+  return 0;
+};
+const parsePiecesPerPackFromText = (text) => {
+  const s = String(text || '');
+  if (!s) return 0;
+  const patterns = [
+    /(\d+(?:[.,]\d+)?)\s*шт\s*[xх×]/i,
+    /[xх×]\s*(\d+(?:[.,]\d+)?)\s*шт/i,
+    /по\s*(\d+(?:[.,]\d+)?)\s*шт/i,
+  ];
+  for (let i = 0; i < patterns.length; i += 1) {
+    const m = s.match(patterns[i]);
+    if (!m) continue;
+    const n = toNumber(String(m[1]).replace(',', '.'));
+    if (n > 0) return n;
+  }
+  return 0;
+};
+const resolvePiecesPerPackFromSaleContext = (sale, ln) => {
+  const candidates = PACK_TEXT_CANDIDATES(sale, ln);
+  for (let i = 0; i < candidates.length; i += 1) {
+    const parsed = parsePackFromText(candidates[i]);
+    if (parsed?.piecesPerPack > 0) return parsed.piecesPerPack;
+    const n = parsePiecesPerPackFromText(candidates[i]);
+    if (n > 0) return n;
+  }
+  return 0;
+};
+const isPackagesSaleLine = (sale, ln) => {
+  const raw = String(
+    ln?.unit_type
+    || ln?.unit_type_display
+    || sale?.unit_type
+    || sale?.unit_type_display
+    || sale?.sale_type
+    || sale?.sale_type_display
+    || '',
+  ).toLowerCase();
+  if (
+    raw.includes('packages')
+    || raw.includes('package')
+    || raw.includes('упак')
+    || raw.includes('уп.')
+  ) return true;
+  const packagesQty = resolvePackagesQty(sale, ln);
+  return packagesQty > 0;
+};
+const saleLineQtyText = (sale, ln, batchMetaMap = null) => {
+  const batchKey = normalizeBatchId(ln?.warehouse_batch?.id ?? ln?.warehouse_batch);
+  const batchMeta = batchMetaMap && batchKey ? batchMetaMap[batchKey] : null;
+  const piecesQty = toNumber(ln?.quantity ?? ln?.qty ?? ln?.pieces_quantity ?? ln?.quantity_pieces);
+  const packagesQty = resolvePackagesQty(sale, ln, batchMeta);
+  if (!(piecesQty > 0) && !(packagesQty > 0)) return '—';
+  const packagesSale = isPackagesSaleLine(sale, ln);
+  let piecesPerPack = resolvePiecesPerPack(ln, batchMeta);
+  if (!(piecesPerPack > 0)) {
+    piecesPerPack = resolvePiecesPerPackFromSaleContext(sale, ln);
+  }
+  if (!(piecesPerPack > 0) && packagesQty > 0 && piecesQty > 0) {
+    piecesPerPack = piecesQty / packagesQty;
+  }
+  if (packagesSale && packagesQty > 0 && piecesPerPack > 0 && piecesQty > 0) {
+    return `${formatQuantityDisplay(packagesQty)} упак × ${formatQuantityDisplay(piecesPerPack)} шт = ${formatQuantityDisplay(piecesQty)} шт`;
+  }
+  if (packagesSale && packagesQty > 0 && piecesQty > 0) {
+    return `${formatQuantityDisplay(packagesQty)} упак = ${formatQuantityDisplay(piecesQty)} шт`;
+  }
+  if (packagesSale && packagesQty > 0) {
+    return `${formatQuantityDisplay(packagesQty)} упак`;
+  }
+  if (packagesSale && piecesPerPack > 0 && piecesQty > 0) {
+    const packs = piecesQty / piecesPerPack;
+    const roundedPacks = Math.round(packs * 100) / 100;
+    const packText = Number.isInteger(roundedPacks)
+      ? formatQuantityDisplay(roundedPacks)
+      : String(roundedPacks).replace('.', ',');
+    return `${packText} упак × ${formatQuantityDisplay(piecesPerPack)} шт = ${formatQuantityDisplay(piecesQty)} шт`;
+  }
+  return `${formatQuantityDisplay(piecesQty)} шт`;
+};
+const waybillLineName = (ln) => {
+  const base = ln.warehouse_batch_display || ln.display || ln.batch_display || ln.product_name || ln.profile_name || '—';
+  const lengthPerPiece = ln.length_per_piece ?? ln.piece_length ?? ln.length;
+  const pieces = ln.pieces_quantity ?? ln.quantity_pieces ?? ln.pieces ?? ln.quantity ?? ln.qty ?? null;
+  const packages = ln.packages_quantity ?? ln.quantity_packages ?? ln.packages ?? null;
+  const details = [];
+  if (pieces != null && pieces !== '' && lengthPerPiece != null && lengthPerPiece !== '') {
+    details.push(`${formatQuantityDisplay(pieces)} шт × ${formatQuantityDisplay(lengthPerPiece)} м`);
+  } else {
+    if (lengthPerPiece != null && lengthPerPiece !== '') details.push(`${formatQuantityDisplay(lengthPerPiece)} м`);
+    if (pieces != null && pieces !== '') details.push(`${formatQuantityDisplay(pieces)} шт`);
+  }
+  if (packages != null && packages !== '') details.push(`${formatQuantityDisplay(packages)} упак`);
+  return details.length ? `${base} (${details.join(', ')})` : base;
+};
+const waybillLineUnit = (sale, ln) => {
+  if (ln.unit_label) return String(ln.unit_label);
+  const unitType = String(ln.unit_type || sale?.unit_type || '').toLowerCase();
+  if (unitType === 'packages') return 'упак';
+  if (unitType === 'pieces') return 'шт';
+  return WAYBILL_DEFAULT_UNIT;
 };
 
 const SalesPage = () => {
@@ -607,6 +815,7 @@ const SaleDetailsModal = ({ saleId, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [sale, setSale] = useState(null);
+  const [batchMetaMap, setBatchMetaMap] = useState({});
   const [waybillOpen, setWaybillOpen] = useState(false);
 
   useEffect(() => {
@@ -627,6 +836,37 @@ const SaleDetailsModal = ({ saleId, onClose }) => {
       });
     return () => { alive = false; };
   }, [saleId]);
+
+  useEffect(() => {
+    let alive = true;
+    const lines = Array.isArray(sale?.sale_lines) ? sale.sale_lines : [];
+    if (!sale || lines.length === 0) {
+      setBatchMetaMap({});
+      return () => { alive = false; };
+    }
+    getSaleSelectSources({
+      unit_type: 'packages',
+      client: sale?.client?.id ?? sale?.client ?? undefined,
+      page_size: 500,
+    })
+      .then((res) => {
+        if (!alive) return;
+        const data = res.data || {};
+        const batches = data.available_warehouse_batches ?? data.warehouse_batches;
+        const map = {};
+        if (Array.isArray(batches)) {
+          batches.forEach((b) => {
+            const key = normalizeBatchId(b?.id);
+            if (key) map[key] = b;
+          });
+        }
+        setBatchMetaMap(map);
+      })
+      .catch(() => {
+        if (alive) setBatchMetaMap({});
+      });
+    return () => { alive = false; };
+  }, [sale]);
 
   const lines = Array.isArray(sale?.sale_lines) ? sale.sale_lines : [];
   const clientName = sale?.client_name || clientLabel(sale?.client);
@@ -685,9 +925,9 @@ const SaleDetailsModal = ({ saleId, onClose }) => {
                       </thead>
                       <tbody>
                         {lines.map((ln, i) => {
-                          const lineQty = ln.quantity ?? ln.qty ?? ln.pieces_quantity ?? ln.packages_quantity;
                           const linePrice = ln.unit_price ?? ln.price;
                           const lineTotal = ln.total_amount ?? ln.line_total;
+                          const lineQtyText = saleLineQtyText(sale, ln, batchMetaMap);
                           const lineBatchLabel = ln.warehouse_batch_display
                             || ln.display
                             || ln.batch_display
@@ -700,7 +940,7 @@ const SaleDetailsModal = ({ saleId, onClose }) => {
                           return (
                             <tr key={ln.id != null ? `ln-${ln.id}` : `ln-${i}`}>
                               <td>{lineBatchLabel || '—'}</td>
-                              <td className="data-table__cell--num">{lineQty != null ? formatQuantityDisplay(lineQty) : '—'}</td>
+                              <td className="data-table__cell--num">{lineQtyText}</td>
                               <td className="data-table__cell--num">{toMoney(linePrice)}</td>
                               <td className="data-table__cell--num">{toMoney(lineTotal)}</td>
                             </tr>
@@ -720,40 +960,144 @@ const SaleDetailsModal = ({ saleId, onClose }) => {
         </div>
       </div>
       {waybillOpen && sale && (
-        <WaybillPreviewModal sale={sale} onClose={() => setWaybillOpen(false)} />
+        <WaybillPreviewModal sale={sale} batchMetaMap={batchMetaMap} onClose={() => setWaybillOpen(false)} />
       )}
     </div>
   );
 };
 
-const WaybillPreviewModal = ({ sale, onClose }) => {
-  const lines = Array.isArray(sale?.sale_lines) ? sale.sale_lines : [];
-  const buyer = sale?.client_name || clientLabel(sale?.client) || '—';
-  const total = lines.reduce((acc, ln) => acc + toNumber(ln.total_amount ?? ln.line_total), 0);
-  const waybillBaseUrl = getSaleWaybillUrl(sale.id);
-  const downloadWaybill = async (format) => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${waybillBaseUrl}?format=${format}`, {
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+const WaybillPreviewModal = ({ sale, batchMetaMap = {}, onClose }) => {
+  const printSheetRef = useRef(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [waybillData, setWaybillData] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    setError('');
+    getSaleWaybillData(sale.id)
+      .then((res) => {
+        if (!alive) return;
+        setWaybillData(res.data || null);
+      })
+      .catch((err) => {
+        if (!alive) return;
+        setError(getApiErrorMessage(err, 'Не удалось загрузить накладную'));
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
       });
-      if (!res.ok) throw new Error('Не удалось скачать накладную');
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `nakladnaya-${sale.id}.${format === 'xlsx' ? 'xlsx' : 'pdf'}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+    return () => { alive = false; };
+  }, [sale.id]);
+
+  const fallbackLines = Array.isArray(sale?.sale_lines) ? sale.sale_lines : [];
+  const fallbackBuyer = sale?.client_name || clientLabel(sale?.client) || '—';
+  const fallbackTotal = fallbackLines.reduce((acc, ln) => acc + toNumber(ln.total_amount ?? ln.line_total), 0);
+
+  const lines = useMemo(() => {
+    if (Array.isArray(waybillData?.sale_lines)) return waybillData.sale_lines;
+    return fallbackLines.map((ln) => ({
+      name: waybillLineName(ln),
+      quantity_display: saleLineQtyText(sale, ln, batchMetaMap),
+      unit_price: ln.unit_price ?? ln.price ?? '',
+      line_total: ln.total_amount ?? ln.line_total ?? '',
+    }));
+  }, [waybillData, fallbackLines, sale, batchMetaMap]);
+
+  const buyer = waybillData?.buyer_name || fallbackBuyer;
+  const title = waybillData?.title || `Расходная накладная № ${sale.id || '—'} от ________ г.`;
+  const supplierLine = waybillData?.supplier_line || '_______________________';
+  const phoneLine = waybillData?.phone_line || '_______________________';
+  const total = waybillData?.total ?? formatQuantityDisplay(fallbackTotal);
+  const downloadPdf = () => {
+    try {
+      if (!printSheetRef.current) throw new Error('Нет макета для PDF');
+      html2canvas(printSheetRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+      }).then((canvas) => {
+        const imgData = canvas.toDataURL('image/png');
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 8;
+        const maxWidth = pageWidth - margin * 2;
+        const maxHeight = pageHeight - margin * 2;
+        const ratio = Math.min(maxWidth / canvas.width, maxHeight / canvas.height);
+        const renderW = canvas.width * ratio;
+        const renderH = canvas.height * ratio;
+        const x = (pageWidth - renderW) / 2;
+        const y = margin;
+        doc.addImage(imgData, 'PNG', x, y, renderW, renderH, undefined, 'FAST');
+        doc.save(`nakladnaya-${sale.id}.pdf`);
+      }).catch(() => {
+        // eslint-disable-next-line no-alert
+        alert('Ошибка скачивания PDF');
+      });
     } catch {
       // eslint-disable-next-line no-alert
-      alert('Ошибка скачивания накладной');
+      alert('Ошибка скачивания PDF');
     }
   };
+
+  const renderWaybillCopy = (copyTitle, copyKey) => (
+    <section className="waybill-copy" key={copyKey}>
+      <h4 className="waybill-copy__title">{title}</h4>
+      <p className="waybill-copy__copy-mark">{copyTitle}</p>
+      <div className="waybill-copy__meta">
+        <p><strong>Поставщик:</strong> {supplierLine}, тел: {phoneLine}</p>
+        <p><strong>Покупатель:</strong> {buyer}</p>
+      </div>
+      <table className="waybill-copy__table">
+        <thead>
+          <tr>
+            <th>№</th>
+            <th>Наименование товара</th>
+            <th>Единица измерение</th>
+            <th>Цена</th>
+            <th>Сумма</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lines.map((ln, idx) => {
+            const lineTitle = ln?.name || waybillLineName(ln);
+            const qtyText = ln?.quantity_display || saleLineQtyText(sale, ln, batchMetaMap);
+            const unitPrice = ln?.unit_price ?? ln?.price;
+            const lineSum = ln?.line_total ?? ln?.total_amount ?? ln?.line_total;
+            return (
+              <tr key={`${copyKey}-${ln.id != null ? `wb-line-${ln.id}` : `wb-line-row-${idx}`}`}>
+                <td>{idx + 1}</td>
+                <td>{lineTitle}</td>
+                <td>{qtyText || '—'}</td>
+                <td>{unitPrice != null ? formatQuantityDisplay(unitPrice) : '—'}</td>
+                <td>{lineSum != null ? formatQuantityDisplay(lineSum) : '—'}</td>
+              </tr>
+            );
+          })}
+          <tr className="waybill-copy__total-row">
+            <td colSpan={4}>Итого:</td>
+            <td>{total != null && total !== '' ? formatQuantityDisplay(total) : '—'}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div className="waybill-copy__signatures">
+        <div className="waybill-copy__sign-item">
+          <span>Отпустил</span>
+          <span className="waybill-copy__sign-line" />
+        </div>
+        <div className="waybill-copy__sign-item">
+          <span>Получил</span>
+          <span className="waybill-copy__sign-line" />
+        </div>
+        <div className="waybill-copy__sign-item">
+          <span>Место печати</span>
+          <span className="waybill-copy__sign-line" />
+        </div>
+      </div>
+    </section>
+  );
 
   return (
     <div className="modal-overlay waybill-preview-modal" onClick={onClose}>
@@ -763,65 +1107,18 @@ const WaybillPreviewModal = ({ sale, onClose }) => {
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <div className="waybill-preview-modal__body">
-          <div className="waybill-print-sheet">
-            <section className="waybill-copy">
-              <h4 className="waybill-copy__title">Расходная накладная № {sale.id || '—'} от ________ г.</h4>
-              <div className="waybill-copy__meta">
-                <p><strong>Поставщик:</strong> _______________________, тел: _______________________</p>
-                <p><strong>Покупатель:</strong> {buyer}</p>
-              </div>
-              <table className="waybill-copy__table">
-                <thead>
-                  <tr>
-                    <th>№</th>
-                    <th>Наименование товара</th>
-                    <th>Единица измерение</th>
-                    <th>Цена</th>
-                    <th>Сумма</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lines.map((ln, idx) => {
-                    const title = ln.warehouse_batch_display || ln.display || ln.batch_display || ln.product_name || ln.profile_name || '—';
-                    const qty = ln.quantity ?? ln.qty ?? ln.pieces_quantity ?? ln.packages_quantity;
-                    const unitPrice = ln.unit_price ?? ln.price;
-                    const lineSum = ln.total_amount ?? ln.line_total;
-                    return (
-                      <tr key={ln.id != null ? `wb-line-${ln.id}` : `wb-line-row-${idx}`}>
-                        <td>{idx + 1}</td>
-                        <td>{title}</td>
-                        <td>{qty != null ? `${formatQuantityDisplay(qty)} ${WAYBILL_DEFAULT_UNIT}` : `— ${WAYBILL_DEFAULT_UNIT}`}</td>
-                        <td>{unitPrice != null ? formatQuantityDisplay(unitPrice) : '—'}</td>
-                        <td>{lineSum != null ? formatQuantityDisplay(lineSum) : '—'}</td>
-                      </tr>
-                    );
-                  })}
-                  <tr className="waybill-copy__total-row">
-                    <td colSpan={4}>Итого:</td>
-                    <td>{formatQuantityDisplay(total)}</td>
-                  </tr>
-                </tbody>
-              </table>
-              <div className="waybill-copy__signatures">
-                <div className="waybill-copy__sign-item">
-                  <span>Отпустил</span>
-                  <span className="waybill-copy__sign-line" />
-                </div>
-                <div className="waybill-copy__sign-item">
-                  <span>Получил</span>
-                  <span className="waybill-copy__sign-line" />
-                </div>
-                <div className="waybill-copy__sign-item">
-                  <span>Место печати</span>
-                  <span className="waybill-copy__sign-line" />
-                </div>
-              </div>
-            </section>
-          </div>
+          {loading && <Loading />}
+          {!loading && error && <p className="modal__error">{error}</p>}
+          {!loading && !error && (
+            <div className="waybill-print-sheet" ref={printSheetRef}>
+              {renderWaybillCopy('Экземпляр для клиента', 'client')}
+              <div className="waybill-print-sheet__divider" />
+              {renderWaybillCopy('Экземпляр для компании', 'company')}
+            </div>
+          )}
         </div>
         <div className="modal__actions waybill-preview-modal__actions">
-          <button type="button" className="btn btn--secondary" onClick={() => downloadWaybill('xlsx')}>Excel</button>
-          <button type="button" className="btn btn--secondary" onClick={() => downloadWaybill('pdf')}>PDF</button>
+          <button type="button" className="btn btn--secondary" onClick={downloadPdf} disabled={loading || !!error}>PDF</button>
           <button type="button" className="btn btn--primary" onClick={() => window.print()}>Печать</button>
         </div>
       </div>

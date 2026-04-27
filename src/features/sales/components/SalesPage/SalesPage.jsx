@@ -16,9 +16,11 @@ import {
   useToast,
 } from '../../../../shared/ui';
 import { useOperationalRefetch } from '../../../../shared/realtime';
-import { createSale, getSale, getSaleSelectSources, previewSale } from '../../api/salesApi';
+import { createSale, getSale, getSaleSelectSources, getSaleWaybillUrl, previewSale } from '../../api/salesApi';
 import { getClients } from '../../../clients/api/clientsApi';
 import './SalesPage.scss';
+import './WaybillPreviewModal.scss';
+import { WAYBILL_DEFAULT_UNIT, WAYBILL_SUPPLIER } from '../../config/waybillConfig';
 
 const paymentStatusLabel = (v) => {
   const k = String(v || '').toLowerCase();
@@ -123,6 +125,11 @@ const inferPaymentType = (sale) => {
   if (total > 0 && paid === 0) return 'debt';
   if (paid > 0 && debt > 0) return 'partial';
   return '';
+};
+const toWaybillDate = (v) => {
+  const s = String(v || '');
+  if (s.length >= 10) return `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)}`;
+  return '—';
 };
 
 const SalesPage = () => {
@@ -600,6 +607,7 @@ const SaleDetailsModal = ({ saleId, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [sale, setSale] = useState(null);
+  const [waybillOpen, setWaybillOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -707,7 +715,114 @@ const SaleDetailsModal = ({ saleId, onClose }) => {
           )}
         </div>
         <div className="modal__actions">
+          <button type="button" className="btn btn--secondary" onClick={() => setWaybillOpen(true)}>Накладная</button>
           <button type="button" className="btn btn--secondary" onClick={onClose}>Закрыть</button>
+        </div>
+      </div>
+      {waybillOpen && sale && (
+        <WaybillPreviewModal sale={sale} onClose={() => setWaybillOpen(false)} />
+      )}
+    </div>
+  );
+};
+
+const WaybillPreviewModal = ({ sale, onClose }) => {
+  const lines = Array.isArray(sale?.sale_lines) ? sale.sale_lines : [];
+  const buyer = sale?.client_name || clientLabel(sale?.client) || '—';
+  const total = lines.reduce((acc, ln) => acc + toNumber(ln.total_amount ?? ln.line_total), 0);
+  const waybillBaseUrl = getSaleWaybillUrl(sale.id);
+  const downloadWaybill = async (format) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${waybillBaseUrl}?format=${format}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) throw new Error('Не удалось скачать накладную');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `nakladnaya-${sale.id}.${format === 'xlsx' ? 'xlsx' : 'pdf'}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      // eslint-disable-next-line no-alert
+      alert('Ошибка скачивания накладной');
+    }
+  };
+
+  return (
+    <div className="modal-overlay waybill-preview-modal" onClick={onClose}>
+      <div className="modal modal--wide waybill-preview-modal__dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="modal__head waybill-preview-modal__head">
+          <h3>Накладная</h3>
+          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+        </div>
+        <div className="waybill-preview-modal__body">
+          <div className="waybill-print-sheet">
+            <section className="waybill-copy">
+              <h4 className="waybill-copy__title">Расходная накладная № {sale.id || '—'} от ________ г.</h4>
+              <div className="waybill-copy__meta">
+                <p><strong>Поставщик:</strong> _______________________, тел: _______________________</p>
+                <p><strong>Покупатель:</strong> {buyer}</p>
+              </div>
+              <table className="waybill-copy__table">
+                <thead>
+                  <tr>
+                    <th>№</th>
+                    <th>Наименование товара</th>
+                    <th>Единица измерение</th>
+                    <th>Цена</th>
+                    <th>Сумма</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lines.map((ln, idx) => {
+                    const title = ln.warehouse_batch_display || ln.display || ln.batch_display || ln.product_name || ln.profile_name || '—';
+                    const qty = ln.quantity ?? ln.qty ?? ln.pieces_quantity ?? ln.packages_quantity;
+                    const unitPrice = ln.unit_price ?? ln.price;
+                    const lineSum = ln.total_amount ?? ln.line_total;
+                    return (
+                      <tr key={ln.id != null ? `wb-line-${ln.id}` : `wb-line-row-${idx}`}>
+                        <td>{idx + 1}</td>
+                        <td>{title}</td>
+                        <td>{qty != null ? `${formatQuantityDisplay(qty)} ${WAYBILL_DEFAULT_UNIT}` : `— ${WAYBILL_DEFAULT_UNIT}`}</td>
+                        <td>{unitPrice != null ? formatQuantityDisplay(unitPrice) : '—'}</td>
+                        <td>{lineSum != null ? formatQuantityDisplay(lineSum) : '—'}</td>
+                      </tr>
+                    );
+                  })}
+                  <tr className="waybill-copy__total-row">
+                    <td colSpan={4}>Итого:</td>
+                    <td>{formatQuantityDisplay(total)}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div className="waybill-copy__signatures">
+                <div className="waybill-copy__sign-item">
+                  <span>Отпустил</span>
+                  <span className="waybill-copy__sign-line" />
+                </div>
+                <div className="waybill-copy__sign-item">
+                  <span>Получил</span>
+                  <span className="waybill-copy__sign-line" />
+                </div>
+                <div className="waybill-copy__sign-item">
+                  <span>Место печати</span>
+                  <span className="waybill-copy__sign-line" />
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+        <div className="modal__actions waybill-preview-modal__actions">
+          <button type="button" className="btn btn--secondary" onClick={() => downloadWaybill('xlsx')}>Excel</button>
+          <button type="button" className="btn btn--secondary" onClick={() => downloadWaybill('pdf')}>PDF</button>
+          <button type="button" className="btn btn--primary" onClick={() => window.print()}>Печать</button>
         </div>
       </div>
     </div>

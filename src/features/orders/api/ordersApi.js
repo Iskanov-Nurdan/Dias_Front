@@ -9,3 +9,7 @@ export const patchOrderStatus = (id, status) => apiClient.patch(`orders/${id}/st
 export const cancelOrder = (id) => apiClient.patch(`orders/${id}/cancel/`);
 export const getOrderHistory = (id) => apiClient.get(`orders/${id}/history/`);
 export const getOrderWaybillUrl = (id) => `${apiClient.defaults.baseURL}orders/${id}/waybill/`;
+
+export const approveOrder = (id) => apiClient.post(`orders/${id}/approve/`, {});
+export const rejectOrder = (id) => apiClient.post(`orders/${id}/reject/`, {});
+export const recheckOrder = (id) => apiClient.post(`orders/${id}/recheck/`, {});

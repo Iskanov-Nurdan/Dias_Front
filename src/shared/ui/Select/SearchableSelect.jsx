@@ -138,10 +138,8 @@ const SearchableSelect = ({
   };
 
   useEffect(() => {
-    if (!open) {
-      setSearchQuery('');
-      setActiveIndex(-1);
-    }
+    setSearchQuery('');
+    if (!open) setActiveIndex(-1);
   }, [open]);
 
   useLayoutEffect(() => {

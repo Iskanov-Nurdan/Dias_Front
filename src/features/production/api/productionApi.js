@@ -23,3 +23,8 @@ export const deleteProductionBatch = (id) => apiClient.delete(`batches/${id}/`);
  */
 export const submitProductionBatchForOtk = (id) =>
   apiClient.post(`batches/${id}/submit-for-otk/`, {});
+
+export const getProductionReadyRequests = (params) => apiClient.get('production/requests/', { params });
+
+export const startProductionRequest = (id, lineId) =>
+  apiClient.post(`production/requests/${id}/start/`, { line: lineId });

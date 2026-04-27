@@ -98,7 +98,6 @@ export function getNavSections() {
         { path: '/clients', accessKey: 'clients' },
         { path: '/orders', accessKey: 'client_orders', label: 'Заявки' },
         { path: '/sales', accessKey: 'sales' },
-        { path: '/payments', accessKey: 'payments', label: 'Оплаты' },
         { path: '/returns', accessKey: 'returns', label: 'Возвраты' },
         { path: '/defects-rework', accessKey: 'defects', label: 'Брак / переделка' },
       ],

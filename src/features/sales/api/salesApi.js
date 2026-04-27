@@ -3,6 +3,7 @@ import { apiClient } from '../../../shared/api';
 export const getSales = (params) => apiClient.get('sales/', { params });
 export const getSale = (id) => apiClient.get(`sales/${id}/`);
 export const createSale = (payload) => apiClient.post('sales/', payload);
+export const previewSale = (payload) => apiClient.post('sales/preview/', payload);
 export const updateSale = (id, payload) => apiClient.patch(`sales/${id}/`, payload);
 export const patchSaleStatus = (id, status, extraPayload = {}) =>
   apiClient.patch(`sales/${id}/status/`, { status, ...extraPayload });

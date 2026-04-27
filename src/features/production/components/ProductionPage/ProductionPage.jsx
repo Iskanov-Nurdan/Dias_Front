@@ -6,7 +6,7 @@ import {
   formatNumberForInput,
   getApiErrorMessage,
 } from '../../../../shared/lib';
-import { Loading, EmptyState, ErrorState, useToast, ConfirmModal, ActionMenu } from '../../../../shared/ui';
+import { Loading, EmptyState, ErrorState, useToast, ConfirmModal, ActionMenu, SearchableSelect } from '../../../../shared/ui';
 import { useOperationalRefetch } from '../../../../shared/realtime';
 import ProductionBatchModal from '../../../lines/components/ProductionBatchModal';
 import ProductionBatchDetailModal from '../ProductionBatchDetailModal/ProductionBatchDetailModal';
@@ -21,13 +21,6 @@ import {
   batchTotalMetersDisplay,
 } from '../../lib/batchMeta';
 import './ProductionPage.scss';
-
-const formatDt = (d) => {
-  if (!d) return '—';
-  const s = typeof d === 'string' ? d : String(d);
-  if (s.length >= 19) return `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)} ${s.slice(11, 16)}`;
-  return s.slice(0, 16);
-};
 
 const lineLabel = (b) => b.line_name || b.line?.name || '—';
 
@@ -102,6 +95,38 @@ const rqProfile = (o, list) => {
   return '—';
 };
 
+const pickRc = (r) => {
+  if (!r) return '';
+  if (r.label != null) {
+    const lab = String(r.label).trim();
+    if (lab) return lab;
+  }
+  const n =
+    (typeof r.recipe === 'string' && r.recipe.trim())
+    || (typeof r.recipe_name === 'string' && r.recipe_name.trim())
+    || (typeof r.name === 'string' && r.name.trim())
+    || (typeof r.product_name === 'string' && r.product_name.trim())
+    || (typeof r.product === 'string' && r.product.trim());
+  if (n) return n;
+  return '';
+};
+
+const rqRecipe = (o, list) => {
+  if (o?.recipe && typeof o.recipe === 'object') {
+    const t = pickRc(o.recipe);
+    if (t) return t;
+  }
+  if (o?.recipe_name && String(o.recipe_name).trim()) return String(o.recipe_name).trim();
+  let rid = o?.recipe_id;
+  if (rid == null && o?.recipe != null && typeof o.recipe !== 'object') rid = o.recipe;
+  if (rid != null && Array.isArray(list)) {
+    const row = list.find((r) => String(r.id) === String(rid));
+    if (row) return pickRc(row);
+  }
+  if (rid != null) return '—';
+  return '—';
+};
+
 const ProductionClientRequestsPanel = () => {
   const toast = useToast();
   const [lines, setLines] = useState([]);
@@ -109,6 +134,7 @@ const ProductionClientRequestsPanel = () => {
   const [startBusy, setStartBusy] = useState(null);
   const [srcClients, setSrcClients] = useState([]);
   const [srcProfiles, setSrcProfiles] = useState([]);
+  const [srcRecipes, setSrcRecipes] = useState([]);
 
   const q = useMemo(() => ({ page: 1, page_size: 200 }), []);
   const { items, loading, error, refetch } = useServerQuery('production/requests/', q, { enabled: true });
@@ -130,12 +156,22 @@ const ProductionClientRequestsPanel = () => {
         const data = res.data || {};
         setSrcClients(Array.isArray(data.clients) ? data.clients : []);
         setSrcProfiles(Array.isArray(data.profiles) ? data.profiles : []);
+        setSrcRecipes(Array.isArray(data.recipes) ? data.recipes : []);
       })
       .catch(() => {
         setSrcClients([]);
         setSrcProfiles([]);
+        setSrcRecipes([]);
       });
   }, []);
+
+  const lineOptions = useMemo(
+    () => [
+      { value: '', label: '—' },
+      ...lines.map((ln) => ({ value: String(ln.id), label: ln.name || `Линия ${ln.id}` })),
+    ],
+    [lines],
+  );
 
   const onStart = async (orderId) => {
     const lineVal = lineByOrder[orderId];
@@ -166,6 +202,7 @@ const ProductionClientRequestsPanel = () => {
             <div className="production-table__header">
               <span className="production-table__th">Клиент</span>
               <span className="production-table__th">Профиль</span>
+              <span className="production-table__th">Рецепт</span>
               <span className="production-table__th production-table__th--num">Длина, м</span>
               <span className="production-table__th production-table__th--num">Кол-во</span>
               <span className="production-table__th production-table__th--num">Всего, м</span>
@@ -178,6 +215,7 @@ const ProductionClientRequestsPanel = () => {
                 <div key={o.id} className="production-table__row">
                   <span className="production-table__cell-clip">{rqClient(o, srcClients)}</span>
                   <span className="production-table__cell-clip">{rqProfile(o, srcProfiles)}</span>
+                  <span className="production-table__cell-clip">{rqRecipe(o, srcRecipes)}</span>
                   <span className="production-table__num">
                     {o.length != null && o.length !== '' ? String(o.length) : '—'}
                   </span>
@@ -188,19 +226,13 @@ const ProductionClientRequestsPanel = () => {
                     {o.total_meters != null && o.total_meters !== '' ? String(o.total_meters) : '—'}
                   </span>
                   <span className="production-table__cell-clip">
-                    <select
-                      className="production-client-rq__select"
+                    <SearchableSelect
                       value={lineVal}
-                      onChange={(e) => setLineByOrder((prev) => ({ ...prev, [o.id]: e.target.value }))}
+                      onChange={(v) => setLineByOrder((prev) => ({ ...prev, [o.id]: v != null ? String(v) : '' }))}
+                      options={lineOptions}
+                      placeholder="—"
                       disabled={startBusy === o.id}
-                    >
-                      <option value="">—</option>
-                      {lines.map((ln) => (
-                        <option key={ln.id} value={String(ln.id)}>
-                          {ln.name || `Линия ${ln.id}`}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </span>
                   <span className="production-table__actions">
                     <button
@@ -335,7 +367,6 @@ const ProductionPage = () => {
           <div className="production-table-wrap">
             <div className="production-table">
               <div className="production-table__header">
-                <span className="production-table__th">Создано</span>
                 <span className="production-table__th">Профиль</span>
                 <span className="production-table__th">Рецепт</span>
                 <span className="production-table__th">Линия</span>
@@ -357,9 +388,6 @@ const ProductionPage = () => {
                 const canOtk = canSendProductionBatchToOtk(b);
                 return (
                   <div key={b.id} className="production-table__row">
-                    <span className="production-table__cell-clip production-table__cell--muted">
-                      {formatDt(b.created_at)}
-                    </span>
                     <span className="production-table__cell-clip">{profileLabel(b)}</span>
                     <span className="production-table__cell-clip">{recipeLabel(b)}</span>
                     <span className="production-table__cell-clip">{lineLabel(b)}</span>

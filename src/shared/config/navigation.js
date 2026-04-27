@@ -13,12 +13,12 @@ export const ACCESS_ROUTE_MAP = {
   analytics: '/analytics',
   shifts: '/shifts',
   users: '/users',
-  clients: '/clients',
-  sales: '/sales',
-  client_orders: '/orders',
+  clients: '/cash',
+  sales: '/cash',
+  client_orders: '/cash',
   payments: '/payments',
-  returns: '/returns',
-  defects: '/defects-rework',
+  returns: '/cash',
+  defects: '/cash',
 };
 
 /** Первый экран после входа. */
@@ -95,11 +95,13 @@ export function getNavSections() {
   if (STAGE2_TABS_ENABLED) {
     sections.push({
       links: [
-        { path: '/clients', accessKey: 'clients' },
-        { path: '/orders', accessKey: 'client_orders', label: 'Заявки' },
-        { path: '/sales', accessKey: 'sales' },
-        { path: '/returns', accessKey: 'returns', label: 'Возвраты' },
-        { path: '/defects-rework', accessKey: 'defects', label: 'Брак / переделка' },
+        {
+          path: '/cash',
+          accessKey: 'clients',
+          accessAnyKeys: ['clients', 'client_orders', 'sales', 'returns', 'defects'],
+          label: 'Касса',
+          iconKey: 'clients',
+        },
       ],
     });
   }

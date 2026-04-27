@@ -76,7 +76,6 @@
   .production-table__row {
     display: grid;
     grid-template-columns:
-      6.5rem
       minmax(5.5rem, 1fr)
       minmax(5.5rem, 1fr)
       minmax(4.5rem, 0.85fr)
@@ -260,46 +259,42 @@
     }
 
     .production-table__row > *:nth-child(1)::before {
-      content: 'Создано';
-    }
-
-    .production-table__row > *:nth-child(2)::before {
       content: 'Профиль';
     }
 
-    .production-table__row > *:nth-child(3)::before {
+    .production-table__row > *:nth-child(2)::before {
       content: 'Рецепт';
     }
 
-    .production-table__row > *:nth-child(4)::before {
+    .production-table__row > *:nth-child(3)::before {
       content: 'Линия';
     }
 
-    .production-table__row > *:nth-child(5)::before {
+    .production-table__row > *:nth-child(4)::before {
       content: 'Шт';
     }
 
-    .production-table__row > *:nth-child(6)::before {
+    .production-table__row > *:nth-child(5)::before {
       content: 'Длина, м';
     }
 
-    .production-table__row > *:nth-child(7)::before {
+    .production-table__row > *:nth-child(6)::before {
       content: 'Метры';
     }
 
-    .production-table__row > *:nth-child(8)::before {
+    .production-table__row > *:nth-child(7)::before {
       content: 'Сом/м';
     }
 
-    .production-table__row > *:nth-child(9)::before {
+    .production-table__row > *:nth-child(8)::before {
       content: 'Сом/шт';
     }
 
-    .production-table__row > *:nth-child(10)::before {
+    .production-table__row > *:nth-child(9)::before {
       content: 'Статус';
     }
 
-    .production-table__row > *:nth-child(11)::before {
+    .production-table__row > *:nth-child(10)::before {
       content: 'Действия';
     }
 
@@ -313,6 +308,40 @@
     .production-table__cell--muted {
       color: var(--text-secondary);
     }
+
+    .production-table--client-rq {
+      .production-table__row > *:nth-child(1)::before {
+        content: 'Клиент';
+      }
+
+      .production-table__row > *:nth-child(2)::before {
+        content: 'Профиль';
+      }
+
+      .production-table__row > *:nth-child(3)::before {
+        content: 'Рецепт';
+      }
+
+      .production-table__row > *:nth-child(4)::before {
+        content: 'Длина, м';
+      }
+
+      .production-table__row > *:nth-child(5)::before {
+        content: 'Кол-во';
+      }
+
+      .production-table__row > *:nth-child(6)::before {
+        content: 'Всего, м';
+      }
+
+      .production-table__row > *:nth-child(7)::before {
+        content: 'Линия';
+      }
+
+      .production-table__row > *:nth-child(8)::before {
+        content: 'Действие';
+      }
+    }
   }
 }
 
@@ -325,18 +354,45 @@
 }
 
 .production-table--client-rq {
+  min-width: 1040px;
+
+  .production-table__header,
+  .production-table__row {
+    grid-template-columns:
+      minmax(8.5rem, 1fr)
+      minmax(8.5rem, 1fr)
+      minmax(8.5rem, 1fr)
+      5.25rem
+      4.75rem
+      5.25rem
+      minmax(8.5rem, 1fr)
+      6.5rem;
+    gap: 0.5rem 0.625rem;
+  }
+
+  .production-table__header {
+    font-size: 0.71875rem;
+  }
+
+  .production-table__row {
+    min-height: 3.15rem;
+  }
+
+  .production-table__cell-clip {
+    white-space: nowrap;
+  }
+
+  .production-table__actions {
+    justify-content: flex-start;
+  }
+
   .production-table__th--actions {
     min-width: 5rem;
   }
 }
 
-.production-client-rq__select {
-  max-width: 100%;
-  min-width: 120px;
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--input-border);
-  border-radius: var(--radius-md);
-  background: var(--input-bg);
-  color: var(--text);
-  font: inherit;
+.production-table--client-rq {
+  .dias-select {
+    min-width: 140px;
+  }
 }

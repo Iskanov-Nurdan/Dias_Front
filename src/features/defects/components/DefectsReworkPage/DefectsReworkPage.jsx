@@ -20,11 +20,12 @@ const DefectsReworkPage = () => {
 
   const handleSentToReworkSuccess = useCallback(() => {
     bumpReworkList();
-    navigate('/defects-rework/rework');
+    navigate('/cash/defects/rework');
     bumpDefectsList();
   }, [navigate, bumpReworkList, bumpDefectsList]);
 
-  const isReworkTab = location.pathname.startsWith('/defects-rework/rework');
+  const isReworkTab = location.pathname.startsWith('/cash/defects/rework')
+    || location.pathname.startsWith('/defects-rework/rework');
 
   return (
     <div className="page defects-rework-page">
@@ -34,7 +35,7 @@ const DefectsReworkPage = () => {
           role="tab"
           aria-selected={!isReworkTab}
           className={`materials-tabs__tab defects-rework-page__tab${!isReworkTab ? ' materials-tabs__tab--active defects-rework-page__tab--active' : ''}`}
-          onClick={() => navigate('/defects-rework')}
+          onClick={() => navigate('/cash/defects')}
         >
           Брак
         </button>
@@ -43,7 +44,7 @@ const DefectsReworkPage = () => {
           role="tab"
           aria-selected={isReworkTab}
           className={`materials-tabs__tab defects-rework-page__tab${isReworkTab ? ' materials-tabs__tab--active defects-rework-page__tab--active' : ''}`}
-          onClick={() => navigate('/defects-rework/rework')}
+          onClick={() => navigate('/cash/defects/rework')}
         >
           Переделка
         </button>

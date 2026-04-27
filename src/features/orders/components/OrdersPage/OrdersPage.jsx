@@ -19,6 +19,7 @@ import {
   recheckOrder,
   rejectOrder,
 } from '../../api/ordersApi';
+import { getRecipes } from '../../../recipes/api/recipesApi';
 import './OrdersPage.scss';
 
 const getErr = (e, fallback) => getApiErrorMessage(e, fallback);
@@ -78,6 +79,38 @@ const orderProfileLabel = (o, profileList) => {
   if (rid != null && Array.isArray(profileList)) {
     const row = profileList.find((p) => String(p.id) === String(rid));
     if (row) return pickProfileName(row);
+  }
+  if (rid != null) return '—';
+  return '—';
+};
+
+const pickRecipeName = (r) => {
+  if (!r) return '';
+  if (r.label != null) {
+    const lab = String(r.label).trim();
+    if (lab) return lab;
+  }
+  const n =
+    (typeof r.recipe === 'string' && r.recipe.trim())
+    || (typeof r.recipe_name === 'string' && r.recipe_name.trim())
+    || (typeof r.name === 'string' && r.name.trim())
+    || (typeof r.product === 'string' && r.product.trim())
+    || (typeof r.product_name === 'string' && r.product_name.trim());
+  if (n) return n;
+  return '';
+};
+
+const orderRecipeLabel = (o, recipeList) => {
+  if (o?.recipe && typeof o.recipe === 'object') {
+    const t = pickRecipeName(o.recipe);
+    if (t) return t;
+  }
+  if (o?.recipe_name && String(o.recipe_name).trim()) return String(o.recipe_name).trim();
+  let rid = o?.recipe_id;
+  if (rid == null && o?.recipe != null && typeof o.recipe !== 'object') rid = o.recipe;
+  if (rid != null && Array.isArray(recipeList)) {
+    const row = recipeList.find((r) => String(r.id) === String(rid));
+    if (row) return pickRecipeName(row);
   }
   if (rid != null) return '—';
   return '—';
@@ -159,6 +192,7 @@ const OrdersPage = () => {
   const [queryState, setQueryState] = useState({ page: 1, page_size: 20, request_status: '' });
   const [clients, setClients] = useState([]);
   const [profiles, setProfiles] = useState([]);
+  const [recipes, setRecipes] = useState([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
@@ -178,10 +212,12 @@ const OrdersPage = () => {
         const data = res.data || {};
         setClients(Array.isArray(data.clients) ? data.clients : []);
         setProfiles(Array.isArray(data.profiles) ? data.profiles : []);
+        setRecipes(Array.isArray(data.recipes) ? data.recipes : []);
       })
       .catch(() => {
         setClients([]);
         setProfiles([]);
+        setRecipes([]);
       });
   }, []);
 
@@ -283,6 +319,7 @@ const OrdersPage = () => {
                 <th className="data-table__cell--narrow"> </th>
                 <th>Клиент</th>
                 <th>Профиль</th>
+                <th>Рецепт</th>
                 <th>Длина, м</th>
                 <th>Количество</th>
                 <th>Статус</th>
@@ -308,6 +345,7 @@ const OrdersPage = () => {
                       </td>
                       <td>{orderClientLabel(o, clients)}</td>
                       <td>{orderProfileLabel(o, profiles)}</td>
+                      <td>{orderRecipeLabel(o, recipes)}</td>
                       <td>{o.length != null && o.length !== '' ? String(o.length) : '—'}</td>
                       <td>{o.quantity != null && o.quantity !== '' ? formatQuantityDisplay(o.quantity) : '—'}</td>
                       <td>
@@ -316,7 +354,7 @@ const OrdersPage = () => {
                     </tr>
                     {isOpen && (
                       <tr className="orders-rq__detail-row">
-                        <td colSpan={6}>
+                        <td colSpan={7}>
                           <div className="orders-rq__card">
                             <div className="orders-rq__row">
                               <span className="orders-rq__k">Всего, м</span>
@@ -389,6 +427,7 @@ const OrdersPage = () => {
         <CreateOrderModal
           clients={clients}
           profiles={profiles}
+          recipesSource={recipes}
           onClose={() => setCreateOpen(false)}
           onCreated={async () => {
             setCreateOpen(false);
@@ -401,12 +440,17 @@ const OrdersPage = () => {
   );
 };
 
-const CreateOrderModal = ({ clients, profiles, onClose, onCreated }) => {
+const CreateOrderModal = ({ clients, profiles, recipesSource, onClose, onCreated }) => {
   const [client, setClient] = useState('');
   const [profile, setProfile] = useState('');
+  const [recipes, setRecipes] = useState([]);
+  const [recipe, setRecipe] = useState('');
   const [length, setLength] = useState('');
   const [quantity, setQuantity] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [paymentType, setPaymentType] = useState('debt');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [paidAmount, setPaidAmount] = useState('');
   const [localError, setLocalError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -439,7 +483,67 @@ const CreateOrderModal = ({ clients, profiles, onClose, onCreated }) => {
     [profiles],
   );
 
-  const canSubmit = client && profile && length.trim() && parseLocaleNumber(quantity) > 0;
+  useEffect(() => {
+    if (!profile) {
+      setRecipes([]);
+      setRecipe('');
+      return;
+    }
+    let alive = true;
+    const sourceByProfile = Array.isArray(recipesSource)
+      ? recipesSource.filter((r) => String(r.profile_id ?? r.profile?.id) === String(profile))
+      : [];
+    if (sourceByProfile.length > 0) {
+      setRecipes(sourceByProfile);
+      setRecipe((prev) => (sourceByProfile.some((r) => String(r.id) === String(prev)) ? prev : ''));
+      return () => { alive = false; };
+    }
+    getRecipes({ page: 1, page_size: 500, profile_id: Number(profile), is_active: true })
+      .then((res) => {
+        if (!alive) return;
+        const data = res.data || {};
+        const list = Array.isArray(data.items) ? data.items : [];
+        setRecipes(list);
+        setRecipe((prev) => (list.some((r) => String(r.id) === String(prev)) ? prev : ''));
+      })
+      .catch(() => {
+        if (!alive) return;
+        setRecipes([]);
+        setRecipe('');
+      });
+    return () => { alive = false; };
+  }, [profile, recipesSource]);
+
+  const recipeOptions = useMemo(
+    () =>
+      (recipes || []).map((r) => {
+        const label = pickRecipeName(r);
+        return {
+          value: String(r.id),
+          label,
+          searchText: [r.recipe, r.recipe_name, r.name, r.product, r.product_name, String(r.id)]
+            .filter((x) => x != null && String(x).trim() !== '')
+            .join(' '),
+        };
+      }),
+    [recipes],
+  );
+
+  useEffect(() => {
+    if (paymentType === 'debt') setPaidAmount('0');
+    if (paymentType === 'full') setPaidAmount('');
+  }, [paymentType]);
+
+  const numericPaidAmount = parseLocaleNumber(paidAmount);
+  const canSubmit = client
+    && profile
+    && recipe
+    && length.trim()
+    && parseLocaleNumber(quantity) > 0
+    && (
+      paymentType !== 'partial'
+      || (Number.isFinite(numericPaidAmount) && numericPaidAmount > 0)
+    );
 
   const submit = async (e) => {
     e.preventDefault();
@@ -452,8 +556,13 @@ const CreateOrderModal = ({ clients, profiles, onClose, onCreated }) => {
         client: Number(client),
         date,
         profile: Number(profile),
+        recipe: Number(recipe),
         length: String(length).trim(),
         quantity: qn,
+        payment_type: paymentType,
+        payment_method: paymentMethod,
+        ...(paymentType === 'debt' ? { paid_amount: '0' } : {}),
+        ...(paymentType === 'partial' ? { paid_amount: String(numericPaidAmount) } : {}),
       });
       await onCreated();
     } catch (err) {
@@ -484,9 +593,20 @@ const CreateOrderModal = ({ clients, profiles, onClose, onCreated }) => {
             <label>Профиль *</label>
             <SearchableSelect
               value={profile}
-              onChange={(v) => setProfile(v != null ? String(v) : '')}
+              onChange={(v) => {
+                setProfile(v != null ? String(v) : '');
+                setRecipe('');
+              }}
               options={profileOptions}
               placeholder="Выберите профиль"
+            />
+            <label>Рецепт *</label>
+            <SearchableSelect
+              value={recipe}
+              onChange={(v) => setRecipe(v != null ? String(v) : '')}
+              options={recipeOptions}
+              placeholder={profile ? 'Выберите рецепт' : 'Сначала выберите профиль'}
+              disabled={!profile}
             />
             <label>Длина, м *</label>
             <input
@@ -499,6 +619,36 @@ const CreateOrderModal = ({ clients, profiles, onClose, onCreated }) => {
             <IntegerInput min={1} value={quantity} onChange={setQuantity} disabled={busy} />
             <label>Дата</label>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={busy} />
+            <label>Тип оплаты *</label>
+            <SearchableSelect
+              value={paymentType}
+              onChange={(v) => setPaymentType(v != null ? String(v) : 'debt')}
+              options={[
+                { value: 'full', label: 'Полная' },
+                { value: 'partial', label: 'Частичная' },
+                { value: 'debt', label: 'В долг' },
+              ]}
+              disabled={busy}
+            />
+            <label>Способ оплаты *</label>
+            <SearchableSelect
+              value={paymentMethod}
+              onChange={(v) => setPaymentMethod(v != null ? String(v) : 'cash')}
+              options={[
+                { value: 'cash', label: 'Наличные' },
+                { value: 'card', label: 'Карта' },
+                { value: 'transfer', label: 'Перевод' },
+              ]}
+              disabled={busy}
+            />
+            <label>Сумма оплаты</label>
+            <input
+              inputMode="decimal"
+              value={paymentType === 'debt' ? '0' : paidAmount}
+              disabled={busy || paymentType === 'full' || paymentType === 'debt'}
+              onChange={(e) => setPaidAmount(e.target.value)}
+              placeholder={paymentType === 'full' ? 'Автоматически как полная сумма' : ''}
+            />
             {localError && <p className="modal__error">{localError}</p>}
           </div>
           <div className="modal__actions">

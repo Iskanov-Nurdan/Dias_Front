@@ -139,13 +139,19 @@ const MainLayout = () => {
   const navRows = useMemo(() => {
     const rows = [];
     for (const section of getNavSections()) {
-      const links = section.links.filter((l) => accesses.includes(l.accessKey));
+      const links = section.links.filter((l) => {
+        if (Array.isArray(l.accessAnyKeys) && l.accessAnyKeys.length > 0) {
+          return l.accessAnyKeys.some((k) => accesses.includes(k));
+        }
+        return accesses.includes(l.accessKey);
+      });
       for (const l of links) {
+        const iconKey = l.iconKey || l.accessKey;
         rows.push({
           path: l.path,
           accessKey: l.accessKey,
           label: l.label || ACCESS_LABELS[l.accessKey] || l.accessKey,
-          Icon: PAGE_ICONS[l.accessKey] || null,
+          Icon: PAGE_ICONS[iconKey] || null,
         });
       }
     }

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   useServerQuery,
   parseLocaleNumber,
@@ -78,6 +78,28 @@ const orderLabel = (o) => {
     return raw;
   }
   return '—';
+};
+const orderPrepaidAmount = (o) => {
+  if (!o) return 0;
+  const candidates = [
+    o.prepaid_amount,
+    o.paid_amount,
+    o.advance_amount,
+    o.prepayment_amount,
+    o.order_paid_amount,
+    o.order_prepayment_amount,
+  ];
+  for (let i = 0; i < candidates.length; i += 1) {
+    const n = toNumber(candidates[i]);
+    if (n > 0) return n;
+  }
+  return 0;
+};
+const resolveOrderAppliedAmount = (orderPrepaid, previewTotal) => {
+  const prepaid = toNumber(orderPrepaid);
+  const total = toNumber(previewTotal);
+  if (!(prepaid > 0) || !(total > 0)) return 0;
+  return Math.min(prepaid, total);
 };
 const isClosedOrder = (o) => {
   const raw = String(o?.request_status || o?.status || o?.status_label || '').toLowerCase();
@@ -454,11 +476,11 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
   const [batches, setBatches] = useState([]);
   const [client, setClient] = useState('');
   const [order, setOrder] = useState('');
-  const [unitType, setUnitType] = useState('pieces');
   const [paymentType, setPaymentType] = useState('full');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [paidAmount, setPaidAmount] = useState('');
-  const [saleLines, setSaleLines] = useState([{ warehouse_batch: '', quantity: '', unit_price: '' }]);
+  const [orderPrepaid, setOrderPrepaid] = useState(0);
+  const [saleLines, setSaleLines] = useState([{ warehouse_batch: '', quantity: '', unit_price: '', unit_type: 'pieces' }]);
   const [preview, setPreview] = useState(null);
   const [previewError, setPreviewError] = useState('');
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -486,7 +508,6 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
     const params = {};
     if (client) params.client = client;
     if (order) params.order = order;
-    if (unitType) params.unit_type = unitType;
     getSaleSelectSources(params)
       .then((res) => {
         if (!alive) return;
@@ -505,7 +526,7 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
         if (alive) setLoadingSelect(false);
       });
     return () => { alive = false; };
-  }, [client, order, unitType]);
+  }, [client, order]);
 
   useEffect(() => {
     if (paymentType === 'debt') setPaidAmount('0');
@@ -531,7 +552,6 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
       }
       const payload = {
         client: Number(client),
-        unit_type: unitType,
         sale_lines: cleanLines,
         payment_type: paymentType,
         payment_method: paymentMethod,
@@ -576,7 +596,20 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
       alive = false;
       clearTimeout(t);
     };
-  }, [client, order, unitType, saleLines, paymentType, paymentMethod, paidAmount]);
+  }, [client, order, saleLines, paymentType, paymentMethod, paidAmount]);
+
+  useEffect(() => {
+    if (!(orderPrepaid > 0) || !preview) return;
+    const total = toNumber(preview.total_amount);
+    if (!(total > 0)) return;
+    if (orderPrepaid >= total) {
+      setPaymentType('full');
+      setPaidAmount('');
+    } else if (paymentType !== 'partial') {
+      setPaymentType('partial');
+      setPaidAmount(String(orderPrepaid));
+    }
+  }, [orderPrepaid, preview, paymentType]);
 
   const filteredOrders = useMemo(() => {
     if (!client) return [];
@@ -591,17 +624,25 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
     () => [{ value: '', label: 'Не выбрана' }, ...filteredOrders.map((o) => ({ value: String(o.id), label: orderLabel(o) }))],
     [filteredOrders],
   );
+  useEffect(() => {
+    if (!order) {
+      setOrderPrepaid(0);
+      return;
+    }
+    const selected = filteredOrders.find((o) => String(o.id) === String(order));
+    const prepaid = orderPrepaidAmount(selected);
+    setOrderPrepaid(prepaid);
+    if (prepaid > 0) {
+      setPaymentType('partial');
+      setPaidAmount(String(prepaid));
+    }
+  }, [order, filteredOrders]);
   const clientOptions = useMemo(
     () => [{ value: '', label: 'Выберите клиента' }, ...clients.map((c) => ({ value: String(c.id), label: clientLabel(c) }))],
     [clients],
   );
-  const filteredBatches = useMemo(() => {
+  const saleAvailableBatches = useMemo(() => {
     const source = batches.filter(isGoodBatchForSale);
-    if (unitType === 'packages') {
-      return source
-        .filter((b) => toNumber(b.available_packages) > 0)
-        .sort((a, b) => toNumber(b.available_packages) - toNumber(a.available_packages));
-    }
     return source
       .filter((b) => toNumber(b.available_pieces) > 0 || toNumber(b.available_packages) > 0)
       .sort((a, b) => {
@@ -609,20 +650,23 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
         const bp = toNumber(b.available_pieces) + toNumber(b.available_packages);
         return bp - ap;
       });
-  }, [batches, unitType]);
+  }, [batches]);
+  const filteredBatchesByUnitType = useCallback((lineUnitType) => {
+    if (lineUnitType === 'packages') {
+      return saleAvailableBatches.filter((b) => toNumber(b.available_packages) > 0);
+    }
+    return saleAvailableBatches.filter((b) => toNumber(b.available_pieces) > 0 || toNumber(b.available_packages) > 0);
+  }, [saleAvailableBatches]);
   useEffect(() => {
-    const allowedBatchIds = new Set(filteredBatches.map((b) => String(b.id)));
     setSaleLines((prev) => prev.map((line) => {
+      const lineBatches = filteredBatchesByUnitType(line.unit_type || 'pieces');
+      const allowedBatchIds = new Set(lineBatches.map((b) => String(b.id)));
       if (!line.warehouse_batch) return line;
       return allowedBatchIds.has(String(line.warehouse_batch))
         ? line
         : { ...line, warehouse_batch: '' };
     }));
-  }, [filteredBatches]);
-  const batchOptions = useMemo(
-    () => [{ value: '', label: 'Выберите партию' }, ...filteredBatches.map((b) => ({ value: String(b.id), label: batchLabel(b) }))],
-    [filteredBatches],
-  );
+  }, [filteredBatchesByUnitType]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -650,18 +694,26 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
         warehouse_batch: wb,
         quantity: String(qty),
         unit_price: String(price),
+        unit_type: ln.unit_type === 'packages' ? 'packages' : 'pieces',
       });
     }
 
+    const topLevelUnitType = cleanLines.length > 0
+      ? (cleanLines[0].unit_type === 'packages' ? 'packages' : 'pieces')
+      : 'pieces';
     const payload = {
       client: Number(client),
-      unit_type: unitType,
+      unit_type: topLevelUnitType,
       sale_lines: cleanLines,
       payment_type: paymentType,
       payment_method: paymentMethod,
       paid_amount: paymentType === 'debt' ? '0' : String(paidAmount || ''),
     };
     if (order) payload.order = Number(order);
+    const appliedFromOrder = resolveOrderAppliedAmount(orderPrepaid, preview?.total_amount);
+    if (order && appliedFromOrder > 0) {
+      payload.order_paid_amount_applied = String(appliedFromOrder);
+    }
     if (paymentType === 'full') {
       if (preview?.total_amount != null && preview.total_amount !== '') {
         payload.paid_amount = String(preview.total_amount);
@@ -715,25 +767,33 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
                 disabled={!client}
                 placeholder={client ? 'Выберите заявку' : 'Сначала выберите клиента'}
               />
+              {orderPrepaid > 0 && (
+                <p className="sales-modal__hint-line">
+                  В заявке уже оплачено: {toMoney(orderPrepaid)}. Тип оплаты и сумма подставлены автоматически.
+                </p>
+              )}
             </section>
             <section className="sales-modal__section">
               <h4 className="sales-modal__section-title">Товары</h4>
-              <label className="sales-modal__label">Тип продажи</label>
-              <SearchableSelect
-                value={unitType}
-                onChange={(v) => setUnitType(v != null ? String(v) : 'pieces')}
-                options={[
-                  { value: 'pieces', label: 'Штуки' },
-                  { value: 'packages', label: 'Упаковки' },
-                ]}
-              />
               {saleLines.map((line, idx) => (
                 <div key={idx} className="sales-modal__line-card card">
+                  <label className="sales-modal__label">Тип продажи</label>
+                  <SearchableSelect
+                    value={line.unit_type || 'pieces'}
+                    onChange={(v) => setSaleLines((prev) => prev.map((x, i) => (i === idx ? { ...x, unit_type: v != null ? String(v) : 'pieces', warehouse_batch: '' } : x)))}
+                    options={[
+                      { value: 'pieces', label: 'Штуки' },
+                      { value: 'packages', label: 'Упаковки' },
+                    ]}
+                  />
                   <label className="sales-modal__label">Партия склада</label>
                   <SearchableSelect
                     value={line.warehouse_batch}
                     onChange={(v) => setSaleLines((prev) => prev.map((x, i) => (i === idx ? { ...x, warehouse_batch: v != null ? String(v) : '' } : x)))}
-                    options={batchOptions}
+                    options={[
+                      { value: '', label: 'Выберите партию' },
+                      ...filteredBatchesByUnitType(line.unit_type || 'pieces').map((b) => ({ value: String(b.id), label: batchLabel(b) })),
+                    ]}
                   />
                   <label className="sales-modal__label">Количество</label>
                   <IntegerInput
@@ -741,7 +801,7 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
                     value={line.quantity}
                     onChange={(v) => setSaleLines((prev) => prev.map((x, i) => (i === idx ? { ...x, quantity: v } : x)))}
                   />
-                  <p className="sales-modal__hint-line">Количество в {qtyUnitLabel(unitType)}</p>
+                  <p className="sales-modal__hint-line">Количество в {qtyUnitLabel(line.unit_type || 'pieces')}</p>
                   <label className="sales-modal__label">Цена за единицу</label>
                   <input
                     inputMode="decimal"
@@ -753,7 +813,7 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
               <button
                 type="button"
                 className="btn btn--secondary sales-modal__add-line"
-                onClick={() => setSaleLines((prev) => [...prev, { warehouse_batch: '', quantity: '', unit_price: '' }])}
+                onClick={() => setSaleLines((prev) => [...prev, { warehouse_batch: '', quantity: '', unit_price: '', unit_type: 'pieces' }])}
                 disabled={saving}
               >
                 Добавить строку

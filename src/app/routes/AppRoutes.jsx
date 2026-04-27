@@ -20,6 +20,7 @@ import { ReturnsPage } from '../../features/returns';
 import { MyShiftPage, ShiftsReportPage } from '../../features/shifts';
 import DefectsReworkPage from '../../features/defects/components/DefectsReworkPage/DefectsReworkPage';
 import ReferenceBooksPage from '../../features/recipes/components/ReferenceBooksPage/ReferenceBooksPage';
+import CashPage from '../../features/cash/components/CashPage/CashPage';
 import { getDefaultHomePath } from '../../shared/config/navigation';
 import { STAGE2_TABS_ENABLED } from '../../shared/config/constants';
 
@@ -65,15 +66,23 @@ const AppRoutes = () => (
       <Route path="shifts" element={<ProtectedRoute requiredAccess="shifts"><ShiftsReportPage /></ProtectedRoute>} />
       {STAGE2_TABS_ENABLED && (
         <>
-          <Route path="clients" element={<ProtectedRoute requiredAccess="clients"><ClientsPage /></ProtectedRoute>} />
-          <Route path="orders" element={<ProtectedRoute requiredAccess="client_orders"><OrdersPage /></ProtectedRoute>} />
-          <Route path="sales" element={<ProtectedRoute requiredAccess="sales"><SalesPage /></ProtectedRoute>} />
+          <Route path="cash" element={<CashPage />}>
+            <Route path="clients" element={<ProtectedRoute requiredAccess="clients"><ClientsPage /></ProtectedRoute>} />
+            <Route path="orders" element={<ProtectedRoute requiredAccess="client_orders"><OrdersPage /></ProtectedRoute>} />
+            <Route path="sales" element={<ProtectedRoute requiredAccess="sales"><SalesPage /></ProtectedRoute>} />
+            <Route path="returns" element={<ProtectedRoute requiredAccess="returns"><ReturnsPage /></ProtectedRoute>} />
+            <Route path="defects" element={<ProtectedRoute requiredAccess="defects"><DefectsReworkPage /></ProtectedRoute>} />
+            <Route path="defects/rework" element={<ProtectedRoute requiredAccess="defects"><DefectsReworkPage /></ProtectedRoute>} />
+          </Route>
+          <Route path="clients" element={<Navigate to="/cash/clients" replace />} />
+          <Route path="orders" element={<Navigate to="/cash/orders" replace />} />
+          <Route path="sales" element={<Navigate to="/cash/sales" replace />} />
           <Route path="payments" element={<ProtectedRoute requiredAccess="payments"><PaymentsPage /></ProtectedRoute>} />
-          <Route path="returns" element={<ProtectedRoute requiredAccess="returns"><ReturnsPage /></ProtectedRoute>} />
-          <Route path="defects-rework" element={<ProtectedRoute requiredAccess="defects"><DefectsReworkPage /></ProtectedRoute>} />
-          <Route path="defects-rework/rework" element={<ProtectedRoute requiredAccess="defects"><DefectsReworkPage /></ProtectedRoute>} />
-          <Route path="defects" element={<Navigate to="/defects-rework" replace />} />
-          <Route path="rework-requests" element={<Navigate to="/defects-rework/rework" replace />} />
+          <Route path="returns" element={<Navigate to="/cash/returns" replace />} />
+          <Route path="defects-rework" element={<Navigate to="/cash/defects" replace />} />
+          <Route path="defects-rework/rework" element={<Navigate to="/cash/defects/rework" replace />} />
+          <Route path="defects" element={<Navigate to="/cash/defects" replace />} />
+          <Route path="rework-requests" element={<Navigate to="/cash/defects/rework" replace />} />
         </>
       )}
       <Route path="forbidden" element={<PlaceholderPage title="Нет доступа" />} />

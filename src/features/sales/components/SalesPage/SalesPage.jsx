@@ -23,6 +23,7 @@ import {
   getSaleWaybillData,
   previewSale,
 } from '../../api/salesApi';
+import { getOrder } from '../../../orders/api/ordersApi';
 import { getClients } from '../../../clients/api/clientsApi';
 import './SalesPage.scss';
 import './WaybillPreviewModal.scss';
@@ -361,6 +362,38 @@ const waybillLineUnit = (sale, ln) => {
   if (unitType === 'pieces') return 'шт';
   return WAYBILL_DEFAULT_UNIT;
 };
+const normalizeUnitType = (v) => {
+  const s = String(v || '').toLowerCase();
+  if (s.includes('упак') || s.includes('package')) return 'packages';
+  return 'pieces';
+};
+const extractOrderProductLines = (orderDetail) => {
+  const source = orderDetail || {};
+  const buckets = [
+    source.order_lines,
+    source.lines,
+    source.items,
+    source.products,
+    source.request_lines,
+    source.positions,
+  ];
+  const raw = buckets.find((x) => Array.isArray(x) && x.length) || [];
+  return raw.map((ln, idx) => {
+    const profileId = ln?.profile_id ?? ln?.profile?.id ?? ln?.profile ?? null;
+    const profileName = ln?.profile_name || ln?.profile_display || ln?.display || '';
+    const qty = ln?.quantity ?? ln?.qty ?? ln?.required_quantity ?? '';
+    const price = ln?.unit_price ?? ln?.price ?? ln?.sale_price ?? '';
+    const unitType = normalizeUnitType(ln?.unit_type || source?.unit_type);
+    return {
+      id: ln?.id ?? `order-line-${idx}`,
+      profile_id: profileId,
+      profile_name: profileName,
+      quantity: qty != null && qty !== '' ? String(qty) : '',
+      unit_price: price != null && price !== '' ? String(price) : '',
+      unit_type: unitType,
+    };
+  });
+};
 
 const SalesPage = () => {
   const [queryState, setQueryState] = useState({ page: 1, page_size: 20, payment_filter: '' });
@@ -481,9 +514,20 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
   const [paidAmount, setPaidAmount] = useState('');
   const [orderPrepaid, setOrderPrepaid] = useState(0);
   const [saleLines, setSaleLines] = useState([{ warehouse_batch: '', quantity: '', unit_price: '', unit_type: 'pieces' }]);
+  const [activeLineIdx, setActiveLineIdx] = useState(0);
+  const [orderCartLoading, setOrderCartLoading] = useState(false);
+  const [orderCartError, setOrderCartError] = useState('');
+  const [autoFilledFromOrder, setAutoFilledFromOrder] = useState(false);
   const [preview, setPreview] = useState(null);
   const [previewError, setPreviewError] = useState('');
   const [previewLoading, setPreviewLoading] = useState(false);
+  const isLineEmpty = useCallback((ln) => {
+    if (!ln) return true;
+    const wb = String(ln.warehouse_batch || '').trim();
+    const q = String(ln.quantity || '').trim();
+    const p = String(ln.unit_price || '').trim();
+    return !wb && !q && !p;
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -548,6 +592,8 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
           warehouse_batch: wb,
           quantity: String(qty),
           unit_price: String(price),
+          unit_type: ln.unit_type === 'packages' ? 'packages' : 'pieces',
+          ...(ln.order_line_id ? { order_line: Number(ln.order_line_id) } : {}),
         });
       }
       const payload = {
@@ -624,19 +670,6 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
     () => [{ value: '', label: 'Не выбрана' }, ...filteredOrders.map((o) => ({ value: String(o.id), label: orderLabel(o) }))],
     [filteredOrders],
   );
-  useEffect(() => {
-    if (!order) {
-      setOrderPrepaid(0);
-      return;
-    }
-    const selected = filteredOrders.find((o) => String(o.id) === String(order));
-    const prepaid = orderPrepaidAmount(selected);
-    setOrderPrepaid(prepaid);
-    if (prepaid > 0) {
-      setPaymentType('partial');
-      setPaidAmount(String(prepaid));
-    }
-  }, [order, filteredOrders]);
   const clientOptions = useMemo(
     () => [{ value: '', label: 'Выберите клиента' }, ...clients.map((c) => ({ value: String(c.id), label: clientLabel(c) }))],
     [clients],
@@ -657,6 +690,82 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
     }
     return saleAvailableBatches.filter((b) => toNumber(b.available_pieces) > 0 || toNumber(b.available_packages) > 0);
   }, [saleAvailableBatches]);
+  const pickBatchForOrderLine = useCallback((orderLine, lineUnitType) => {
+    const list = filteredBatchesByUnitType(lineUnitType || 'pieces');
+    if (!list.length) return '';
+    const targetProfileId = orderLine?.profile_id != null ? String(orderLine.profile_id) : '';
+    const targetProfileName = String(orderLine?.profile_name || '').toLowerCase();
+    const exact = list.filter((b) => {
+      const bid = b?.profile_id ?? b?.profile?.id ?? b?.profile ?? null;
+      if (targetProfileId && bid != null && String(bid) === targetProfileId) return true;
+      if (!targetProfileName) return false;
+      const bname = String(b?.profile_name || b?.display || b?.warehouse_batch_display || '').toLowerCase();
+      return bname.includes(targetProfileName);
+    });
+    const source = exact.length ? exact : list;
+    return source[0]?.id != null ? String(source[0].id) : '';
+  }, [filteredBatchesByUnitType]);
+  const buildCartFromOrder = useCallback((orderDetail) => {
+    const orderLines = extractOrderProductLines(orderDetail);
+    if (!orderLines.length) return null;
+    return orderLines.map((ln) => ({
+      warehouse_batch: pickBatchForOrderLine(ln, ln.unit_type),
+      quantity: ln.quantity,
+      unit_price: ln.unit_price,
+      unit_type: ln.unit_type || 'pieces',
+      order_line_id: ln.id,
+      from_order: true,
+    }));
+  }, [pickBatchForOrderLine]);
+  useEffect(() => {
+    setActiveLineIdx((prev) => {
+      if (!saleLines.length) return 0;
+      if (prev < 0) return 0;
+      if (prev >= saleLines.length) return saleLines.length - 1;
+      return prev;
+    });
+  }, [saleLines]);
+  useEffect(() => {
+    if (!order) {
+      setOrderPrepaid(0);
+      setOrderCartLoading(false);
+      setOrderCartError('');
+      setAutoFilledFromOrder(false);
+      return;
+    }
+    const selected = filteredOrders.find((o) => String(o.id) === String(order));
+    const prepaid = orderPrepaidAmount(selected);
+    setOrderPrepaid(prepaid);
+    if (prepaid > 0) {
+      setPaymentType('partial');
+      setPaidAmount(String(prepaid));
+    }
+    setOrderCartLoading(true);
+    setOrderCartError('');
+    getOrder(order)
+      .then((res) => {
+        const detail = res?.data || {};
+        const autoCart = buildCartFromOrder(detail);
+        if (!autoCart || !autoCart.length) {
+          setOrderCartError('В заявке нет товарных строк для автокорзины.');
+          setAutoFilledFromOrder(false);
+          return;
+        }
+        setSaleLines((prev) => {
+          const manualLines = prev.filter((x) => !x.from_order && !isLineEmpty(x));
+          return [...autoCart, ...manualLines];
+        });
+        setActiveLineIdx(0);
+        setAutoFilledFromOrder(true);
+      })
+      .catch((err) => {
+        setOrderCartError(getApiErrorMessage(err, 'Не удалось загрузить товары из заявки'));
+        setAutoFilledFromOrder(false);
+      })
+      .finally(() => {
+        setOrderCartLoading(false);
+      });
+  }, [order, filteredOrders, buildCartFromOrder, isLineEmpty]);
   useEffect(() => {
     setSaleLines((prev) => prev.map((line) => {
       const lineBatches = filteredBatchesByUnitType(line.unit_type || 'pieces');
@@ -695,6 +804,7 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
         quantity: String(qty),
         unit_price: String(price),
         unit_type: ln.unit_type === 'packages' ? 'packages' : 'pieces',
+        ...(ln.order_line_id ? { order_line: Number(ln.order_line_id) } : {}),
       });
     }
 
@@ -755,6 +865,10 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
                 onChange={(v) => {
                   setClient(v != null ? String(v) : '');
                   setOrder('');
+                  setSaleLines([{ warehouse_batch: '', quantity: '', unit_price: '', unit_type: 'pieces' }]);
+                  setActiveLineIdx(0);
+                  setOrderCartError('');
+                  setAutoFilledFromOrder(false);
                 }}
                 options={clientOptions}
                 placeholder="Выберите клиента"
@@ -762,7 +876,19 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
               <label className="sales-modal__label">Заявка</label>
               <SearchableSelect
                 value={order}
-                onChange={(v) => setOrder(v != null ? String(v) : '')}
+                onChange={(v) => {
+                  const nextOrder = v != null ? String(v) : '';
+                  setOrder(nextOrder);
+                  if (!nextOrder) {
+                    setSaleLines((prev) => {
+                      const lines = prev.filter((x) => !x.from_order);
+                      return lines.length ? lines : [{ warehouse_batch: '', quantity: '', unit_price: '', unit_type: 'pieces' }];
+                    });
+                    setActiveLineIdx(0);
+                    setOrderCartError('');
+                    setAutoFilledFromOrder(false);
+                  }
+                }}
                 options={orderOptions}
                 disabled={!client}
                 placeholder={client ? 'Выберите заявку' : 'Сначала выберите клиента'}
@@ -772,52 +898,109 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
                   В заявке уже оплачено: {toMoney(orderPrepaid)}. Тип оплаты и сумма подставлены автоматически.
                 </p>
               )}
+              {orderCartLoading && <p className="sales-modal__hint-line">Подтягиваем товары из заявки...</p>}
+              {!orderCartLoading && orderCartError && <p className="sales-modal__hint-line">{orderCartError}</p>}
+              {!orderCartLoading && autoFilledFromOrder && (
+                <p className="sales-modal__hint-line">
+                  Товары из заявки добавлены в корзину автоматически. Можно добавить свои строки вручную.
+                </p>
+              )}
             </section>
             <section className="sales-modal__section">
               <h4 className="sales-modal__section-title">Товары</h4>
-              {saleLines.map((line, idx) => (
-                <div key={idx} className="sales-modal__line-card card">
-                  <label className="sales-modal__label">Тип продажи</label>
-                  <SearchableSelect
-                    value={line.unit_type || 'pieces'}
-                    onChange={(v) => setSaleLines((prev) => prev.map((x, i) => (i === idx ? { ...x, unit_type: v != null ? String(v) : 'pieces', warehouse_batch: '' } : x)))}
-                    options={[
-                      { value: 'pieces', label: 'Штуки' },
-                      { value: 'packages', label: 'Упаковки' },
-                    ]}
-                  />
-                  <label className="sales-modal__label">Партия склада</label>
-                  <SearchableSelect
-                    value={line.warehouse_batch}
-                    onChange={(v) => setSaleLines((prev) => prev.map((x, i) => (i === idx ? { ...x, warehouse_batch: v != null ? String(v) : '' } : x)))}
-                    options={[
-                      { value: '', label: 'Выберите партию' },
-                      ...filteredBatchesByUnitType(line.unit_type || 'pieces').map((b) => ({ value: String(b.id), label: batchLabel(b) })),
-                    ]}
-                  />
-                  <label className="sales-modal__label">Количество</label>
-                  <IntegerInput
-                    min={1}
-                    value={line.quantity}
-                    onChange={(v) => setSaleLines((prev) => prev.map((x, i) => (i === idx ? { ...x, quantity: v } : x)))}
-                  />
-                  <p className="sales-modal__hint-line">Количество в {qtyUnitLabel(line.unit_type || 'pieces')}</p>
-                  <label className="sales-modal__label">Цена за единицу</label>
-                  <input
-                    inputMode="decimal"
-                    value={line.unit_price}
-                    onChange={(e) => setSaleLines((prev) => prev.map((x, i) => (i === idx ? { ...x, unit_price: e.target.value } : x)))}
-                  />
+              <div className="sales-modal__line-actions">
+                <button
+                  type="button"
+                  className="btn btn--secondary sales-modal__add-line"
+                  onClick={() => {
+                    setSaleLines((prev) => [...prev, { warehouse_batch: '', quantity: '', unit_price: '', unit_type: 'pieces' }]);
+                    setActiveLineIdx(saleLines.length);
+                  }}
+                  disabled={saving}
+                >
+                  + Товар
+                </button>
+              </div>
+              <div className="sales-modal__cart-layout">
+                <div className="sales-modal__cart-list">
+                  {saleLines.map((line, idx) => {
+                    const title = line.warehouse_batch
+                      ? (filteredBatchesByUnitType(line.unit_type || 'pieces')
+                        .find((b) => String(b.id) === String(line.warehouse_batch))?.display || `Товар ${idx + 1}`)
+                      : `Товар ${idx + 1}`;
+                    return (
+                      <button
+                        key={`line-row-${idx}`}
+                        type="button"
+                        className={`sales-modal__cart-item ${idx === activeLineIdx ? 'is-active' : ''}`}
+                        onClick={() => setActiveLineIdx(idx)}
+                      >
+                        <span>{line.from_order ? '● ' : ''}{title}</span>
+                        <span>{line.quantity ? `${line.quantity} ${qtyUnitLabel(line.unit_type || 'pieces')}` : '—'}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-              ))}
-              <button
-                type="button"
-                className="btn btn--secondary sales-modal__add-line"
-                onClick={() => setSaleLines((prev) => [...prev, { warehouse_batch: '', quantity: '', unit_price: '', unit_type: 'pieces' }])}
-                disabled={saving}
-              >
-                Добавить строку
-              </button>
+                {saleLines[activeLineIdx] && (
+                  <div className="sales-modal__line-card card">
+                    <div className="sales-modal__line-head">
+                      {saleLines[activeLineIdx].from_order && <span className="sales-modal__tag">Из заявки</span>}
+                      <button
+                        type="button"
+                        className="btn btn--secondary btn--sm"
+                        onClick={() => {
+                          setSaleLines((prev) => {
+                            const next = prev.filter((_, i) => i !== activeLineIdx);
+                            return next.length ? next : [{ warehouse_batch: '', quantity: '', unit_price: '', unit_type: 'pieces' }];
+                          });
+                        }}
+                        disabled={saving}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <label className="sales-modal__label">Тип продажи</label>
+                    <SearchableSelect
+                      value={saleLines[activeLineIdx].unit_type || 'pieces'}
+                      onChange={(v) => setSaleLines((prev) => prev.map((x, i) => (
+                        i === activeLineIdx ? { ...x, unit_type: v != null ? String(v) : 'pieces', warehouse_batch: '' } : x
+                      )))}
+                      options={[
+                        { value: 'pieces', label: 'Штуки' },
+                        { value: 'packages', label: 'Упаковки' },
+                      ]}
+                    />
+                    <label className="sales-modal__label">Партия склада</label>
+                    <SearchableSelect
+                      value={saleLines[activeLineIdx].warehouse_batch}
+                      onChange={(v) => setSaleLines((prev) => prev.map((x, i) => (
+                        i === activeLineIdx ? { ...x, warehouse_batch: v != null ? String(v) : '' } : x
+                      )))}
+                      options={[
+                        { value: '', label: 'Выберите партию' },
+                        ...filteredBatchesByUnitType(saleLines[activeLineIdx].unit_type || 'pieces')
+                          .map((b) => ({ value: String(b.id), label: batchLabel(b) })),
+                      ]}
+                    />
+                    <label className="sales-modal__label">Количество</label>
+                    <IntegerInput
+                      min={1}
+                      value={saleLines[activeLineIdx].quantity}
+                      onChange={(v) => setSaleLines((prev) => prev.map((x, i) => (
+                        i === activeLineIdx ? { ...x, quantity: v } : x
+                      )))}
+                    />
+                    <label className="sales-modal__label">Цена за единицу</label>
+                    <input
+                      inputMode="decimal"
+                      value={saleLines[activeLineIdx].unit_price}
+                      onChange={(e) => setSaleLines((prev) => prev.map((x, i) => (
+                        i === activeLineIdx ? { ...x, unit_price: e.target.value } : x
+                      )))}
+                    />
+                  </div>
+                )}
+              </div>
             </section>
             <section className="sales-modal__section">
               <h4 className="sales-modal__section-title">Оплата</h4>

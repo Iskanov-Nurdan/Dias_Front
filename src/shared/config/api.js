@@ -1,4 +1,5 @@
-const DEFAULT_API = 'https://diass.tw1.ru/api/';
+const DEFAULT_API = 'http://127.0.0.1:8000/api/';
+// const DEFAULT_API = 'https://diass.tw1.ru/api/';
 export const API_BASE = (process.env.REACT_APP_API_URL || DEFAULT_API).replace(/\/?$/, '/');
 
 const DEFAULT_WS = '';

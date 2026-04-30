@@ -442,11 +442,8 @@ const OrdersPage = () => {
 
 const CreateOrderModal = ({ clients, profiles, recipesSource, onClose, onCreated }) => {
   const [client, setClient] = useState('');
-  const [profile, setProfile] = useState('');
-  const [recipes, setRecipes] = useState([]);
-  const [recipe, setRecipe] = useState('');
-  const [length, setLength] = useState('');
-  const [quantity, setQuantity] = useState('');
+  const [lines, setLines] = useState([{ profile: '', recipe: '', length: '', quantity: '' }]);
+  const [recipesByProfile, setRecipesByProfile] = useState({});
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [paymentType, setPaymentType] = useState('debt');
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -484,50 +481,46 @@ const CreateOrderModal = ({ clients, profiles, recipesSource, onClose, onCreated
   );
 
   useEffect(() => {
-    if (!profile) {
-      setRecipes([]);
-      setRecipe('');
-      return;
-    }
-    let alive = true;
-    const sourceByProfile = Array.isArray(recipesSource)
-      ? recipesSource.filter((r) => String(r.profile_id ?? r.profile?.id) === String(profile))
-      : [];
-    if (sourceByProfile.length > 0) {
-      setRecipes(sourceByProfile);
-      setRecipe((prev) => (sourceByProfile.some((r) => String(r.id) === String(prev)) ? prev : ''));
-      return () => { alive = false; };
-    }
-    getRecipes({ page: 1, page_size: 500, profile_id: Number(profile), is_active: true })
-      .then((res) => {
-        if (!alive) return;
-        const data = res.data || {};
-        const list = Array.isArray(data.items) ? data.items : [];
-        setRecipes(list);
-        setRecipe((prev) => (list.some((r) => String(r.id) === String(prev)) ? prev : ''));
-      })
-      .catch(() => {
-        if (!alive) return;
-        setRecipes([]);
-        setRecipe('');
-      });
-    return () => { alive = false; };
-  }, [profile, recipesSource]);
+    const grouped = {};
+    (recipesSource || []).forEach((r) => {
+      const pid = r.profile_id ?? r.profile?.id;
+      if (pid == null) return;
+      const key = String(pid);
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(r);
+    });
+    setRecipesByProfile(grouped);
+  }, [recipesSource]);
 
-  const recipeOptions = useMemo(
-    () =>
-      (recipes || []).map((r) => {
-        const label = pickRecipeName(r);
-        return {
-          value: String(r.id),
-          label,
-          searchText: [r.recipe, r.recipe_name, r.name, r.product, r.product_name, String(r.id)]
-            .filter((x) => x != null && String(x).trim() !== '')
-            .join(' '),
-        };
-      }),
-    [recipes],
-  );
+  const ensureRecipesForProfile = useCallback(async (profileId) => {
+    const key = String(profileId || '');
+    if (!key) return [];
+    if (Array.isArray(recipesByProfile[key]) && recipesByProfile[key].length > 0) return recipesByProfile[key];
+    try {
+      const res = await getRecipes({ page: 1, page_size: 500, profile_id: Number(key), is_active: true });
+      const data = res.data || {};
+      const list = Array.isArray(data.items) ? data.items : [];
+      setRecipesByProfile((prev) => ({ ...prev, [key]: list }));
+      return list;
+    } catch {
+      setRecipesByProfile((prev) => ({ ...prev, [key]: [] }));
+      return [];
+    }
+  }, [recipesByProfile]);
+
+  const getRecipeOptionsForLine = useCallback((line) => {
+    const list = line?.profile ? (recipesByProfile[String(line.profile)] || []) : [];
+    return list.map((r) => {
+      const label = pickRecipeName(r);
+      return {
+        value: String(r.id),
+        label,
+        searchText: [r.recipe, r.recipe_name, r.name, r.product, r.product_name, String(r.id)]
+          .filter((x) => x != null && String(x).trim() !== '')
+          .join(' '),
+      };
+    });
+  }, [recipesByProfile]);
 
   useEffect(() => {
     if (paymentType === 'debt') setPaidAmount('0');
@@ -535,11 +528,14 @@ const CreateOrderModal = ({ clients, profiles, recipesSource, onClose, onCreated
   }, [paymentType]);
 
   const numericPaidAmount = parseLocaleNumber(paidAmount);
+  const linesValid = lines.length > 0 && lines.every((ln) => (
+    ln.profile
+    && ln.recipe
+    && String(ln.length || '').trim()
+    && parseLocaleNumber(ln.quantity) > 0
+  ));
   const canSubmit = client
-    && profile
-    && recipe
-    && length.trim()
-    && parseLocaleNumber(quantity) > 0
+    && linesValid
     && (
       paymentType !== 'partial'
       || (Number.isFinite(numericPaidAmount) && numericPaidAmount > 0)
@@ -551,14 +547,21 @@ const CreateOrderModal = ({ clients, profiles, recipesSource, onClose, onCreated
     setLocalError('');
     setBusy(true);
     try {
-      const qn = parseLocaleNumber(quantity);
+      const orderLines = lines.map((ln) => ({
+        profile: Number(ln.profile),
+        recipe: Number(ln.recipe),
+        length: String(ln.length).trim(),
+        quantity: parseLocaleNumber(ln.quantity),
+      }));
+      const first = orderLines[0];
       await createOrder({
         client: Number(client),
         date,
-        profile: Number(profile),
-        recipe: Number(recipe),
-        length: String(length).trim(),
-        quantity: qn,
+        profile: first.profile,
+        recipe: first.recipe,
+        length: first.length,
+        quantity: first.quantity,
+        order_lines: orderLines,
         payment_type: paymentType,
         payment_method: paymentMethod,
         ...(paymentType === 'debt' ? { paid_amount: '0' } : {}),
@@ -590,33 +593,73 @@ const CreateOrderModal = ({ clients, profiles, recipesSource, onClose, onCreated
               options={clientOptions}
               placeholder="Выберите клиента"
             />
-            <label>Профиль *</label>
-            <SearchableSelect
-              value={profile}
-              onChange={(v) => {
-                setProfile(v != null ? String(v) : '');
-                setRecipe('');
-              }}
-              options={profileOptions}
-              placeholder="Выберите профиль"
-            />
-            <label>Рецепт *</label>
-            <SearchableSelect
-              value={recipe}
-              onChange={(v) => setRecipe(v != null ? String(v) : '')}
-              options={recipeOptions}
-              placeholder={profile ? 'Выберите рецепт' : 'Сначала выберите профиль'}
-              disabled={!profile}
-            />
-            <label>Длина, м *</label>
-            <input
-              inputMode="decimal"
-              value={length}
-              onChange={(e) => setLength(e.target.value)}
-              disabled={busy}
-            />
-            <label>Количество *</label>
-            <IntegerInput min={1} value={quantity} onChange={setQuantity} disabled={busy} />
+            <div className="orders-rq-create__cart-head">
+              <label>Товары (корзина) *</label>
+              <button
+                type="button"
+                className="btn btn--secondary"
+                onClick={() => setLines((prev) => [...prev, { profile: '', recipe: '', length: '', quantity: '' }])}
+                disabled={busy}
+              >
+                Добавить товар
+              </button>
+            </div>
+            {lines.map((line, idx) => (
+              <div className="orders-rq-create__line-card" key={`order-line-${idx}`}>
+                <div className="orders-rq-create__line-title">Товар {idx + 1}</div>
+                <label>Профиль *</label>
+                <SearchableSelect
+                  value={line.profile}
+                  onChange={async (v) => {
+                    const nextProfile = v != null ? String(v) : '';
+                    setLines((prev) => prev.map((x, i) => (
+                      i === idx ? { ...x, profile: nextProfile, recipe: '' } : x
+                    )));
+                    if (nextProfile) await ensureRecipesForProfile(nextProfile);
+                  }}
+                  options={profileOptions}
+                  placeholder="Выберите профиль"
+                />
+                <label>Рецепт *</label>
+                <SearchableSelect
+                  value={line.recipe}
+                  onChange={(v) => setLines((prev) => prev.map((x, i) => (
+                    i === idx ? { ...x, recipe: v != null ? String(v) : '' } : x
+                  )))}
+                  options={getRecipeOptionsForLine(line)}
+                  placeholder={line.profile ? 'Выберите рецепт' : 'Сначала выберите профиль'}
+                  disabled={!line.profile}
+                />
+                <label>Длина, м *</label>
+                <input
+                  inputMode="decimal"
+                  value={line.length}
+                  onChange={(e) => setLines((prev) => prev.map((x, i) => (
+                    i === idx ? { ...x, length: e.target.value } : x
+                  )))}
+                  disabled={busy}
+                />
+                <label>Количество *</label>
+                <IntegerInput
+                  min={1}
+                  value={line.quantity}
+                  onChange={(v) => setLines((prev) => prev.map((x, i) => (
+                    i === idx ? { ...x, quantity: v } : x
+                  )))}
+                  disabled={busy}
+                />
+                {lines.length > 1 && (
+                  <button
+                    type="button"
+                    className="btn btn--secondary orders-rq-create__line-remove"
+                    onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}
+                    disabled={busy}
+                  >
+                    Удалить товар
+                  </button>
+                )}
+              </div>
+            ))}
             <label>Дата</label>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={busy} />
             <label>Тип оплаты *</label>

@@ -280,9 +280,60 @@
     color: var(--text);
   }
 
+  .sales-modal__line-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-bottom: var(--space-1);
+  }
+
+  .sales-modal__cart-layout {
+    display: grid;
+    grid-template-columns: minmax(220px, 320px) 1fr;
+    gap: var(--space-3);
+    align-items: start;
+  }
+
+  .sales-modal__cart-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .sales-modal__cart-item {
+    width: 100%;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--card);
+    color: var(--text);
+    padding: var(--space-2) var(--space-3);
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-2);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .sales-modal__cart-item.is-active {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 7%, var(--card));
+  }
+
   .sales-modal__line-card {
     padding: var(--space-3);
-    margin-top: var(--space-2);
+    margin-top: 0;
+  }
+
+  .sales-modal__line-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-2);
+  }
+
+  .sales-modal__tag {
+    font-size: var(--font-caption);
+    color: var(--text-secondary);
   }
 
   .sales-modal__readonly {
@@ -354,6 +405,12 @@
   .btn:focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: 1px;
+  }
+
+  @media (max-width: 900px) {
+    .sales-modal__cart-layout {
+      grid-template-columns: 1fr;
+    }
   }
 }
 

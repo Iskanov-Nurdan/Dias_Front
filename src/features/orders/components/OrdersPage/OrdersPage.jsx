@@ -443,6 +443,7 @@ const OrdersPage = () => {
 const CreateOrderModal = ({ clients, profiles, recipesSource, onClose, onCreated }) => {
   const [client, setClient] = useState('');
   const [lines, setLines] = useState([{ profile: '', recipe: '', length: '', quantity: '' }]);
+  const [activeLineIdx, setActiveLineIdx] = useState(0);
   const [recipesByProfile, setRecipesByProfile] = useState({});
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [paymentType, setPaymentType] = useState('debt');
@@ -540,6 +541,15 @@ const CreateOrderModal = ({ clients, profiles, recipesSource, onClose, onCreated
       paymentType !== 'partial'
       || (Number.isFinite(numericPaidAmount) && numericPaidAmount > 0)
     );
+  useEffect(() => {
+    setActiveLineIdx((prev) => {
+      if (!lines.length) return 0;
+      if (prev < 0) return 0;
+      if (prev >= lines.length) return lines.length - 1;
+      return prev;
+    });
+  }, [lines]);
+  const selectedLine = lines[activeLineIdx] || null;
 
   const submit = async (e) => {
     e.preventDefault();
@@ -586,80 +596,123 @@ const CreateOrderModal = ({ clients, profiles, recipesSource, onClose, onCreated
         </div>
         <form onSubmit={submit}>
           <div className="orders-rq-create">
-            <label>Клиент *</label>
-            <SearchableSelect
-              value={client}
-              onChange={(v) => setClient(v != null ? String(v) : '')}
-              options={clientOptions}
-              placeholder="Выберите клиента"
-            />
-            <div className="orders-rq-create__cart-head">
-              <label>Товары (корзина) *</label>
-              <button
-                type="button"
-                className="btn btn--secondary"
-                onClick={() => setLines((prev) => [...prev, { profile: '', recipe: '', length: '', quantity: '' }])}
-                disabled={busy}
-              >
-                Добавить товар
-              </button>
+            <div className="orders-rq-create__top">
+              <div>
+                <label>Клиент *</label>
+                <SearchableSelect
+                  value={client}
+                  onChange={(v) => setClient(v != null ? String(v) : '')}
+                  options={clientOptions}
+                  placeholder="Выберите клиента"
+                />
+              </div>
             </div>
-            {lines.map((line, idx) => (
-              <div className="orders-rq-create__line-card" key={`order-line-${idx}`}>
-                <div className="orders-rq-create__line-title">Товар {idx + 1}</div>
-                <label>Профиль *</label>
-                <SearchableSelect
-                  value={line.profile}
-                  onChange={async (v) => {
-                    const nextProfile = v != null ? String(v) : '';
-                    setLines((prev) => prev.map((x, i) => (
-                      i === idx ? { ...x, profile: nextProfile, recipe: '' } : x
-                    )));
-                    if (nextProfile) await ensureRecipesForProfile(nextProfile);
-                  }}
-                  options={profileOptions}
-                  placeholder="Выберите профиль"
-                />
-                <label>Рецепт *</label>
-                <SearchableSelect
-                  value={line.recipe}
-                  onChange={(v) => setLines((prev) => prev.map((x, i) => (
-                    i === idx ? { ...x, recipe: v != null ? String(v) : '' } : x
-                  )))}
-                  options={getRecipeOptionsForLine(line)}
-                  placeholder={line.profile ? 'Выберите рецепт' : 'Сначала выберите профиль'}
-                  disabled={!line.profile}
-                />
-                <label>Длина, м *</label>
-                <input
-                  inputMode="decimal"
-                  value={line.length}
-                  onChange={(e) => setLines((prev) => prev.map((x, i) => (
-                    i === idx ? { ...x, length: e.target.value } : x
-                  )))}
-                  disabled={busy}
-                />
-                <label>Количество *</label>
-                <IntegerInput
-                  min={1}
-                  value={line.quantity}
-                  onChange={(v) => setLines((prev) => prev.map((x, i) => (
-                    i === idx ? { ...x, quantity: v } : x
-                  )))}
-                  disabled={busy}
-                />
-                {lines.length > 1 && (
+
+            <div className="orders-rq-create__cart-layout">
+              <div className="orders-rq-create__cart-panel">
+                <div className="orders-rq-create__cart-head">
+                  <label>Товары (корзина) *</label>
                   <button
                     type="button"
-                    className="btn btn--secondary orders-rq-create__line-remove"
-                    onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}
+                    className="btn btn--secondary"
+                    onClick={() => setLines((prev) => [...prev, { profile: '', recipe: '', length: '', quantity: '' }])}
                     disabled={busy}
                   >
-                    Удалить товар
+                    + Добавить
                   </button>
+                </div>
+                <div className="orders-rq-create__cart-list">
+                  {lines.map((line, idx) => {
+                    const profileName = profileOptions.find((x) => String(x.value) === String(line.profile))?.label || `Товар ${idx + 1}`;
+                    const qty = parseLocaleNumber(line.quantity) || 0;
+                    const len = parseLocaleNumber(line.length) || 0;
+                    const totalMeters = qty * len;
+                    return (
+                      <button
+                        key={`order-line-${idx}`}
+                        type="button"
+                        className={`orders-rq-create__cart-item ${idx === activeLineIdx ? 'is-active' : ''}`}
+                        onClick={() => setActiveLineIdx(idx)}
+                      >
+                        <span>{profileName}</span>
+                        <span>{qty > 0 ? `${formatQuantityDisplay(qty)} шт` : 'Не заполнено'} · {totalMeters > 0 ? `${formatQuantityDisplay(totalMeters)} м` : '0 м'}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="orders-rq-create__line-card">
+                <div className="orders-rq-create__line-card-head">
+                  <div className="orders-rq-create__line-title">Детали товара</div>
+                  {selectedLine && lines.length > 1 && (
+                    <button
+                      type="button"
+                      className="btn btn--secondary orders-rq-create__line-remove"
+                      onClick={() => setLines((prev) => prev.filter((_, i) => i !== activeLineIdx))}
+                      disabled={busy}
+                    >
+                      Удалить
+                    </button>
+                  )}
+                </div>
+                {!selectedLine && <p className="orders-rq__muted">Выберите товар из корзины</p>}
+                {selectedLine && (
+                  <div className="orders-rq-create__line-grid">
+                    <div>
+                      <label>Профиль *</label>
+                      <SearchableSelect
+                        value={selectedLine.profile}
+                        onChange={async (v) => {
+                          const nextProfile = v != null ? String(v) : '';
+                          setLines((prev) => prev.map((x, i) => (
+                            i === activeLineIdx ? { ...x, profile: nextProfile, recipe: '' } : x
+                          )));
+                          if (nextProfile) await ensureRecipesForProfile(nextProfile);
+                        }}
+                        options={profileOptions}
+                        placeholder="Выберите профиль"
+                      />
+                    </div>
+                    <div>
+                      <label>Рецепт *</label>
+                      <SearchableSelect
+                        value={selectedLine.recipe}
+                        onChange={(v) => setLines((prev) => prev.map((x, i) => (
+                          i === activeLineIdx ? { ...x, recipe: v != null ? String(v) : '' } : x
+                        )))}
+                        options={getRecipeOptionsForLine(selectedLine)}
+                        placeholder={selectedLine.profile ? 'Выберите рецепт' : 'Сначала выберите профиль'}
+                        disabled={!selectedLine.profile}
+                      />
+                    </div>
+                    <div>
+                      <label>Длина, м *</label>
+                      <input
+                        inputMode="decimal"
+                        value={selectedLine.length}
+                        onChange={(e) => setLines((prev) => prev.map((x, i) => (
+                          i === activeLineIdx ? { ...x, length: e.target.value } : x
+                        )))}
+                        disabled={busy}
+                      />
+                    </div>
+                    <div>
+                      <label>Количество *</label>
+                      <IntegerInput
+                        min={1}
+                        value={selectedLine.quantity}
+                        onChange={(v) => setLines((prev) => prev.map((x, i) => (
+                          i === activeLineIdx ? { ...x, quantity: v } : x
+                        )))}
+                        disabled={busy}
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
-            ))}
+            </div>
+
             <label>Дата</label>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={busy} />
             <label>Тип оплаты *</label>

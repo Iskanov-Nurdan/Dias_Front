@@ -503,7 +503,11 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
   const [loadingClients, setLoadingClients] = useState(true);
   const [loadingSelect, setLoadingSelect] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState('');
+  const [lineErrors, setLineErrors] = useState({});
+  const [clientError, setClientError] = useState('');
+  const [paymentMethodError, setPaymentMethodError] = useState('');
+  const [paidAmountError, setPaidAmountError] = useState('');
+  const [submitError, setSubmitError] = useState('');
   const [clients, setClients] = useState([]);
   const [orders, setOrders] = useState([]);
   const [batches, setBatches] = useState([]);
@@ -521,6 +525,10 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
   const [preview, setPreview] = useState(null);
   const [previewError, setPreviewError] = useState('');
   const [previewLoading, setPreviewLoading] = useState(false);
+  const moneySafe = useCallback((v) => {
+    const n = parseLocaleNumber(v);
+    return `${Number.isFinite(n) && n > 0 ? formatQuantityDisplay(n) : '0'} сом`;
+  }, []);
   const isLineEmpty = useCallback((ln) => {
     if (!ln) return true;
     const wb = String(ln.warehouse_batch || '').trim();
@@ -779,25 +787,38 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
 
   const submit = async (e) => {
     e.preventDefault();
-    setFormError('');
+    setLineErrors({});
+    setClientError('');
+    setPaymentMethodError('');
+    setPaidAmountError('');
+    setSubmitError('');
     if (!client) {
-      setFormError('Выберите клиента.');
+      setClientError('Выберите клиента');
       return;
     }
     if (!saleLines.length) {
-      setFormError('Добавьте хотя бы одну строку.');
+      setSubmitError('Добавьте хотя бы один товар');
+      return;
+    }
+    if (!paymentMethod) {
+      setPaymentMethodError('Выберите способ оплаты');
       return;
     }
 
     const cleanLines = [];
+    const nextLineErrors = {};
     for (let i = 0; i < saleLines.length; i += 1) {
       const ln = saleLines[i];
       const wb = ln.warehouse_batch ? Number(ln.warehouse_batch) : null;
       const qty = parseLocaleNumber(ln.quantity);
       const price = parseLocaleNumber(ln.unit_price);
       if (!wb || !(qty > 0) || !Number.isFinite(price)) {
-        setFormError(`Проверьте строку ${i + 1}.`);
-        return;
+        nextLineErrors[i] = {
+          warehouse_batch: !wb ? 'Выберите партию' : '',
+          quantity: !(qty > 0) ? 'Введите количество' : '',
+          unit_price: !Number.isFinite(price) ? 'Введите цену' : '',
+        };
+        continue;
       }
       cleanLines.push({
         warehouse_batch: wb,
@@ -806,6 +827,10 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
         unit_type: ln.unit_type === 'packages' ? 'packages' : 'pieces',
         ...(ln.order_line_id ? { order_line: Number(ln.order_line_id) } : {}),
       });
+    }
+    if (Object.keys(nextLineErrors).length > 0) {
+      setLineErrors(nextLineErrors);
+      return;
     }
 
     const topLevelUnitType = cleanLines.length > 0
@@ -832,7 +857,7 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
       }
     }
     if (paymentType === 'partial' && !(parseLocaleNumber(paidAmount) > 0)) {
-      setFormError('Укажите сумму оплаты для частичной оплаты.');
+      setPaidAmountError('Укажите сумму оплаты');
       return;
     }
 
@@ -842,11 +867,37 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
       toast.show('Продажа создана');
       onSaved();
     } catch (err) {
-      setFormError(getApiErrorMessage(err, 'Ошибка создания продажи'));
+      setSubmitError(getApiErrorMessage(err, 'Ошибка создания продажи'));
     } finally {
       setSaving(false);
     }
   };
+  const addLine = useCallback(() => {
+    setSaleLines((prev) => [...prev, { warehouse_batch: '', quantity: '', unit_price: '', unit_type: 'pieces' }]);
+    setActiveLineIdx(saleLines.length);
+  }, [saleLines.length]);
+  const totalFromLines = useMemo(
+    () => saleLines.reduce((acc, ln) => acc + (parseLocaleNumber(ln.quantity) * parseLocaleNumber(ln.unit_price)), 0),
+    [saleLines],
+  );
+  const totalAmount = toNumber(preview?.total_amount) > 0 ? toNumber(preview.total_amount) : totalFromLines;
+  const paidAmountValue = (() => {
+    if (paymentType === 'debt') return 0;
+    if (paymentType === 'full') return totalAmount;
+    return parseLocaleNumber(paidAmount);
+  })();
+  const debtAmountValue = Math.max(0, totalAmount - toNumber(paidAmountValue));
+  const saleDate = new Date().toISOString().slice(0, 10);
+  const selectedLine = saleLines[activeLineIdx] || null;
+  const isFormSubmittable = client
+    && saleLines.length > 0
+    && saleLines.every((ln) => (
+      ln.warehouse_batch
+      && parseLocaleNumber(ln.quantity) > 0
+      && parseLocaleNumber(ln.unit_price) > 0
+    ))
+    && !!paymentMethod
+    && (paymentType !== 'partial' || parseLocaleNumber(paidAmount) > 0);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -858,195 +909,234 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
         <form className="sales-modal__form" onSubmit={submit}>
           <div className="sales-modal__scroll">
             {(loadingClients || loadingSelect) && <Loading />}
-            <section className="sales-modal__section">
-              <label className="sales-modal__label">Клиент *</label>
-              <SearchableSelect
-                value={client}
-                onChange={(v) => {
-                  setClient(v != null ? String(v) : '');
-                  setOrder('');
-                  setSaleLines([{ warehouse_batch: '', quantity: '', unit_price: '', unit_type: 'pieces' }]);
-                  setActiveLineIdx(0);
-                  setOrderCartError('');
-                  setAutoFilledFromOrder(false);
-                }}
-                options={clientOptions}
-                placeholder="Выберите клиента"
-              />
-              <label className="sales-modal__label">Заявка</label>
-              <SearchableSelect
-                value={order}
-                onChange={(v) => {
-                  const nextOrder = v != null ? String(v) : '';
-                  setOrder(nextOrder);
-                  if (!nextOrder) {
-                    setSaleLines((prev) => {
-                      const lines = prev.filter((x) => !x.from_order);
-                      return lines.length ? lines : [{ warehouse_batch: '', quantity: '', unit_price: '', unit_type: 'pieces' }];
-                    });
+            <section className="sales-modal__section sales-modal__section--top">
+              <div>
+                <label className="sales-modal__label">Клиент *</label>
+                <SearchableSelect
+                  value={client}
+                  onChange={(v) => {
+                    setClient(v != null ? String(v) : '');
+                    setOrder('');
+                    setSaleLines([]);
                     setActiveLineIdx(0);
                     setOrderCartError('');
                     setAutoFilledFromOrder(false);
-                  }
-                }}
-                options={orderOptions}
-                disabled={!client}
-                placeholder={client ? 'Выберите заявку' : 'Сначала выберите клиента'}
-              />
-              {orderPrepaid > 0 && (
-                <p className="sales-modal__hint-line">
-                  В заявке уже оплачено: {toMoney(orderPrepaid)}. Тип оплаты и сумма подставлены автоматически.
-                </p>
-              )}
-              {orderCartLoading && <p className="sales-modal__hint-line">Подтягиваем товары из заявки...</p>}
-              {!orderCartLoading && orderCartError && <p className="sales-modal__hint-line">{orderCartError}</p>}
-              {!orderCartLoading && autoFilledFromOrder && (
-                <p className="sales-modal__hint-line">
-                  Товары из заявки добавлены в корзину автоматически. Можно добавить свои строки вручную.
-                </p>
-              )}
-            </section>
-            <section className="sales-modal__section">
-              <h4 className="sales-modal__section-title">Товары</h4>
-              <div className="sales-modal__line-actions">
-                <button
-                  type="button"
-                  className="btn btn--secondary sales-modal__add-line"
-                  onClick={() => {
-                    setSaleLines((prev) => [...prev, { warehouse_batch: '', quantity: '', unit_price: '', unit_type: 'pieces' }]);
-                    setActiveLineIdx(saleLines.length);
                   }}
-                  disabled={saving}
-                >
-                  + Товар
-                </button>
+                  options={clientOptions}
+                  placeholder="Выберите клиента"
+                />
+                {clientError && <p className="sales-modal__field-error">{clientError}</p>}
               </div>
+              <div>
+                <label className="sales-modal__label">Заявка</label>
+                <SearchableSelect
+                  value={order}
+                  onChange={(v) => {
+                    const nextOrder = v != null ? String(v) : '';
+                    setOrder(nextOrder);
+                    if (!nextOrder) {
+                      setSaleLines((prev) => prev.filter((x) => !x.from_order));
+                      setActiveLineIdx(0);
+                      setOrderCartError('');
+                      setAutoFilledFromOrder(false);
+                    }
+                  }}
+                  options={orderOptions}
+                  disabled={!client}
+                  placeholder={client ? 'Выберите заявку' : 'Сначала выберите клиента'}
+                />
+              </div>
+              <div>
+                <label className="sales-modal__label">Дата</label>
+                <input className="sales-modal__readonly" value={saleDate} readOnly />
+              </div>
+            </section>
+
+            <section className="sales-modal__section sales-modal__section--cart">
               <div className="sales-modal__cart-layout">
-                <div className="sales-modal__cart-list">
-                  {saleLines.map((line, idx) => {
-                    const title = line.warehouse_batch
-                      ? (filteredBatchesByUnitType(line.unit_type || 'pieces')
-                        .find((b) => String(b.id) === String(line.warehouse_batch))?.display || `Товар ${idx + 1}`)
-                      : `Товар ${idx + 1}`;
-                    return (
-                      <button
-                        key={`line-row-${idx}`}
-                        type="button"
-                        className={`sales-modal__cart-item ${idx === activeLineIdx ? 'is-active' : ''}`}
-                        onClick={() => setActiveLineIdx(idx)}
-                      >
-                        <span>{line.from_order ? '● ' : ''}{title}</span>
-                        <span>{line.quantity ? `${line.quantity} ${qtyUnitLabel(line.unit_type || 'pieces')}` : '—'}</span>
+                <div className="sales-modal__cart-panel">
+                  <div className="sales-modal__line-actions">
+                    <h4 className="sales-modal__section-title">Товары</h4>
+                    <button
+                      type="button"
+                      className="btn btn--secondary sales-modal__add-line"
+                      onClick={addLine}
+                      disabled={saving}
+                    >
+                      + Добавить
+                    </button>
+                  </div>
+                  {saleLines.length === 0 && (
+                    <div className="sales-modal__empty">
+                      <p>Добавьте первый товар</p>
+                      <button type="button" className="btn btn--secondary" onClick={addLine} disabled={saving}>
+                        + Добавить товар
                       </button>
-                    );
-                  })}
+                    </div>
+                  )}
+                  <div className="sales-modal__cart-list">
+                    {saleLines.map((line, idx) => {
+                      const selectedBatch = filteredBatchesByUnitType(line.unit_type || 'pieces')
+                        .find((b) => String(b.id) === String(line.warehouse_batch));
+                      const title = selectedBatch?.display || `Товар ${idx + 1}`;
+                      const lineTotal = parseLocaleNumber(line.quantity) * parseLocaleNumber(line.unit_price);
+                      return (
+                        <button
+                          key={`line-row-${idx}`}
+                          type="button"
+                          className={`sales-modal__cart-item ${idx === activeLineIdx ? 'is-active' : ''} ${lineErrors[idx] ? 'is-error' : ''}`}
+                          onClick={() => setActiveLineIdx(idx)}
+                        >
+                          <div className="sales-modal__cart-item-title">
+                            {line.from_order ? '● ' : ''}{title}
+                          </div>
+                          <div className="sales-modal__cart-item-sub">
+                            <span>Кол-во: {line.quantity || '0'} {qtyUnitLabel(line.unit_type || 'pieces')}</span>
+                            <span>Цена: {moneySafe(line.unit_price)}</span>
+                          </div>
+                          <div className="sales-modal__cart-item-total">Итого: {moneySafe(lineTotal)}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                {saleLines[activeLineIdx] && (
-                  <div className="sales-modal__line-card card">
-                    <div className="sales-modal__line-head">
-                      {saleLines[activeLineIdx].from_order && <span className="sales-modal__tag">Из заявки</span>}
+                <div className="sales-modal__line-card card">
+                  <div className="sales-modal__line-head">
+                    <h4 className="sales-modal__section-title">Детали товара</h4>
+                    {selectedLine && (
                       <button
                         type="button"
-                        className="btn btn--secondary btn--sm"
+                        className="btn btn--secondary btn--sm sales-modal__delete-btn"
                         onClick={() => {
-                          setSaleLines((prev) => {
-                            const next = prev.filter((_, i) => i !== activeLineIdx);
-                            return next.length ? next : [{ warehouse_batch: '', quantity: '', unit_price: '', unit_type: 'pieces' }];
-                          });
+                          setSaleLines((prev) => prev.filter((_, i) => i !== activeLineIdx));
                         }}
                         disabled={saving}
                       >
-                        ✕
+                        Удалить
                       </button>
-                    </div>
-                    <label className="sales-modal__label">Тип продажи</label>
-                    <SearchableSelect
-                      value={saleLines[activeLineIdx].unit_type || 'pieces'}
-                      onChange={(v) => setSaleLines((prev) => prev.map((x, i) => (
-                        i === activeLineIdx ? { ...x, unit_type: v != null ? String(v) : 'pieces', warehouse_batch: '' } : x
-                      )))}
-                      options={[
-                        { value: 'pieces', label: 'Штуки' },
-                        { value: 'packages', label: 'Упаковки' },
-                      ]}
-                    />
-                    <label className="sales-modal__label">Партия склада</label>
-                    <SearchableSelect
-                      value={saleLines[activeLineIdx].warehouse_batch}
-                      onChange={(v) => setSaleLines((prev) => prev.map((x, i) => (
-                        i === activeLineIdx ? { ...x, warehouse_batch: v != null ? String(v) : '' } : x
-                      )))}
-                      options={[
-                        { value: '', label: 'Выберите партию' },
-                        ...filteredBatchesByUnitType(saleLines[activeLineIdx].unit_type || 'pieces')
-                          .map((b) => ({ value: String(b.id), label: batchLabel(b) })),
-                      ]}
-                    />
-                    <label className="sales-modal__label">Количество</label>
-                    <IntegerInput
-                      min={1}
-                      value={saleLines[activeLineIdx].quantity}
-                      onChange={(v) => setSaleLines((prev) => prev.map((x, i) => (
-                        i === activeLineIdx ? { ...x, quantity: v } : x
-                      )))}
-                    />
-                    <label className="sales-modal__label">Цена за единицу</label>
-                    <input
-                      inputMode="decimal"
-                      value={saleLines[activeLineIdx].unit_price}
-                      onChange={(e) => setSaleLines((prev) => prev.map((x, i) => (
-                        i === activeLineIdx ? { ...x, unit_price: e.target.value } : x
-                      )))}
-                    />
+                    )}
                   </div>
-                )}
+                  {!selectedLine && <p className="sales-modal__hint-line">Выберите товар из корзины</p>}
+                  {selectedLine && (
+                    <>
+                      {selectedLine.from_order && <span className="sales-modal__tag">Из заявки</span>}
+                      <div className="sales-modal__detail-grid">
+                        <div>
+                          <label className="sales-modal__label">Тип продажи</label>
+                          <SearchableSelect
+                            value={selectedLine.unit_type || 'pieces'}
+                            onChange={(v) => setSaleLines((prev) => prev.map((x, i) => (
+                              i === activeLineIdx ? { ...x, unit_type: v != null ? String(v) : 'pieces', warehouse_batch: '' } : x
+                            )))}
+                            options={[
+                              { value: 'pieces', label: 'Штуки' },
+                              { value: 'packages', label: 'Упаковки' },
+                            ]}
+                          />
+                        </div>
+                        <div>
+                          <label className="sales-modal__label">Партия склада</label>
+                          <SearchableSelect
+                            value={selectedLine.warehouse_batch}
+                            onChange={(v) => setSaleLines((prev) => prev.map((x, i) => (
+                              i === activeLineIdx ? { ...x, warehouse_batch: v != null ? String(v) : '' } : x
+                            )))}
+                            options={[
+                              { value: '', label: 'Выберите партию' },
+                              ...filteredBatchesByUnitType(selectedLine.unit_type || 'pieces')
+                                .map((b) => ({ value: String(b.id), label: batchLabel(b) })),
+                            ]}
+                          />
+                          {lineErrors[activeLineIdx]?.warehouse_batch && <p className="sales-modal__field-error">{lineErrors[activeLineIdx].warehouse_batch}</p>}
+                        </div>
+                        <div>
+                          <label className="sales-modal__label">Количество</label>
+                          <IntegerInput
+                            min={1}
+                            value={selectedLine.quantity}
+                            onChange={(v) => setSaleLines((prev) => prev.map((x, i) => (
+                              i === activeLineIdx ? { ...x, quantity: v } : x
+                            )))}
+                          />
+                          {lineErrors[activeLineIdx]?.quantity && <p className="sales-modal__field-error">{lineErrors[activeLineIdx].quantity}</p>}
+                        </div>
+                        <div>
+                          <label className="sales-modal__label">Цена за единицу</label>
+                          <input
+                            inputMode="decimal"
+                            value={selectedLine.unit_price}
+                            onChange={(e) => setSaleLines((prev) => prev.map((x, i) => (
+                              i === activeLineIdx ? { ...x, unit_price: e.target.value } : x
+                            )))}
+                          />
+                          {lineErrors[activeLineIdx]?.unit_price && <p className="sales-modal__field-error">{lineErrors[activeLineIdx].unit_price}</p>}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </section>
-            <section className="sales-modal__section">
-              <h4 className="sales-modal__section-title">Оплата</h4>
-              <label className="sales-modal__label">Тип оплаты</label>
-              <SearchableSelect
-                value={paymentType}
-                onChange={(v) => setPaymentType(v != null ? String(v) : 'full')}
-                options={[
-                  { value: 'full', label: 'Полная' },
-                  { value: 'partial', label: 'Частичная' },
-                  { value: 'debt', label: 'В долг' },
-                ]}
-              />
-              <label className="sales-modal__label">Способ оплаты</label>
-              <SearchableSelect
-                value={paymentMethod}
-                onChange={(v) => setPaymentMethod(v != null ? String(v) : 'cash')}
-                options={[
-                  { value: 'cash', label: 'Наличные' },
-                  { value: 'card', label: 'Карта' },
-                  { value: 'transfer', label: 'Перевод' },
-                ]}
-              />
-              <label className="sales-modal__label">Сумма оплаты</label>
-              <input
-                inputMode="decimal"
-                value={paymentType === 'debt' ? '0' : paidAmount}
-                disabled={paymentType === 'full' || paymentType === 'debt'}
-                onChange={(e) => setPaidAmount(e.target.value)}
-                placeholder={paymentType === 'full' ? 'Автоматически из общей суммы' : ''}
-              />
-              {previewLoading && <p className="sales-modal__hint-line">Расчет...</p>}
-              {!previewLoading && preview && (
-                <p className="sales-modal__hint-line">
-                  Итого: {toMoney(preview.total_amount)} | Оплачено: {toMoney(preview.paid_amount)} | Долг: {toMoney(preview.debt_amount)}
-                </p>
-              )}
-              {!previewLoading && previewError && <p className="sales-modal__hint-line">{previewError}</p>}
-            </section>
-            {formError && <p className="modal__error">{formError}</p>}
+            {submitError && <p className="modal__error">{submitError}</p>}
           </div>
           <div className="modal__actions sales-modal__footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>Отмена</button>
-            <button type="submit" className="btn btn--primary" disabled={saving}>
-              {saving ? 'Сохранение…' : 'Создать продажу'}
-            </button>
+            <div className="sales-modal__footer-left">
+              <h4 className="sales-modal__footer-title">Оплата</h4>
+              <div className="sales-modal__payment-grid">
+                <div>
+                  <label className="sales-modal__label">Тип оплаты</label>
+                  <SearchableSelect
+                    value={paymentType}
+                    onChange={(v) => setPaymentType(v != null ? String(v) : 'full')}
+                    options={[
+                      { value: 'full', label: 'Полная' },
+                      { value: 'partial', label: 'Частичная' },
+                      { value: 'debt', label: 'В долг' },
+                    ]}
+                  />
+                </div>
+                <div>
+                  <label className="sales-modal__label">Способ оплаты</label>
+                  <SearchableSelect
+                    value={paymentMethod}
+                    onChange={(v) => setPaymentMethod(v != null ? String(v) : 'cash')}
+                    options={[
+                      { value: 'cash', label: 'Наличные' },
+                      { value: 'card', label: 'Карта' },
+                      { value: 'transfer', label: 'Перевод' },
+                    ]}
+                  />
+                  {paymentMethodError && <p className="sales-modal__field-error">{paymentMethodError}</p>}
+                </div>
+                <div>
+                  <label className="sales-modal__label">Сумма оплаты</label>
+                  <input
+                    inputMode="decimal"
+                    value={paymentType === 'debt' ? '0' : (paymentType === 'full' ? String(totalAmount || '') : paidAmount)}
+                    disabled={paymentType === 'full' || paymentType === 'debt'}
+                    onChange={(e) => setPaidAmount(e.target.value)}
+                    placeholder={paymentType === 'full' ? 'Автоматически' : ''}
+                  />
+                  {paidAmountError && <p className="sales-modal__field-error">{paidAmountError}</p>}
+                </div>
+              </div>
+            </div>
+            <div className="sales-modal__footer-right">
+              <div className="sales-modal__summary-card">
+                <div className="sales-modal__totals">
+                  <span>Товаров: {saleLines.length}</span>
+                  <span>Итого: {moneySafe(totalAmount)}</span>
+                  <span>Оплачено: {moneySafe(paidAmountValue)}</span>
+                  <span className={debtAmountValue > 0 ? 'is-debt' : ''}>Долг: {moneySafe(debtAmountValue)}</span>
+                </div>
+              </div>
+              <div className="sales-modal__buttons-row">
+                <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>Отмена</button>
+                <button type="submit" className="btn btn--primary" disabled={saving || !isFormSubmittable}>
+                {saving ? 'Сохранение…' : 'Создать продажу'}
+                </button>
+              </div>
+            </div>
           </div>
         </form>
       </div>

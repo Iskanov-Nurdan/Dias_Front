@@ -24,6 +24,16 @@ import './RecipesPage.scss';
 
 const TYPE_RAW = 'raw';
 const TYPE_CHEMISTRY = 'chemistry';
+const TYPE_REWORKED = 'reworked_batch';
+
+const reworkBatchProductLabel = (b) => {
+  if (!b || typeof b !== 'object') return '';
+  const own = typeof b.product === 'string' ? b.product.trim() : '';
+  if (own) return own;
+  const profileLabel = b.linked_entities?.profile?.label;
+  if (typeof profileLabel === 'string' && profileLabel.trim()) return profileLabel.trim();
+  return '';
+};
 
 const recipeDisplayName = (r) =>
   r.recipe || r.recipe_name || r.name || r.product || r.product_name || '—';
@@ -50,17 +60,34 @@ const componentQtyPerMeter = (c) =>
 
 const mapApiComponentType = (c) => {
   const t = String(c.type || '').toLowerCase();
+  if (t === 'rework_stock' || t === 'reworked_batch' || t === 'reworked_warehouse' || t === 'rework_warehouse_batch') {
+    return TYPE_REWORKED;
+  }
   if (t === 'chemistry' || t === 'chem') return TYPE_CHEMISTRY;
   if (t === 'raw_material' || t === 'raw') return TYPE_RAW;
   const hasMat = c.material_id != null || c.raw_material_id != null;
   const hasChem = c.chemistry_id != null || c.element_id != null;
+  const hasReworkId = c.rework_warehouse_batch_id != null;
+  if (hasReworkId && !hasMat && !hasChem) return TYPE_REWORKED;
   if (hasChem && !hasMat) return TYPE_CHEMISTRY;
   return TYPE_RAW;
 };
 
-const resolveComponentName = (c, rawMaterials, chemistryElements) => {
-  const name = c.material_name || c.element_name || c.name;
+const resolveComponentName = (c, rawMaterials, chemistryElements, reworkBatches = []) => {
+  const name =
+    c.material_name
+    || c.element_name
+    || c.name
+    || c.batch_display
+    || c.warehouse_batch_display
+    || c.rework_batch_display;
   if (name) return name;
+  const rwId = c.rework_warehouse_batch_id ?? c.warehouse_batch_id;
+  if (mapApiComponentType(c) === TYPE_REWORKED && rwId != null) {
+    const b = reworkBatches.find((i) => String(i.id) === String(rwId));
+    const lbl = reworkBatchProductLabel(b);
+    return lbl || '—';
+  }
   const matId = c.material_id ?? c.raw_material_id;
   if (matId != null) {
     const m = rawMaterials.find((i) => String(i.id) === String(matId));
@@ -74,16 +101,20 @@ const resolveComponentName = (c, rawMaterials, chemistryElements) => {
   return '—';
 };
 
-const getCompositionRows = (recipe, rawMaterials, chemistryElements) => {
+const getCompositionRows = (recipe, rawMaterials, chemistryElements, reworkBatches = []) => {
   const comp = recipe.components || recipe.composition || [];
   if (!Array.isArray(comp) || comp.length === 0) return [];
   return comp.map((c, idx) => {
-    const name = resolveComponentName(c, rawMaterials, chemistryElements);
+    const name = resolveComponentName(c, rawMaterials, chemistryElements, reworkBatches);
     const qty = componentQtyPerMeter(c);
-    const isChem = mapApiComponentType(c) === TYPE_CHEMISTRY;
+    const kind = mapApiComponentType(c);
+    const typeLabel =
+      kind === TYPE_CHEMISTRY ? 'Химия'
+        : kind === TYPE_REWORKED ? 'Переделанные'
+          : 'Сырьё';
     return {
-      key: `${idx}-${c.material_id ?? c.chemistry_id ?? idx}`,
-      typeLabel: isChem ? 'Химия' : 'Сырьё',
+      key: `${idx}-${c.material_id ?? c.chemistry_id ?? c.rework_warehouse_batch_id ?? c.warehouse_batch_id ?? idx}`,
+      typeLabel,
       name,
       quantity: qty,
       hasQty: qty != null && qty !== '',
@@ -605,11 +636,19 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
   const [saving, setSaving] = useState(false);
   const [rawMaterials, setRawMaterials] = useState([]);
   const [chemistryElements, setChemistryElements] = useState([]);
+  const [reworkStockBatches, setReworkStockBatches] = useState([]);
   const [components, setComponents] = useState([]);
   const unifiedPickRef = useRef(null);
   const [unifiedPick, setUnifiedPick] = useState('');
   const [quantity, setQuantity] = useState('');
   const [lineError, setLineError] = useState('');
+
+  const reworkBatchOptionLabel = (b) => {
+    const prod = reworkBatchProductLabel(b) || 'Без названия';
+    const avail = b.available_quantity;
+    const availPart = avail != null && avail !== '' ? ` · свободно ${formatQuantityDisplay(avail)}` : '';
+    return `Переделанные: ${prod}${availPart}`;
+  };
 
   const unifiedOptions = useMemo(() => {
     const raw = rawMaterials.map((i) => ({
@@ -620,8 +659,12 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
       value: `chem:${i.id}`,
       label: `Химия: ${i.name || 'Без названия'}`,
     }));
-    return [...raw, ...chem].sort((a, b) => a.label.localeCompare(b.label, 'ru'));
-  }, [rawMaterials, chemistryElements]);
+    const rw = reworkStockBatches.map((b) => ({
+      value: `rework:${b.id}`,
+      label: reworkBatchOptionLabel(b),
+    }));
+    return [...raw, ...chem, ...rw].sort((a, b) => a.label.localeCompare(b.label, 'ru'));
+  }, [rawMaterials, chemistryElements, reworkStockBatches]);
 
   const qtyValidForAdd = useMemo(() => {
     const q = parseLocaleNumber(quantity);
@@ -635,6 +678,9 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
     apiClient.get('chemistry/elements/', { params: { page_size: 500 } })
       .then((res) => setChemistryElements(parseApiListResponse(res.data)))
       .catch(() => setChemistryElements([]));
+    apiClient.get('warehouse/batches/', { params: { stock_bucket: 'reworked', page_size: 500 } })
+      .then((res) => setReworkStockBatches(parseApiListResponse(res.data)))
+      .catch(() => setReworkStockBatches([]));
   }, []);
 
   useEffect(() => {
@@ -648,12 +694,21 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
           const type = mapApiComponentType(c);
           const id = type === TYPE_RAW
             ? (c.material_id ?? c.raw_material_id)
-            : (c.chemistry_id ?? c.element_id);
+            : type === TYPE_CHEMISTRY
+              ? (c.chemistry_id ?? c.element_id)
+              : (c.rework_warehouse_batch_id ?? c.warehouse_batch_id);
           const q = parseLocaleNumber(componentQtyPerMeter(c));
           return {
             type,
             id,
-            name: c.material_name || c.element_name || c.name || '—',
+            name:
+              c.material_name
+              || c.element_name
+              || c.name
+              || c.batch_display
+              || c.warehouse_batch_display
+              || c.rework_batch_display
+              || '—',
             quantity: Number.isFinite(q) ? q : '',
           };
         }) : []);
@@ -691,6 +746,19 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
     });
   }, [chemistryElements]);
 
+  useEffect(() => {
+    if (!reworkStockBatches.length) return;
+    setComponents((prev) => {
+      if (prev.length === 0) return prev;
+      return prev.map((c) => {
+        if (c.type !== TYPE_REWORKED || (c.name && c.name !== '—')) return c;
+        const found = reworkStockBatches.find((i) => String(i.id) === String(c.id));
+        const lbl = reworkBatchProductLabel(found);
+        return { ...c, name: lbl || c.name || '—' };
+      });
+    });
+  }, [reworkStockBatches]);
+
   const focusComponentPick = useCallback(() => {
     queueMicrotask(() => {
       const el = unifiedPickRef.current?.querySelector('button');
@@ -712,8 +780,11 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
     const [kind, idStr] = String(unifiedPick).split(':');
     const id = Number(idStr);
     if (!Number.isFinite(id)) return;
-    const isChem = kind === 'chem';
-    const type = isChem ? TYPE_CHEMISTRY : TYPE_RAW;
+    const type = kind === 'chem'
+      ? TYPE_CHEMISTRY
+      : kind === 'rework'
+        ? TYPE_REWORKED
+        : TYPE_RAW;
     const dup = components.some((c) => c.type === type && Number(c.id) === id);
     if (dup) {
       setLineError('Этот компонент уже в составе.');
@@ -735,6 +806,17 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
         name: item?.name || '—',
         quantity: q,
       }]);
+    } else if (kind === 'rework') {
+      const item = reworkStockBatches.find((i) => String(i.id) === String(id));
+      setComponents((prev) => [...prev, {
+        type: TYPE_REWORKED,
+        id,
+        name: reworkBatchProductLabel(item) || '—',
+        quantity: q,
+      }]);
+    } else {
+      setLineError('Выберите компонент из списка.');
+      return;
     }
     setQuantity('');
     setUnifiedPick('');
@@ -765,6 +847,14 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
       await updateRecipe(recipeId, {
         base_unit: 'per_meter',
         components: lines.map((c) => {
+          if (c.type === TYPE_REWORKED) {
+            return {
+              type: 'rework_stock',
+              rework_warehouse_batch_id: c.id,
+              quantity_per_meter: Number(c.quantity),
+              unit: 'кг',
+            };
+          }
           const apiType = c.type === TYPE_CHEMISTRY ? 'chemistry' : 'raw_material';
           const comp = {
             type: apiType,
@@ -817,7 +907,7 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
           <Loading />
         ) : (
           <div className="modal__body">
-            <label>Компонент (сырьё или химия) *</label>
+            <label>Компонент (сырьё, химия или переделанные) *</label>
             <div className="recipe-modal__row">
               <div className="recipe-modal__pick-wrap" ref={unifiedPickRef}>
                 <Select
@@ -826,8 +916,8 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
                     setUnifiedPick(v);
                     setLineError('');
                   }}
-                  placeholder="Выберите: Сырьё: … или Химия: …"
-                  aria-label="Компонент рецепта: сырьё или химия"
+                  placeholder="Сырьё / Химия / Переделанные…"
+                  aria-label="Компонент рецепта"
                   options={unifiedOptions}
                 />
               </div>
@@ -863,7 +953,9 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
                 </div>
                 {components.map((c, i) => (
                   <div key={`${c.type}-${c.id}-${i}`} className="recipe-modal__table-row recipe-modal__table-row--cols">
-                    <span>{c.type === TYPE_CHEMISTRY ? 'Химия' : 'Сырьё'}</span>
+                    <span>
+                      {c.type === TYPE_CHEMISTRY ? 'Химия' : c.type === TYPE_REWORKED ? 'Переделанные' : 'Сырьё'}
+                    </span>
                     <span className="recipe-modal__comp-name">{c.name}</span>
                     <DecimalInput
                       min={0}
@@ -909,6 +1001,7 @@ const RecipeDetailModal = ({
   const [err, setErr] = useState(null);
   const [rawMaterials, setRawMaterials] = useState([]);
   const [chemistryElements, setChemistryElements] = useState([]);
+  const [reworkStockBatches, setReworkStockBatches] = useState([]);
 
   useEffect(() => {
     apiClient.get('raw-materials/', { params: { page_size: 500 } })
@@ -917,6 +1010,9 @@ const RecipeDetailModal = ({
     apiClient.get('chemistry/elements/', { params: { page_size: 500 } })
       .then((res) => setChemistryElements(parseApiListResponse(res.data)))
       .catch(() => setChemistryElements([]));
+    apiClient.get('warehouse/batches/', { params: { stock_bucket: 'reworked', page_size: 500 } })
+      .then((res) => setReworkStockBatches(parseApiListResponse(res.data)))
+      .catch(() => setReworkStockBatches([]));
   }, []);
 
   useEffect(() => {
@@ -945,7 +1041,7 @@ const RecipeDetailModal = ({
   }, [recipeId]);
 
   const title = data ? recipeDisplayName(data) : titleFallback;
-  const rows = data ? getCompositionRows(data, rawMaterials, chemistryElements) : [];
+  const rows = data ? getCompositionRows(data, rawMaterials, chemistryElements, reworkStockBatches) : [];
   const comment = data?.comment ?? data?.note ?? '';
   const profileDisplay = data?.profile?.name || profileLabelText;
 

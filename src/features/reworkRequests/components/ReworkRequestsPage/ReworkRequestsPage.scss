@@ -56,7 +56,7 @@
 }
 
 .data-table--rework {
-  min-width: 1080px;
+  min-width: 800px;
 
   th,
   td {
@@ -122,4 +122,119 @@
 .page--rework .empty-state {
   min-height: 180px;
   padding: var(--space-6) var(--space-4);
+}
+
+.rework-modal__intro {
+  margin: 0 1.5rem 0.65rem;
+  padding: 0;
+  font-size: var(--font-caption);
+  color: var(--text-muted);
+}
+
+.rework-modal__cart-layout {
+  display: grid;
+  grid-template-columns: minmax(200px, 260px) 1fr;
+  gap: var(--space-3);
+  min-height: 220px;
+
+  @include lg {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rework-modal__cart-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  background: var(--bg-hover);
+}
+
+.rework-modal__cart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: var(--space-2);
+  font-weight: var(--weight-semibold);
+  font-size: var(--font-sm);
+}
+
+.rework-modal__cart-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 160px;
+  max-height: 280px;
+  @include scrollbar;
+}
+
+.rework-modal__cart-item {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+
+  &.is-active {
+    border-color: var(--primary);
+    background: rgba(255, 63, 104, 0.08);
+  }
+}
+
+.rework-modal__cart-item-title {
+  display: block;
+  font-weight: var(--weight-medium);
+  font-size: var(--font-sm);
+}
+
+.rework-modal__cart-item-meta {
+  display: block;
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.rework-modal__line-detail {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--bg-hover);
+}
+
+.rework-modal__line-detail-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+  font-weight: var(--weight-semibold);
+  font-size: var(--font-sm);
+}
+
+.rework-modal__mass-sum {
+  margin: 0.65rem 0 0;
+  font-size: var(--font-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+}
+
+.rework-modal__readonly {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 2.125rem;
+  padding: 0.4rem 0.65rem;
+  margin-bottom: 0.5rem;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-size: var(--font-body);
 }

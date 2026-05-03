@@ -16,22 +16,29 @@ import {
 } from '../../api/returnsApi';
 
 const TARGETS = [
-  { value: 'warehouse', label: 'На склад' },
-  { value: 'defect', label: 'В брак' },
+  { value: 'warehouse', label: 'Склад ГП' },
   { value: 'rework', label: 'На переделку' },
 ];
 
 const CONDITIONS = [
   { value: 'good', label: 'Годный' },
   { value: 'damaged', label: 'Повреждён' },
-  { value: 'defect', label: 'Брак' },
 ];
 
 const defaultConditionForTarget = (t) => {
-  if (t === 'warehouse') return 'good';
-  if (t === 'defect') return 'defect';
   if (t === 'rework') return 'damaged';
   return 'good';
+};
+
+/** Нормализация черновых строк после старых значений API */
+const normalizeReturnLineFromDoc = (x) => {
+  let rt = x.return_target || 'warehouse';
+  if (rt === 'defect') rt = 'rework';
+  if (!['warehouse', 'rework'].includes(rt)) rt = 'warehouse';
+  let ct = x.condition_type || defaultConditionForTarget(rt);
+  if (ct === 'defect') ct = 'damaged';
+  if (!['good', 'damaged'].includes(ct)) ct = defaultConditionForTarget(rt);
+  return { rt, ct };
 };
 
 const targetLabel = (code) => TARGETS.find((t) => t.value === code)?.label || code || '—';
@@ -80,6 +87,7 @@ const downstreamTypeLabel = (raw) => {
   const k = String(raw || '').toLowerCase().replace(/-/g, '_');
   const map = {
     warehouse_batch: 'Склад',
+    rework_warehouse_batch: 'Переделанные (склад)',
     defect_record: 'Брак',
     rework_request: 'Переделка',
     return: 'Возврат',
@@ -435,6 +443,14 @@ const ReturnsPage = () => {
   );
 };
 
+const emptyReturnLine = () => ({
+  sale_line: '',
+  product: '',
+  quantity: '',
+  return_target: 'warehouse',
+  condition_type: 'good',
+});
+
 const ReturnModal = ({ doc, initialSaleId = '', sales, salesLoading, onSubmit, onClose, error }) => {
   const isCompletedLimited = doc?.status === 'completed';
   const isDraftEdit = Boolean(doc?.id) && doc?.status === 'draft';
@@ -442,22 +458,24 @@ const ReturnModal = ({ doc, initialSaleId = '', sales, salesLoading, onSubmit, o
   const [sale, setSale] = useState(() => initialSaleIdFromDoc(doc) || (initialSaleId ? String(initialSaleId) : ''));
   const [date, setDate] = useState((doc?.date || '').toString().slice(0, 10) || new Date().toISOString().slice(0, 10));
   const [reason, setReason] = useState(doc?.return_reason || '');
-  const [comment, setComment] = useState(doc?.comment || '');
   const [invoiceNumber, setInvoiceNumber] = useState(doc?.invoice_number || '');
   const [lineError, setLineError] = useState('');
+  const [activeLineIdx, setActiveLineIdx] = useState(0);
   const [saleLines, setSaleLines] = useState([]);
   const [linesLoading, setLinesLoading] = useState(false);
   const [lines, setLines] = useState(
     Array.isArray(doc?.lines) && doc.lines.length
-      ? doc.lines.map((x) => ({
-        sale_line: x.sale_line_id != null ? String(x.sale_line_id) : (x.sale_line != null ? String(typeof x.sale_line === 'object' ? x.sale_line.id : x.sale_line) : ''),
-        product: x.product || '',
-        quantity: x.quantity != null ? String(x.quantity) : '',
-        return_target: x.return_target || 'warehouse',
-        condition_type: x.condition_type || defaultConditionForTarget(x.return_target || 'warehouse'),
-        comment: x.comment || '',
-      }))
-      : [{ sale_line: '', product: '', quantity: '', return_target: 'warehouse', condition_type: 'good', comment: '' }],
+      ? doc.lines.map((x) => {
+        const { rt, ct } = normalizeReturnLineFromDoc(x);
+        return {
+          sale_line: x.sale_line_id != null ? String(x.sale_line_id) : (x.sale_line != null ? String(typeof x.sale_line === 'object' ? x.sale_line.id : x.sale_line) : ''),
+          product: x.product || '',
+          quantity: x.quantity != null ? String(x.quantity) : '',
+          return_target: rt,
+          condition_type: ct,
+        };
+      })
+      : [emptyReturnLine()],
   );
 
   useEffect(() => {
@@ -517,6 +535,10 @@ const ReturnModal = ({ doc, initialSaleId = '', sales, salesLoading, onSubmit, o
       : x)));
   };
 
+  useEffect(() => {
+    setActiveLineIdx((i) => (lines.length === 0 ? 0 : Math.min(i, Math.max(0, lines.length - 1))));
+  }, [lines.length]);
+
   const hasValidDraftLines = useMemo(() => {
     if (isCompletedLimited) return true;
     return lines.length > 0 && lines.every((l) => {
@@ -534,6 +556,8 @@ const ReturnModal = ({ doc, initialSaleId = '', sales, salesLoading, onSubmit, o
     ? false
     : (!sale || salesLoading || linesLoading || !hasValidDraftLines);
 
+  const selectedLine = lines.length > 0 ? lines[Math.min(activeLineIdx, lines.length - 1)] : null;
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal--wide return-modal" onClick={(e) => e.stopPropagation()}>
@@ -549,7 +573,6 @@ const ReturnModal = ({ doc, initialSaleId = '', sales, salesLoading, onSubmit, o
             if (isCompletedLimited) {
               onSubmit({
                 return_reason: reason.trim() || undefined,
-                comment: comment.trim() || undefined,
                 invoice_number: invoiceNumber.trim() || undefined,
               });
               return;
@@ -575,7 +598,6 @@ const ReturnModal = ({ doc, initialSaleId = '', sales, salesLoading, onSubmit, o
                 quantity: String(qty),
                 return_target: l.return_target,
                 condition_type: l.condition_type,
-                comment: String(l.comment || '').trim() || undefined,
               });
             }
             if (payloadLines.length === 0) return;
@@ -584,7 +606,6 @@ const ReturnModal = ({ doc, initialSaleId = '', sales, salesLoading, onSubmit, o
               date,
               return_reason: reason.trim() || undefined,
               invoice_number: invoiceNumber.trim() || undefined,
-              comment: comment.trim() || undefined,
               lines: payloadLines,
             });
           }}
@@ -612,97 +633,125 @@ const ReturnModal = ({ doc, initialSaleId = '', sales, salesLoading, onSubmit, o
               <input value={reason} onChange={(e) => setReason(e.target.value)} />
               <label>Номер счёта / накладной</label>
               <input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="Необязательно" />
-              <label>Комментарий</label>
-              <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="К документу" />
             </section>
 
             {!isCompletedLimited && (
-              <section className="return-modal__section">
-                <h4 className="return-modal__section-title">Товар</h4>
+              <section className="return-modal__section return-modal__section--cart">
+                <h4 className="return-modal__section-title">Позиции</h4>
                 {linesLoading && sale ? <p className="return-modal__hint">Загрузка строк продажи…</p> : null}
-                {lines.map((line, idx) => {
-                  const sl = line.sale_line ? lineById.get(String(line.sale_line)) : null;
-                  const cap = saleLineReturnableCap(sl);
-                  return (
-                    <div key={`ret-line-${idx}`} className="return-modal__line-card">
-                      <div className="return-modal__line-head">
-                        <span>Товар {idx + 1}</span>
-                        {lines.length > 1 ? (
-                          <button
-                            type="button"
-                            className="btn btn--ghost return-modal__line-remove"
-                            onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}
-                          >
-                            Удалить
-                          </button>
-                        ) : null}
-                      </div>
-                      <label>Строка продажи *</label>
-                      <SearchableSelect
-                        value={line.sale_line}
-                        onChange={(v) => applySaleLineSelection(idx, v)}
+                <div className="return-modal__cart-layout">
+                  <div className="return-modal__cart-panel">
+                    <div className="return-modal__cart-head">
+                      <span>Список</span>
+                      <button
+                        type="button"
+                        className="btn btn--secondary btn--sm"
                         disabled={!sale || linesLoading}
-                        options={[
-                          { value: '', label: sale ? 'Выберите строку' : 'Сначала выберите продажу' },
-                          ...saleLines.map((x) => ({
-                            value: String(x.id),
-                            label: saleLineSelectLabel(x),
-                          })),
-                        ]}
-                      />
-                      <label>Товар</label>
-                      {line.product?.trim()
-                        ? <div className="return-modal__readonly">{line.product}</div>
-                        : <div className="return-modal__readonly return-modal__readonly--placeholder">Выберите строку продажи</div>}
-                      {cap != null ? (
-                        <>
-                          <label>Доступно к возврату</label>
-                          <div className="return-modal__readonly">{`${formatQuantityDisplay(cap)} шт`}</div>
-                        </>
-                      ) : null}
-                      <label>Количество *</label>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={line.quantity}
-                        onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, quantity: e.target.value } : x)))}
-                      />
-                      <label>Куда вернуть *</label>
-                      <SearchableSelect
-                        value={line.return_target}
-                        onChange={(v) => setReturnTargetAt(idx, v)}
-                        options={TARGETS}
-                      />
-                      <label>Состояние *</label>
-                      <SearchableSelect
-                        value={line.condition_type}
-                        onChange={(v) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, condition_type: v } : x)))}
-                        options={CONDITIONS}
-                      />
-                      <label>Комментарий к строке</label>
-                      <input
-                        value={line.comment}
-                        onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, comment: e.target.value } : x)))}
-                        placeholder="Необязательно"
-                      />
+                        onClick={() => {
+                          setLines((prev) => {
+                            const next = [...prev, emptyReturnLine()];
+                            setActiveLineIdx(next.length - 1);
+                            return next;
+                          });
+                        }}
+                      >
+                        + Добавить
+                      </button>
                     </div>
-                  );
-                })}
-                <button
-                  type="button"
-                  className="btn btn--secondary return-modal__add-line"
-                  disabled={!sale || linesLoading}
-                  onClick={() => setLines((prev) => [...prev, {
-                    sale_line: '',
-                    product: '',
-                    quantity: '',
-                    return_target: 'warehouse',
-                    condition_type: defaultConditionForTarget('warehouse'),
-                    comment: '',
-                  }])}
-                >
-                  Добавить строку
-                </button>
+                    <div className="return-modal__cart-list">
+                      {lines.map((line, idx) => {
+                        const qty = parseLocaleNumber(line.quantity);
+                        const qtyPart = Number.isFinite(qty) && qty > 0 ? `${formatQuantityDisplay(qty)} шт` : '…';
+                        const title = (line.product || '').trim() || `Позиция ${idx + 1}`;
+                        return (
+                          <button
+                            key={`ret-cart-${idx}`}
+                            type="button"
+                            className={`return-modal__cart-item${activeLineIdx === idx ? ' is-active' : ''}`}
+                            onClick={() => setActiveLineIdx(idx)}
+                          >
+                            <span className="return-modal__cart-item-title">{title}</span>
+                            <span className="return-modal__cart-item-meta">{targetLabel(line.return_target)} · {qtyPart}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {selectedLine ? (() => {
+                    const idx = Math.min(activeLineIdx, lines.length - 1);
+                    const line = lines[idx];
+                    const sl = line.sale_line ? lineById.get(String(line.sale_line)) : null;
+                    const cap = saleLineReturnableCap(sl);
+                    return (
+                      <div className="return-modal__line-detail">
+                        <div className="return-modal__line-detail-head">
+                          <span className="return-modal__line-detail-title">Позиция {idx + 1}</span>
+                          {lines.length > 1 ? (
+                            <button
+                              type="button"
+                              className="btn btn--ghost btn--sm return-modal__line-remove"
+                              onClick={() => {
+                                setLines((prev) => {
+                                  const next = prev.filter((_, i) => i !== idx);
+                                  setActiveLineIdx((cur) => {
+                                    if (next.length === 0) return 0;
+                                    if (cur >= idx && cur > 0) return cur - 1;
+                                    return Math.min(cur, next.length - 1);
+                                  });
+                                  return next.length > 0 ? next : [emptyReturnLine()];
+                                });
+                              }}
+                            >
+                              Удалить
+                            </button>
+                          ) : null}
+                        </div>
+                        <label>Строка продажи *</label>
+                        <SearchableSelect
+                          value={line.sale_line}
+                          onChange={(v) => applySaleLineSelection(idx, v)}
+                          disabled={!sale || linesLoading}
+                          options={[
+                            { value: '', label: sale ? 'Выберите строку' : 'Сначала выберите продажу' },
+                            ...saleLines.map((x) => ({
+                              value: String(x.id),
+                              label: saleLineSelectLabel(x),
+                            })),
+                          ]}
+                        />
+                        <label>Товар</label>
+                        {line.product?.trim()
+                          ? <div className="return-modal__readonly">{line.product}</div>
+                          : <div className="return-modal__readonly return-modal__readonly--placeholder">Выберите строку продажи</div>}
+                        {cap != null ? (
+                          <>
+                            <label>Доступно к возврату</label>
+                            <div className="return-modal__readonly">{`${formatQuantityDisplay(cap)} шт`}</div>
+                          </>
+                        ) : null}
+                        <label>Количество *</label>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={line.quantity}
+                          onChange={(e) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, quantity: e.target.value } : x)))}
+                        />
+                        <label>Куда вернуть *</label>
+                        <SearchableSelect
+                          value={line.return_target}
+                          onChange={(v) => setReturnTargetAt(idx, v)}
+                          options={TARGETS}
+                        />
+                        <label>Состояние *</label>
+                        <SearchableSelect
+                          value={line.condition_type}
+                          onChange={(v) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, condition_type: v } : x)))}
+                          options={CONDITIONS}
+                        />
+                      </div>
+                    );
+                  })() : null}
+                </div>
               </section>
             )}
             {(lineError || error) ? <p className="modal__error">{lineError || error}</p> : null}
@@ -798,7 +847,6 @@ const ReturnDetailModal = ({ returnId, onClose, onEdit, onDownloadWaybill, onMut
                   <div className="return-detail-modal__dl-row"><dt>Статус</dt><dd>{doc.status === 'completed' ? 'Проведён' : doc.status === 'canceled' ? 'Отменён' : doc.status === 'draft' ? 'Черновик' : '—'}</dd></div>
                   <div className="return-detail-modal__dl-row"><dt>Причина</dt><dd>{doc.return_reason || '—'}</dd></div>
                   <div className="return-detail-modal__dl-row"><dt>Номер счёта / накладной</dt><dd>{doc.invoice_number && String(doc.invoice_number).trim() ? doc.invoice_number : '—'}</dd></div>
-                  <div className="return-detail-modal__dl-row"><dt>Комментарий</dt><dd>{doc.comment && String(doc.comment).trim() ? doc.comment : '—'}</dd></div>
                 </dl>
               </section>
               <section className="return-detail-modal__section">

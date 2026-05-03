@@ -17,10 +17,18 @@ const rowName = (row) =>
 
 const rowType = (row) => {
   const t = String(row.type || row.kind || '').toLowerCase();
+  if (t.includes('rework') || t.includes('передел')) return 'Переделанные';
   if (t.includes('chem')) return 'Химия';
   if (t.includes('raw') || t.includes('material')) return 'Сырьё';
   if (row.chemistry_id != null && row.material_id == null) return 'Химия';
   if (row.material_id != null || row.raw_material_id != null) return 'Сырьё';
+  if (
+    (row.warehouse_batch_id != null || row.rework_warehouse_batch_id != null)
+    && row.material_id == null
+    && row.raw_material_id == null
+    && row.chemistry_id == null
+    && row.element_id == null
+  ) return 'Переделанные';
   return row.type_label || '—';
 };
 

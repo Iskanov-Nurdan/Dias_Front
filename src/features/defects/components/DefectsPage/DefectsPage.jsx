@@ -1,14 +1,20 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import './DefectsPage.scss';
 import { useOperationalRefetch } from '../../../../shared/realtime';
-import { useServerQuery, formatQuantityDisplay, getApiErrorMessage, parseLocaleNumber, readWarehouseDefectReason } from '../../../../shared/lib';
+import {
+  useServerQuery,
+  formatQuantityDisplay,
+  getApiErrorMessage,
+  parseLocaleNumber,
+  parseApiListResponse,
+  readWarehouseQuality,
+} from '../../../../shared/lib';
+import { apiClient } from '../../../../shared/api';
 import { ActionMenu, Badge, ConfirmModal, EmptyState, ErrorState, Loading, Pagination, SearchableSelect, useToast } from '../../../../shared/ui';
 import {
   createDefect,
   getDefect,
-  getDefectSelectSources,
   sellDefect,
-  sendDefectToRework,
   updateDefect,
   writeoffDefect,
 } from '../../api/defectsApi';
@@ -131,28 +137,22 @@ const defectErrorMessage = (e, fallback) => {
   return getApiErrorMessage(e, fallback);
 };
 
-const DefectsPage = ({ onSentToReworkSuccess }) => {
+const DefectsPage = () => {
   const toast = useToast();
   const [queryState, setQueryState] = useState({ page: 1, page_size: 20, status: '', source_type: '', search: '' });
   const [modalDefect, setModalDefect] = useState(null);
   const [detailDefectId, setDetailDefectId] = useState(null);
   const [writeoffTarget, setWriteoffTarget] = useState(null);
   const [sellTarget, setSellTarget] = useState(null);
-  const [sendReworkTarget, setSendReworkTarget] = useState(null);
-  const [sendReworkQty, setSendReworkQty] = useState('');
   const [writeoffReason, setWriteoffReason] = useState('');
   const [writeoffQty, setWriteoffQty] = useState('');
   const [sellClient, setSellClient] = useState('');
   const [sellPrice, setSellPrice] = useState('');
   const [sellQty, setSellQty] = useState('');
   const [clients, setClients] = useState([]);
-  const [returnLines, setReturnLines] = useState([]);
-  const [warehouseDefectBatches, setWarehouseDefectBatches] = useState([]);
   const [submitError, setSubmitError] = useState('');
-  const [sendReworkBusy, setSendReworkBusy] = useState(false);
   const [writeoffBusy, setWriteoffBusy] = useState(false);
   const [sellBusy, setSellBusy] = useState(false);
-  const [sellComment, setSellComment] = useState('');
   const [detailReloadKey, setDetailReloadKey] = useState(0);
   const { items, meta, raw, loading, error, refetch } = useServerQuery('defects/', queryState, { enabled: true });
   useOperationalRefetch(['defect_record', 'sale', 'rework_request', 'warehouse_batch'], refetch, true);
@@ -189,26 +189,30 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
         );
       })
       .catch(() => setClients([]));
-    getDefectSelectSources()
-      .then((res) => {
-        const data = res.data || {};
-        setReturnLines(Array.isArray(data.return_lines) ? data.return_lines : []);
-        setWarehouseDefectBatches(Array.isArray(data.warehouse_defect_batches) ? data.warehouse_defect_batches : []);
-      })
-      .catch(() => {
-        setReturnLines([]);
-        setWarehouseDefectBatches([]);
-      });
   }, []);
 
   const onSubmitDefect = async (payload) => {
     setSubmitError('');
+    const editing = Boolean(modalDefect?.id);
     try {
-      if (modalDefect?.id) await updateDefect(modalDefect.id, payload);
-      else await createDefect(payload);
+      if (editing) {
+        await updateDefect(modalDefect.id, payload);
+      } else if (Array.isArray(payload)) {
+        for (const p of payload) {
+          await createDefect(p);
+        }
+      } else {
+        await createDefect(payload);
+      }
+      const batchLen = Array.isArray(payload) ? payload.length : 0;
       setModalDefect(null);
       refetch();
-      toast.show('Запись брака сохранена');
+      toast.show(
+        editing ? 'Запись обновлена'
+          : batchLen > 1 ? `Создано записей: ${batchLen}`
+            : batchLen === 1 ? 'Запись брака сохранена'
+              : 'Запись брака сохранена',
+      );
     } catch (e) {
       setSubmitError(defectErrorMessage(e, 'Ошибка сохранения записи брака'));
     }
@@ -268,14 +272,6 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
                 if (canMutateDefectStock(d)) {
                   menuItems.push(
                     {
-                      label: 'Отправить в переделку',
-                      onClick: () => {
-                        setSendReworkTarget(d);
-                        setSendReworkQty('');
-                        setSubmitError('');
-                      },
-                    },
-                    {
                       label: 'Списать',
                       danger: true,
                       onClick: () => {
@@ -292,7 +288,6 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
                         setSellQty(String(defectAvailablePcs(d)));
                         setSellClient('');
                         setSellPrice('');
-                        setSellComment('');
                         setSubmitError('');
                       },
                     },
@@ -330,9 +325,6 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
       {modalDefect && (
         <DefectModal
           defect={modalDefect?.id ? modalDefect : null}
-          returnLines={returnLines}
-          warehouseDefectBatches={warehouseDefectBatches}
-          defectListItems={items}
           defectByWarehouseSourceId={defectByWarehouseSourceId}
           onClose={() => { setModalDefect(null); setSubmitError(''); }}
           onSubmit={onSubmitDefect}
@@ -344,19 +336,12 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
           defectId={detailDefectId}
           reloadKey={detailReloadKey}
           onClose={() => setDetailDefectId(null)}
-          onSendToRework={(defect) => {
-            setDetailDefectId(null);
-            setSendReworkTarget(defect);
-            setSendReworkQty('');
-            setSubmitError('');
-          }}
           onSell={(defect) => {
             setDetailDefectId(null);
             setSellTarget(defect);
             setSellQty(String(defectAvailablePcs(defect)));
             setSellClient('');
             setSellPrice('');
-            setSellComment('');
             setSubmitError('');
           }}
           onWriteoff={(defect) => {
@@ -368,59 +353,6 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
           }}
         />
       )}
-
-      <ConfirmModal
-        open={!!sendReworkTarget}
-        title="Отправить в переделку"
-        message={sendReworkTarget ? (
-          <div className="defects-sell-fields">
-            <p className="defects-inline-note">Будет создан запрос на переделку. Доступно: {defectQuantityLabel(sendReworkTarget)}</p>
-            <div>
-              <label htmlFor="defect-send-rework-qty">Количество к отправке (шт) *</label>
-              <input
-                id="defect-send-rework-qty"
-                value={sendReworkQty}
-                onChange={(e) => { setSendReworkQty(e.target.value); setSubmitError(''); }}
-                disabled={sendReworkBusy}
-              />
-            </div>
-          </div>
-        ) : null}
-        confirmText="Отправить"
-        confirmBusy={sendReworkBusy}
-        onConfirm={async () => {
-          if (!sendReworkTarget?.id || sendReworkBusy) return;
-          const avail = defectAvailablePcs(sendReworkTarget);
-          const raw = String(sendReworkQty).trim();
-          const q = raw === '' ? avail : parseLocaleNumber(raw);
-          if (!Number.isFinite(q) || q <= 0) {
-            setSubmitError('Укажите корректное количество');
-            return;
-          }
-          if (q > avail) {
-            setSubmitError('Количество не может превышать доступный остаток');
-            return;
-          }
-          setSendReworkBusy(true);
-          setSubmitError('');
-          try {
-            const body = Math.round(q) >= Math.round(avail) ? {} : { quantity: String(Math.round(q)) };
-            await sendDefectToRework(sendReworkTarget.id, body);
-            await refetch();
-            bumpDefectDetail();
-            setSendReworkTarget(null);
-            setSendReworkQty('');
-            toast.show('Брак отправлен в переделку');
-            onSentToReworkSuccess?.();
-          } catch (e) {
-            setSubmitError(defectErrorMessage(e, 'Ошибка операции'));
-          } finally {
-            setSendReworkBusy(false);
-          }
-        }}
-        onCancel={() => { if (!sendReworkBusy) { setSendReworkTarget(null); setSendReworkQty(''); setSubmitError(''); } }}
-        error={sendReworkTarget ? submitError : undefined}
-      />
 
       <ConfirmModal
         open={!!writeoffTarget}
@@ -519,10 +451,6 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
                 </p>
               ) : null}
             </div>
-            <div>
-              <label htmlFor="defect-sell-comment">Комментарий</label>
-              <textarea id="defect-sell-comment" rows={2} value={sellComment} onChange={(e) => setSellComment(e.target.value)} placeholder="Необязательно" />
-            </div>
           </div>
         )}
         confirmText="Продать"
@@ -556,18 +484,14 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
           setSellBusy(true);
           setSubmitError('');
           try {
-            const body = {
+            await sellDefect(sellTarget.id, {
               client_id: cid,
               price: String(price),
               quantity: String(Math.round(qty)),
-            };
-            const c = sellComment.trim();
-            if (c) body.comment = c;
-            await sellDefect(sellTarget.id, body);
+            });
             await refetch();
             bumpDefectDetail();
             setSellTarget(null);
-            setSellComment('');
             toast.show(Math.round(qty) >= Math.round(avail) ? 'Брак продан' : 'Часть брака продана');
           } catch (e) {
             setSubmitError(defectErrorMessage(e, 'Ошибка операции'));
@@ -575,216 +499,322 @@ const DefectsPage = ({ onSentToReworkSuccess }) => {
             setSellBusy(false);
           }
         }}
-        onCancel={() => { if (!sellBusy) { setSellTarget(null); setSubmitError(''); setSellComment(''); } }}
+        onCancel={() => { if (!sellBusy) { setSellTarget(null); setSubmitError(''); } }}
         error={sellTarget ? submitError : undefined}
       />
     </div>
   );
 };
 
-const warehouseBatchSelectLabel = (x, defectBySourceId) => {
-  const nested = x?.warehouse_batch && typeof x.warehouse_batch === 'object' ? x.warehouse_batch : null;
-  const id = x?.id ?? nested?.id;
-  const keyRow = id != null ? String(id) : '';
-  const keyBatch = nested?.id != null ? String(nested.id) : '';
-  const fromDefect = (keyRow && defectBySourceId?.get(keyRow))
-    || (keyBatch && defectBySourceId?.get(keyBatch));
-  const name = (
-    String(
-      x?.product_name
-      || x?.product
-      || nested?.product_name
-      || nested?.product?.name
-      || (typeof nested?.product === 'string' ? nested.product : '')
-      || fromDefect?.product
-      || '',
-    ).trim() || '—'
-  );
-  const q = x?.quantity_pcs ?? x?.quantity ?? nested?.quantity_pcs ?? nested?.available_quantity
-    ?? fromDefect?.available_quantity_pcs ?? fromDefect?.quantity_pcs;
-  const r = (
-    readWarehouseDefectReason(x)
-    || readWarehouseDefectReason(nested)
-    || String(fromDefect?.defect_reason || '').trim()
-    || '—'
-  );
-  const qs = q != null && q !== '' ? `${formatQuantityDisplay(q)} шт` : '—';
-  return `${name} — ${qs} — ${r}`;
+const gpWarehouseProductLabel = (b) => {
+  if (!b || typeof b !== 'object') return '—';
+  const own = typeof b.product === 'string' ? b.product.trim() : '';
+  if (own) return own;
+  const pl = b.linked_entities?.profile?.label;
+  if (typeof pl === 'string' && pl.trim()) return pl.trim();
+  return '—';
 };
+
+const newEmptyDefectCartLine = () => ({
+  key: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+  warehouse_batch_id: '',
+  quantity_pcs: '',
+  defect_reason: '',
+});
 
 const DefectModal = ({
   defect,
-  returnLines,
-  warehouseDefectBatches,
-  defectListItems,
   defectByWarehouseSourceId,
   onClose,
   onSubmit,
   error,
 }) => {
   const [localError, setLocalError] = useState('');
-  const [sourceType, setSourceType] = useState(defect?.source_type || 'return');
-  const [sourceId, setSourceId] = useState(defect?.source_id != null ? String(defect.source_id) : '');
-  const [product, setProduct] = useState(defect?.product || '');
-  const [quantityPcs, setQuantityPcs] = useState(defect?.quantity_pcs != null ? String(defect.quantity_pcs) : '');
-  const [reason, setReason] = useState(defect?.defect_reason || '');
-  const [comment, setComment] = useState(defect?.comment || '');
+  const [editReason, setEditReason] = useState(defect?.defect_reason || '');
+  const [gpBatches, setGpBatches] = useState([]);
+  const [gpLoading, setGpLoading] = useState(!defect);
+  const [activeLineIdx, setActiveLineIdx] = useState(0);
+  const [cartLines, setCartLines] = useState(() => [newEmptyDefectCartLine()]);
 
   useEffect(() => {
-    if (sourceType === 'return') {
-      const src = returnLines.find((x) => String(x.id) === String(sourceId));
-      if (!src) return;
-      setProduct(src.product || '');
-      if (src.quantity != null && src.quantity !== '') setQuantityPcs(String(src.quantity));
+    setEditReason(defect?.defect_reason || '');
+  }, [defect]);
+
+  useEffect(() => {
+    if (defect) return undefined;
+    let alive = true;
+    setGpLoading(true);
+    apiClient.get('warehouse/batches/', { params: { page_size: 500 } })
+      .then((res) => {
+        if (!alive) return;
+        const list = parseApiListResponse(res.data).filter((b) => {
+          if (readWarehouseQuality(b) === 'defect') return false;
+          if (String(b.status || '').toLowerCase() !== 'available') return false;
+          const av = Number(b.available_quantity ?? 0);
+          return Number.isFinite(av) && av > 0;
+        });
+        setGpBatches(list);
+      })
+      .catch(() => {
+        if (alive) setGpBatches([]);
+      })
+      .finally(() => {
+        if (alive) setGpLoading(false);
+      });
+    return () => { alive = false; };
+  }, [defect]);
+
+  useEffect(() => {
+    setActiveLineIdx((i) => (cartLines.length === 0 ? 0 : Math.min(i, cartLines.length - 1)));
+  }, [cartLines.length]);
+
+  const batchById = useMemo(() => {
+    const m = new Map();
+    gpBatches.forEach((b) => {
+      if (b?.id != null) m.set(String(b.id), b);
+    });
+    return m;
+  }, [gpBatches]);
+
+  const batchCap = useCallback((bid) => {
+    const b = batchById.get(String(bid));
+    if (!b) return null;
+    const n = Number(b.available_quantity);
+    return Number.isFinite(n) ? n : null;
+  }, [batchById]);
+
+  const gpOptions = useMemo(() => gpBatches.filter((b) => !defectByWarehouseSourceId?.get(String(b.id))), [gpBatches, defectByWarehouseSourceId]);
+
+  const gpBatchOptionLabel = (b) => {
+    const name = gpWarehouseProductLabel(b);
+    const av = b.available_quantity;
+    const avPart = av != null && av !== '' ? ` — свободно ${formatQuantityDisplay(av)} шт` : '';
+    return `${name}${avPart}`;
+  };
+
+  const selectedCartLine = cartLines.length > 0
+    ? cartLines[Math.min(activeLineIdx, cartLines.length - 1)]
+    : null;
+
+  const submitEdit = async (e) => {
+    e.preventDefault();
+    setLocalError('');
+    if (!editReason.trim()) {
+      setLocalError('Укажите причину брака.');
+      return;
     }
-    if (sourceType === 'warehouse') {
-      const wb = warehouseDefectBatches.find((x) => String(x.id) === String(sourceId));
-      if (!wb) return;
-      const nested = wb.warehouse_batch && typeof wb.warehouse_batch === 'object' ? wb.warehouse_batch : null;
-      const fd = defectByWarehouseSourceId?.get(String(sourceId))
-        || (nested?.id != null ? defectByWarehouseSourceId?.get(String(nested.id)) : null);
-      const label = (
-        wb.product_name
-        || wb.product
-        || nested?.product_name
-        || nested?.product?.name
-        || (typeof nested?.product === 'string' ? nested.product : '')
-        || fd?.product
-        || ''
-      );
-      setProduct(String(label).trim());
-      const q = wb.quantity_pcs ?? wb.quantity ?? nested?.quantity_pcs ?? nested?.available_quantity
-        ?? fd?.available_quantity_pcs ?? fd?.quantity_pcs;
-      if (q != null && q !== '') setQuantityPcs(String(q));
-      const rs = readWarehouseDefectReason(wb) || readWarehouseDefectReason(nested) || (fd?.defect_reason || '');
-      setReason(String(rs).trim());
+    await onSubmit({ defect_reason: editReason.trim() });
+  };
+
+  const submitCreate = async (e) => {
+    e.preventDefault();
+    setLocalError('');
+    const payloads = [];
+    const seenBatch = new Set();
+    for (let i = 0; i < cartLines.length; i += 1) {
+      const line = cartLines[i];
+      if (!line.warehouse_batch_id) {
+        setLocalError(`Позиция ${i + 1}: выберите партию.`);
+        setActiveLineIdx(i);
+        return;
+      }
+      const sid = Number(line.warehouse_batch_id);
+      if (seenBatch.has(sid)) {
+        setLocalError('Одна партия не может быть указана дважды.');
+        setActiveLineIdx(i);
+        return;
+      }
+      seenBatch.add(sid);
+      if (defectByWarehouseSourceId?.has(String(sid))) {
+        setLocalError('По выбранной партии уже есть запись брака.');
+        setActiveLineIdx(i);
+        return;
+      }
+      const q = parseLocaleNumber(line.quantity_pcs);
+      if (!Number.isFinite(q) || q <= 0) {
+        setLocalError(`Позиция ${i + 1}: укажите количество (шт).`);
+        setActiveLineIdx(i);
+        return;
+      }
+      const cap = batchCap(line.warehouse_batch_id);
+      if (cap != null && q > cap) {
+        setLocalError(`Позиция ${i + 1}: не больше ${formatQuantityDisplay(cap)} шт.`);
+        setActiveLineIdx(i);
+        return;
+      }
+      if (!line.defect_reason.trim()) {
+        setLocalError(`Позиция ${i + 1}: укажите причину.`);
+        setActiveLineIdx(i);
+        return;
+      }
+      payloads.push({
+        source_type: 'warehouse',
+        warehouse_batch: sid,
+        quantity_pcs: String(Math.round(q)),
+        defect_reason: line.defect_reason.trim(),
+      });
     }
-  }, [sourceId, sourceType, returnLines, warehouseDefectBatches, defectByWarehouseSourceId]);
+    if (payloads.length === 0) {
+      setLocalError('Добавьте позицию.');
+      return;
+    }
+    await onSubmit(payloads);
+  };
+
+  if (defect) {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal modal--wide defects-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal__head">
+            <h3>Брак</h3>
+            <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+          </div>
+          <form className="defects-modal__form" onSubmit={submitEdit}>
+            <div className="defects-modal__scroll">
+              <label>Продукт</label>
+              <input value={defect.product || defect.product_name || '—'} readOnly />
+              <label>Причина брака *</label>
+              <input value={editReason} onChange={(e) => setEditReason(e.target.value)} />
+              {(error || localError) && <p className="modal__error">{localError || error}</p>}
+            </div>
+            <div className="modal__actions defects-modal__footer">
+              <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
+              <button type="submit" className="btn btn--primary">Сохранить</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal--wide defects-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
-          <h3>{defect ? 'Брак' : 'Новая запись брака'}</h3>
+          <h3>Новая запись брака</h3>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
-        <form
-          className="defects-modal__form"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            setLocalError('');
-            if (!defect && sourceType === 'warehouse' && sourceId) {
-              const sid = Number(sourceId);
-              if (defectListItems.some((row) => row.source_type === 'warehouse' && Number(row.source_id) === sid)) {
-                setLocalError('Этот брак уже есть в списке.');
-                return;
-              }
-            }
-            if (!sourceType) {
-              setLocalError('Выберите источник брака.');
-              return;
-            }
-            if ((sourceType === 'warehouse' || sourceType === 'return') && !sourceId) {
-              setLocalError('Выберите источник.');
-              return;
-            }
-            if (sourceType === 'manual' || sourceType === 'otk') {
-              const qty = parseLocaleNumber(quantityPcs);
-              if (!product.trim()) {
-                setLocalError('Укажите товар.');
-                return;
-              }
-              if (!Number.isFinite(qty) || qty <= 0) {
-                setLocalError('Количество должно быть больше 0.');
-                return;
-              }
-            }
-            if (!reason.trim()) {
-              setLocalError('Укажите причину брака.');
-              return;
-            }
-            onSubmit({
-              source_type: sourceType,
-              ...(sourceType === 'warehouse' ? { warehouse_batch: Number(sourceId) } : {}),
-              ...(sourceType === 'return' ? { source_id: Number(sourceId) } : {}),
-              ...((sourceType === 'manual' || sourceType === 'otk')
-                ? { product: product.trim(), quantity_pcs: String(Math.round(parseLocaleNumber(quantityPcs))) }
-                : {}),
-              defect_reason: reason.trim(),
-              comment: comment.trim() || undefined,
-            });
-          }}
-        >
+        <p className="defects-modal__intro">
+          Учёт брака только со склада готовой продукции (партия склада ГП).
+        </p>
+        <form className="defects-modal__form" onSubmit={submitCreate}>
           <div className="defects-modal__scroll">
-            <label>Источник брака *</label>
-            <SearchableSelect
-              value={sourceType}
-              onChange={(v) => { setSourceType(v); setSourceId(''); }}
-              options={[
-                { value: 'manual', label: 'Вручную' },
-                { value: 'warehouse', label: 'Склад' },
-                { value: 'return', label: 'Возврат' },
-                { value: 'otk', label: 'ОТК' },
-              ]}
-            />
-          {sourceType === 'return' && (
-            <>
-              <label>Строка возврата *</label>
-              <SearchableSelect
-                value={sourceId}
-                onChange={setSourceId}
-                options={[
-                  { value: '', label: 'Выберите строку возврата' },
-                  ...returnLines.map((x) => ({ value: String(x.id), label: x.label || x.product || 'Строка' })),
-                ]}
-              />
-            </>
-          )}
-          {sourceType === 'warehouse' && (
-            <>
-              <label>Партия брака на складе *</label>
-              <SearchableSelect
-                value={sourceId}
-                onChange={setSourceId}
-                options={[
-                  { value: '', label: 'Выберите партию' },
-                  ...warehouseDefectBatches.map((x) => ({
-                    value: String(x.id),
-                    label: warehouseBatchSelectLabel(x, defectByWarehouseSourceId),
-                  })),
-                ]}
-              />
-            </>
-          )}
-          <label>Товар{sourceType === 'manual' || sourceType === 'otk' ? ' *' : ''}</label>
-          <input
-            value={product}
-            readOnly={!(sourceType === 'manual' || sourceType === 'otk')}
-            onChange={(e) => setProduct(e.target.value)}
-          />
-          <label>Количество{sourceType === 'manual' || sourceType === 'otk' ? ' *' : ''}</label>
-          <input
-            value={(sourceType === 'manual' || sourceType === 'otk')
-              ? quantityPcs
-              : (quantityPcs ? `${formatQuantityDisplay(quantityPcs)} шт` : '')}
-            readOnly={!(sourceType === 'manual' || sourceType === 'otk')}
-            onChange={(e) => setQuantityPcs(e.target.value)}
-          />
-          {sourceType === 'warehouse' && sourceId ? (
-            <>
-              <label>Источник</label>
-              <input value="Склад" readOnly />
-            </>
-          ) : null}
-          <label>Причина брака *</label>
-          <input value={reason} onChange={(e) => setReason(e.target.value)} />
-          <label>Комментарий</label>
-          <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} />
-          {(error || localError) && <p className="modal__error">{localError || error}</p>}
+            {gpLoading ? <p className="defects-inline-note">Загрузка партий…</p> : null}
+            <div className="defects-modal__cart-layout">
+              <div className="defects-modal__cart-panel">
+                <div className="defects-modal__cart-head">
+                  <span>Позиции</span>
+                  <button
+                    type="button"
+                    className="btn btn--secondary btn--sm"
+                    disabled={gpLoading}
+                    onClick={() => {
+                      setCartLines((prev) => {
+                        const next = [...prev, newEmptyDefectCartLine()];
+                        setActiveLineIdx(next.length - 1);
+                        return next;
+                      });
+                    }}
+                  >
+                    + Добавить
+                  </button>
+                </div>
+                <div className="defects-modal__cart-list">
+                  {cartLines.map((line, idx) => {
+                    const b = line.warehouse_batch_id ? batchById.get(String(line.warehouse_batch_id)) : null;
+                    const title = b ? gpWarehouseProductLabel(b) : `Позиция ${idx + 1}`;
+                    const qty = parseLocaleNumber(line.quantity_pcs);
+                    const qtyPart = Number.isFinite(qty) && qty > 0 ? `${formatQuantityDisplay(qty)} шт` : '…';
+                    return (
+                      <button
+                        key={line.key}
+                        type="button"
+                        className={`defects-modal__cart-item${activeLineIdx === idx ? ' is-active' : ''}`}
+                        onClick={() => setActiveLineIdx(idx)}
+                      >
+                        <span className="defects-modal__cart-item-title">{title}</span>
+                        <span className="defects-modal__cart-item-meta">{qtyPart}{(line.defect_reason || '').trim() ? ` · ${(line.defect_reason || '').trim().slice(0, 36)}${(line.defect_reason || '').trim().length > 36 ? '…' : ''}` : ''}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {selectedCartLine ? (() => {
+                const idx = Math.min(activeLineIdx, cartLines.length - 1);
+                const line = cartLines[idx];
+                const cap = line.warehouse_batch_id ? batchCap(line.warehouse_batch_id) : null;
+                return (
+                  <div className="defects-modal__line-detail">
+                    <div className="defects-modal__line-detail-head">
+                      <span className="defects-modal__line-detail-title">Позиция {idx + 1}</span>
+                      {cartLines.length > 1 ? (
+                        <button
+                          type="button"
+                          className="btn btn--ghost btn--sm"
+                          onClick={() => {
+                            setCartLines((prev) => {
+                              const next = prev.filter((_, i) => i !== idx);
+                              setActiveLineIdx((cur) => {
+                                if (next.length === 0) return 0;
+                                if (cur >= idx && cur > 0) return cur - 1;
+                                return Math.min(cur, next.length - 1);
+                              });
+                              return next.length > 0 ? next : [newEmptyDefectCartLine()];
+                            });
+                          }}
+                        >
+                          Удалить
+                        </button>
+                      ) : null}
+                    </div>
+                    <label>Партия склада ГП *</label>
+                    <SearchableSelect
+                      value={line.warehouse_batch_id}
+                      onChange={(v) => {
+                        const capN = batchCap(v);
+                        setCartLines((prev) => prev.map((row, i) => {
+                          if (i !== idx) return row;
+                          const qtyParsed = parseLocaleNumber(row.quantity_pcs);
+                          const qtyNext = capN != null && (!row.quantity_pcs || !Number.isFinite(qtyParsed) || qtyParsed > capN)
+                            ? String(capN)
+                            : row.quantity_pcs;
+                          return { ...row, warehouse_batch_id: v, quantity_pcs: qtyNext };
+                        }));
+                      }}
+                      placeholder="Выберите партию"
+                      disabled={gpLoading}
+                      options={[
+                        { value: '', label: gpLoading ? 'Загрузка…' : 'Выберите партию' },
+                        ...gpOptions.map((b) => ({ value: String(b.id), label: gpBatchOptionLabel(b) })),
+                      ]}
+                    />
+                    {cap != null ? (
+                      <>
+                        <label>Доступно</label>
+                        <div className="defects-modal__readonly">{`${formatQuantityDisplay(cap)} шт`}</div>
+                      </>
+                    ) : null}
+                    <label>Количество (шт) *</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={line.quantity_pcs}
+                      onChange={(e) => setCartLines((prev) => prev.map((row, i) => (i === idx ? { ...row, quantity_pcs: e.target.value } : row)))}
+                    />
+                    <label>Причина брака *</label>
+                    <input
+                      value={line.defect_reason}
+                      onChange={(e) => setCartLines((prev) => prev.map((row, i) => (i === idx ? { ...row, defect_reason: e.target.value } : row)))}
+                    />
+                  </div>
+                );
+              })() : null}
+            </div>
+            {(error || localError) && <p className="modal__error">{localError || error}</p>}
           </div>
           <div className="modal__actions defects-modal__footer">
             <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary">Сохранить</button>
+            <button type="submit" className="btn btn--primary" disabled={gpLoading && gpOptions.length === 0}>Сохранить</button>
           </div>
         </form>
       </div>
@@ -796,7 +826,6 @@ const DefectDetailModal = ({
   defectId,
   reloadKey = 0,
   onClose,
-  onSendToRework,
   onSell,
   onWriteoff,
 }) => {
@@ -845,7 +874,6 @@ const DefectDetailModal = ({
                 <p><strong>Источник:</strong> {defect.source_label || sourceLabel(defect.source_type)}</p>
                 <p><strong>Причина:</strong> {defect.defect_reason || defect.writeoff_reason || '—'}</p>
                 <p><strong>Статус:</strong> <Badge variant={statusVariant(st)}>{statusLabel(st)}</Badge></p>
-                <p><strong>Комментарий:</strong> {defect.comment || '—'}</p>
               </section>
 
               <section className="defects-detail-modal__section">
@@ -885,7 +913,6 @@ const DefectDetailModal = ({
             <div className="modal__actions defects-detail-modal__footer">
               {canMutateDefectStock(defect) ? (
                 <>
-                  <button type="button" className="btn btn--secondary" onClick={() => onSendToRework(defect)}>Отправить в переделку</button>
                   <button type="button" className="btn btn--secondary" onClick={() => onSell(defect)}>Продать</button>
                   <button type="button" className="btn btn--danger" onClick={() => onWriteoff(defect)}>Списать</button>
                 </>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useCallback, useState, useMemo, useEffect } from 'react';
 import { useServerQuery, getApiErrorMessage, parseLocaleNumber, formatQuantityDisplay } from '../../../../shared/lib';
 import {
   EmptyState,
@@ -35,7 +35,24 @@ const clientIsActive = (c) => {
 
 const getPhoneExtra = (c) => c?.phone_extra ?? c?.phone_alt ?? '';
 
-const commentField = (c) => c?.comment ?? c?.notes ?? '';
+const clientTypeValue = (c) => {
+  const raw = asLower(c?.client_type || c?.type || c?.entity_type || c?.kind);
+  if (['company', 'legal', 'organization', 'business'].includes(raw)) return 'company';
+  return 'individual';
+};
+
+const clientTypeLabel = (c) => (clientTypeValue(c) === 'company' ? 'Компания' : 'Физ лицо');
+
+const companyAccountField = (c) => (
+  c?.settlement_account
+  ?? c?.bank_account
+  ?? c?.account_number
+  ?? c?.checking_account
+  ?? ''
+);
+
+const innField = (c) => c?.inn ?? c?.tax_id ?? '';
+const addressField = (c) => c?.address ?? c?.legal_address ?? '';
 const formatDate = (v) => (v ? String(v).slice(0, 10) : '—');
 const toMoney = (v) => (v != null && v !== '' ? `${formatQuantityDisplay(v)} сом` : '—');
 const textDisplay = (v) => (v == null || String(v).trim() === '' ? '—' : String(v).trim());
@@ -151,20 +168,23 @@ const ClientsPage = () => {
           <table className="data-table data-table--row-actions data-table--clients data-table--clients-min">
             <thead>
               <tr>
-                <th>Название</th>
+                <th>Тип</th>
+                <th>ФИО / Компания</th>
                 <th>Телефон</th>
                 <th>Доп. телефон</th>
+                <th>ИНН</th>
                 <th>Статус</th>
-                <th>Комментарий</th>
                 <th className="data-table__cell--actions"> </th>
               </tr>
             </thead>
             <tbody>
               {items.map((c) => (
                 <tr key={c.id}>
+                  <td><Badge variant={clientTypeValue(c) === 'company' ? 'primary' : 'default'}>{clientTypeLabel(c)}</Badge></td>
                   <td className="data-table__cell--lead">{textOrDash(c.name || c.title)}</td>
                   <td className="data-table__cell--muted">{textOrDash(c.phone || c.phone_number)}</td>
                   <td className="data-table__cell--muted">{textOrDash(getPhoneExtra(c))}</td>
+                  <td className="data-table__cell--muted">{textOrDash(innField(c))}</td>
                   <td>
                     {clientIsActive(c) ? (
                       <Badge variant="success">Активен</Badge>
@@ -172,7 +192,6 @@ const ClientsPage = () => {
                       <Badge variant="default">Неактивен</Badge>
                     )}
                   </td>
-                  <td className="data-table__cell-clip data-table__cell--muted">{textOrDash(commentField(c))}</td>
                   <td className="data-table__cell--actions">
                     <ActionMenu
                       ariaLabel="Действия"
@@ -221,25 +240,34 @@ const ClientsPage = () => {
 };
 
 const ClientModal = ({ client, onClose, onSubmit, error }) => {
+  const [clientType, setClientType] = useState('individual');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [phoneExtraVal, setPhoneExtraVal] = useState('');
-  const [comment, setComment] = useState('');
+  const [settlementAccount, setSettlementAccount] = useState('');
+  const [inn, setInn] = useState('');
+  const [address, setAddress] = useState('');
   const [status, setStatus] = useState('active');
 
   useEffect(() => {
     if (!client) {
+      setClientType('individual');
       setName('');
       setPhone('');
       setPhoneExtraVal('');
-      setComment('');
+      setSettlementAccount('');
+      setInn('');
+      setAddress('');
       setStatus('active');
       return;
     }
+    setClientType(clientTypeValue(client));
     setName(client.name || client.title || '');
     setPhone(client.phone || client.phone_number || '');
     setPhoneExtraVal(String(getPhoneExtra(client) || ''));
-    setComment(String(commentField(client) || ''));
+    setSettlementAccount(String(companyAccountField(client) || ''));
+    setInn(String(innField(client) || ''));
+    setAddress(String(addressField(client) || ''));
     setStatus(clientIsActive(client) ? 'active' : 'inactive');
   }, [client]);
 
@@ -265,24 +293,64 @@ const ClientModal = ({ client, onClose, onSubmit, error }) => {
           onSubmit={(e) => {
             e.preventDefault();
             const payload = {
+              client_type: clientType,
               name: name.trim(),
               phone: phone.trim() || undefined,
               phone_extra: phoneExtraVal.trim() || undefined,
-              notes: comment.trim() || undefined,
               status,
             };
+            if (clientType === 'company') {
+              payload.settlement_account = settlementAccount.trim() || undefined;
+              payload.inn = inn.trim() || undefined;
+              payload.address = address.trim() || undefined;
+            }
             onSubmit(payload);
           }}
         >
           <div className="clients-modal__scroll">
-            <label>Название *</label>
+            <div className="clients-modal__type-switch" role="tablist" aria-label="Тип клиента">
+              <button
+                type="button"
+                className={`clients-modal__type-btn${clientType === 'individual' ? ' is-active' : ''}`}
+                onClick={() => setClientType('individual')}
+              >
+                Физ лицо
+              </button>
+              <button
+                type="button"
+                className={`clients-modal__type-btn${clientType === 'company' ? ' is-active' : ''}`}
+                onClick={() => setClientType('company')}
+              >
+                Компания
+              </button>
+            </div>
+
+            <label>{clientType === 'company' ? 'Название компании *' : 'ФИО *'}</label>
             <input value={name} onChange={(e) => setName(e.target.value)} required />
-            <label>Телефон</label>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+996 …" />
-            <label>Доп. телефон</label>
-            <input value={phoneExtraVal} onChange={(e) => setPhoneExtraVal(e.target.value)} />
-            <label>Комментарий</label>
-            <textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} />
+            {clientType === 'company' ? (
+              <>
+                <label>Расчётный счёт</label>
+                <input value={settlementAccount} onChange={(e) => setSettlementAccount(e.target.value)} placeholder="Номер расчётного счёта" />
+              </>
+            ) : null}
+            <div className="clients-modal__grid">
+              <div>
+                <label>Телефон</label>
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+996 …" />
+              </div>
+              <div>
+                <label>{clientType === 'company' ? 'Доп. телефоны' : 'Доп. телефон'}</label>
+                <input value={phoneExtraVal} onChange={(e) => setPhoneExtraVal(e.target.value)} placeholder={clientType === 'company' ? 'Через запятую' : ''} />
+              </div>
+            </div>
+            {clientType === 'company' ? (
+              <>
+                <label>ИНН</label>
+                <input value={inn} onChange={(e) => setInn(e.target.value)} />
+                <label>Адрес</label>
+                <textarea rows={3} value={address} onChange={(e) => setAddress(e.target.value)} />
+              </>
+            ) : null}
             <label>Статус</label>
             <SearchableSelect value={status} onChange={setStatus} options={statusOptions} placeholder="Статус" />
             {error && <p className="modal__error">{error}</p>}
@@ -315,7 +383,7 @@ const ClientProfileModal = ({ clientId, onClose, onPaymentSaved }) => {
   const [paymentSales, setPaymentSales] = useState([]);
   const [payModalOpen, setPayModalOpen] = useState(false);
 
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -327,11 +395,11 @@ const ClientProfileModal = ({ clientId, onClose, onPaymentSaved }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId]);
 
   useEffect(() => {
     loadProfile();
-  }, [clientId]);
+  }, [loadProfile]);
 
   useEffect(() => {
     let alive = true;
@@ -434,10 +502,17 @@ const ClientProfileModal = ({ clientId, onClose, onPaymentSaved }) => {
               <section className="clients-profile__block">
                 <h4 className="clients-profile__title">Основа</h4>
                 <dl className="clients-profile__dl">
-                  <div className="clients-profile__row"><dt>Имя</dt><dd>{textDisplay(client.name || client.label)}</dd></div>
+                  <div className="clients-profile__row"><dt>Тип</dt><dd>{clientTypeLabel(client)}</dd></div>
+                  <div className="clients-profile__row"><dt>{clientTypeValue(client) === 'company' ? 'Компания' : 'ФИО'}</dt><dd>{textDisplay(client.name || client.label)}</dd></div>
                   <div className="clients-profile__row"><dt>Телефоны</dt><dd>{textDisplay([client.phone, client.phone_extra, client.phone_alt].filter(Boolean).join(', '))}</dd></div>
+                  {clientTypeValue(client) === 'company' ? (
+                    <>
+                      <div className="clients-profile__row"><dt>Расчётный счёт</dt><dd>{textDisplay(companyAccountField(client))}</dd></div>
+                      <div className="clients-profile__row"><dt>ИНН</dt><dd>{textDisplay(innField(client))}</dd></div>
+                      <div className="clients-profile__row"><dt>Адрес</dt><dd>{textDisplay(addressField(client))}</dd></div>
+                    </>
+                  ) : null}
                   <div className="clients-profile__row"><dt>Статус</dt><dd>{textDisplay(client.status_label || client.status || (client.is_active === false ? 'Неактивен' : 'Активен'))}</dd></div>
-                  <div className="clients-profile__row"><dt>Комментарий</dt><dd>{textDisplay(client.comment || client.notes)}</dd></div>
                 </dl>
               </section>
               <section className="clients-profile__block">

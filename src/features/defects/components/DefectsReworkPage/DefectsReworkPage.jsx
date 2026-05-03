@@ -8,21 +8,10 @@ const DefectsReworkPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [defectsMountKey, setDefectsMountKey] = useState(0);
-  const [reworkMountKey, setReworkMountKey] = useState(0);
 
   const bumpDefectsList = useCallback(() => {
     setDefectsMountKey((k) => k + 1);
   }, []);
-
-  const bumpReworkList = useCallback(() => {
-    setReworkMountKey((k) => k + 1);
-  }, []);
-
-  const handleSentToReworkSuccess = useCallback(() => {
-    bumpReworkList();
-    navigate('/cash/defects/rework');
-    bumpDefectsList();
-  }, [navigate, bumpReworkList, bumpDefectsList]);
 
   const isReworkTab = location.pathname.startsWith('/cash/defects/rework')
     || location.pathname.startsWith('/defects-rework/rework');
@@ -52,9 +41,9 @@ const DefectsReworkPage = () => {
 
       <div className="defects-rework-page__content">
         {isReworkTab ? (
-          <ReworkRequestsPage key={reworkMountKey} onAfterMutation={bumpDefectsList} />
+          <ReworkRequestsPage onAfterMutation={bumpDefectsList} />
         ) : (
-          <DefectsPage key={defectsMountKey} onSentToReworkSuccess={handleSentToReworkSuccess} />
+          <DefectsPage key={defectsMountKey} />
         )}
       </div>
     </div>

@@ -51,7 +51,11 @@ const readDisplayBatch = (b) => {
   return '—';
 };
 
-const WarehouseBatchDetailModal = ({ batch, onClose }) => {
+const formatWarehouseQty = (value, unit = 'шт') => (
+  value != null && value !== '' ? `${formatNumberForInput(value)} ${unit}` : '—'
+);
+
+const WarehouseBatchDetailModal = ({ batch, stockTab, onClose }) => {
   const [fullBatch, setFullBatch] = useState(batch || null);
   const [resolvedLineName, setResolvedLineName] = useState('');
   useEffect(() => {
@@ -100,10 +104,19 @@ const WarehouseBatchDetailModal = ({ batch, onClose }) => {
     return () => { alive = false; };
   }, [batch, fullBatch?.line_name]);
   if (!fullBatch) return null;
-  const rows = buildWarehouseBatchCardRows({
+  const rowsRaw = buildWarehouseBatchCardRows({
     ...fullBatch,
     line_name: fullBatch.line_name || resolvedLineName,
   });
+  const rows = stockTab === 'reworked'
+    ? [
+      { label: 'Продукт', value: readDisplayProduct(fullBatch) },
+      { label: 'Физический остаток', value: formatWarehouseQty(fullBatch.quantity, 'кг') },
+      { label: 'Свободно', value: formatWarehouseQty(fullBatch.available_quantity, 'кг') },
+      { label: 'Статус на складе', value: statusLabel(fullBatch.status) },
+      { label: 'Дата выпуска', value: fullBatch.date ? String(fullBatch.date).slice(0, 10) : '—' },
+    ]
+    : rowsRaw;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -137,25 +150,35 @@ const WarehousePage = () => {
     search: '',
     inventory_form: '',
   });
-  const [stockTab, setStockTab] = useState('good');
+  const [stockTab, setStockTab] = useState('good'); // good | defect | reworked
   const [reserveTarget, setReserveTarget] = useState(null);
   const [detailBatch, setDetailBatch] = useState(null);
   const [packOpen, setPackOpen] = useState(false);
   const [packError, setPackError] = useState('');
   const [submitError, setSubmitError] = useState('');
 
-  const { items, meta, raw, loading, error, refetch } = useServerQuery('warehouse/batches/', queryState, { enabled: true });
+  const listQuery = useMemo(() => {
+    const q = { ...queryState };
+    if (stockTab === 'reworked') {
+      q.stock_bucket = 'reworked';
+      delete q.inventory_form;
+      delete q.status;
+    }
+    return q;
+  }, [queryState, stockTab]);
+
+  const { items, meta, raw, loading, error, refetch } = useServerQuery('warehouse/batches/', listQuery, { enabled: true });
 
   useOperationalRefetch(['warehouse_batch', 'production_batch', 'batch'], refetch, true);
 
-  const rows = items || [];
-  const filteredRows = useMemo(
-    () => rows.filter((b) => {
+  const filteredRows = useMemo(() => {
+    const list = items || [];
+    if (stockTab === 'reworked') return list;
+    return list.filter((b) => {
       const qKey = readWarehouseQuality(b);
       return stockTab === 'defect' ? qKey === 'defect' : qKey !== 'defect';
-    }),
-    [rows, stockTab],
-  );
+    });
+  }, [items, stockTab]);
   const sortedRows = useMemo(
     () => [...filteredRows].sort((a, b) => {
       const ra = statusRank(a.status);
@@ -214,6 +237,13 @@ const WarehousePage = () => {
         >
           Брак
         </button>
+        <button
+          type="button"
+          className={`warehouse-tabs__btn${stockTab === 'reworked' ? ' is-active' : ''}`}
+          onClick={() => setStockTab('reworked')}
+        >
+          Переделанные
+        </button>
       </div>
       <div className="page--warehouse__toolbar ds-toolbar ds-toolbar--page-head commercial-toolbar">
         <div className="ds-toolbar__start page--warehouse__filters">
@@ -225,32 +255,37 @@ const WarehousePage = () => {
             onChange={(e) => setQueryState((p) => ({ ...p, search: e.target.value, page: 1 }))}
           />
           <div className="page--warehouse__filters-inline">
-            <Select
-              className="page--warehouse__select"
-              value={queryState.status}
-              placeholder="Статус"
-              options={[
-                { value: '', label: 'Все статусы' },
-                { value: 'available', label: 'Доступно' },
-                { value: 'reserved', label: 'Резерв' },
-                { value: 'shipped', label: 'Продано' },
-              ]}
-              onChange={(val) => setQueryState((p) => ({ ...p, status: val, page: 1 }))}
-            />
-            <Select
-              className="page--warehouse__select"
-              value={queryState.inventory_form}
-              placeholder="Форма"
-              options={[
-                { value: '', label: 'Все формы' },
-                { value: 'unpacked', label: 'Не упаковано' },
-                { value: 'packed', label: 'Упаковано' },
-                { value: 'open_package', label: 'Открытая упаковка' },
-              ]}
-              onChange={(val) => setQueryState((p) => ({ ...p, inventory_form: val, page: 1 }))}
-            />
+            {stockTab !== 'reworked' ? (
+              <>
+                <Select
+                  className="page--warehouse__select"
+                  value={queryState.status}
+                  placeholder="Статус"
+                  options={[
+                    { value: '', label: 'Все статусы' },
+                    { value: 'available', label: 'Доступно' },
+                    { value: 'reserved', label: 'Резерв' },
+                    { value: 'shipped', label: 'Продано' },
+                  ]}
+                  onChange={(val) => setQueryState((p) => ({ ...p, status: val, page: 1 }))}
+                />
+                <Select
+                  className="page--warehouse__select"
+                  value={queryState.inventory_form}
+                  placeholder="Форма"
+                  options={[
+                    { value: '', label: 'Все формы' },
+                    { value: 'unpacked', label: 'Не упаковано' },
+                    { value: 'packed', label: 'Упаковано' },
+                    { value: 'open_package', label: 'Открытая упаковка' },
+                  ]}
+                  onChange={(val) => setQueryState((p) => ({ ...p, inventory_form: val, page: 1 }))}
+                />
+              </>
+            ) : null}
           </div>
         </div>
+        {stockTab !== 'reworked' ? (
         <div className="ds-toolbar__end page--warehouse__toolbar-primary ds-hide-mobile">
           <button
             type="button"
@@ -260,8 +295,10 @@ const WarehousePage = () => {
             Упаковать
           </button>
         </div>
+        ) : null}
       </div>
 
+      {stockTab !== 'reworked' ? (
       <div className="ds-sticky-mobile-actions">
         <button
           type="button"
@@ -271,11 +308,12 @@ const WarehousePage = () => {
           Упаковать
         </button>
       </div>
+      ) : null}
 
       {loading && <Loading />}
       {error && error.status !== 404 && <ErrorState error={error} onRetry={refetch} />}
       {!loading && (!error || error.status === 404) && sortedRows.length === 0 && (
-        <EmptyState title="Нет партий" />
+        <EmptyState title={stockTab === 'reworked' ? 'Нет партий на складе переделанных' : 'Нет партий'} />
       )}
       {!loading && (!error || error.status === 404) && sortedRows.length > 0 && (
         <div className="commercial-table-wrap">
@@ -284,12 +322,12 @@ const WarehousePage = () => {
             <tr>
               <th>Продукт</th>
               <th>Статус</th>
-              <th>Качество</th>
+              {stockTab !== 'reworked' ? <th>Качество</th> : null}
               <th className="data-table__cell--num">Физический остаток</th>
-              <th className="data-table__cell--num">Зарезервировано</th>
+              {stockTab !== 'reworked' ? <th className="data-table__cell--num">Зарезервировано</th> : null}
               <th className="data-table__cell--num">Свободно</th>
-              <th>Партия</th>
-              <th aria-hidden />
+              {stockTab !== 'reworked' ? <th>Партия</th> : null}
+              {stockTab !== 'reworked' ? <th aria-hidden /> : null}
             </tr>
           </thead>
           <tbody>
@@ -302,7 +340,11 @@ const WarehousePage = () => {
               const inv = resolveInventoryForm(b);
               const invMod = inventoryFormBadgeModifier(inv);
               const qKey = readWarehouseQuality(b);
+              const isReworked = stockTab === 'reworked';
+              const unit = isReworked ? 'кг' : '';
               const canReserve =
+                !isReworked
+                &&
                 String(b.status || '').toLowerCase() === 'available'
                 && qKey !== 'defect';
               const defectReason = readWarehouseDefectReason(b);
@@ -334,24 +376,24 @@ const WarehousePage = () => {
                       <Badge variant={String(b.status || '').toLowerCase() === 'shipped' ? 'success' : String(b.status || '').toLowerCase() === 'reserved' ? 'warning' : 'default'}>
                         {statusLabel(b.status)}
                       </Badge>
-                      <span className={`warehouse-inv-badge warehouse-inv-badge--${invMod} warehouse-inv-badge--inline`}>
+                      {!isReworked ? <span className={`warehouse-inv-badge warehouse-inv-badge--${invMod} warehouse-inv-badge--inline`}>
                         {inventoryFormLabel(inv)}
-                      </span>
+                      </span> : null}
                     </div>
                   </td>
-                  <td>
+                  {stockTab !== 'reworked' ? <td>
                     <span
                       className={`warehouse-quality-badge warehouse-quality-badge--${qKey}`}
                       title={defectReason || undefined}
                     >
                       {warehouseQualityShortLabel(qKey)}
                     </span>
-                  </td>
-                  <td className="data-table__cell--num">{qtyRaw != null && qtyRaw !== '' ? formatNumberForInput(qtyRaw) : '—'}</td>
-                  <td className="data-table__cell--num">{reservedRaw != null && reservedRaw !== '' ? formatNumberForInput(reservedRaw) : '—'}</td>
-                  <td className="data-table__cell--num">{availableRaw != null && availableRaw !== '' ? formatNumberForInput(availableRaw) : '—'}</td>
-                  <td className="warehouse-table__batch data-table__cell--muted data-table__cell--num">{readDisplayBatch(b)}</td>
-                  <td>
+                  </td> : null}
+                  <td className="data-table__cell--num">{qtyRaw != null && qtyRaw !== '' ? `${formatNumberForInput(qtyRaw)}${unit ? ` ${unit}` : ''}` : '—'}</td>
+                  {stockTab !== 'reworked' ? <td className="data-table__cell--num">{reservedRaw != null && reservedRaw !== '' ? formatNumberForInput(reservedRaw) : '—'}</td> : null}
+                  <td className="data-table__cell--num">{availableRaw != null && availableRaw !== '' ? `${formatNumberForInput(availableRaw)}${unit ? ` ${unit}` : ''}` : '—'}</td>
+                  {stockTab !== 'reworked' ? <td className="warehouse-table__batch data-table__cell--muted data-table__cell--num">{readDisplayBatch(b)}</td> : null}
+                  {stockTab !== 'reworked' ? <td>
                     {canReserve ? (
                       <ActionMenu
                         ariaLabel="Действия"
@@ -371,7 +413,7 @@ const WarehousePage = () => {
                     ) : (
                       <span className="data-table__cell--muted">—</span>
                     )}
-                  </td>
+                  </td> : null}
                 </tr>
               );
             })}
@@ -395,6 +437,7 @@ const WarehousePage = () => {
       {detailBatch && (
         <WarehouseBatchDetailModal
           batch={detailBatch}
+          stockTab={stockTab}
           onClose={() => setDetailBatch(null)}
         />
       )}

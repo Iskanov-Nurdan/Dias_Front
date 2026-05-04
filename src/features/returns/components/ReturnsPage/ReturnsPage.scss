@@ -127,6 +127,17 @@
     max-width: 42rem;
   }
 
+  .return-modal__selected-sale {
+    margin: 0 0 0.65rem;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--bg-hover);
+    color: var(--text);
+    font-size: var(--font-label);
+    line-height: 1.35;
+  }
+
   .return-modal__readonly {
     display: block;
     width: 100%;

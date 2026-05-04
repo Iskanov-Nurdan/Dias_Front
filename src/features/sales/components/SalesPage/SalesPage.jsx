@@ -36,6 +36,7 @@ const paymentStatusLabel = (v) => {
   if (k === 'paid') return 'Оплачено';
   if (k === 'partially_paid') return 'Частично оплачено';
   if (k === 'unpaid') return 'Долг';
+  if (k === 'overpaid') return 'Переплата';
   return v || '—';
 };
 
@@ -44,6 +45,7 @@ const paymentStatusVariant = (v) => {
   if (k === 'paid') return 'success';
   if (k === 'partially_paid') return 'warning';
   if (k === 'unpaid') return 'danger';
+  if (k === 'overpaid') return 'warning';
   return 'default';
 };
 
@@ -53,6 +55,8 @@ const toNumber = (v) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 };
+const WAYBILL_SUPPLIER_NAME = 'ОсОО «Мундуз бий»';
+const WAYBILL_SUPPLIER_PHONE = '( 0507 55 06 55 )';
 
 const clientLabel = (c) => {
   if (!c) return '—';
@@ -1340,8 +1344,6 @@ const WaybillPreviewModal = ({ sale, batchMetaMap = {}, onClose }) => {
 
   const buyer = waybillData?.buyer_name || fallbackBuyer;
   const title = waybillData?.title || `Расходная накладная № ${sale.id || '—'} от ________ г.`;
-  const supplierLine = waybillData?.supplier_line || '_______________________';
-  const phoneLine = waybillData?.phone_line || '_______________________';
   const total = waybillData?.total ?? formatQuantityDisplay(fallbackTotal);
   const downloadPdf = () => {
     try {
@@ -1380,7 +1382,7 @@ const WaybillPreviewModal = ({ sale, batchMetaMap = {}, onClose }) => {
       <h4 className="waybill-copy__title">{title}</h4>
       <p className="waybill-copy__copy-mark">{copyTitle}</p>
       <div className="waybill-copy__meta">
-        <p><strong>Поставщик:</strong> {supplierLine}, тел: {phoneLine}</p>
+        <p><strong>Поставщик :</strong> {WAYBILL_SUPPLIER_NAME} <strong>тел:</strong> {WAYBILL_SUPPLIER_PHONE}</p>
         <p><strong>Покупатель:</strong> {buyer}</p>
       </div>
       <table className="waybill-copy__table">

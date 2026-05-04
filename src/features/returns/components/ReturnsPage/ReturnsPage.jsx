@@ -173,11 +173,6 @@ const returnTableSaleLabel = (r) => r.sale_display || r.display_sale || '—';
 
 const returnTableClientLabel = (r) => r.client_name || '—';
 
-const returnDisplayLabel = (r) => {
-  const raw = r?.display || r?.return_display || r?.return_number || '—';
-  return String(raw).replace(/^Возврат\s*/i, '').trim() || '—';
-};
-
 const returnRowTargetsLabel = (r) => {
   const lines = Array.isArray(r.lines) ? r.lines : [];
   const codes = [...new Set(lines.map((l) => l.return_target).filter(Boolean))];
@@ -335,18 +330,17 @@ const ReturnsPage = () => {
           />
         </div>
         <div className="ds-toolbar__end">
-          <button type="button" className="btn btn--primary" onClick={() => setModalDoc({})}>Создать возврат</button>
+          <button type="button" className="btn btn--primary" onClick={() => setModalDoc({})}>Создать</button>
         </div>
       </div>
       {loading && <Loading />}
       {error && error.status !== 404 && <ErrorState error={error} onRetry={refetch} />}
-      {!loading && (!error || error.status === 404) && items.length === 0 && <EmptyState title="Нет возвратов" />}
+      {!loading && (!error || error.status === 404) && items.length === 0 && <EmptyState title="Нет документов" />}
       {!loading && (!error || error.status === 404) && items.length > 0 && (
         <div className="commercial-table-wrap">
           <table className="data-table data-table--fixed data-table--row-actions data-table--returns">
           <thead>
             <tr>
-              <th>Возврат</th>
               <th>Клиент</th>
               <th>Продажа</th>
               <th>Дата</th>
@@ -359,11 +353,6 @@ const ReturnsPage = () => {
           <tbody>
             {items.map((r) => (
               <tr key={r.id}>
-                <td>
-                  <button type="button" className="btn btn--ghost" onClick={() => setDetailDocId(r.id)}>
-                    {returnDisplayLabel(r)}
-                  </button>
-                </td>
                 <td>{returnTableClientLabel(r)}</td>
                 <td>{returnTableSaleLabel(r)}</td>
                 <td>{(r.date || r.created_at || '').toString().slice(0, 10) || '—'}</td>
@@ -578,7 +567,7 @@ const ReturnModal = ({ doc, initialSaleId = '', sales, salesLoading, onSubmit, o
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal--wide return-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
-          <h3>{isCompletedLimited ? 'Реквизиты возврата' : doc ? 'Возврат' : 'Новый возврат'}</h3>
+          <h3>{isCompletedLimited ? 'Реквизиты' : doc ? 'Документ' : 'Новый документ'}</h3>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <form
@@ -657,8 +646,8 @@ const ReturnModal = ({ doc, initialSaleId = '', sales, salesLoading, onSubmit, o
 
             {!isCompletedLimited && (
               <section className="return-modal__section return-modal__section--cart">
-                <h4 className="return-modal__section-title">Корзина возврата</h4>
-                {!sale ? <p className="return-modal__hint">Сначала выберите продажу. Потом добавьте товары, количество и место возврата.</p> : null}
+                <h4 className="return-modal__section-title">Корзина</h4>
+                {!sale ? <p className="return-modal__hint">Сначала выберите продажу. Потом добавьте товары, количество и куда вернуть.</p> : null}
                 {linesLoading && sale ? <p className="return-modal__hint">Загрузка товаров продажи…</p> : null}
                 {sale ? (
                   <div className="return-modal__cart-layout">
@@ -777,7 +766,7 @@ const ReturnModal = ({ doc, initialSaleId = '', sales, salesLoading, onSubmit, o
 
             <section className="return-modal__section return-modal__section--details">
               <h4 className="return-modal__section-title">Детали</h4>
-              <label>Причина возврата</label>
+              <label>Причина</label>
               <input value={reason} onChange={(e) => setReason(e.target.value)} />
               <label>Номер счёта / накладной</label>
               <input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="Необязательно" />
@@ -852,7 +841,7 @@ const ReturnDetailModal = ({ returnId, onClose, onEdit, onMutate }) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal--wide return-detail-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
-          <h3>Карточка возврата</h3>
+          <h3>Карточка</h3>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         {loading && <Loading />}
@@ -898,7 +887,7 @@ const ReturnDetailModal = ({ returnId, onClose, onEdit, onMutate }) => {
                 )}
               </section>
               <section className="return-detail-modal__section">
-                <h4 className="return-detail-modal__section-title">Строки возврата</h4>
+                <h4 className="return-detail-modal__section-title">Строки</h4>
                 <div className="commercial-table-wrap">
                   <table className="data-table">
                     <thead>

@@ -4,7 +4,6 @@ import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hook
 import {
   useServerQuery,
   formatQuantityDisplay,
-  formatNumberForInput,
   parseLocaleNumber,
   getApiErrorMessage,
   parseApiListResponse,
@@ -830,14 +829,15 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
   const setRowQty = (idx, val) => {
     setComponents((prev) => prev.map((c, i) => {
       if (i !== idx) return c;
-      const q = parseLocaleNumber(val);
-      return { ...c, quantity: Number.isFinite(q) && q >= 0 ? q : '' };
+      return { ...c, quantity: val };
     }));
   };
 
   const handleSave = async () => {
     onError('');
-    const lines = components.filter((c) => Number.isFinite(Number(c.quantity)) && Number(c.quantity) >= 0);
+    const lines = components
+      .map((c) => ({ ...c, quantityNumber: parseLocaleNumber(c.quantity) }))
+      .filter((c) => Number.isFinite(c.quantityNumber) && c.quantityNumber >= 0);
     if (lines.length === 0) {
       onError('Добавьте хотя бы одну строку с нормой на 1 м.');
       return;
@@ -851,14 +851,14 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
             return {
               type: 'rework_stock',
               rework_warehouse_batch_id: c.id,
-              quantity_per_meter: Number(c.quantity),
+              quantity_per_meter: c.quantityNumber,
               unit: 'кг',
             };
           }
           const apiType = c.type === TYPE_CHEMISTRY ? 'chemistry' : 'raw_material';
           const comp = {
             type: apiType,
-            quantity_per_meter: Number(c.quantity),
+            quantity_per_meter: c.quantityNumber,
             unit: 'кг',
           };
           if (c.type === TYPE_RAW) comp.material_id = c.id;
@@ -960,11 +960,7 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
                     <DecimalInput
                       min={0}
                       className="recipe-modal__qty-inline"
-                      value={
-                        c.quantity === '' || c.quantity == null
-                          ? ''
-                          : formatNumberForInput(c.quantity)
-                      }
+                      value={c.quantity}
                       onChange={(v) => setRowQty(i, v)}
                     />
                     <button type="button" className="btn btn--sm btn--danger" onClick={() => removeComponent(i)} aria-label="Удалить компонент">×</button>

@@ -384,6 +384,12 @@
 // в”Ђв”Ђ Start card (no active shift) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
 .my-shift__start-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  min-height: 280px;
   background: var(--card);
   border-radius: var(--radius-xl);
   padding: var(--space-12) var(--space-8);
@@ -401,7 +407,7 @@
   border-radius: 50%;
   background: var(--accent-muted);
   color: var(--accent);
-  margin: 0 auto var(--space-4);
+  margin: 0;
 
   svg {
     width: 36px;
@@ -410,10 +416,11 @@
 }
 
 .my-shift__start-title {
-  margin: 0 0 var(--space-3);
+  margin: 0;
   font-size: var(--font-xl);
   font-weight: var(--weight-semibold);
   color: var(--text);
+  text-align: center;
 }
 
 .my-shift__start-desc {
@@ -427,13 +434,14 @@
 }
 
 .my-shift__open-btn {
-  margin: 0 auto var(--space-4);
+  margin: 0;
 }
 
 .my-shift__last-shift {
-  margin: var(--space-4) 0 0;
+  margin: 0;
   font-size: var(--font-xs);
   color: var(--text-muted);
+  text-align: center;
 }
 
 // в”Ђв”Ђ Active shift card в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ

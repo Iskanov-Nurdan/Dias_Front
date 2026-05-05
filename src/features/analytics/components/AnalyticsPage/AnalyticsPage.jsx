@@ -651,8 +651,9 @@ const AnalyticsPage = () => {
                 <Line
                   type="monotone"
                   dataKey="purchase_cost"
-                  stroke="#7c3aed"
+                  stroke="var(--accent-2, var(--accent))"
                   strokeWidth={1.85}
+                  strokeOpacity={0.9}
                   name="Закупки сырья"
                   dot={false}
                   activeDot={false}
@@ -766,7 +767,7 @@ const AnalyticsPage = () => {
                       formatter={(value) => [formatNumber(value), 'Продано, шт']}
                       labelFormatter={(label) => String(label)}
                     />
-                    <Bar dataKey="value" fill="var(--success)" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                    <Bar dataKey="value" fill="var(--success)" fillOpacity={0.85} radius={[4, 4, 0, 0]} maxBarSize={36} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -809,7 +810,7 @@ const AnalyticsPage = () => {
                       formatter={(value) => formatMoney(value)}
                       labelFormatter={(label) => String(label)}
                     />
-                    <Bar dataKey="value" fill="var(--info)" radius={[0, 6, 6, 0]} maxBarSize={22} />
+                    <Bar dataKey="value" fill="var(--info)" fillOpacity={0.85} radius={[0, 4, 4, 0]} maxBarSize={20} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -871,7 +872,7 @@ const AnalyticsPage = () => {
                     formatter={(value) => [formatNumber(value), 'Шт']}
                     labelFormatter={(label) => String(label)}
                   />
-                  <Bar dataKey="quantity" fill="var(--accent)" radius={[6, 6, 0, 0]} maxBarSize={44} />
+                  <Bar dataKey="quantity" fill="var(--accent)" fillOpacity={0.85} radius={[4, 4, 0, 0]} maxBarSize={36} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

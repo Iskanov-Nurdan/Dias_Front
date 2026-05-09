@@ -105,6 +105,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const [trainersList, setTrainersList] = useState([]);
   const [dateStart, setDateStart] = useState(() => getDateStartFieldValue(client));
   const [price, setPrice] = useState('');
+  const [trainerPrice, setTrainerPrice] = useState('');
   const [discount, setDiscount] = useState('');
   const [paid, setPaid] = useState(false);
   const [installments, setInstallments] = useState(() => [emptyInstallmentRow()]);
@@ -204,11 +205,30 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
     setSportId(client.sportId ?? client.sport_id ?? client.sport?.id ?? '');
     setTrainerId(client.trainerId ?? client.trainer_id ?? client.trainer?.id ?? '');
     setDateStart(getDateStartFieldValue(client));
-    setPrice(getPriceFieldInitialForForm(client));
+    const nextClientType = client.clientType || client.client_type || 'regular';
+    setClientType(nextClientType);
+    const nextTrainerPrice =
+      client.trainerPrice ??
+      client.trainer_price ??
+      client.priceTrainer ??
+      client.price_trainer ??
+      '';
+    const nextClubPrice =
+      client.clubPrice ??
+      client.club_price ??
+      client.priceClub ??
+      client.price_club ??
+      '';
+    if (nextClientType === 'individual') {
+      setPrice(nextClubPrice !== '' && nextClubPrice != null ? String(nextClubPrice) : '');
+      setTrainerPrice(nextTrainerPrice !== '' && nextTrainerPrice != null ? String(nextTrainerPrice) : '');
+    } else {
+      setPrice(getPriceFieldInitialForForm(client));
+      setTrainerPrice('');
+    }
     setDiscount(client.discount ?? '');
     setPaid(isClientPaid(client));
     setInstallments(getInitialInstallmentRows(client));
-    setClientType(client.clientType || client.client_type || 'regular');
     setGender(client.gender || '');
     const { auto, manual } = parseComment(client.comment);
     setCommentAuto(auto);
@@ -327,6 +347,10 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const discountPct = Number(discount) || 0;
   const priceInputNum = Number(price);
   const rawPriceInput = Number.isFinite(priceInputNum) ? priceInputNum : 0;
+  const trainerPriceNum = Number(trainerPrice);
+  const rawTrainerPriceInput = Number.isFinite(trainerPriceNum) ? trainerPriceNum : 0;
+  const isIndividualClient = clientType === 'individual';
+  const individualTotal = Math.max(0, Math.round(rawPriceInput + rawTrainerPriceInput));
   const discountFactor = discountPct >= 100 ? 0 : 1 - discountPct / 100;
 
   /**
@@ -335,7 +359,10 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
    */
   let contractBaseAmount;
   let amountAfterDiscount;
-  if (discountPct > 0 && discountFactor > 0) {
+  if (isIndividualClient) {
+    contractBaseAmount = individualTotal;
+    amountAfterDiscount = individualTotal;
+  } else if (discountPct > 0 && discountFactor > 0) {
     amountAfterDiscount = rawPriceInput;
     contractBaseAmount = Math.round(amountAfterDiscount / discountFactor);
   } else if (discountPct > 0) {
@@ -524,6 +551,22 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       toast.error(built.message);
       return;
     }
+
+    if (isIndividualClient) {
+      const club = Number(String(price).trim());
+      const tr = Number(String(trainerPrice).trim());
+      const clubOk = Number.isFinite(club) && club >= 0;
+      const trOk = Number.isFinite(tr) && tr >= 0;
+      if (!clubOk || !trOk) {
+        toast.error('Укажите корректные суммы: клуб и тренеру');
+        return;
+      }
+      if (Math.round(club + tr) <= 0) {
+        toast.error('Общая сумма должна быть больше ноля');
+        return;
+      }
+    }
+
     const autoLines = [...commentAuto];
     if (!client?.id && currentUserFio) {
       const addedLine = `Добавлен: ${currentUserFio}`;
@@ -569,7 +612,9 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       sportId: sportId || undefined,
       trainerId: trainerId || undefined,
       dateStart: dateStart || undefined,
-      price: hasPriceField ? contractBaseAmount : undefined,
+      price: (isIndividualClient || hasPriceField) ? contractBaseAmount : undefined,
+      clubPrice: isIndividualClient ? Math.round(rawPriceInput) : undefined,
+      trainerPrice: isIndividualClient ? Math.round(rawTrainerPriceInput) : undefined,
       discount: discount ? Number(discount) : undefined,
       paid,
       ...paymentsPayload,
@@ -609,15 +654,6 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                 <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="client-form-modal__input" />
               </label>
             </div>
-            {!isMobileFormLayout && (
-            <div className="client-form-modal__row">
-              <label className="client-form-modal__label">
-                <span className="client-form-modal__label-text">Пол</span>
-                <Select value={gender} onChange={setGender} options={[{ value: '', label: '—' }, { value: 'male', label: 'М' }, { value: 'female', label: 'Ж' }]} placeholder="—" className="client-form-modal__select" />
-              </label>
-              <div />
-            </div>
-            )}
           </div>
           <div className="client-form-modal__section">
             <h3 className="client-form-modal__section-title">Абонемент</h3>
@@ -662,9 +698,22 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               </label>
             </div>
             <div className="client-form-modal__row">
-              <label className="client-form-modal__label client-form-modal__label--full">
+              <label className="client-form-modal__label">
                 <span className="client-form-modal__label-text">Дата начала</span>
                 <input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} className="client-form-modal__input" />
+              </label>
+              <label className="client-form-modal__label">
+                <span className="client-form-modal__label-text">Тип</span>
+                <Select
+                  value={clientType}
+                  onChange={setClientType}
+                  options={[
+                    { value: 'regular', label: 'Регулярный' },
+                    { value: 'individual', label: 'Индивидуальный' },
+                    { value: 'one-time', label: 'Разовый' },
+                  ]}
+                  className="client-form-modal__select"
+                />
               </label>
             </div>
           </div>
@@ -673,7 +722,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
             <div className="client-form-modal__row">
               <label className="client-form-modal__label client-form-modal__label--full">
                 <span className="client-form-modal__label-text">
-                  {discountPct > 0 ? 'К оплате (со скидкой), сом' : 'Цена абонемента, сом'}
+                  {isIndividualClient ? 'Цена клубу, сом' : (discountPct > 0 ? 'К оплате (со скидкой), сом' : 'Цена абонемента, сом')}
                 </span>
                 <input
                   type="number"
@@ -688,24 +737,44 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                 />
                 {!compactHints && (
                   <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
-                    {discountPct > 0
-                      ? 'Та же сумма, что «Цена» в карточке. Ниже — договорная до скидки. Частичные взносы отдельно.'
-                      : 'Общая стоимость по договору — для скидки и отображения. Частичные взносы ниже.'}
+                    {isIndividualClient
+                      ? 'Для индивидуальных клиентов укажите отдельно: сколько получает клуб и сколько — тренер. Итоги в «Зарплата» считаются автоматически.'
+                      : (discountPct > 0
+                          ? 'Та же сумма, что «Цена» в карточке. Ниже — договорная до скидки. Частичные взносы отдельно.'
+                          : 'Общая стоимость по договору — для скидки и отображения. Частичные взносы ниже.')}
                   </span>
                 )}
               </label>
             </div>
 
+            {isIndividualClient && (
+              <div className="client-form-modal__row">
+                <label className="client-form-modal__label client-form-modal__label--full">
+                  <span className="client-form-modal__label-text">Цена тренеру, сом</span>
+                  <input
+                    type="number"
+                    value={trainerPrice}
+                    onChange={(e) => setTrainerPrice(e.target.value)}
+                    className="client-form-modal__input"
+                    placeholder="0"
+                    min="0"
+                    step="1"
+                    autoComplete="off"
+                    inputMode="numeric"
+                  />
+                  {!compactHints && (
+                    <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
+                      Итого: <strong>{individualTotal.toLocaleString('ru-RU')} сом</strong>
+                    </span>
+                  )}
+                </label>
+              </div>
+            )}
+
             <div className="client-form-modal__installments">
               <div className="client-form-modal__installments-header">
                 <span className="client-form-modal__installments-title">Частичные оплаты</span>
-                {!compactHints && <span className="client-form-modal__optional">необязательно</span>}
               </div>
-              {!compactHints && (
-                <p className="client-form-modal__installments-hint">
-                  Несколько платежей (например, долями): у каждой строки — сумма и день фактической оплаты. Попадает в отчёт «Записи по дням».
-                </p>
-              )}
               <div className="client-form-modal__installments-grid client-form-modal__installments-grid--head" aria-hidden>
                 <span>Сумма, сом</span>
                 <span>Дата оплаты</span>
@@ -809,17 +878,14 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
             ) : null}
 
             <div className="client-form-modal__row">
-              <label className="client-form-modal__label">
-                <span className="client-form-modal__label-text">Скидка, %</span>
-              <input type="number" min="0" max="100" value={discount} onChange={handleDiscountChange} className="client-form-modal__input" placeholder="0" />
-            </label>
-            <div className="client-form-modal__label client-form-modal__label--toggle">
-              <span className="client-form-modal__label-text">Оплачено</span>
-              <div className="client-form-modal__paid-toggle" role="group" aria-label="Статус оплаты">
-                <button type="button" className={`client-form-modal__paid-option ${paid ? 'client-form-modal__paid-option--active' : ''}`} onClick={() => setPaid(true)}>Да</button>
-                <button type="button" className={`client-form-modal__paid-option ${!paid ? 'client-form-modal__paid-option--active' : ''}`} onClick={() => setPaid(false)}>Нет</button>
+              <div className="client-form-modal__label client-form-modal__label--toggle">
+                <span className="client-form-modal__label-text">Оплачено</span>
+                <div className="client-form-modal__paid-toggle" role="group" aria-label="Статус оплаты">
+                  <button type="button" className={`client-form-modal__paid-option ${paid ? 'client-form-modal__paid-option--active' : ''}`} onClick={() => setPaid(true)}>Да</button>
+                  <button type="button" className={`client-form-modal__paid-option ${!paid ? 'client-form-modal__paid-option--active' : ''}`} onClick={() => setPaid(false)}>Нет</button>
+                </div>
               </div>
-            </div>
+              <div />
             </div>
             {(contractBaseAmount > 0 || rawPriceInput > 0) && (
             <div className="client-form-modal__price-summary">
@@ -835,22 +901,10 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               )}
             </div>
             )}
-            <div className="client-form-modal__row">
-              <label className="client-form-modal__label">
-                <span className="client-form-modal__label-text">Тип</span>
-                <Select value={clientType} onChange={setClientType} options={[{ value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }, { value: 'one-time', label: 'Разовый' }]} className="client-form-modal__select" />
-              </label>
-              <div />
-            </div>
           </div>
 
           <div className="client-form-modal__section">
             <h3 className="client-form-modal__section-title">Фото для сверки</h3>
-            {!compactHints && (
-              <p className="client-form-modal__photos-hint">
-                Чеки и наличные — неограниченное число снимков. Новые файлы отправляются на сервер при нажатии «Сохранить» (сначала карточка, затем фото).
-              </p>
-            )}
             <div className="client-form-modal__row client-form-modal__row--photos-toolbar">
               <label className="client-form-modal__label">
                 <span className="client-form-modal__label-text">Тип для новых фото</span>
@@ -951,19 +1005,44 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
           <details
             className="client-form-modal__more"
             key={isMobileFormLayout ? 'extra-mobile' : 'extra-desktop'}
-            {...(!isMobileFormLayout ? { open: true } : {})}
           >
             <summary className="client-form-modal__more-summary">Дополнительно</summary>
             <div className="client-form-modal__more-inner">
-              {isMobileFormLayout && (
-                <div className="client-form-modal__section client-form-modal__section--flush">
+              <div className="client-form-modal__section client-form-modal__section--flush">
+                <h3 className="client-form-modal__section-title">Поля</h3>
+                <div className="client-form-modal__row">
                   <label className="client-form-modal__label">
                     <span className="client-form-modal__label-text">Пол</span>
-                    <Select value={gender} onChange={setGender} options={[{ value: '', label: '—' }, { value: 'male', label: 'М' }, { value: 'female', label: 'Ж' }]} placeholder="—" className="client-form-modal__select" />
+                    <Select
+                      value={gender}
+                      onChange={setGender}
+                      options={[
+                        { value: '', label: '—' },
+                        { value: 'male', label: 'М' },
+                        { value: 'female', label: 'Ж' },
+                      ]}
+                      placeholder="—"
+                      className="client-form-modal__select"
+                    />
                   </label>
-                  {!compactHints && <p className="client-form-modal__slot-hint-mobile">{trainingSlotHint}</p>}
+                  <label className="client-form-modal__label">
+                    <span className="client-form-modal__label-text">Скидка, %</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={discount}
+                      onChange={handleDiscountChange}
+                      className="client-form-modal__input"
+                      placeholder="0"
+                      disabled={isIndividualClient}
+                    />
+                  </label>
                 </div>
-              )}
+                {isMobileFormLayout && !compactHints && (
+                  <p className="client-form-modal__slot-hint-mobile">{trainingSlotHint}</p>
+                )}
+              </div>
               <div className="client-form-modal__section client-form-modal__section--flush">
                 <h3 className="client-form-modal__section-title">Комментарий</h3>
                 <div className="client-form-modal__label client-form-modal__label--full">

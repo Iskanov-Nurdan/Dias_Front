@@ -6,6 +6,15 @@ import { MONTHS } from '../../shared/constants/common';
 import { ErrorState, EmptyState, Select, SkeletonTable, FilterBar } from '../../shared/ui';
 import './SalaryPage.scss';
 
+const pickNumber = (...vals) => {
+  for (const v of vals) {
+    if (v == null || v === '') continue;
+    const n = Number(v);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+};
+
 const SalaryPage = () => {
   const [queryState, setQueryState] = useState({ year: new Date().getFullYear(), month: new Date().getMonth() + 1, day: '' });
   const [data, setData] = useState(null);
@@ -136,11 +145,39 @@ const SalaryPage = () => {
               <tr><td colSpan={10} className="salary-page__empty-cell"><EmptyState compact tableCell message="Нет данных за период" /></td></tr>
             ) : items.map((row, index) => {
                 const trainerId = row.trainerId ?? row.trainer_id ?? row.id ?? index;
-                const income = row.income ?? row.revenue ?? row.clientIncome ?? 0;
-                const percent = getTrainerPercent(row);
+                const explicitTrainerIncome = pickNumber(
+                  row.trainerIncome,
+                  row.trainer_income,
+                  row.trainerRevenue,
+                  row.trainer_revenue,
+                  row.incomeTrainer,
+                  row.income_trainer,
+                );
+                const explicitClubIncome = pickNumber(
+                  row.clubIncome,
+                  row.club_income,
+                  row.clubRevenue,
+                  row.club_revenue,
+                  row.incomeClub,
+                  row.income_club,
+                );
+                const hasExplicitSplit = explicitTrainerIncome != null || explicitClubIncome != null;
+                const fallbackIncome = pickNumber(row.income, row.revenue, row.clientIncome, row.client_income, row.totalIncome, row.total_income) ?? 0;
+
+                const income = hasExplicitSplit
+                  ? Math.round((explicitTrainerIncome ?? 0) + (explicitClubIncome ?? 0))
+                  : (Number.isFinite(Number(fallbackIncome)) ? Number(fallbackIncome) : 0);
+
+                const percent = hasExplicitSplit ? '' : getTrainerPercent(row);
                 const numPercent = typeof percent === 'number' && !Number.isNaN(percent) ? percent : 0;
-                const trainerShare = income * (numPercent / 100);
-                const clubShare = income - trainerShare;
+
+                const trainerShare = hasExplicitSplit
+                  ? Math.round(explicitTrainerIncome ?? 0)
+                  : income * (numPercent / 100);
+                const clubShare = hasExplicitSplit
+                  ? Math.round(explicitClubIncome ?? Math.max(0, income - trainerShare))
+                  : income - trainerShare;
+
                 const total = trainerShare;
                 const saved = row.saved === true || row.saved === 'true';
                 const isSaving = savingTrainerId === trainerId;
@@ -165,8 +202,9 @@ const SalaryPage = () => {
                           value={percent === '' ? '' : percent}
                           onChange={(e) => setTrainerPercent(row, e.target.value)}
                           className="salary-page__percent-input"
-                          placeholder="0"
+                          placeholder={hasExplicitSplit ? '—' : '0'}
                           aria-label="Процент тренеру"
+                          disabled={hasExplicitSplit}
                         />
                       </span>
                     </td>

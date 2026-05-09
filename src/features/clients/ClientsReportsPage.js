@@ -477,42 +477,6 @@ const ClientsReportsPage = () => {
                 </div>
               </div>
 
-              <div className="clients-page__stats-block">
-                <h3 className="clients-page__stats-block-title">По тренерам</h3>
-                <div className="clients-page__stats-table-wrap">
-                  <table className="clients-page__stats-table">
-                    <thead>
-                      <tr><th>Тренер</th><th>Учеников</th><th>Оплатили</th><th>Не оплатили</th></tr>
-                    </thead>
-                    <tbody>
-                      {!statsData.byTrainer?.length ? (
-                        <tr>
-                          <td colSpan={4} className="clients-page__stats-empty">
-                            <EmptyState compact tableCell message="Нет данных" />
-                          </td>
-                        </tr>
-                      ) : (
-                        statsData.byTrainer.map((r) => (
-                          <tr
-                            key={r.trainerId ?? r.trainerName ?? 'no-trainer'}
-                            className={r.trainerId ? 'clients-page__stats-row--clickable' : ''}
-                            onClick={r.trainerId ? () => setTrainerDetails({ trainerId: r.trainerId, trainerName: r.trainerName }) : undefined}
-                            role={r.trainerId ? 'button' : undefined}
-                            tabIndex={r.trainerId ? 0 : undefined}
-                            onKeyDown={r.trainerId ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTrainerDetails({ trainerId: r.trainerId, trainerName: r.trainerName }); } } : undefined}
-                          >
-                            <td data-label="Тренер"><span className="clients-page__stats-cell-value">{r.trainerName}</span></td>
-                            <td data-label="Учеников"><span className="clients-page__stats-cell-value">{r.total}</span></td>
-                            <td data-label="Оплатили"><span className="clients-page__stats-cell-value">{r.paid}</span></td>
-                            <td data-label="Не оплатили"><span className="clients-page__stats-cell-value">{r.unpaid}</span></td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
               <ClientsScheduleStatsBlock
                 raw={scheduleStatsRaw}
                 loading={scheduleStatsLoading}

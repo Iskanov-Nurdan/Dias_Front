@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { EmptyState } from '../../../shared/ui';
 import {
   normalizeClientsScheduleStatsResponse,
@@ -6,6 +6,11 @@ import {
   formatScheduleSlotLabel,
 } from '../lib/scheduleStatsNormalize';
 import './ClientsScheduleStatsBlock.scss';
+
+const num = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
 
 /**
  * @param {object} props
@@ -22,40 +27,48 @@ const ClientsScheduleStatsBlock = ({
   endpointMissing,
   onTrainerRowClick,
 }) => {
+  const [expandedTrainerId, setExpandedTrainerId] = useState(null);
   const { trainers } = useMemo(
     () => (raw != null ? normalizeClientsScheduleStatsResponse(raw) : { trainers: [], unassigned: null }),
     [raw]
   );
 
-  const flatRows = useMemo(() => {
-    const rows = [];
-    for (const t of trainers) {
-      const slots = sortScheduleSlots(t.slots).filter((s) => s.weekday >= 1 && s.weekday <= 7 && s.timeFrom && s.timeTo);
-      for (const s of slots) {
-        rows.push({
+  const grouped = useMemo(() => {
+    const items = trainers
+      .map((t) => {
+        const slots = sortScheduleSlots(t.slots).filter(
+          (s) => s.weekday >= 1 && s.weekday <= 7 && s.timeFrom && s.timeTo
+        );
+        const slotRows = slots.map((s) => ({
           trainerId: t.trainerId,
           trainerName: t.trainerName,
           ...s,
           slotLabel: formatScheduleSlotLabel(s.weekday, s.timeFrom, s.timeTo),
+        }));
+        slotRows.sort((a, b) => {
+          if (a.weekday !== b.weekday) return a.weekday - b.weekday;
+          return String(a.timeFrom).localeCompare(String(b.timeFrom), undefined, { numeric: true });
         });
-      }
-    }
-    rows.sort((a, b) => {
-      const na = String(a.trainerName).localeCompare(String(b.trainerName), 'ru');
-      if (na !== 0) return na;
-      if (a.weekday !== b.weekday) return a.weekday - b.weekday;
-      return String(a.timeFrom).localeCompare(String(b.timeFrom), undefined, { numeric: true });
-    });
-    return rows;
+        const total = slotRows.reduce((acc, r) => acc + num(r.total), 0);
+        const paid = slotRows.reduce((acc, r) => acc + num(r.paid), 0);
+        const unpaid = slotRows.reduce((acc, r) => acc + num(r.unpaid), 0);
+        return {
+          trainerId: t.trainerId,
+          trainerName: t.trainerName,
+          total,
+          paid,
+          unpaid,
+          slots: slotRows,
+        };
+      })
+      .sort((a, b) => String(a.trainerName).localeCompare(String(b.trainerName), 'ru'));
+    return items;
   }, [trainers]);
 
   if (loading) {
     return (
       <div className="clients-schedule-stats">
         <h3 className="clients-schedule-stats__title">По графику тренеров</h3>
-        <p className="clients-schedule-stats__hint">
-          Сколько учеников приходится на каждый интервал из графика (день недели + время), в выбранном периоде.
-        </p>
         <div className="clients-schedule-stats__loading">
           <span className="loading-inline">
             <span className="loading-inline__spinner" aria-hidden />
@@ -70,10 +83,6 @@ const ClientsScheduleStatsBlock = ({
     return (
       <div className="clients-schedule-stats">
         <h3 className="clients-schedule-stats__title">По графику тренеров</h3>
-        <p className="clients-schedule-stats__hint">
-          Здесь будет таблица: по каждому слоту графика (как в «Настройка графика» тренера) — число учеников, оплативших и не
-          оплативших за период. После реализации эндпоинта на бэкенде данные подтянутся автоматически.
-        </p>
         <div className="clients-schedule-stats__placeholder" role="status">
           Ожидается API: <code className="clients-schedule-stats__code">GET /api/clients/stats/schedule/</code>
         </div>
@@ -108,51 +117,85 @@ const ClientsScheduleStatsBlock = ({
             </tr>
           </thead>
           <tbody>
-            {!flatRows.length ? (
+            {!grouped.length ? (
               <tr>
                 <td colSpan={5} className="clients-schedule-stats__empty">
                   <EmptyState compact tableCell message="Нет данных по слотам за период" />
                 </td>
               </tr>
             ) : (
-              flatRows.map((r, idx) => (
-                <tr
-                  key={`${r.trainerId ?? r.trainerName}-${r.weekday}-${r.timeFrom}-${r.timeTo}-${idx}`}
-                  className={r.trainerId ? 'clients-schedule-stats__row--clickable' : undefined}
-                  onClick={
-                    r.trainerId && onTrainerRowClick
-                      ? () =>
-                          onTrainerRowClick(r.trainerId, r.trainerName, {
-                            weekday: r.weekday,
-                            timeFrom: r.timeFrom,
-                            timeTo: r.timeTo,
-                          })
-                      : undefined
-                  }
-                  role={r.trainerId ? 'button' : undefined}
-                  tabIndex={r.trainerId ? 0 : undefined}
-                  onKeyDown={
-                    r.trainerId && onTrainerRowClick
-                      ? (e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            onTrainerRowClick(r.trainerId, r.trainerName, {
-                              weekday: r.weekday,
-                              timeFrom: r.timeFrom,
-                              timeTo: r.timeTo,
-                            });
+              grouped.flatMap((t) => {
+                const tid = t.trainerId ?? t.trainerName;
+                const isOpen = expandedTrainerId != null && String(expandedTrainerId) === String(tid);
+                const headerRow = (
+                  <tr
+                    key={`trainer-${tid}`}
+                    className={t.trainerId ? 'clients-schedule-stats__row--clickable' : undefined}
+                    onClick={t.trainerId ? () => setExpandedTrainerId((prev) => (String(prev) === String(tid) ? null : tid)) : undefined}
+                    role={t.trainerId ? 'button' : undefined}
+                    tabIndex={t.trainerId ? 0 : undefined}
+                    onKeyDown={
+                      t.trainerId
+                        ? (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setExpandedTrainerId((prev) => (String(prev) === String(tid) ? null : tid));
+                            }
                           }
+                        : undefined
+                    }
+                  >
+                    <td>{t.trainerName}</td>
+                    <td className="clients-schedule-stats__slot">{isOpen ? '—' : 'Нажмите для слотов'}</td>
+                    <td>{t.total}</td>
+                    <td>{t.paid}</td>
+                    <td>{t.unpaid}</td>
+                  </tr>
+                );
+
+                const slotRows = isOpen
+                  ? t.slots.map((r, idx) => (
+                      <tr
+                        key={`slot-${tid}-${r.weekday}-${r.timeFrom}-${r.timeTo}-${idx}`}
+                        className={r.trainerId ? 'clients-schedule-stats__row--clickable' : undefined}
+                        onClick={
+                          r.trainerId && onTrainerRowClick
+                            ? () =>
+                                onTrainerRowClick(r.trainerId, r.trainerName, {
+                                  weekday: r.weekday,
+                                  timeFrom: r.timeFrom,
+                                  timeTo: r.timeTo,
+                                })
+                            : undefined
                         }
-                      : undefined
-                  }
-                >
-                  <td>{r.trainerName}</td>
-                  <td className="clients-schedule-stats__slot">{r.slotLabel}</td>
-                  <td>{r.total}</td>
-                  <td>{r.paid}</td>
-                  <td>{r.unpaid}</td>
-                </tr>
-              ))
+                        role={r.trainerId ? 'button' : undefined}
+                        tabIndex={r.trainerId ? 0 : undefined}
+                        onKeyDown={
+                          r.trainerId && onTrainerRowClick
+                            ? (e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  onTrainerRowClick(r.trainerId, r.trainerName, {
+                                    weekday: r.weekday,
+                                    timeFrom: r.timeFrom,
+                                    timeTo: r.timeTo,
+                                  });
+                                }
+                              }
+                            : undefined
+                        }
+                      >
+                        <td>{''}</td>
+                        <td className="clients-schedule-stats__slot">{r.slotLabel}</td>
+                        <td>{r.total}</td>
+                        <td>{r.paid}</td>
+                        <td>{r.unpaid}</td>
+                      </tr>
+                    ))
+                  : [];
+
+                return [headerRow, ...slotRows];
+              })
             )}
           </tbody>
         </table>

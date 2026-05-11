@@ -8,7 +8,7 @@ import { LinesPage } from '../../features/lines';
 import { UsersPage } from '../../features/users';
 import { AnalyticsPage } from '../../features/analytics';
 import { MaterialsPage } from '../../features/materials';
-import { ChemistryPage } from '../../features/chemistry';
+import { ChemistryPage, EmployeePrepareBlanksPage } from '../../features/chemistry';
 import { ProductionPage } from '../../features/production';
 import { OTKPage } from '../../features/otk';
 import { WarehousePage } from '../../features/warehouse';
@@ -55,6 +55,7 @@ const AppRoutes = () => (
       <Route path="production" element={<ProtectedRoute requiredAccess="production"><ProductionPage /></ProtectedRoute>} />
       <Route path="materials" element={<ProtectedRoute requiredAccess="materials"><MaterialsPage /></ProtectedRoute>} />
       <Route path="chemistry" element={<ProtectedRoute requiredAccess="chemistry"><ChemistryPage /></ProtectedRoute>} />
+      <Route path="prepare-blanks" element={<ProtectedRoute requiredAccess="chemistry"><EmployeePrepareBlanksPage /></ProtectedRoute>} />
       <Route path="directories" element={<ProtectedRoute requiredAccess="recipes"><ReferenceBooksPage /></ProtectedRoute>} />
       <Route path="directories/recipes" element={<ProtectedRoute requiredAccess="recipes"><ReferenceBooksPage /></ProtectedRoute>} />
       <Route path="recipes" element={<Navigate to="/directories/recipes" replace />} />

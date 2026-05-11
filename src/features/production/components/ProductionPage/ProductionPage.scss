@@ -342,6 +342,24 @@
         content: 'Действие';
       }
     }
+
+    .production-table--produced-local {
+      .production-table__row > *:nth-child(1)::before {
+        content: 'Товар';
+      }
+
+      .production-table__row > *:nth-child(2)::before {
+        content: 'Заготовка';
+      }
+
+      .production-table__row > *:nth-child(3)::before {
+        content: 'Дата';
+      }
+
+      .production-table__row > *:nth-child(4)::before {
+        content: 'Брак';
+      }
+    }
   }
 }
 
@@ -389,10 +407,34 @@
   .production-table__th--actions {
     min-width: 5rem;
   }
-}
 
-.production-table--client-rq {
   .dias-select {
     min-width: 140px;
+  }
+}
+
+.production-table--produced-local {
+  min-width: 640px;
+
+  .production-table__header,
+  .production-table__row {
+    grid-template-columns:
+      minmax(9rem, 1.2fr)
+      minmax(9rem, 1.2fr)
+      10rem
+      6.5rem;
+    gap: 0.5rem 0.625rem;
+  }
+
+  .production-table__header {
+    font-size: 0.71875rem;
+  }
+
+  .production-table__row {
+    min-height: 3rem;
+  }
+
+  .production-table__cell-clip {
+    white-space: nowrap;
   }
 }

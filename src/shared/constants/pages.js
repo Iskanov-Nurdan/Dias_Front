@@ -39,7 +39,7 @@ export const PAGE_LABELS = {
   [PAGE_IDS.USERS]: 'Сотрудники',
   [PAGE_IDS.LINES]: 'Линии',
   [PAGE_IDS.MATERIALS]: 'Сырьё',
-  [PAGE_IDS.CHEMISTRY]: 'Химия',
+  [PAGE_IDS.CHEMISTRY]: 'Заготовка',
   [PAGE_IDS.RECIPES]: 'Рецепты',
   [PAGE_IDS.OTK]: 'ОТК',
   [PAGE_IDS.WAREHOUSE]: 'Склад',
@@ -55,10 +55,10 @@ export const PAGE_LABELS = {
 /** Группы для вспомогательных подборок (виджеты, ссылки) */
 export const PAGE_GROUPS = {
   norms: [PAGE_IDS.RECIPES, PAGE_IDS.MATERIALS],
-  production: [PAGE_IDS.LINES, PAGE_IDS.CHEMISTRY, PAGE_IDS.OTK],
+  production: [PAGE_IDS.CHEMISTRY, PAGE_IDS.OTK],
   finished: [PAGE_IDS.WAREHOUSE],
   main: [PAGE_IDS.ANALYTICS, PAGE_IDS.OTK, PAGE_IDS.WAREHOUSE],
-  setup: [PAGE_IDS.LINES, PAGE_IDS.MATERIALS, PAGE_IDS.CHEMISTRY, PAGE_IDS.RECIPES],
+  setup: [PAGE_IDS.MATERIALS, PAGE_IDS.CHEMISTRY, PAGE_IDS.RECIPES],
   admin: [PAGE_IDS.USERS],
   commerce: [PAGE_IDS.CLIENTS, PAGE_IDS.ORDERS, PAGE_IDS.SALES, PAGE_IDS.PAYMENTS, PAGE_IDS.RETURNS, PAGE_IDS.DEFECTS, PAGE_IDS.REWORK_REQUESTS],
 };

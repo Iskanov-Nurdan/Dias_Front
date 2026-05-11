@@ -26,8 +26,6 @@ export const HOME_ACCESS_PRIORITY = [
   'my_shift',
   'materials',
   'chemistry',
-  'recipes',
-  'lines',
   'production',
   'otk',
   'warehouse',
@@ -77,12 +75,16 @@ export function getNavSections() {
       links: [
         { path: '/materials', accessKey: 'materials' },
         { path: '/chemistry', accessKey: 'chemistry' },
-        { path: '/directories', accessKey: 'recipes', label: 'Справочники' },
+        {
+          path: '/prepare-blanks',
+          accessKey: 'chemistry',
+          label: 'Заготовка (цех)',
+          iconKey: 'chemistry',
+        },
       ],
     },
     {
       links: [
-        { path: '/lines', accessKey: 'lines' },
         { path: '/production', accessKey: 'production' },
         { path: '/otk', accessKey: 'otk' },
       ],

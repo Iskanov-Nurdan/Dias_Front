@@ -1,0 +1,193 @@
+.employee-prepare-blanks__lede {
+  margin: 0 0 1rem;
+}
+
+/* Таблица-список */
+.employee-prepare-table.chemistry-table {
+  min-width: 820px;
+
+  .chemistry-table__header,
+  .chemistry-table__row {
+    grid-template-columns:
+      minmax(7rem, 1.2fr)
+      6.5rem
+      5rem
+      6.5rem
+      7rem
+      minmax(11rem, auto);
+    gap: 0.45rem 0.6rem;
+    align-items: center;
+  }
+
+  .chemistry-table__th--num {
+    text-align: right;
+  }
+}
+
+/* Большое модальное окно с рецептом */
+.employee-prepare-detail-modal {
+  &.modal {
+    min-width: min(920px, 96vw);
+    max-width: min(1200px, 98vw);
+    max-height: min(92vh, 900px);
+  }
+
+  &__body {
+    overflow-y: auto;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  &__h4 {
+    margin: 0 0 0.65rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-secondary);
+  }
+
+  &__summary {
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius-md);
+    background: var(--bg-hover);
+    border: 1px solid var(--border-subtle);
+  }
+
+  &__stats {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.45rem;
+    font-size: 0.9375rem;
+
+    li {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 1rem;
+
+      span {
+        color: var(--text-secondary);
+      }
+
+      strong {
+        font-variant-numeric: tabular-nums;
+        color: var(--text);
+      }
+    }
+  }
+
+  &__stats-total {
+    padding-top: 0.5rem;
+    margin-top: 0.35rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  &__recipe-block {
+    min-height: 0;
+  }
+
+  &__empty {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.9375rem;
+  }
+
+  &__recipe-total {
+    margin: 0.85rem 0 0;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+}
+
+.employee-prepare-recipe-grid {
+  display: grid;
+  grid-template-columns: 1fr 7.5rem;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem 0.35rem;
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.9375rem;
+
+  &--head {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    border-bottom-width: 2px;
+    border-bottom-color: var(--border);
+  }
+
+  &--row:last-of-type {
+    border-bottom: none;
+  }
+
+  &__num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (max-width: 900px) {
+  .page--chemistry .employee-prepare-table.chemistry-table {
+    min-width: 0;
+
+    .chemistry-table__header {
+      display: none;
+    }
+
+    .chemistry-table__row {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.35rem;
+      padding: 0.65rem 0.35rem;
+    }
+
+    .chemistry-table__num,
+    .chemistry-table__name {
+      text-align: left;
+    }
+
+    .chemistry-table__actions {
+      justify-content: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .chemistry-table__row > *:nth-child(1)::before {
+      content: 'Рецепт: ';
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .chemistry-table__row > *:nth-child(2)::before {
+      content: 'кг / бочка: ';
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .chemistry-table__row > *:nth-child(3)::before {
+      content: 'Бочек: ';
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .chemistry-table__row > *:nth-child(4)::before {
+      content: 'Доп. кг: ';
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .chemistry-table__row > *:nth-child(5)::before {
+      content: 'Всего: ';
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+  }
+}

@@ -48,6 +48,10 @@
   font-size: 0.85em;
 }
 
+.chemistry-element-form__hint--compact {
+  margin-bottom: var(--space-2);
+}
+
 .chemistry-element-form__check {
   display: flex;
   align-items: center;
@@ -83,11 +87,43 @@
     font-size: var(--font-caption);
     font-weight: var(--weight-medium);
     color: var(--text-secondary);
-    grid-template-columns: minmax(0, 1fr) 140px 36px;
+    grid-template-columns: minmax(0, 1fr) 152px var(--input-height);
+    align-items: end;
+    padding-bottom: 2px;
   }
 
   &--row {
-    grid-template-columns: minmax(0, 1fr) 140px 36px;
+    grid-template-columns: minmax(0, 1fr) 152px var(--input-height);
+    align-items: center;
+
+    .dias-select {
+      height: var(--input-height);
+      min-height: var(--input-height);
+      box-sizing: border-box;
+    }
+
+    .chemistry-recipe-grid__kg-input {
+      width: 100%;
+      height: var(--input-height);
+      min-height: var(--input-height);
+      box-sizing: border-box;
+      margin: 0;
+    }
+
+    > .btn.btn--sm {
+      flex-shrink: 0;
+      justify-self: end;
+      width: var(--input-height);
+      min-width: var(--input-height);
+      height: var(--input-height);
+      min-height: var(--input-height);
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      box-sizing: border-box;
+    }
   }
 }
 
@@ -937,6 +973,43 @@
   align-items: center;
 }
 
+.chemistry-table--prep-list {
+  min-width: 420px;
+}
+
+.chemistry-table--prep-list .chemistry-table__header,
+.chemistry-table--prep-list .chemistry-table__row {
+  grid-template-columns:
+    minmax(140px, 1fr)
+    minmax(220px, auto);
+  align-items: center;
+}
+
+.chemistry-blank-stock__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.chemistry-blank-stock__composition-label {
+  display: block;
+  margin-top: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.chemistry-blank-stock__total-preview {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: rgba(17, 24, 39, 0.04);
+  border: 1px solid var(--border-subtle);
+  font-size: var(--font-body);
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.4;
+}
+
 .chemistry-table--stock-full {
   min-width: 560px;
 }
@@ -1030,18 +1103,21 @@
     }
 
     .chemistry-table--catalog-full,
+    .chemistry-table--prep-list,
     .chemistry-table--stock-full,
     .chemistry-table--batches-full {
       min-width: 0 !important;
     }
 
     .chemistry-table--catalog-full .chemistry-table__header,
+    .chemistry-table--prep-list .chemistry-table__header,
     .chemistry-table--stock-full .chemistry-table__header,
     .chemistry-table--batches-full .chemistry-table__header {
       display: none;
     }
 
     .chemistry-table--catalog-full .chemistry-table__row,
+    .chemistry-table--prep-list .chemistry-table__row,
     .chemistry-table--stock-full .chemistry-table__row,
     .chemistry-table--batches-full .chemistry-table__row {
       display: flex;
@@ -1053,6 +1129,7 @@
     }
 
     .chemistry-table--catalog-full .chemistry-table__row > *,
+    .chemistry-table--prep-list .chemistry-table__row > *,
     .chemistry-table--stock-full .chemistry-table__row > *,
     .chemistry-table--batches-full .chemistry-table__row > * {
       display: flex;
@@ -1071,6 +1148,7 @@
     }
 
     .chemistry-table--catalog-full .chemistry-table__row > *::before,
+    .chemistry-table--prep-list .chemistry-table__row > *::before,
     .chemistry-table--stock-full .chemistry-table__row > *::before,
     .chemistry-table--batches-full .chemistry-table__row > *::before {
       content: '';
@@ -1099,6 +1177,14 @@
     }
 
     .chemistry-table--catalog-full .chemistry-table__row > *:nth-child(5)::before {
+      content: 'Действия';
+    }
+
+    .chemistry-table--prep-list .chemistry-table__row > *:nth-child(1)::before {
+      content: 'Имя';
+    }
+
+    .chemistry-table--prep-list .chemistry-table__row > *:nth-child(2)::before {
       content: 'Действия';
     }
 

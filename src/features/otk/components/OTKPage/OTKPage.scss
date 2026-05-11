@@ -189,6 +189,55 @@
       minmax(0, 1fr);
   }
 
+  &--blank-runs &__header {
+    grid-template-columns:
+      minmax(0, 1.1fr)
+      minmax(0, 0.95fr)
+      118px
+      76px
+      minmax(7.5rem, 1fr)
+      92px;
+  }
+
+  &--blank-runs &__row {
+    grid-template-columns:
+      minmax(0, 1.1fr)
+      minmax(0, 0.95fr)
+      118px
+      76px
+      minmax(7.5rem, 1fr)
+      92px;
+  }
+
+  &__cell-clip {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__muted {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.35;
+  }
+
+  &__defect-action {
+    min-width: 0;
+  }
+
+  &__select-cell {
+    min-width: 0;
+
+    .dias-select {
+      width: 100%;
+    }
+  }
+
+  &__th--narrow {
+    text-align: center;
+  }
+
   &--history &__row--clickable {
     cursor: pointer;
 
@@ -263,6 +312,33 @@
     flex-wrap: wrap;
     gap: 0.5rem;
     justify-content: flex-end;
+  }
+}
+
+.otk-inline-defect {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+
+  &__form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1 1 10rem;
+    min-width: 0;
+
+    .otk-inline-defect__kg {
+      flex: 1 1 5rem;
+      min-width: 4rem;
+      max-width: 8rem;
+      padding: 0.45rem 0.55rem;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm, 6px);
+      font: inherit;
+      box-sizing: border-box;
+    }
   }
 }
 
@@ -595,6 +671,138 @@
     .otk-table--history .otk-table__row > *:nth-child(6)::before {
       content: 'Комментарий';
     }
+
+    .otk-table--blank-runs .otk-table__header {
+      display: none;
+    }
+
+    .otk-table--blank-runs .otk-table__row {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      padding: var(--space-4);
+      margin-bottom: var(--space-3);
+    }
+
+    .otk-table--blank-runs .otk-table__row > * {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--space-3);
+      width: 100%;
+      padding: var(--space-2) 0;
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: right;
+      min-width: 0;
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    .otk-table--blank-runs .otk-table__row > *::before {
+      content: '';
+      font-size: var(--font-caption);
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-align: left;
+      flex: 0 1 46%;
+      min-width: 0;
+    }
+
+    .otk-table--blank-runs .otk-table__row > *:nth-child(1)::before {
+      content: 'Товар';
+    }
+
+    .otk-table--blank-runs .otk-table__row > *:nth-child(2)::before {
+      content: 'Заготовка';
+    }
+
+    .otk-table--blank-runs .otk-table__row > *:nth-child(3)::before {
+      content: 'Дата';
+    }
+
+    .otk-table--blank-runs .otk-table__row > *:nth-child(4)::before {
+      content: 'Брак';
+    }
+
+    .otk-table--blank-runs .otk-table__row > *:nth-child(5)::before {
+      content: 'Статус ГП';
+    }
+
+    .otk-table--blank-runs .otk-table__row > *:nth-child(6)::before {
+      content: 'Действие';
+    }
   }
 }
 
+.otk-blank-detail-modal {
+  max-width: 520px;
+
+  &__body {
+    padding-top: 0.25rem;
+  }
+
+  &__lede {
+    margin: 0 0 1rem;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    line-height: 1.45;
+  }
+
+  &__summary {
+    margin-bottom: 1rem;
+  }
+
+  &__field {
+    margin-bottom: 1rem;
+
+    label {
+      display: block;
+      margin-bottom: 0.35rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+  }
+
+  &__hint {
+    margin-top: 0.5rem;
+  }
+
+  &__preview {
+    margin: 0.75rem 0 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    background: var(--bg-hover);
+    border: 1px solid var(--border-subtle);
+    font-size: 0.9rem;
+  }
+
+  &__preview-title {
+    margin: 0 0 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+  }
+
+  &__preview-muted {
+    font-weight: 400;
+    color: var(--text-muted);
+  }
+}
+
+.otk-table__num-like {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  font-size: 0.85rem;
+}
+
+.otk-table__actions-cell {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}

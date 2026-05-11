@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
 import {
   useServerQuery,
@@ -18,6 +18,16 @@ import Select from '../../../../shared/ui/Select/Select';
 import { apiClient } from '../../../../shared/api';
 import { useOperationalRefetch } from '../../../../shared/realtime';
 import PackFromOtkModal from '../PackFromOtkModal';
+import {
+  subscribeBlankRuns,
+  getBlankRunsSnapshot,
+  loadBlankProductionRuns,
+  acceptGpWarehouseRunWithPieces,
+  isBlankRunOtkRecorded,
+  resolveRecipeKgForRun,
+  resolveUsedKgForRun,
+  getGpAcceptBounds,
+} from '../../../chemistry/lib/localBlankStore';
 import './WarehousePage.scss';
 
 const statusLabel = (status) => warehouseStockStatusRu(status);
@@ -141,6 +151,285 @@ const WarehouseBatchDetailModal = ({ batch, stockTab, onClose }) => {
   );
 };
 
+const gpFmtIso = (iso) => {
+  if (!iso) return '—';
+  const s = String(iso);
+  if (s.length >= 19) return `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)} ${s.slice(11, 19)}`;
+  return s.slice(0, 10);
+};
+
+const cellNum = (v, suffix = '') => {
+  if (v == null || v === '') return '—';
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '—';
+  return `${formatNumberForInput(n)}${suffix}`;
+};
+
+const WarehouseGpAcceptModal = ({ run, onClose }) => {
+  const toast = useToast();
+  const bounds = useMemo(() => getGpAcceptBounds(run), [run]);
+  const [piecesDraft, setPiecesDraft] = useState('');
+
+  useEffect(() => {
+    if (!run) return;
+    const b = getGpAcceptBounds(run);
+    if (b.ok) setPiecesDraft(String(b.maxPieces));
+    else setPiecesDraft('');
+  }, [run?.id, run?.goodKg, run?.goodPieces, run?.weightKgPerPiece]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!run?.id) return;
+    if (!bounds.ok) {
+      toast.show('Нет данных для приёмки: вес штуки и годный объём по строке');
+      return;
+    }
+    const trimmed = String(piecesDraft ?? '').trim();
+    if (trimmed === '') {
+      toast.show('Укажите количество принятых штук');
+      return;
+    }
+    const n = Math.floor(Number(trimmed));
+    if (!Number.isFinite(n) || n < 0 || n > bounds.maxPieces) {
+      toast.show(`От 0 до ${bounds.maxPieces} шт (по расчёту ОТК)`);
+      return;
+    }
+    if (acceptGpWarehouseRunWithPieces(run.id, n)) {
+      toast.show(
+        n < bounds.maxPieces
+          ? 'Принято. Остаток учтён в «Остатках» на производстве'
+          : 'Принято на склад ГП',
+      );
+      onClose();
+    } else toast.show('Не удалось сохранить приёмку');
+  };
+
+  if (!run) return null;
+
+  const parsed =
+    String(piecesDraft ?? '').trim() === '' ? NaN : Math.floor(Number(piecesDraft));
+  const previewAcceptedKg =
+    bounds.ok && Number.isFinite(parsed) && parsed >= 0 ? parsed * bounds.weightKgPerPiece : null;
+  const previewRemainder =
+    bounds.ok && previewAcceptedKg != null ? Math.max(0, bounds.goodKg - previewAcceptedKg) : null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose} role="presentation">
+      <div
+        className="modal modal--wide warehouse-gp-accept-modal"
+        onClick={(ev) => ev.stopPropagation()}
+        role="dialog"
+        aria-labelledby="warehouse-gp-accept-title"
+      >
+        <div className="modal__head">
+          <h3 id="warehouse-gp-accept-title">Приёмка: {run.productName || 'Товар'}</h3>
+          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
+            ×
+          </button>
+        </div>
+        <form className="modal__body chemistry-element-form" onSubmit={handleSubmit}>
+          {!bounds.ok ? (
+            <p className="modal__error">
+              Не задан вес одной штуки или годный объём. Проверьте товар и запись ОТК.
+            </p>
+          ) : (
+            <>
+              <p className="warehouse-gp-accept-modal__lede">
+                После ОТК по расчёту: до <strong>{bounds.maxPieces} шт</strong> (
+                {formatNumberForInput(bounds.goodKg)} кг годного при{' '}
+                {formatNumberForInput(bounds.weightKgPerPiece)} кг/шт). Укажите, сколько штук реально
+                принимаете на склад — разница останется как остаток в машине и появится во вкладке
+                «Остатки».
+              </p>
+              <label htmlFor="gp-accept-pieces">Принято фактически, шт</label>
+              <input
+                id="gp-accept-pieces"
+                inputMode="numeric"
+                className="warehouse-gp-accept-modal__pieces-input"
+                value={piecesDraft}
+                onChange={(ev) => setPiecesDraft(ev.target.value.replace(/[^\d]/g, ''))}
+                placeholder="0"
+                autoComplete="off"
+              />
+              <div className="warehouse-gp-accept-modal__preview">
+                <div>
+                  <span className="warehouse-gp-accept-modal__preview-label">На склад ГП, кг</span>
+                  <span className="warehouse-gp-accept-modal__preview-value">
+                    {previewAcceptedKg != null ? `${formatNumberForInput(previewAcceptedKg)} кг` : '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="warehouse-gp-accept-modal__preview-label">Остаток в машине, кг</span>
+                  <span className="warehouse-gp-accept-modal__preview-value">
+                    {previewRemainder != null ? `${formatNumberForInput(previewRemainder)} кг` : '—'}
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+          <div className="modal__actions">
+            <button type="button" className="btn btn--secondary" onClick={onClose}>
+              Отмена
+            </button>
+            <button type="submit" className="btn btn--primary" disabled={!bounds.ok}>
+              Сохранить приёмку
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const WarehouseGpAcceptPanel = () => {
+  const [acceptRun, setAcceptRun] = useState(null);
+  const v = useSyncExternalStore(subscribeBlankRuns, getBlankRunsSnapshot, getBlankRunsSnapshot);
+  const { pending, accepted } = useMemo(() => {
+    void v;
+    const runs = loadBlankProductionRuns();
+    const pend = runs.filter((r) => isBlankRunOtkRecorded(r) && !r.gpAcceptedAt);
+    const acc = runs
+      .filter((r) => r.gpAcceptedAt)
+      .sort((a, b) => String(b.gpAcceptedAt).localeCompare(String(a.gpAcceptedAt)))
+      .slice(0, 40);
+    return { pending: pend, accepted: acc };
+  }, [v]);
+
+  const cellUsedKgDisplay = (r) => {
+    const u = resolveUsedKgForRun(r);
+    return u > 0 ? `${formatNumberForInput(u)} кг` : '—';
+  };
+
+  const rowCellsPending = (r) => (
+    <>
+      <td className="warehouse-gp__product">{r.productName || '—'}</td>
+      <td className="data-table__cell--muted">{r.blankName || '—'}</td>
+      <td className="data-table__cell--muted">{gpFmtIso(r.createdAt)}</td>
+      <td className="data-table__cell--num">{cellNum(resolveRecipeKgForRun(r), ' кг')}</td>
+      <td className="data-table__cell--num">{cellUsedKgDisplay(r)}</td>
+      <td className="data-table__cell--num">{cellNum(r.defectKg, ' кг')}</td>
+      <td className="data-table__cell--num">{cellNum(r.goodKg, ' кг')}</td>
+      <td className="data-table__cell--num">
+        {r.goodPieces != null && Number.isFinite(Number(r.goodPieces))
+          ? formatNumberForInput(Number(r.goodPieces))
+          : '—'}
+      </td>
+      <td className="data-table__cell--num">{cellNum(r.weightKgPerPiece, ' кг')}</td>
+      <td>
+        <button type="button" className="btn btn--primary btn--sm" onClick={() => setAcceptRun(r)}>
+          Принять
+        </button>
+      </td>
+    </>
+  );
+
+  const acceptedPiecesLabel = (r) => {
+    if (r.gpAcceptedPieces != null && Number.isFinite(Number(r.gpAcceptedPieces))) {
+      return formatNumberForInput(Number(r.gpAcceptedPieces));
+    }
+    if (r.goodPieces != null && Number.isFinite(Number(r.goodPieces))) {
+      return formatNumberForInput(Math.floor(Number(r.goodPieces)));
+    }
+    return '—';
+  };
+
+  const rowCellsAccepted = (r) => (
+    <>
+      <td className="warehouse-gp__product">{r.productName || '—'}</td>
+      <td className="data-table__cell--muted">{r.blankName || '—'}</td>
+      <td className="data-table__cell--muted">{gpFmtIso(r.createdAt)}</td>
+      <td className="data-table__cell--num">{cellNum(resolveRecipeKgForRun(r), ' кг')}</td>
+      <td className="data-table__cell--num">{cellUsedKgDisplay(r)}</td>
+      <td className="data-table__cell--num">{cellNum(r.defectKg, ' кг')}</td>
+      <td className="data-table__cell--num">{cellNum(r.goodKg, ' кг')}</td>
+      <td className="data-table__cell--num">
+        {r.goodPieces != null && Number.isFinite(Number(r.goodPieces))
+          ? formatNumberForInput(Number(r.goodPieces))
+          : '—'}
+      </td>
+      <td className="data-table__cell--num">{cellNum(r.weightKgPerPiece, ' кг')}</td>
+      <td className="data-table__cell--num">{acceptedPiecesLabel(r)}</td>
+      <td className="data-table__cell--num">{cellNum(r.gpAcceptedKg, ' кг')}</td>
+      <td className="data-table__cell--num">{cellNum(r.gpMachineRemainderKg, ' кг')}</td>
+      <td className="data-table__cell--muted">{gpFmtIso(r.gpAcceptedAt)}</td>
+    </>
+  );
+
+  return (
+    <div className="warehouse-gp">
+      <section className="warehouse-gp__block">
+        <h2 className="warehouse-gp__title">К приёмке (после ОТК)</h2>
+        <p className="warehouse-gp__hint">
+          Здесь виден расчёт годных килограммов и штук. Нажмите «Принять», чтобы зафиксировать поступление
+          на склад ГП (локально).
+        </p>
+        {pending.length === 0 ? (
+          <EmptyState title="Нет строк на приёмку" />
+        ) : (
+          <div className="commercial-table-wrap warehouse-gp__table-wrap">
+            <table className="data-table data-table--warehouse-gp">
+              <thead>
+                <tr>
+                  <th>Товар</th>
+                  <th>Заготовка</th>
+                  <th>Дата выпуска</th>
+                  <th className="data-table__cell--num">Заготовка, кг</th>
+                  <th className="data-table__cell--num">В производстве, кг</th>
+                  <th className="data-table__cell--num">Брак, кг</th>
+                  <th className="data-table__cell--num">Годного, кг</th>
+                  <th className="data-table__cell--num">Шт</th>
+                  <th className="data-table__cell--num">кг/шт</th>
+                  <th aria-hidden />
+                </tr>
+              </thead>
+              <tbody>
+                {pending.map((r) => (
+                  <tr key={r.id}>{rowCellsPending(r)}</tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="warehouse-gp__block warehouse-gp__block--second">
+        <h2 className="warehouse-gp__title">Принято</h2>
+        {accepted.length === 0 ? (
+          <EmptyState title="Пока ничего не принято" />
+        ) : (
+          <div className="commercial-table-wrap warehouse-gp__table-wrap">
+            <table className="data-table data-table--warehouse-gp">
+              <thead>
+                <tr>
+                  <th>Товар</th>
+                  <th>Заготовка</th>
+                  <th>Дата выпуска</th>
+                  <th className="data-table__cell--num">Заготовка, кг</th>
+                  <th className="data-table__cell--num">В производстве, кг</th>
+                  <th className="data-table__cell--num">Брак, кг</th>
+                  <th className="data-table__cell--num">Годного, кг</th>
+                  <th className="data-table__cell--num">Шт (расч.)</th>
+                  <th className="data-table__cell--num">кг/шт</th>
+                  <th className="data-table__cell--num">Принято, шт</th>
+                  <th className="data-table__cell--num">На склад, кг</th>
+                  <th className="data-table__cell--num">Остаток машины, кг</th>
+                  <th>Принято</th>
+                </tr>
+              </thead>
+              <tbody>
+                {accepted.map((r) => (
+                  <tr key={r.id}>{rowCellsAccepted(r)}</tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+      {acceptRun ? <WarehouseGpAcceptModal run={acceptRun} onClose={() => setAcceptRun(null)} /> : null}
+    </div>
+  );
+};
+
 const WarehousePage = () => {
   const toast = useToast();
   const [queryState, setQueryState] = useState({
@@ -150,7 +439,7 @@ const WarehousePage = () => {
     search: '',
     inventory_form: '',
   });
-  const [stockTab, setStockTab] = useState('good'); // good | defect | reworked
+  const [stockTab, setStockTab] = useState('good'); // good | defect | reworked | gp
   const [reserveTarget, setReserveTarget] = useState(null);
   const [detailBatch, setDetailBatch] = useState(null);
   const [packOpen, setPackOpen] = useState(false);
@@ -167,11 +456,14 @@ const WarehousePage = () => {
     return q;
   }, [queryState, stockTab]);
 
-  const { items, meta, raw, loading, error, refetch } = useServerQuery('warehouse/batches/', listQuery, { enabled: true });
+  const { items, meta, raw, loading, error, refetch } = useServerQuery('warehouse/batches/', listQuery, {
+    enabled: stockTab !== 'gp',
+  });
 
-  useOperationalRefetch(['warehouse_batch', 'production_batch', 'batch'], refetch, true);
+  useOperationalRefetch(['warehouse_batch', 'production_batch', 'batch'], refetch, stockTab !== 'gp');
 
   const filteredRows = useMemo(() => {
+    if (stockTab === 'gp') return [];
     const list = items || [];
     if (stockTab === 'reworked') return list;
     return list.filter((b) => {
@@ -244,7 +536,18 @@ const WarehousePage = () => {
         >
           Переделанные
         </button>
+        <button
+          type="button"
+          className={`warehouse-tabs__btn${stockTab === 'gp' ? ' is-active' : ''}`}
+          onClick={() => setStockTab('gp')}
+        >
+          Склад ГП
+        </button>
       </div>
+      {stockTab === 'gp' ? (
+        <WarehouseGpAcceptPanel />
+      ) : (
+        <>
       <div className="page--warehouse__toolbar ds-toolbar ds-toolbar--page-head commercial-toolbar">
         <div className="ds-toolbar__start page--warehouse__filters">
           <input
@@ -424,6 +727,8 @@ const WarehousePage = () => {
       {!loading && (!error || error.status === 404) && (
         <Pagination meta={listMeta} onPageChange={(nextPage) => setQueryState((p) => ({ ...p, page: nextPage }))} />
       )}
+        </>
+      )}
 
       {reserveTarget && (
         <ReserveModal
@@ -434,7 +739,7 @@ const WarehousePage = () => {
         />
       )}
 
-      {detailBatch && (
+      {detailBatch && stockTab !== 'gp' && (
         <WarehouseBatchDetailModal
           batch={detailBatch}
           stockTab={stockTab}

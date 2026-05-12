@@ -208,6 +208,43 @@ export function getEmployeePreparedBreakdown(blankId) {
   };
 }
 
+/**
+ * Списать массу партии с цеховой заготовки (после «Произвести»).
+ * Если на цехе нет строки или сумма 0 — ничего не делаем (обратная совместимость).
+ * Если кг на цехе меньше списания — false (не запускать производство).
+ */
+export function consumeEmployeePreparedKg(blankId, kgToSubtract) {
+  if (blankId == null || blankId === '') return true;
+  const n = Number(kgToSubtract);
+  if (!Number.isFinite(n) || n <= 1e-9) return true;
+
+  const bd = getEmployeePreparedBreakdown(blankId);
+  if (!bd) return true;
+  const { totalKg: total, recipeKgPerBarrel: rp } = bd;
+  if (total <= 1e-9) return true;
+  if (total + 1e-6 < n) return false;
+
+  const newTotal = Math.max(0, total - n);
+  const newBarrels = Math.floor(newTotal / rp + 1e-9);
+  const newExtra = Math.max(0, newTotal - newBarrels * rp);
+
+  const list = loadEmployeePreparedBlanks();
+  const i = list.findIndex((r) => String(r.blankId) === String(blankId));
+  if (i < 0) return true;
+  if (newBarrels <= 0 && newExtra <= 1e-9) {
+    list.splice(i, 1);
+  } else {
+    list[i] = {
+      ...list[i],
+      blankId: String(blankId),
+      barrels: newBarrels,
+      extraKg: newExtra,
+    };
+  }
+  saveEmployeePreparedBlanks(list);
+  return true;
+}
+
 /** Лимит штук для приёмки ГП и расчёт фактических кг. */
 export function getGpAcceptBounds(run) {
   if (!run) return { ok: false };

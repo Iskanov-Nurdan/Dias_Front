@@ -159,10 +159,6 @@ const EmployeePrepareBlanksPage = () => {
   return (
     <div className="page page--chemistry chemistry-blank-stock">
       <div className="chemistry-card">
-        <p className="chemistry-page__lede employee-prepare-blanks__lede">
-          Рецепт задаёт админ в «Заготовка». «+ бочка» увеличивает накопленный объём на одну бочку (сумма кг по
-          составу). Килограммы после частичной приёмки склада ГП автоматически прибавляются к той же заготовке.
-        </p>
         {blanks.length === 0 ? (
           <EmptyState title="Нет рецептов — админ создаёт их в «Заготовка»" />
         ) : (

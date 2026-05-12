@@ -10,6 +10,8 @@ import {
   loadProducts,
   appendProduct,
   appendBlankProductionRun,
+  getEmployeePreparedBreakdown,
+  consumeEmployeePreparedKg,
 } from '../../../chemistry/lib/localBlankStore';
 import './ProduceBlankModal.scss';
 
@@ -149,6 +151,15 @@ const ProduceBlankModal = ({ onClose, onSaved }) => {
     }
     const r = Number(blankTotalKg);
     const usedKg = Math.min(r, DEMO_PRODUCTION_VAT_MAX_KG);
+    const prep = getEmployeePreparedBreakdown(String(blankId));
+    if (prep && prep.totalKg > 1e-6) {
+      if (prep.totalKg + 1e-6 < usedKg) {
+        setError(
+          `В «Заготовка (цех)» сейчас ${formatNumberForInput(prep.totalKg)} кг, для партии нужно ${formatNumberForInput(usedKg)} кг. Добавьте бочки или скорректируйте рецепт.`,
+        );
+        return;
+      }
+    }
     setError('');
     appendBlankProductionRun({
       id: newRunId(),
@@ -169,6 +180,9 @@ const ProduceBlankModal = ({ onClose, onSaved }) => {
       goodKg: null,
       goodPieces: null,
     });
+    if (prep && prep.totalKg > 1e-6) {
+      consumeEmployeePreparedKg(String(blankId), usedKg);
+    }
     onSaved?.();
     onClose();
   };

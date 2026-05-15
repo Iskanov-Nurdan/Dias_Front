@@ -15,6 +15,25 @@ const pickNumber = (...vals) => {
   return null;
 };
 
+/** Строки таблицы из разных форм ответа API (в т.ч. после снятия PeriodSnapshot) */
+const getSalaryItems = (raw) => {
+  if (raw == null) return [];
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw.data)) return raw.data;
+  const root = raw.data != null && typeof raw.data === 'object' ? raw.data : raw;
+  const fromRoot =
+    root?.items
+    ?? root?.trainers
+    ?? root?.salary_items
+    ?? root?.salaryItems
+    ?? root?.results
+    ?? root?.payments;
+  if (Array.isArray(fromRoot)) return fromRoot;
+  if (Array.isArray(raw.items)) return raw.items;
+  if (Array.isArray(raw.results)) return raw.results;
+  return [];
+};
+
 const SalaryPage = () => {
   const [queryState, setQueryState] = useState({ year: new Date().getFullYear(), month: new Date().getMonth() + 1, day: '' });
   const [data, setData] = useState(null);
@@ -49,7 +68,7 @@ const SalaryPage = () => {
   const nowMonth = now.getMonth() + 1;
   const isMonthEnded = queryState.year < nowYear || (queryState.year === nowYear && queryState.month < nowMonth);
 
-  const items = data?.data?.items ?? data?.items ?? data?.results ?? data?.payments ?? (Array.isArray(data) ? data : []);
+  const items = getSalaryItems(data);
 
   const getTrainerPercent = (row) => {
     const trainerId = row.trainerId ?? row.trainer_id ?? row.id;
@@ -145,44 +164,52 @@ const SalaryPage = () => {
               <tr><td colSpan={10} className="salary-page__empty-cell"><EmptyState compact tableCell message="Нет данных за период" /></td></tr>
             ) : items.map((row, index) => {
                 const trainerId = row.trainerId ?? row.trainer_id ?? row.id ?? index;
-                const explicitTrainerIncome = pickNumber(
-                  row.trainerIncome,
-                  row.trainer_income,
-                  row.trainerRevenue,
-                  row.trainer_revenue,
-                  row.incomeTrainer,
-                  row.income_trainer,
-                );
-                const explicitClubIncome = pickNumber(
-                  row.clubIncome,
-                  row.club_income,
-                  row.clubRevenue,
-                  row.club_revenue,
-                  row.incomeClub,
-                  row.income_club,
-                );
-                const hasExplicitSplit = explicitTrainerIncome != null || explicitClubIncome != null;
-                const fallbackIncome = pickNumber(row.income, row.revenue, row.clientIncome, row.client_income, row.totalIncome, row.total_income) ?? 0;
+                const fallbackIncome =
+                  pickNumber(
+                    row.income,
+                    row.revenue,
+                    row.totalIncome,
+                    row.total_income,
+                    row.clientIncome,
+                    row.client_income,
+                    row.amount,
+                    row.sum,
+                    row.total,
+                  ) ?? 0;
+                const income = Number.isFinite(Number(fallbackIncome)) ? Number(fallbackIncome) : 0;
 
-                const income = hasExplicitSplit
-                  ? Math.round((explicitTrainerIncome ?? 0) + (explicitClubIncome ?? 0))
-                  : (Number.isFinite(Number(fallbackIncome)) ? Number(fallbackIncome) : 0);
-
-                const percent = hasExplicitSplit ? '' : getTrainerPercent(row);
+                const percent = getTrainerPercent(row);
                 const numPercent = typeof percent === 'number' && !Number.isNaN(percent) ? percent : 0;
 
-                const trainerShare = hasExplicitSplit
-                  ? Math.round(explicitTrainerIncome ?? 0)
-                  : income * (numPercent / 100);
-                const clubShare = hasExplicitSplit
-                  ? Math.round(explicitClubIncome ?? Math.max(0, income - trainerShare))
-                  : income - trainerShare;
+                const trainerShare = Math.round(income * (numPercent / 100));
+                const clubShare = Math.max(0, income - trainerShare);
 
                 const total = trainerShare;
                 const saved = row.saved === true || row.saved === 'true';
                 const isSaving = savingTrainerId === trainerId;
-                const paidCount = row.clientCount ?? row.clientsCount ?? row.clients_count ?? row.paidClientCount ?? row.count ?? 0;
-                const unpaidCount = row.unpaidClientCount ?? row.unpaidCount ?? row.clientsUnpaid ?? row.unpaid ?? 0;
+                const paidCount =
+                  pickNumber(
+                    row.paidClientCount,
+                    row.paid_client_count,
+                    row.clientsPaid,
+                    row.clients_paid,
+                    row.paidCount,
+                    row.paid_count,
+                    row.clientCount,
+                    row.clientsCount,
+                    row.clients_count,
+                    row.count,
+                  ) ?? 0;
+                const unpaidCount =
+                  pickNumber(
+                    row.unpaidClientCount,
+                    row.unpaid_client_count,
+                    row.clientsUnpaid,
+                    row.clients_unpaid,
+                    row.unpaidCount,
+                    row.unpaid_count,
+                    row.unpaid,
+                  ) ?? 0;
                 const totalCount = (Number(paidCount) || 0) + (Number(unpaidCount) || 0);
                 const hasUnpaid = Number(unpaidCount) > 0;
                 const canSave = isMonthEnded && !hasUnpaid && !saved;
@@ -202,9 +229,9 @@ const SalaryPage = () => {
                           value={percent === '' ? '' : percent}
                           onChange={(e) => setTrainerPercent(row, e.target.value)}
                           className="salary-page__percent-input"
-                          placeholder={hasExplicitSplit ? '—' : '0'}
+                          placeholder="0"
                           aria-label="Процент тренеру"
-                          disabled={hasExplicitSplit}
+                          disabled={saved}
                         />
                       </span>
                     </td>

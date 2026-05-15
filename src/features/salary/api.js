@@ -2,11 +2,17 @@ import { apiClient } from '../../shared/api/client';
 
 const withSignal = (config, signal) => (signal ? { ...config, signal } : config);
 
-export const fetchSalary = async (queryState, signal) => {
+/** Как в analytics/api buildParams — те же типы и отсутствие day при пустом значении */
+const buildSalaryParams = (queryState) => {
   const params = {};
-  if (queryState?.year) params.year = queryState.year;
-  if (queryState?.month) params.month = queryState.month;
-  if (queryState?.day) params.day = queryState.day;
+  if (queryState?.year != null && queryState.year !== '') params.year = Number(queryState.year);
+  if (queryState?.month != null && queryState.month !== '') params.month = Number(queryState.month);
+  if (queryState?.day != null && queryState.day !== '') params.day = Number(queryState.day);
+  return params;
+};
+
+export const fetchSalary = async (queryState, signal) => {
+  const params = buildSalaryParams(queryState);
   const { data } = await apiClient.get('/salary/', { params, ...withSignal({}, signal) });
   return data;
 };

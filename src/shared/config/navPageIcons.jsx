@@ -17,6 +17,7 @@ import {
   FiX,
   FiLayers,
   FiBriefcase,
+  FiGrid,
 } from 'react-icons/fi';
 import { MdOutlineScience, MdOutlineWarehouse } from 'react-icons/md';
 import { HiOutlineClipboardDocumentCheck } from 'react-icons/hi2';
@@ -29,6 +30,7 @@ export const NavIcons = {
   BarChart2: asNav(FiBarChart2),
   Users: asNav(FiUsers),
   Factory: asNav(FiLayers),
+  Grid: asNav(FiGrid),
   Package: asNav(FiPackage),
   Flask: (props) => <MdOutlineScience size={18} aria-hidden {...props} />,
   BookOpen: asNav(FiBookOpen),
@@ -62,6 +64,7 @@ export const ACCESS_NAV_ICONS = {
   materials: NavIcons.Package,
   chemistry: NavIcons.Flask,
   recipes: NavIcons.BookOpen,
+  profiles: NavIcons.Grid,
   otk: NavIcons.ClipboardCheck,
   warehouse: NavIcons.Warehouse,
   users: NavIcons.Users,

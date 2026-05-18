@@ -87,6 +87,17 @@
     border-top: 1px solid var(--border-subtle);
   }
 
+  &__stats-sum {
+    margin-top: 0.35rem;
+    padding-top: 0.35rem;
+    border-top: 1px dashed var(--border-subtle);
+    font-size: 0.875rem;
+
+    span {
+      color: var(--text-secondary);
+    }
+  }
+
   &__recipe-block {
     min-height: 0;
   }

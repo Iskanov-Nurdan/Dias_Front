@@ -17,8 +17,8 @@ export const ACCESS_ROUTE_MAP = {
   sales: '/cash',
   client_orders: '/cash',
   payments: '/payments',
-  returns: '/cash',
-  defects: '/cash',
+  returns: '/cash/returns',
+  defects: '/cash/defects',
 };
 
 /** Первый экран после входа. */

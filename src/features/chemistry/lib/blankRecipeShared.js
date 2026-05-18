@@ -1,19 +1,5 @@
 import { parseLocaleNumber, formatNumberForInput } from '../../../shared/lib';
 
-/** Сырьё — только для UI (без бэкенда). */
-export const MOCK_RAW_MATERIALS = [
-  { id: '1', name: 'Мука в/с' },
-  { id: '2', name: 'Сахар-песок' },
-  { id: '3', name: 'Маргарин' },
-  { id: '4', name: 'Дрожжи прессованные' },
-  { id: '5', name: 'Соль пищевая' },
-];
-
-export const materialOptions = MOCK_RAW_MATERIALS.map((m) => ({
-  value: String(m.id),
-  label: m.name,
-}));
-
 export const newLineKey = () => `ln-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
 export const normalizeRecipeRowsState = (rows) => {
@@ -33,9 +19,8 @@ export const normalizeRecipeRowsState = (rows) => {
 export const buildCompositionFromRows = (rows) => {
   const out = [];
   for (const row of rows) {
-    const mid = row.raw_material_id === '' || row.raw_material_id == null
-      ? NaN
-      : Number(row.raw_material_id);
+    const mid =
+      row.raw_material_id === '' || row.raw_material_id == null ? NaN : Number(row.raw_material_id);
     const q = parseLocaleNumber(row.quantity_per_unit ?? '');
     if (!Number.isFinite(mid)) continue;
     if (!Number.isFinite(q) || q <= 0) continue;
@@ -56,7 +41,7 @@ export const previewSumKgFromRows = (rows) => {
   return s;
 };
 
-/** Сумма кг по составу заготовки (как после сохранения в «Заготовка»). */
+/** Сумма кг по строкам состава (с бэка или локального редактора). */
 export const sumCompositionKg = (composition) => {
   if (!Array.isArray(composition)) return null;
   let s = 0;
@@ -85,7 +70,7 @@ export const compositionTotalSummaryText = (sumKg) => {
   return `Общий итог: ${dec} кг (${human})`;
 };
 
-/** Демо: макс. наполнение ёмкости (бочка), подсказка в ОТК — не с бэка. */
+/** Лимит ёмкости партии (как vat_max на бэке; подсказка в ОТК). */
 export const DEMO_PRODUCTION_VAT_MAX_KG = 180;
 
 export const validateRecipeRows = (recipeRows) => {

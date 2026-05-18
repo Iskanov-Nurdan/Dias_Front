@@ -1,8 +1,17 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useOperationalRefetch } from '../../../../shared/realtime';
-import { useServerQuery, parseLocaleNumber, formatQuantityDisplay, getApiErrorMessage } from '../../../../shared/lib';
+import {
+  useServerQuery,
+  parseLocaleNumber,
+  formatQuantityDisplay,
+  formatNumberForInput,
+  getApiErrorMessage,
+  pickFirstIsoDate,
+  matchesClientDateFilter,
+} from '../../../../shared/lib';
 import {
   Badge,
+  DecimalInput,
   EmptyState,
   ErrorState,
   IntegerInput,
@@ -10,6 +19,7 @@ import {
   Pagination,
   SearchableSelect,
   useToast,
+  ClientDateFilter,
 } from '../../../../shared/ui';
 import {
   approveOrder,
@@ -19,7 +29,6 @@ import {
   recheckOrder,
   rejectOrder,
 } from '../../api/ordersApi';
-import { getRecipes } from '../../../recipes/api/recipesApi';
 import './OrdersPage.scss';
 
 const getErr = (e, fallback) => getApiErrorMessage(e, fallback);
@@ -152,41 +161,6 @@ const requestStatusBadgeVariant = (s) => {
   return 'default';
 };
 
-const renderResourceCheck = (rc) => {
-  if (rc == null) return <p className="orders-rq__muted">—</p>;
-  if (typeof rc === 'string') return <pre className="orders-rq__pre">{rc}</pre>;
-  const items = Array.isArray(rc) ? rc : Array.isArray(rc?.items) ? rc.items : null;
-  if (items && items.length) {
-    return (
-      <table className="data-table data-table--tight orders-rq__table">
-        <thead>
-          <tr>
-            <th>Позиция</th>
-            <th>Нужно</th>
-            <th>Доступно</th>
-            <th>Хватает</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((it, i) => (
-            <tr key={i}>
-              <td>{it.name || it.title || it.id || '—'}</td>
-              <td>{it.needed != null ? String(it.needed) : '—'}</td>
-              <td>{it.available != null ? String(it.available) : '—'}</td>
-              <td>{it.enough === true ? 'да' : it.enough === false ? 'нет' : '—'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    );
-  }
-  try {
-    return <pre className="orders-rq__pre">{JSON.stringify(rc, null, 2)}</pre>;
-  } catch {
-    return <p className="orders-rq__muted">—</p>;
-  }
-};
-
 const OrdersPage = () => {
   const toast = useToast();
   const [queryState, setQueryState] = useState({ page: 1, page_size: 20, request_status: '' });
@@ -197,6 +171,7 @@ const OrdersPage = () => {
   const [expandedId, setExpandedId] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [clientDateFilter, setClientDateFilter] = useState('');
 
   const { items, meta, loading, error, refetch } = useServerQuery('orders/', queryState, {
     enabled: true,
@@ -221,7 +196,19 @@ const OrdersPage = () => {
       });
   }, []);
 
-  useOperationalRefetch(['order', 'sale', 'payment', 'return', 'production_batch'], refetch, true);
+  useOperationalRefetch(['order', 'orders', 'sale', 'payment', 'return', 'production_batch'], refetch, true);
+
+  const orderDateFields = useMemo(
+    () => ['created_at', 'updated_at', 'date', 'order_date', 'requested_at'],
+    [],
+  );
+
+  const visibleOrders = useMemo(() => {
+    if (!clientDateFilter) return items;
+    return (items || []).filter((o) =>
+      matchesClientDateFilter(clientDateFilter, pickFirstIsoDate(o, orderDateFields)),
+    );
+  }, [items, clientDateFilter, orderDateFields]);
 
   const onApprove = useCallback(
     async (id) => {
@@ -298,6 +285,7 @@ const OrdersPage = () => {
             placeholder="Статус заявки"
             options={filterOptions}
           />
+          <ClientDateFilter value={clientDateFilter} onChange={setClientDateFilter} id="orders-date-filter" />
         </div>
         <div className="ds-toolbar__end">
           <button type="button" className="btn btn--primary" onClick={() => setCreateOpen(true)}>
@@ -311,7 +299,10 @@ const OrdersPage = () => {
       {loading && <Loading />}
       {error && error.status !== 404 && <ErrorState error={error} onRetry={refetch} />}
       {!loading && (!error || error.status === 404) && items.length === 0 && <EmptyState title="Нет заявок" />}
-      {!loading && (!error || error.status === 404) && items.length > 0 && (
+      {!loading && (!error || error.status === 404) && items.length > 0 && visibleOrders.length === 0 && (
+        <EmptyState title="На выбранную дату заявок нет (на этой странице)" />
+      )}
+      {!loading && (!error || error.status === 404) && visibleOrders.length > 0 && (
         <div className="commercial-table-wrap">
           <table className="data-table data-table--orders-rq">
             <thead>
@@ -320,13 +311,12 @@ const OrdersPage = () => {
                 <th>Клиент</th>
                 <th>Профиль</th>
                 <th>Рецепт</th>
-                <th>Длина, м</th>
                 <th>Количество</th>
                 <th>Статус</th>
               </tr>
             </thead>
             <tbody>
-              {items.map((o) => {
+              {visibleOrders.map((o) => {
                 const st = resolveOrderStatusValue(o);
                 const stText = resolveOrderStatusText(o);
                 const isOpen = expandedId === o.id;
@@ -346,7 +336,6 @@ const OrdersPage = () => {
                       <td>{orderClientLabel(o, clients)}</td>
                       <td>{orderProfileLabel(o, profiles)}</td>
                       <td>{orderRecipeLabel(o, recipes)}</td>
-                      <td>{o.length != null && o.length !== '' ? String(o.length) : '—'}</td>
                       <td>{o.quantity != null && o.quantity !== '' ? formatQuantityDisplay(o.quantity) : '—'}</td>
                       <td>
                         <Badge variant={requestStatusBadgeVariant(st)}>{stText}</Badge>
@@ -354,19 +343,8 @@ const OrdersPage = () => {
                     </tr>
                     {isOpen && (
                       <tr className="orders-rq__detail-row">
-                        <td colSpan={7}>
+                        <td colSpan={6}>
                           <div className="orders-rq__card">
-                            <div className="orders-rq__row">
-                              <span className="orders-rq__k">Всего, м</span>
-                              <span className="orders-rq__v">
-                                {o.total_meters != null && o.total_meters !== '' ? String(o.total_meters) : '—'}
-                              </span>
-                            </div>
-                            <div className="orders-rq__row orders-rq__row--block">
-                              <span className="orders-rq__k">Проверка ресурсов</span>
-                              <div className="orders-rq__v">{renderResourceCheck(o.resource_check)}</div>
-                            </div>
-
                             {String(st).toLowerCase() === 'draft' && (
                               <div className="orders-rq__actions">
                                 <button
@@ -400,14 +378,6 @@ const OrdersPage = () => {
                                 </button>
                               </div>
                             )}
-
-                            {String(st).toLowerCase() === 'ready' && (
-                              <p className="orders-rq__hint orders-rq__hint--muted">Статус «Готово» — действий нет</p>
-                            )}
-
-                            {String(st).toLowerCase() === 'in_production' && (
-                              <p className="orders-rq__hint orders-rq__hint--muted">Только просмотр</p>
-                            )}
                           </div>
                         </td>
                       </tr>
@@ -427,7 +397,6 @@ const OrdersPage = () => {
         <CreateOrderModal
           clients={clients}
           profiles={profiles}
-          recipesSource={recipes}
           onClose={() => setCreateOpen(false)}
           onCreated={async () => {
             setCreateOpen(false);
@@ -440,15 +409,20 @@ const OrdersPage = () => {
   );
 };
 
-const CreateOrderModal = ({ clients, profiles, recipesSource, onClose, onCreated }) => {
+const CreateOrderModal = ({ clients, profiles, onClose, onCreated }) => {
   const [client, setClient] = useState('');
-  const [lines, setLines] = useState([{ profile: '', recipe: '', length: '', quantity: '' }]);
+  const [lines, setLines] = useState([{ profile: '', quantity: '' }]);
   const [activeLineIdx, setActiveLineIdx] = useState(0);
-  const [recipesByProfile, setRecipesByProfile] = useState({});
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [paymentType, setPaymentType] = useState('debt');
   const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [paidAmount, setPaidAmount] = useState('');
+  /** Полная оплата — сумма заявки (цена). */
+  const [fullAmount, setFullAmount] = useState('');
+  /** Частичная — итог и оплачено сейчас. */
+  const [partialTotal, setPartialTotal] = useState('');
+  const [partialPaidNow, setPartialPaidNow] = useState('');
+  /** В долг — на какую сумму открыт долг. */
+  const [debtAmount, setDebtAmount] = useState('');
   const [localError, setLocalError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -482,65 +456,45 @@ const CreateOrderModal = ({ clients, profiles, recipesSource, onClose, onCreated
   );
 
   useEffect(() => {
-    const grouped = {};
-    (recipesSource || []).forEach((r) => {
-      const pid = r.profile_id ?? r.profile?.id;
-      if (pid == null) return;
-      const key = String(pid);
-      if (!grouped[key]) grouped[key] = [];
-      grouped[key].push(r);
-    });
-    setRecipesByProfile(grouped);
-  }, [recipesSource]);
-
-  const ensureRecipesForProfile = useCallback(async (profileId) => {
-    const key = String(profileId || '');
-    if (!key) return [];
-    if (Array.isArray(recipesByProfile[key]) && recipesByProfile[key].length > 0) return recipesByProfile[key];
-    try {
-      const res = await getRecipes({ page: 1, page_size: 500, profile_id: Number(key), is_active: true });
-      const data = res.data || {};
-      const list = Array.isArray(data.items) ? data.items : [];
-      setRecipesByProfile((prev) => ({ ...prev, [key]: list }));
-      return list;
-    } catch {
-      setRecipesByProfile((prev) => ({ ...prev, [key]: [] }));
-      return [];
+    if (paymentType === 'full') {
+      setPartialTotal('');
+      setPartialPaidNow('');
+      setDebtAmount('');
+    } else if (paymentType === 'partial') {
+      setFullAmount('');
+      setDebtAmount('');
+    } else {
+      setFullAmount('');
+      setPartialTotal('');
+      setPartialPaidNow('');
     }
-  }, [recipesByProfile]);
-
-  const getRecipeOptionsForLine = useCallback((line) => {
-    const list = line?.profile ? (recipesByProfile[String(line.profile)] || []) : [];
-    return list.map((r) => {
-      const label = pickRecipeName(r);
-      return {
-        value: String(r.id),
-        label,
-        searchText: [r.recipe, r.recipe_name, r.name, r.product, r.product_name, String(r.id)]
-          .filter((x) => x != null && String(x).trim() !== '')
-          .join(' '),
-      };
-    });
-  }, [recipesByProfile]);
-
-  useEffect(() => {
-    if (paymentType === 'debt') setPaidAmount('0');
-    if (paymentType === 'full') setPaidAmount('');
   }, [paymentType]);
 
-  const numericPaidAmount = parseLocaleNumber(paidAmount);
+  const nFull = parseLocaleNumber(fullAmount);
+  const nPartTotal = parseLocaleNumber(partialTotal);
+  const nPartPaid = parseLocaleNumber(partialPaidNow);
+  const nDebt = parseLocaleNumber(debtAmount);
+  const partialRemainder =
+    Number.isFinite(nPartTotal) && Number.isFinite(nPartPaid) ? Math.max(0, nPartTotal - nPartPaid) : null;
+
   const linesValid = lines.length > 0 && lines.every((ln) => (
     ln.profile
-    && ln.recipe
-    && String(ln.length || '').trim()
     && parseLocaleNumber(ln.quantity) > 0
   ));
-  const canSubmit = client
-    && linesValid
-    && (
-      paymentType !== 'partial'
-      || (Number.isFinite(numericPaidAmount) && numericPaidAmount > 0)
-    );
+
+  const paymentValid = (() => {
+    if (paymentType === 'full') {
+      return Number.isFinite(nFull) && nFull > 0;
+    }
+    if (paymentType === 'partial') {
+      return Number.isFinite(nPartTotal) && nPartTotal > 0
+        && Number.isFinite(nPartPaid) && nPartPaid >= 0
+        && nPartPaid <= nPartTotal;
+    }
+    return Number.isFinite(nDebt) && nDebt > 0;
+  })();
+
+  const canSubmit = Boolean(client) && linesValid && paymentValid;
   useEffect(() => {
     setActiveLineIdx((prev) => {
       if (!lines.length) return 0;
@@ -559,27 +513,46 @@ const CreateOrderModal = ({ clients, profiles, recipesSource, onClose, onCreated
     try {
       const orderLines = lines.map((ln) => ({
         profile: Number(ln.profile),
-        recipe: Number(ln.recipe),
-        length: String(ln.length).trim(),
         quantity: parseLocaleNumber(ln.quantity),
       }));
       const first = orderLines[0];
+      const paymentExtras = {};
+      if (paymentType === 'full') {
+        paymentExtras.total_amount = String(nFull);
+        paymentExtras.paid_amount = String(nFull);
+      } else if (paymentType === 'partial') {
+        paymentExtras.total_amount = String(nPartTotal);
+        paymentExtras.paid_amount = String(nPartPaid);
+        paymentExtras.amount_remaining = String(Math.max(0, nPartTotal - nPartPaid));
+      } else {
+        paymentExtras.total_amount = String(nDebt);
+        paymentExtras.paid_amount = '0';
+      }
       await createOrder({
         client: Number(client),
         date,
         profile: first.profile,
-        recipe: first.recipe,
-        length: first.length,
         quantity: first.quantity,
         order_lines: orderLines,
         payment_type: paymentType,
         payment_method: paymentMethod,
-        ...(paymentType === 'debt' ? { paid_amount: '0' } : {}),
-        ...(paymentType === 'partial' ? { paid_amount: String(numericPaidAmount) } : {}),
+        ...paymentExtras,
       });
       await onCreated();
     } catch (err) {
-      setLocalError(getErr(err, 'Ошибка создания'));
+      const d = err?.response?.data;
+      const code = d && typeof d === 'object' ? (d.code || d.error?.code || '') : '';
+      const asStr = d && typeof d === 'object' ? JSON.stringify(d) : '';
+      if (
+        String(code).toUpperCase() === 'AMBIGUOUS_RECIPE_FOR_PROFILE'
+        || /AMBIGUOUS_RECIPE_FOR_PROFILE/i.test(asStr)
+      ) {
+        setLocalError(
+          'У профиля несколько активных рецептов — сервер не может выбрать один. Оставьте один активный рецепт на профиль.',
+        );
+      } else {
+        setLocalError(getErr(err, 'Ошибка создания'));
+      }
     } finally {
       setBusy(false);
     }
@@ -615,7 +588,7 @@ const CreateOrderModal = ({ clients, profiles, recipesSource, onClose, onCreated
                   <button
                     type="button"
                     className="btn btn--secondary"
-                    onClick={() => setLines((prev) => [...prev, { profile: '', recipe: '', length: '', quantity: '' }])}
+                    onClick={() => setLines((prev) => [...prev, { profile: '', quantity: '' }])}
                     disabled={busy}
                   >
                     + Добавить
@@ -625,8 +598,6 @@ const CreateOrderModal = ({ clients, profiles, recipesSource, onClose, onCreated
                   {lines.map((line, idx) => {
                     const profileName = profileOptions.find((x) => String(x.value) === String(line.profile))?.label || `Товар ${idx + 1}`;
                     const qty = parseLocaleNumber(line.quantity) || 0;
-                    const len = parseLocaleNumber(line.length) || 0;
-                    const totalMeters = qty * len;
                     return (
                       <button
                         key={`order-line-${idx}`}
@@ -635,7 +606,7 @@ const CreateOrderModal = ({ clients, profiles, recipesSource, onClose, onCreated
                         onClick={() => setActiveLineIdx(idx)}
                       >
                         <span>{profileName}</span>
-                        <span>{qty > 0 ? `${formatQuantityDisplay(qty)} шт` : 'Не заполнено'} · {totalMeters > 0 ? `${formatQuantityDisplay(totalMeters)} м` : '0 м'}</span>
+                        <span>{qty > 0 ? `${formatQuantityDisplay(qty)} шт` : 'Не заполнено'}</span>
                       </button>
                     );
                   })}
@@ -663,38 +634,14 @@ const CreateOrderModal = ({ clients, profiles, recipesSource, onClose, onCreated
                       <label>Профиль *</label>
                       <SearchableSelect
                         value={selectedLine.profile}
-                        onChange={async (v) => {
+                        onChange={(v) => {
                           const nextProfile = v != null ? String(v) : '';
                           setLines((prev) => prev.map((x, i) => (
-                            i === activeLineIdx ? { ...x, profile: nextProfile, recipe: '' } : x
+                            i === activeLineIdx ? { ...x, profile: nextProfile } : x
                           )));
-                          if (nextProfile) await ensureRecipesForProfile(nextProfile);
                         }}
                         options={profileOptions}
                         placeholder="Выберите профиль"
-                      />
-                    </div>
-                    <div>
-                      <label>Рецепт *</label>
-                      <SearchableSelect
-                        value={selectedLine.recipe}
-                        onChange={(v) => setLines((prev) => prev.map((x, i) => (
-                          i === activeLineIdx ? { ...x, recipe: v != null ? String(v) : '' } : x
-                        )))}
-                        options={getRecipeOptionsForLine(selectedLine)}
-                        placeholder={selectedLine.profile ? 'Выберите рецепт' : 'Сначала выберите профиль'}
-                        disabled={!selectedLine.profile}
-                      />
-                    </div>
-                    <div>
-                      <label>Длина, м *</label>
-                      <input
-                        inputMode="decimal"
-                        value={selectedLine.length}
-                        onChange={(e) => setLines((prev) => prev.map((x, i) => (
-                          i === activeLineIdx ? { ...x, length: e.target.value } : x
-                        )))}
-                        disabled={busy}
                       />
                     </div>
                     <div>
@@ -737,14 +684,36 @@ const CreateOrderModal = ({ clients, profiles, recipesSource, onClose, onCreated
               ]}
               disabled={busy}
             />
-            <label>Сумма оплаты</label>
-            <input
-              inputMode="decimal"
-              value={paymentType === 'debt' ? '0' : paidAmount}
-              disabled={busy || paymentType === 'full' || paymentType === 'debt'}
-              onChange={(e) => setPaidAmount(e.target.value)}
-              placeholder={paymentType === 'full' ? 'Автоматически как полная сумма' : ''}
-            />
+            {paymentType === 'full' && (
+              <>
+                <label>Цена (сумма заявки) *</label>
+                <DecimalInput min={0} value={fullAmount} onChange={setFullAmount} required disabled={busy} />
+              </>
+            )}
+            {paymentType === 'partial' && (
+              <>
+                <label>Итог (сумма заявки) *</label>
+                <DecimalInput min={0} value={partialTotal} onChange={setPartialTotal} required disabled={busy} />
+                <label>Оплачено сейчас *</label>
+                <DecimalInput min={0} value={partialPaidNow} onChange={setPartialPaidNow} required disabled={busy} />
+                <label>Остаток к оплате</label>
+                <input
+                  readOnly
+                  className="orders-rq-create__readonly-sum"
+                  value={
+                    partialRemainder != null && Number.isFinite(partialRemainder)
+                      ? `${formatNumberForInput(partialRemainder)} сом`
+                      : '—'
+                  }
+                />
+              </>
+            )}
+            {paymentType === 'debt' && (
+              <>
+                <label>Сумма долга *</label>
+                <DecimalInput min={0} value={debtAmount} onChange={setDebtAmount} required disabled={busy} />
+              </>
+            )}
             {localError && <p className="modal__error">{localError}</p>}
           </div>
           <div className="modal__actions">

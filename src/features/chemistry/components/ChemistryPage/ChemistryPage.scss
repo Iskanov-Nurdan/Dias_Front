@@ -79,7 +79,8 @@
 
 .chemistry-recipe-grid {
   display: grid;
-  gap: var(--space-2);
+  row-gap: var(--space-2);
+  column-gap: var(--space-3);
   align-items: center;
   margin-bottom: var(--space-2);
 
@@ -87,13 +88,21 @@
     font-size: var(--font-caption);
     font-weight: var(--weight-medium);
     color: var(--text-secondary);
-    grid-template-columns: minmax(0, 1fr) 152px var(--input-height);
+    grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 11rem) var(--input-height);
     align-items: end;
     padding-bottom: 2px;
+
+    span:nth-child(2) {
+      text-align: right;
+    }
+
+    span:nth-child(3) {
+      justify-self: end;
+    }
   }
 
   &--row {
-    grid-template-columns: minmax(0, 1fr) 152px var(--input-height);
+    grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 11rem) var(--input-height);
     align-items: center;
 
     .dias-select {
@@ -975,14 +984,114 @@
 
 .chemistry-table--prep-list {
   min-width: 420px;
+  gap: var(--space-3);
 }
 
 .chemistry-table--prep-list .chemistry-table__header,
 .chemistry-table--prep-list .chemistry-table__row {
   grid-template-columns:
-    minmax(140px, 1fr)
-    minmax(220px, auto);
+    minmax(120px, 1fr)
+    minmax(5.5rem, 9rem)
+    minmax(0, auto);
+  column-gap: var(--space-3);
   align-items: center;
+}
+
+.chemistry-table--prep-list .chemistry-table__th--num,
+.chemistry-table--prep-list .chemistry-table__num {
+  text-align: right;
+  justify-self: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.chemistry-table--prep-list .chemistry-table__actions {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
+.page--chemistry .modal .chemistry-element-form > input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']) {
+  margin-bottom: var(--space-3);
+}
+
+.page--chemistry .modal .chemistry-element-form .chemistry-blank-stock__composition-label {
+  margin-top: 0;
+  margin-bottom: var(--space-2);
+}
+
+.chemistry-table--plastic-profiles {
+  min-width: 480px;
+  gap: var(--space-3);
+}
+
+.chemistry-table--plastic-profiles .chemistry-table__header,
+.chemistry-table--plastic-profiles .chemistry-table__row {
+  grid-template-columns:
+    minmax(100px, 1.4fr)
+    minmax(4.5rem, 6rem)
+    minmax(4.5rem, 6rem)
+    minmax(6rem, auto);
+  column-gap: var(--space-2);
+  align-items: center;
+}
+
+.chemistry-plastic-profiles__name {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.chemistry-plastic-profiles__cell-num {
+  min-width: 0;
+}
+
+.chemistry-plastic-profiles__grams {
+  width: 100%;
+  min-width: 0;
+  max-width: 6rem;
+  box-sizing: border-box;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.chemistry-plastic-profiles__grams--wide {
+  max-width: 100%;
+}
+
+.chemistry-plastic-profiles__grams--in-row {
+  max-width: 100%;
+}
+
+.chemistry-plastic-profiles__text {
+  display: block;
+  min-width: 0;
+  padding: 0.35rem 0;
+  font-size: var(--font-body);
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.chemistry-plastic-profiles__text--num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.chemistry-table--plastic-profiles .chemistry-table__th--num {
+  text-align: right;
+}
+
+.chemistry-table--plastic-profiles .chemistry-plastic-profiles__cell-num > * {
+  width: 100%;
+  min-width: 0;
+}
+
+.chemistry-table--plastic-profiles .chemistry-table__actions--wrap {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
 }
 
 .chemistry-blank-stock__actions {
@@ -1104,6 +1213,7 @@
 
     .chemistry-table--catalog-full,
     .chemistry-table--prep-list,
+    .chemistry-table--plastic-profiles,
     .chemistry-table--stock-full,
     .chemistry-table--batches-full {
       min-width: 0 !important;
@@ -1111,6 +1221,7 @@
 
     .chemistry-table--catalog-full .chemistry-table__header,
     .chemistry-table--prep-list .chemistry-table__header,
+    .chemistry-table--plastic-profiles .chemistry-table__header,
     .chemistry-table--stock-full .chemistry-table__header,
     .chemistry-table--batches-full .chemistry-table__header {
       display: none;
@@ -1118,6 +1229,7 @@
 
     .chemistry-table--catalog-full .chemistry-table__row,
     .chemistry-table--prep-list .chemistry-table__row,
+    .chemistry-table--plastic-profiles .chemistry-table__row,
     .chemistry-table--stock-full .chemistry-table__row,
     .chemistry-table--batches-full .chemistry-table__row {
       display: flex;
@@ -1130,6 +1242,7 @@
 
     .chemistry-table--catalog-full .chemistry-table__row > *,
     .chemistry-table--prep-list .chemistry-table__row > *,
+    .chemistry-table--plastic-profiles .chemistry-table__row > *,
     .chemistry-table--stock-full .chemistry-table__row > *,
     .chemistry-table--batches-full .chemistry-table__row > * {
       display: flex;
@@ -1149,6 +1262,7 @@
 
     .chemistry-table--catalog-full .chemistry-table__row > *::before,
     .chemistry-table--prep-list .chemistry-table__row > *::before,
+    .chemistry-table--plastic-profiles .chemistry-table__row > *::before,
     .chemistry-table--stock-full .chemistry-table__row > *::before,
     .chemistry-table--batches-full .chemistry-table__row > *::before {
       content: '';
@@ -1185,7 +1299,27 @@
     }
 
     .chemistry-table--prep-list .chemistry-table__row > *:nth-child(2)::before {
+      content: 'кг / бочка';
+    }
+
+    .chemistry-table--prep-list .chemistry-table__row > *:nth-child(3)::before {
       content: 'Действия';
+    }
+
+    .chemistry-table--plastic-profiles .chemistry-table__row > *:nth-child(1)::before {
+      content: 'Имя';
+    }
+
+    .chemistry-table--plastic-profiles .chemistry-table__row > *:nth-child(2)::before {
+      content: 'Кг';
+    }
+
+    .chemistry-table--plastic-profiles .chemistry-table__row > *:nth-child(3)::before {
+      content: 'Граммы';
+    }
+
+    .chemistry-table--plastic-profiles .chemistry-table__row > *:nth-child(4)::before {
+      content: 'Действие';
     }
 
     .chemistry-table--stock-full .chemistry-table__row > *:nth-child(1)::before {

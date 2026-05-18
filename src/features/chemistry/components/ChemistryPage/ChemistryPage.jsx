@@ -1,23 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import {
+  useServerQuery,
+  formatNumberForInput,
+  getApiErrorMessage,
+} from '../../../../shared/lib';
 import {
   ConfirmModal,
   EmptyState,
+  ErrorState,
+  Loading,
+  useToast,
 } from '../../../../shared/ui';
 import {
   newLineKey,
   normalizeRecipeRowsState,
   validateRecipeRows,
+  sumCompositionKg,
+  compositionTotalSummaryText,
+  buildCompositionFromRows,
 } from '../../lib/blankRecipeShared';
-import { loadBlanks, saveBlanks } from '../../lib/localBlankStore';
 import BlankRecipeRowsEditor from '../BlankRecipeRowsEditor/BlankRecipeRowsEditor';
-import './ChemistryPage.scss';
+import {
+  getWorkshopBlank,
+  mapWorkshopBlankFromApi,
+  postWorkshopBlank,
+  patchWorkshopBlank,
+  deleteWorkshopBlank,
+  compositionToApiPayload,
+} from '../../api/blankWorkshopApi';
+import '../ChemistryPage/ChemistryPage.scss';
+import ChemistryPlasticProfilesTab from '../ChemistryPlasticProfilesTab/ChemistryPlasticProfilesTab';
 
-const AddBlankModal = ({ onClose, onSave }) => {
+const rawMatQuery = { page: 1, page_size: 500, ordering: 'name' };
+const blankQuery = { page: 1, page_size: 500, ordering: 'name' };
+
+const AddBlankModal = ({ materialOptions, onClose, onCreated }) => {
+  const toast = useToast();
   const [name, setName] = useState('');
   const [recipeRows, setRecipeRows] = useState(() => [
     { key: newLineKey(), raw_material_id: '', quantity_per_unit: '' },
   ]);
   const [recipeError, setRecipeError] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const validateComposition = () => {
     const v = validateRecipeRows(recipeRows);
@@ -29,14 +53,33 @@ const AddBlankModal = ({ onClose, onSave }) => {
     return v.comp;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const n = name.trim();
     if (!n) return;
     const comp = validateComposition();
     if (!comp) return;
-    onSave?.({ name: n, composition: comp });
-    onClose();
+    const payload = {
+      name: n,
+      composition: compositionToApiPayload(
+        comp.map((c) => ({ raw_material_id: c.raw_material_id, quantity_per_unit: c.quantity_per_unit })),
+      ),
+    };
+    if (payload.composition.length === 0) {
+      setRecipeError('Добавьте сырьё и вес.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await postWorkshopBlank(payload);
+      toast.show('Заготовка создана');
+      onCreated?.();
+      onClose();
+    } catch (err) {
+      toast.show(getApiErrorMessage(err, 'Не удалось сохранить'));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -44,7 +87,9 @@ const AddBlankModal = ({ onClose, onSave }) => {
       <div className="modal modal--wide" onClick={(ev) => ev.stopPropagation()}>
         <div className="modal__head">
           <h3>Добавить заготовку</h3>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
+            ×
+          </button>
         </div>
         <form className="modal__body chemistry-element-form" onSubmit={handleSubmit}>
           <label>Имя *</label>
@@ -53,10 +98,15 @@ const AddBlankModal = ({ onClose, onSave }) => {
             recipeRows={recipeRows}
             setRecipeRows={setRecipeRows}
             errorText={recipeError}
+            materialOptions={materialOptions}
           />
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary">Сохранить</button>
+            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={busy}>
+              Отмена
+            </button>
+            <button type="submit" className="btn btn--primary" disabled={busy}>
+              {busy ? '…' : 'Сохранить'}
+            </button>
           </div>
         </form>
       </div>
@@ -64,15 +114,26 @@ const AddBlankModal = ({ onClose, onSave }) => {
   );
 };
 
-const EditBlankModal = ({ initial, onClose, onSave }) => {
+const EditBlankModal = ({ initial, onClose, onSaved }) => {
+  const toast = useToast();
   const [name, setName] = useState(initial?.name || '');
+  const [busy, setBusy] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const n = name.trim();
     if (!n || !initial?.id) return;
-    onSave?.({ id: initial.id, name: n });
-    onClose();
+    setBusy(true);
+    try {
+      await patchWorkshopBlank(initial.id, { name: n });
+      toast.show('Сохранено');
+      onSaved?.();
+      onClose();
+    } catch (err) {
+      toast.show(getApiErrorMessage(err, 'Не удалось сохранить'));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -80,14 +141,20 @@ const EditBlankModal = ({ initial, onClose, onSave }) => {
       <div className="modal modal--wide" onClick={(ev) => ev.stopPropagation()}>
         <div className="modal__head">
           <h3>Редактировать</h3>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
+            ×
+          </button>
         </div>
         <form className="modal__body chemistry-element-form" onSubmit={handleSubmit}>
           <label>Имя *</label>
           <input value={name} onChange={(ev) => setName(ev.target.value)} required />
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary">Сохранить</button>
+            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={busy}>
+              Отмена
+            </button>
+            <button type="submit" className="btn btn--primary" disabled={busy}>
+              {busy ? '…' : 'Сохранить'}
+            </button>
           </div>
         </form>
       </div>
@@ -95,19 +162,51 @@ const EditBlankModal = ({ initial, onClose, onSave }) => {
   );
 };
 
-const CompositionOnlyModal = ({ initialName, composition, onClose, onSave }) => {
+const CompositionEditModal = ({ blankId, initialName, initialComposition, materialOptions, onClose, onSaved }) => {
+  const toast = useToast();
   const [recipeRows, setRecipeRows] = useState(() =>
     normalizeRecipeRowsState(
-      composition?.map((c) => ({
+      (initialComposition || []).map((c) => ({
         key: newLineKey(),
         raw_material_id: c.raw_material_id,
-        quantity_per_unit: c.quantity_per_unit,
+        quantity_per_unit:
+          c.quantity_per_unit != null && c.quantity_per_unit !== ''
+            ? formatNumberForInput(c.quantity_per_unit)
+            : '',
       })),
     ),
   );
   const [recipeError, setRecipeError] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    if (!blankId || (initialComposition && initialComposition.length > 0)) return;
+    let alive = true;
+    getWorkshopBlank(blankId)
+      .then((res) => {
+        if (!alive) return;
+        const b = mapWorkshopBlankFromApi(res.data);
+        const comp = b?.composition || [];
+        setRecipeRows(
+          normalizeRecipeRowsState(
+            comp.map((c) => ({
+              key: newLineKey(),
+              raw_material_id: c.raw_material_id,
+              quantity_per_unit:
+                c.quantity_per_unit != null && c.quantity_per_unit !== ''
+                  ? formatNumberForInput(c.quantity_per_unit)
+                  : '',
+            })),
+          ),
+        );
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [blankId, initialComposition]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const v = validateRecipeRows(recipeRows);
     if (!v.ok) {
@@ -115,26 +214,56 @@ const CompositionOnlyModal = ({ initialName, composition, onClose, onSave }) => 
       return;
     }
     setRecipeError('');
-    onSave?.(v.comp);
-    onClose();
+    const payload = {
+      composition: compositionToApiPayload(
+        v.comp.map((c) => ({ raw_material_id: c.raw_material_id, quantity_per_unit: c.quantity_per_unit })),
+      ),
+    };
+    if (payload.composition.length === 0) {
+      setRecipeError('Добавьте хотя бы одну строку сырья.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await patchWorkshopBlank(blankId, payload);
+      toast.show('Состав сохранён');
+      onSaved?.();
+      onClose();
+    } catch (err) {
+      toast.show(getApiErrorMessage(err, 'Не удалось сохранить состав'));
+    } finally {
+      setBusy(false);
+    }
   };
+
+  const sumKg = sumCompositionKg(buildCompositionFromRows(recipeRows));
 
   return (
     <div className="modal-overlay" role="presentation" onClick={onClose}>
       <div className="modal modal--wide" onClick={(ev) => ev.stopPropagation()}>
         <div className="modal__head">
           <h3>Состав: {initialName || '—'}</h3>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
+          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
+            ×
+          </button>
         </div>
         <form className="modal__body chemistry-element-form" onSubmit={handleSubmit}>
           <BlankRecipeRowsEditor
             recipeRows={recipeRows}
             setRecipeRows={setRecipeRows}
             errorText={recipeError}
+            materialOptions={materialOptions}
           />
+          {sumKg != null && Number.isFinite(sumKg) ? (
+            <p className="chemistry-blank-stock__total-preview">{compositionTotalSummaryText(sumKg)}</p>
+          ) : null}
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary">Сохранить состав</button>
+            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={busy}>
+              Отмена
+            </button>
+            <button type="submit" className="btn btn--primary" disabled={busy}>
+              {busy ? '…' : 'Сохранить состав'}
+            </button>
           </div>
         </form>
       </div>
@@ -143,107 +272,137 @@ const CompositionOnlyModal = ({ initialName, composition, onClose, onSave }) => 
 };
 
 const ChemistryPage = () => {
-  const [items, setItems] = useState(() => loadBlanks());
-
-  useEffect(() => {
-    saveBlanks(items);
-  }, [items]);
+  const toast = useToast();
+  const [stockTab, setStockTab] = useState('blanks');
   const [addKey, setAddKey] = useState(0);
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [compositionTarget, setCompositionTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
-  const saveNew = ({ name, composition }) => {
-    setItems((prev) => [
-      ...prev,
-      {
-        id: newLineKey(),
-        name,
-        composition,
-      },
-    ]);
-  };
+  const { items: rawItems } = useServerQuery('raw-materials/', rawMatQuery, { enabled: true });
+  const materialOptions = useMemo(
+    () =>
+      (rawItems || []).map((m) => ({
+        value: String(m.id),
+        label: (m.name && String(m.name).trim()) || `Сырьё #${m.id}`,
+      })),
+    [rawItems],
+  );
 
-  const saveEdit = ({ id, name }) => {
-    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, name } : it)));
-  };
+  const { items, loading, error, refetch } = useServerQuery('workshop/blanks/', blankQuery, {
+    enabled: true,
+  });
+  const blanks = useMemo(
+    () => (items || []).map(mapWorkshopBlankFromApi).filter(Boolean),
+    [items],
+  );
 
-  const saveComposition = (comp) => {
-    if (!compositionTarget?.id) return;
-    setItems((prev) =>
-      prev.map((it) => (it.id === compositionTarget.id ? { ...it, composition: comp } : it)),
-    );
-  };
-
-  const doDelete = () => {
-    if (!deleteTarget?.id) return;
-    setItems((prev) => prev.filter((it) => it.id !== deleteTarget.id));
-    setDeleteTarget(null);
-  };
+  const refetchAll = useCallback(() => {
+    refetch();
+  }, [refetch]);
 
   return (
     <div className="page page--chemistry chemistry-blank-stock">
-      <div className="chemistry-card">
-        <div className="chemistry-card__head ds-toolbar ds-toolbar--in-card">
-          <div className="ds-toolbar__end chemistry-card__toolbar-actions">
-            <button
-              type="button"
-              className="btn btn--primary"
-              onClick={() => {
-                setAddKey((k) => k + 1);
-                setAddOpen(true);
-              }}
-            >
-              Добавить заготовку
-            </button>
-          </div>
-        </div>
-
-        {items.length === 0 ? (
-          <EmptyState title="Нет заготовок" />
-        ) : (
-          <div className="chemistry-table-wrap">
-            <div className="chemistry-table chemistry-table--prep-list">
-              <div className="chemistry-table__header">
-                <span className="chemistry-table__th">Имя</span>
-                <span className="chemistry-table__th chemistry-table__th--actions">Действия</span>
-              </div>
-              {items.map((row) => (
-                <div key={row.id} className="chemistry-table__row">
-                  <span className="chemistry-table__name chemistry-table__cell-clip">{row.name}</span>
-                  <div className="chemistry-table__actions chemistry-table__actions--wrap chemistry-blank-stock__actions">
-                    <button
-                      type="button"
-                      className="btn btn--secondary btn--sm"
-                      onClick={() => setEditTarget(row)}
-                    >
-                      Редактировать
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn--secondary btn--sm"
-                      onClick={() => setCompositionTarget(row)}
-                    >
-                      Состав
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn--danger btn--sm"
-                      onClick={() => setDeleteTarget({ id: row.id, name: row.name })}
-                    >
-                      Удалить
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+      <div className="chemistry-tabs" role="tablist" aria-label="Разделы заготовки">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={stockTab === 'blanks'}
+          className={`chemistry-tabs__tab${stockTab === 'blanks' ? ' chemistry-tabs__tab--active' : ''}`}
+          onClick={() => setStockTab('blanks')}
+        >
+          Заготовки
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={stockTab === 'profiles'}
+          className={`chemistry-tabs__tab${stockTab === 'profiles' ? ' chemistry-tabs__tab--active' : ''}`}
+          onClick={() => setStockTab('profiles')}
+        >
+          Профили
+        </button>
       </div>
 
+      {stockTab === 'blanks' ? (
+        <div className="chemistry-card">
+          <div className="chemistry-card__head ds-toolbar ds-toolbar--in-card">
+            <div className="ds-toolbar__start" />
+            <div className="ds-toolbar__end chemistry-card__toolbar-actions">
+              <button
+                type="button"
+                className="btn btn--primary"
+                onClick={() => {
+                  setAddKey((k) => k + 1);
+                  setAddOpen(true);
+                }}
+              >
+                Добавить заготовку
+              </button>
+            </div>
+          </div>
+
+          {loading && <Loading />}
+          {error && <ErrorState error={error} onRetry={refetchAll} />}
+          {!loading && !error && blanks.length === 0 && (
+            <EmptyState title="Нет заготовок — нажмите «Добавить заготовку»" />
+          )}
+          {!loading && !error && blanks.length > 0 && (
+            <div className="chemistry-table-wrap">
+              <div className="chemistry-table chemistry-table--prep-list">
+                <div className="chemistry-table__header">
+                  <span className="chemistry-table__th">Имя</span>
+                  <span className="chemistry-table__th chemistry-table__th--num">кг / бочка</span>
+                  <span className="chemistry-table__th chemistry-table__th--actions">Действия</span>
+                </div>
+                {blanks.map((row) => (
+                  <div key={row.id} className="chemistry-table__row">
+                    <span className="chemistry-table__name chemistry-table__cell-clip">{row.name}</span>
+                    <span className="chemistry-table__num">
+                      {formatNumberForInput(row.recipeKgPerBarrel)} кг
+                    </span>
+                    <div className="chemistry-table__actions chemistry-table__actions--wrap chemistry-blank-stock__actions">
+                      <button
+                        type="button"
+                        className="btn btn--secondary btn--sm"
+                        onClick={() => setEditTarget(row)}
+                      >
+                        Редактировать
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--secondary btn--sm"
+                        onClick={() => setCompositionTarget(row)}
+                      >
+                        Состав
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--danger btn--sm"
+                        onClick={() => setDeleteTarget({ id: row.id, name: row.name })}
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <ChemistryPlasticProfilesTab />
+      )}
+
       {addOpen && (
-        <AddBlankModal key={addKey} onClose={() => setAddOpen(false)} onSave={saveNew} />
+        <AddBlankModal
+          key={addKey}
+          materialOptions={materialOptions}
+          onClose={() => setAddOpen(false)}
+          onCreated={refetchAll}
+        />
       )}
 
       {editTarget && (
@@ -251,17 +410,19 @@ const ChemistryPage = () => {
           key={editTarget.id}
           initial={editTarget}
           onClose={() => setEditTarget(null)}
-          onSave={saveEdit}
+          onSaved={refetchAll}
         />
       )}
 
       {compositionTarget && (
-        <CompositionOnlyModal
+        <CompositionEditModal
           key={compositionTarget.id}
+          blankId={compositionTarget.id}
           initialName={compositionTarget.name}
-          composition={compositionTarget.composition}
+          initialComposition={compositionTarget.composition}
+          materialOptions={materialOptions}
           onClose={() => setCompositionTarget(null)}
-          onSave={saveComposition}
+          onSaved={refetchAll}
         />
       )}
 
@@ -270,10 +431,24 @@ const ChemistryPage = () => {
         title="Удалить заготовку?"
         message={deleteTarget ? `Удалить «${deleteTarget.name}»?` : ''}
         confirmText="Удалить"
-        onConfirm={() => {
-          doDelete();
+        confirmBusy={deleteBusy}
+        onConfirm={async () => {
+          if (!deleteTarget?.id) return;
+          setDeleteBusy(true);
+          try {
+            await deleteWorkshopBlank(deleteTarget.id);
+            toast.show('Удалено');
+            refetchAll();
+            setDeleteTarget(null);
+          } catch (e) {
+            toast.show(getApiErrorMessage(e, 'Не удалось удалить'));
+          } finally {
+            setDeleteBusy(false);
+          }
         }}
-        onCancel={() => setDeleteTarget(null)}
+        onCancel={() => {
+          if (!deleteBusy) setDeleteTarget(null);
+        }}
       />
     </div>
   );

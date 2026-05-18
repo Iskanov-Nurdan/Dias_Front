@@ -177,19 +177,17 @@
   }
 
   &--catalog {
-    min-width: 960px;
+    min-width: 720px;
   }
 
   &--catalog &__header,
   &--catalog &__row {
     grid-template-columns:
-      minmax(120px, 1.2fr)
-      3.5rem
+      minmax(120px, 1.35fr)
       minmax(7rem, auto)
       minmax(6rem, auto)
-      5.5rem
       minmax(80px, 1fr)
-      minmax(280px, auto);
+      minmax(260px, auto);
     align-items: center;
   }
 
@@ -200,32 +198,64 @@
   &--stock-view &__header,
   &--stock-view &__row {
     grid-template-columns:
-      minmax(120px, 1.4fr)
+      minmax(120px, 1.5fr)
       minmax(7rem, auto)
-      3.5rem
-      minmax(6rem, auto)
-      minmax(8rem, auto);
+      minmax(6rem, auto);
     align-items: center;
   }
 
-  &--batches-full {
-    min-width: 1100px;
+  &--batches {
+    min-width: 640px;
   }
 
-  &--batches-full &__header,
-  &--batches-full &__row {
+  &--batches &__header,
+  &--batches .materials-table__row--batch-main {
     grid-template-columns:
       100px
-      minmax(100px, 1fr)
-      minmax(5.5rem, auto)
-      minmax(5.5rem, auto)
+      minmax(100px, 1.2fr)
       minmax(5rem, auto)
       minmax(5rem, auto)
-      minmax(80px, 1fr)
-      minmax(72px, 0.9fr)
-      minmax(80px, 1fr);
-    align-items: start;
+      minmax(108px, auto);
+    align-items: center;
+  }
+
+  &__batch-detail {
+    margin: 0 0 var(--space-2);
+    padding: var(--space-3);
+    background: var(--bg-hover, rgba(0, 0, 0, 0.03));
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md, 8px);
+  }
+
+  .materials-batch-detail__dl {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2) var(--space-4);
+    margin: 0;
     font-size: var(--font-caption, 0.8125rem);
+
+    dt {
+      margin: 0;
+      color: var(--text-secondary, var(--muted));
+      font-weight: 500;
+    }
+
+    dd {
+      margin: 0;
+      color: var(--text);
+    }
+
+    > div {
+      display: grid;
+      grid-template-columns: minmax(100px, 0.45fr) 1fr;
+      gap: 0.35rem 0.75rem;
+      align-items: start;
+
+      &.materials-batch-detail__dl-row--wide {
+        grid-column: 1 / -1;
+        grid-template-columns: minmax(88px, 0.22fr) 1fr;
+      }
+    }
   }
 
   &--movements {
@@ -237,10 +267,9 @@
     grid-template-columns:
       100px
       minmax(100px, 1fr)
+      minmax(8rem, 1.1fr)
       minmax(5rem, auto)
-      minmax(5rem, auto)
-      3rem
-      minmax(80px, 1fr);
+      minmax(100px, 1fr);
     align-items: start;
   }
 
@@ -412,7 +441,7 @@
 
     .materials-table--catalog,
     .materials-table--stock-view,
-    .materials-table--batches-full,
+    .materials-table--batches,
     .materials-table--movements {
       min-width: 0 !important;
     }
@@ -425,14 +454,14 @@
 
     .materials-table--catalog .materials-table__header,
     .materials-table--stock-view .materials-table__header,
-    .materials-table--batches-full .materials-table__header,
+    .materials-table--batches .materials-table__header,
     .materials-table--movements .materials-table__header {
       display: none;
     }
 
     .materials-table--catalog .materials-table__row,
     .materials-table--stock-view .materials-table__row,
-    .materials-table--batches-full .materials-table__row,
+    .materials-table--batches .materials-table__row,
     .materials-table--movements .materials-table__row {
       display: flex;
       flex-direction: column;
@@ -444,7 +473,7 @@
 
     .materials-table--catalog .materials-table__row > *,
     .materials-table--stock-view .materials-table__row > *,
-    .materials-table--batches-full .materials-table__row > *,
+    .materials-table--batches .materials-table__row > *,
     .materials-table--movements .materials-table__row > * {
       display: flex;
       justify-content: space-between;
@@ -463,7 +492,7 @@
 
     .materials-table--catalog .materials-table__row > *::before,
     .materials-table--stock-view .materials-table__row > *::before,
-    .materials-table--batches-full .materials-table__row > *::before,
+    .materials-table--batches .materials-table__row > *::before,
     .materials-table--movements .materials-table__row > *::before {
       content: '';
       font-size: var(--font-caption);
@@ -479,26 +508,18 @@
     }
 
     .materials-table--catalog .materials-table__row > *:nth-child(2)::before {
-      content: 'Единица';
-    }
-
-    .materials-table--catalog .materials-table__row > *:nth-child(3)::before {
       content: 'Остаток';
     }
 
-    .materials-table--catalog .materials-table__row > *:nth-child(4)::before {
+    .materials-table--catalog .materials-table__row > *:nth-child(3)::before {
       content: 'Мин. остаток';
     }
 
-    .materials-table--catalog .materials-table__row > *:nth-child(5)::before {
-      content: 'Статус';
-    }
-
-    .materials-table--catalog .materials-table__row > *:nth-child(6)::before {
+    .materials-table--catalog .materials-table__row > *:nth-child(4)::before {
       content: 'Комментарий';
     }
 
-    .materials-table--catalog .materials-table__row > *:nth-child(7)::before {
+    .materials-table--catalog .materials-table__row > *:nth-child(5)::before {
       content: 'Действия';
     }
 
@@ -511,51 +532,27 @@
     }
 
     .materials-table--stock-view .materials-table__row > *:nth-child(3)::before {
-      content: 'Единица';
-    }
-
-    .materials-table--stock-view .materials-table__row > *:nth-child(4)::before {
       content: 'Мин. остаток';
     }
 
-    .materials-table--stock-view .materials-table__row > *:nth-child(5)::before {
-      content: 'Статус';
-    }
-
-    .materials-table--batches-full .materials-table__row > *:nth-child(1)::before {
+    .materials-table--batches .materials-table__row > *:nth-child(1)::before {
       content: 'Дата';
     }
 
-    .materials-table--batches-full .materials-table__row > *:nth-child(2)::before {
+    .materials-table--batches .materials-table__row > *:nth-child(2)::before {
       content: 'Сырьё';
     }
 
-    .materials-table--batches-full .materials-table__row > *:nth-child(3)::before {
+    .materials-table--batches .materials-table__row > *:nth-child(3)::before {
       content: 'Пришло';
     }
 
-    .materials-table--batches-full .materials-table__row > *:nth-child(4)::before {
+    .materials-table--batches .materials-table__row > *:nth-child(4)::before {
       content: 'Осталось';
     }
 
-    .materials-table--batches-full .materials-table__row > *:nth-child(5)::before {
-      content: 'Цена за ед.';
-    }
-
-    .materials-table--batches-full .materials-table__row > *:nth-child(6)::before {
-      content: 'Сумма';
-    }
-
-    .materials-table--batches-full .materials-table__row > *:nth-child(7)::before {
-      content: 'Поставщик';
-    }
-
-    .materials-table--batches-full .materials-table__row > *:nth-child(8)::before {
-      content: 'Документ';
-    }
-
-    .materials-table--batches-full .materials-table__row > *:nth-child(9)::before {
-      content: 'Комментарий';
+    .materials-table--batches .materials-table__row > *:nth-child(5)::before {
+      content: 'Действия';
     }
 
     .materials-table--movements .materials-table__row > *:nth-child(1)::before {
@@ -575,10 +572,6 @@
     }
 
     .materials-table--movements .materials-table__row > *:nth-child(5)::before {
-      content: 'Ед.';
-    }
-
-    .materials-table--movements .materials-table__row > *:nth-child(6)::before {
       content: 'Комментарий';
     }
   }

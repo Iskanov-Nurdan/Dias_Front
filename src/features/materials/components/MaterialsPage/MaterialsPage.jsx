@@ -1,4 +1,6 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, {
+  useMemo, useState, useEffect, useCallback, Fragment,
+} from 'react';
 import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
 import {
   useServerQuery,
@@ -37,6 +39,13 @@ const unitLabelRu = (u) => {
   return u || 'кг';
 };
 
+/** Только число в ячейке; единица в title (подсказка при наведении). */
+const qtyNumWithUnitTitle = (value, unit) => {
+  const n = formatQuantityDisplay(value);
+  const u = unitLabelRu(unit);
+  return { display: n, title: `${n} ${u}`.trim() };
+};
+
 const normMovementKey = (raw) =>
   String(raw ?? '')
     .trim()
@@ -53,6 +62,8 @@ const MOVEMENT_TYPE_LABEL = {
   consumption: 'Расход',
   fifo_consume: 'Списание (FIFO)',
   writeoff: 'Списание',
+  writeoff_workshop: 'Списание на производство (цех)',
+  workshop_writeoff: 'Списание на производство (цех)',
   adjustment: 'Корректировка',
   transfer: 'Перемещение',
   production: 'Производство',
@@ -117,12 +128,6 @@ const getStockLevelKey = (b) => {
   return 'ok';
 };
 
-const STOCK_LEVEL_LABEL = {
-  ok: 'норма',
-  low: 'мало',
-  empty: 'нет в наличии',
-};
-
 const MaterialsPage = () => {
   const toast = useToast();
   const [mainTab, setMainTab] = useState(MAIN_TAB.CATALOG);
@@ -130,8 +135,8 @@ const MaterialsPage = () => {
   const [editModal, setEditModal] = useState(null);
   const [replenishModal, setReplenishModal] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [deactivateTarget, setDeactivateTarget] = useState(null);
   const [submitError, setSubmitError] = useState('');
+  const [batchExpandId, setBatchExpandId] = useState(null);
 
   const [balances, setBalances] = useState([]);
   const [balancesLoading, setBalancesLoading] = useState(false);
@@ -148,6 +153,10 @@ const MaterialsPage = () => {
   useEffect(() => {
     refetchBalances();
   }, [refetchBalances]);
+
+  useEffect(() => {
+    setBatchExpandId(null);
+  }, [mainTab]);
 
   const incomingQuery = useMemo(() => ({
     page: 1,
@@ -250,22 +259,6 @@ const MaterialsPage = () => {
       setReplenishModal(null);
       refetchAll();
       toast.show('Приход оформлен');
-    } catch (err) {
-      setSubmitError(err.response?.data?.error || 'Ошибка');
-    }
-  };
-
-  const handleDeactivate = async () => {
-    if (!deactivateTarget) return;
-    setSubmitError('');
-    const id = getMaterialId(deactivateTarget);
-    const name = displayName(deactivateTarget);
-    if (id == null) return;
-    try {
-      await updateRawMaterial(id, { is_active: false });
-      setDeactivateTarget(null);
-      refetchAll();
-      toast.show(`«${name}» деактивировано`);
     } catch (err) {
       setSubmitError(err.response?.data?.error || 'Ошибка');
     }
@@ -398,10 +391,8 @@ const MaterialsPage = () => {
                   <div className="materials-table materials-table--catalog">
                     <div className="materials-table__header">
                       <span className="materials-table__th">Название</span>
-                      <span className="materials-table__th">Единица</span>
                       <span className="materials-table__th">Текущий остаток</span>
                       <span className="materials-table__th materials-table__th--min">Минимальный остаток</span>
-                      <span className="materials-table__th">Статус</span>
                       <span className="materials-table__th">Комментарий</span>
                       <span className="materials-table__th materials-table__th--actions">Действия</span>
                     </div>
@@ -409,23 +400,30 @@ const MaterialsPage = () => {
                       const low = isLowStock(b);
                       const mid = getMaterialId(b);
                       const active = b.is_active !== false;
+                      const balCell = qtyNumWithUnitTitle(b.balance, b.unit);
+                      const minRaw = minBalanceValue(b);
+                      const minCell = minRaw != null && minRaw !== ''
+                        ? qtyNumWithUnitTitle(minRaw, b.unit)
+                        : null;
                       return (
                         <div
                           key={mid != null ? String(mid) : `row-${idx}-${displayName(b)}`}
                           className={`materials-table__row ${low ? 'materials-table__row--low-stock' : ''}`}
                         >
-                          <span className="materials-table__name">{displayName(b)}</span>
-                          <span className="materials-table__unit">{unitLabelRu(b.unit)}</span>
-                          <span className={`materials-table__balance${low ? ' materials-table__balance--low' : ''}`}>
-                            {formatQuantityDisplay(b.balance)} {unitLabelRu(b.unit)}
+                          <span className="materials-table__name">
+                            {displayName(b)}
+                            {!active && (
+                              <span className="materials-table__inactive"> · неактивен</span>
+                            )}
                           </span>
-                          <span className="materials-table__min">
-                            {minBalanceValue(b) != null && minBalanceValue(b) !== ''
-                              ? `${formatQuantityDisplay(minBalanceValue(b))} ${unitLabelRu(b.unit)}`
-                              : '—'}
+                          <span
+                            className={`materials-table__balance${low ? ' materials-table__balance--low' : ''}`}
+                            title={balCell.title}
+                          >
+                            {balCell.display}
                           </span>
-                          <span className="materials-table__card-status">
-                            {active ? 'активен' : 'неактивен'}
+                          <span className="materials-table__min" title={minCell?.title}>
+                            {minCell ? minCell.display : '—'}
                           </span>
                           <span className="materials-table__comment" title={getComment(b)}>
                             {getComment(b) ? getComment(b) : '—'}
@@ -447,16 +445,6 @@ const MaterialsPage = () => {
                             >
                               Редактировать
                             </button>
-                            {active && (
-                              <button
-                                type="button"
-                                className="btn btn--secondary btn--sm"
-                                disabled={mid == null}
-                                onClick={() => setDeactivateTarget(b)}
-                              >
-                                Деактивировать
-                              </button>
-                            )}
                             {canDeleteMaterial(b) && (
                               <button
                                 type="button"
@@ -489,31 +477,31 @@ const MaterialsPage = () => {
                     <div className="materials-table__header">
                       <span className="materials-table__th">Сырьё</span>
                       <span className="materials-table__th">Общий остаток</span>
-                      <span className="materials-table__th">Единица</span>
                       <span className="materials-table__th materials-table__th--min">Минимальный остаток</span>
-                      <span className="materials-table__th">Статус</span>
                     </div>
                     {balances.map((b, idx) => {
                       const sk = getStockLevelKey(b);
                       const low = sk === 'low';
                       const mid = getMaterialId(b);
+                      const balCell = qtyNumWithUnitTitle(b.balance, b.unit);
+                      const minRaw = minBalanceValue(b);
+                      const minCell = minRaw != null && minRaw !== ''
+                        ? qtyNumWithUnitTitle(minRaw, b.unit)
+                        : null;
                       return (
                         <div
                           key={mid != null ? String(mid) : `st-${idx}`}
                           className={`materials-table__row ${low || sk === 'empty' ? 'materials-table__row--low-stock' : ''}`}
                         >
                           <span className="materials-table__name">{displayName(b)}</span>
-                          <span className={`materials-table__balance${low || sk === 'empty' ? ' materials-table__balance--low' : ''}`}>
-                            {formatQuantityDisplay(b.balance)}
+                          <span
+                            className={`materials-table__balance${low || sk === 'empty' ? ' materials-table__balance--low' : ''}`}
+                            title={balCell.title}
+                          >
+                            {balCell.display}
                           </span>
-                          <span className="materials-table__unit">{unitLabelRu(b.unit)}</span>
-                          <span className="materials-table__min">
-                            {minBalanceValue(b) != null && minBalanceValue(b) !== ''
-                              ? `${formatQuantityDisplay(minBalanceValue(b))} ${unitLabelRu(b.unit)}`
-                              : '—'}
-                          </span>
-                          <span className={`materials-table__stock-status materials-table__stock-status--${sk}`}>
-                            {STOCK_LEVEL_LABEL[sk]}
+                          <span className="materials-table__min" title={minCell?.title}>
+                            {minCell ? minCell.display : '—'}
                           </span>
                         </div>
                       );
@@ -534,17 +522,13 @@ const MaterialsPage = () => {
                 <EmptyState title="Нет партий" />
               ) : (
                 <div className="materials-table-wrap">
-                  <div className="materials-table materials-table--batches-full">
+                  <div className="materials-table materials-table--batches">
                     <div className="materials-table__header">
                       <span className="materials-table__th">Дата</span>
                       <span className="materials-table__th">Сырьё</span>
                       <span className="materials-table__th">Пришло</span>
                       <span className="materials-table__th">Осталось</span>
-                      <span className="materials-table__th">Цена за ед.</span>
-                      <span className="materials-table__th">Сумма</span>
-                      <span className="materials-table__th">Поставщик</span>
-                      <span className="materials-table__th">Документ</span>
-                      <span className="materials-table__th">Комментарий</span>
+                      <span className="materials-table__th materials-table__th--actions"> </span>
                     </div>
                     {incomingList.map((i) => {
                       const at = i.received_at || i.created_at || i.date;
@@ -554,20 +538,44 @@ const MaterialsPage = () => {
                       const tot = i.total_price ?? i.total;
                       const uDisp = unitLabelRu(i.unit);
                       const doc = i.document_number ?? i.doc_number ?? i.supplier_batch_number ?? i.supplier_batch;
+                      const inCell = qtyNumWithUnitTitle(qIn, i.unit);
+                      const remCell = qRem != null && qRem !== '' ? qtyNumWithUnitTitle(qRem, i.unit) : null;
+                      const expanded = batchExpandId === i.id;
                       return (
-                        <div key={i.id} className="materials-table__row">
-                          <span className="materials-table__date" title={at && String(at).length > 12 ? String(at) : undefined}>
-                            {typeof at === 'string' && at.length >= 16 ? at.slice(0, 16).replace('T', ' ') : formatDate(at)}
-                          </span>
-                          <span>{i.material_name ?? i.name ?? '—'}</span>
-                          <span>{formatQuantityDisplay(qIn)} {uDisp}</span>
-                          <span>{qRem != null && qRem !== '' ? `${formatQuantityDisplay(qRem)} ${uDisp}` : '—'}</span>
-                          <span>{up != null && up !== '' ? `${formatQuantityDisplay(up)} сом` : '—'}</span>
-                          <span>{tot != null && tot !== '' ? `${formatQuantityDisplay(tot)} сом` : '—'}</span>
-                          <span>{i.supplier_name ?? i.supplier ?? '—'}</span>
-                          <span>{doc ?? '—'}</span>
-                          <span className="materials-table__comment">{i.comment ?? '—'}</span>
-                        </div>
+                        <Fragment key={i.id}>
+                          <div className="materials-table__row materials-table__row--batch-main">
+                            <span className="materials-table__date" title={at && String(at).length > 12 ? String(at) : undefined}>
+                              {typeof at === 'string' && at.length >= 16 ? at.slice(0, 16).replace('T', ' ') : formatDate(at)}
+                            </span>
+                            <span>{i.material_name ?? i.name ?? '—'}</span>
+                            <span title={inCell.title}>{inCell.display}</span>
+                            <span title={remCell?.title}>{remCell ? remCell.display : '—'}</span>
+                            <div className="materials-table__actions">
+                              <button
+                                type="button"
+                                className="btn btn--secondary btn--sm"
+                                onClick={() => setBatchExpandId(expanded ? null : i.id)}
+                              >
+                                {expanded ? 'Свернуть' : 'Подробнее'}
+                              </button>
+                            </div>
+                          </div>
+                          {expanded && (
+                            <div className="materials-table__batch-detail">
+                              <dl className="materials-batch-detail__dl">
+                                <div><dt>Цена за ед.</dt><dd>{up != null && up !== '' ? `${formatQuantityDisplay(up)} сом` : '—'}</dd></div>
+                                <div><dt>Сумма</dt><dd>{tot != null && tot !== '' ? `${formatQuantityDisplay(tot)} сом` : '—'}</dd></div>
+                                <div><dt>Ед. учёта</dt><dd>{uDisp}</dd></div>
+                                <div><dt>Поставщик</dt><dd>{i.supplier_name ?? i.supplier ?? '—'}</dd></div>
+                                <div><dt>Документ</dt><dd>{doc ?? '—'}</dd></div>
+                                <div className="materials-batch-detail__dl-row materials-batch-detail__dl-row--wide">
+                                  <dt>Комментарий</dt>
+                                  <dd>{i.comment ?? '—'}</dd>
+                                </div>
+                              </dl>
+                            </div>
+                          )}
+                        </Fragment>
                       );
                     })}
                   </div>
@@ -597,11 +605,11 @@ const MaterialsPage = () => {
                       <span className="materials-table__th">Сырьё</span>
                       <span className="materials-table__th">Тип</span>
                       <span className="materials-table__th">Количество</span>
-                      <span className="materials-table__th">Ед.</span>
                       <span className="materials-table__th">Комментарий</span>
                     </div>
                     {movementList.map((m) => {
                       const at = m.occurred_at ?? m.created_at ?? m.date;
+                      const qCell = qtyNumWithUnitTitle(m.quantity, m.unit);
                       return (
                         <div key={m.id} className="materials-table__row">
                           <span className="materials-table__date">
@@ -609,8 +617,7 @@ const MaterialsPage = () => {
                           </span>
                           <span>{m.material_name ?? m.name ?? '—'}</span>
                           <span>{movementTypeLabel(m.movement_type ?? m.type)}</span>
-                          <span>{formatQuantityDisplay(m.quantity)}</span>
-                          <span>{unitLabelRu(m.unit)}</span>
+                          <span title={qCell.title}>{qCell.display}</span>
                           <span className="materials-table__comment">{m.comment ?? '—'}</span>
                         </div>
                       );
@@ -625,7 +632,6 @@ const MaterialsPage = () => {
 
       {catalogModal && (
         <AddCatalogMaterialModal
-          units={UNITS}
           onSubmit={handleCreateCatalogSubmit}
           onClose={() => { setCatalogModal(null); setSubmitError(''); }}
           error={submitError}
@@ -634,6 +640,7 @@ const MaterialsPage = () => {
 
       {editModal && getMaterialId(editModal) != null && (
         <EditMaterialModal
+          key={getMaterialId(editModal)}
           materialId={getMaterialId(editModal)}
           unitLocked={isUnitLocked(editModal)}
           initial={{
@@ -674,36 +681,19 @@ const MaterialsPage = () => {
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
       />
-
-      <ConfirmModal
-        open={!!deactivateTarget}
-        title="Деактивировать?"
-        message={
-          deactivateTarget
-            ? `Снять с учёта «${displayName(deactivateTarget)}»? Остатки и история сохраняются.`
-            : ''
-        }
-        confirmText="Деактивировать"
-        onConfirm={handleDeactivate}
-        onCancel={() => setDeactivateTarget(null)}
-      />
     </div>
   );
 };
 
-const AddCatalogMaterialModal = ({ units, onSubmit, onClose, error }) => {
+const AddCatalogMaterialModal = ({ onSubmit, onClose, error }) => {
   const [name, setName] = useState('');
-  const [unit, setUnit] = useState('kg');
   const [minBalance, setMinBalance] = useState('');
   const [comment, setComment] = useState('');
-  const [statusActive, setStatusActive] = useState(true);
 
   const isDirty = useDirtyFromBaseline('add-catalog-material', false, {
     name: name.trim(),
-    unit,
     minBalance: String(minBalance ?? '').trim(),
     comment: comment.trim(),
-    statusActive,
   });
   const {
     requestClose,
@@ -734,8 +724,8 @@ const AddCatalogMaterialModal = ({ units, onSubmit, onClose, error }) => {
             if (minBalance !== '' && (!Number.isFinite(minB) || minB < 0)) return;
             onSubmit({
               name: name.trim(),
-              unit,
-              is_active: statusActive,
+              unit: 'kg',
+              is_active: true,
               ...(minB !== undefined ? { min_balance: minB } : {}),
               ...(comment.trim() ? { comment: comment.trim() } : {}),
             });
@@ -743,25 +733,10 @@ const AddCatalogMaterialModal = ({ units, onSubmit, onClose, error }) => {
         >
           <label>Название *</label>
           <input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Название сырья" />
-          <label>Единица измерения *</label>
-          <Select
-            value={unit}
-            onChange={setUnit}
-            options={units.map((u) => ({ value: u.value, label: u.label }))}
-          />
           <label>Минимальный остаток</label>
           <DecimalInput min={0} value={minBalance} onChange={setMinBalance} placeholder="Порог «мало»" />
           <label>Комментарий</label>
           <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Опционально" />
-          <label>Статус *</label>
-          <Select
-            value={statusActive ? 'active' : 'inactive'}
-            onChange={(v) => setStatusActive(v === 'active')}
-            options={[
-              { value: 'active', label: 'активен' },
-              { value: 'inactive', label: 'неактивен' },
-            ]}
-          />
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
             <button type="submit" className="btn btn--primary">Сохранить</button>
@@ -775,20 +750,16 @@ const AddCatalogMaterialModal = ({ units, onSubmit, onClose, error }) => {
 
 const EditMaterialModal = ({ materialId, initial, unitLocked, onSubmit, onClose, error }) => {
   const [name, setName] = useState(initial.name);
-  const [unit, setUnit] = useState(initial.unit);
   const [minBalance, setMinBalance] = useState(
     initial.min_balance === null || initial.min_balance === undefined || initial.min_balance === ''
       ? ''
       : formatNumberForInput(initial.min_balance),
   );
-  const [isActive, setIsActive] = useState(initial.is_active !== false);
   const [comment, setComment] = useState(initial.comment || '');
 
   const isDirty = useDirtyFromBaseline(String(materialId), false, {
     name: name.trim(),
-    unit,
     minBalance: String(minBalance ?? '').trim(),
-    isActive,
     comment: comment.trim(),
   });
   const {
@@ -820,33 +791,16 @@ const EditMaterialModal = ({ materialId, initial, unitLocked, onSubmit, onClose,
             if (minBalance !== '' && (!Number.isFinite(minB) || minB < 0)) return;
             const payload = {
               name: name.trim(),
-              is_active: isActive,
+              is_active: initial.is_active !== false,
               ...(minB === null ? { min_balance: null } : { min_balance: minB }),
               ...(comment.trim() ? { comment: comment.trim() } : { comment: '' }),
             };
-            if (!unitLocked) payload.unit = unit;
+            if (!unitLocked) payload.unit = initial.unit;
             onSubmit(materialId, payload);
           }}
         >
           <label>Название *</label>
           <input value={name} onChange={(e) => setName(e.target.value)} required />
-          <label>Единица измерения *</label>
-          <Select
-            value={unit}
-            onChange={setUnit}
-            options={UNITS.map((u) => ({ value: u.value, label: u.label }))}
-            disabled={unitLocked}
-            title={unitLocked ? 'Единица заблокирована после приходов' : undefined}
-          />
-          <label>Статус *</label>
-          <Select
-            value={isActive ? 'active' : 'inactive'}
-            onChange={(v) => setIsActive(v === 'active')}
-            options={[
-              { value: 'active', label: 'активен' },
-              { value: 'inactive', label: 'неактивен' },
-            ]}
-          />
           <label>Минимальный остаток</label>
           <DecimalInput min={0} value={minBalance} onChange={setMinBalance} placeholder="Порог «мало»" />
           <label>Комментарий</label>
@@ -909,7 +863,6 @@ const ReplenishModal = ({ material, onSubmit, onClose, error }) => {
   }, [pickMode]);
 
   const mname = resolvedMaterial?.name || '';
-  const unitHint = unitLabelRu(resolvedMaterial?.unit);
 
   const qtyNum = parseLocaleNumber(quantity);
   const priceNum = parseLocaleNumber(pricePerUnit);
@@ -988,8 +941,6 @@ const ReplenishModal = ({ material, onSubmit, onClose, error }) => {
           {!pickMode && <p style={{ margin: '0 0 0.5rem', fontWeight: 600 }}>{mname}</p>}
           <label>Количество *</label>
           <DecimalInput min={0} value={quantity} onChange={setQuantity} required placeholder="Напр. 10 или 0,5" />
-          <label>Единица</label>
-          <input readOnly value={unitHint} className="materials-input-readonly" />
           <label>Цена за единицу (сом) *</label>
           <DecimalInput min={0} value={pricePerUnit} onChange={setPricePerUnit} required />
           {batchSum != null && Number.isFinite(batchSum) && (

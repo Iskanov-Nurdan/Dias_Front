@@ -54,6 +54,30 @@ const companyAccountField = (c) => (
 const innField = (c) => c?.inn ?? c?.tax_id ?? '';
 const addressField = (c) => c?.address ?? c?.legal_address ?? '';
 const formatDate = (v) => (v ? String(v).slice(0, 10) : '—');
+
+/** Разбирает строку вида «ORD-… — долг 19000» на номер и подпись. */
+const splitSaleDisplayParts = (item) => {
+  const raw = String(item?.display ?? item?.label ?? item?.order_display ?? '').trim();
+  if (!raw) return { primary: '—', secondary: null };
+  const m = raw.match(/^(.+?)\s*[—–−]\s*(.+)$/);
+  if (m) {
+    return { primary: m[1].trim(), secondary: m[2].trim() };
+  }
+  return { primary: raw, secondary: null };
+};
+
+const ProfileSaleLabel = ({ item }) => {
+  const { primary, secondary } = splitSaleDisplayParts(item);
+  if (!secondary) {
+    return <span className="clients-profile__sale-label clients-profile__sale-label--plain">{primary}</span>;
+  }
+  return (
+    <div className="clients-profile__sale-label">
+      <span className="clients-profile__sale-label-id">{primary}</span>
+      <span className="clients-profile__sale-label-meta">{secondary}</span>
+    </div>
+  );
+};
 const toMoney = (v) => (v != null && v !== '' ? `${formatQuantityDisplay(v)} сом` : '—');
 const textDisplay = (v) => (v == null || String(v).trim() === '' ? '—' : String(v).trim());
 const toNum = (v) => {
@@ -171,8 +195,6 @@ const ClientsPage = () => {
                 <th>Тип</th>
                 <th>ФИО / Компания</th>
                 <th>Телефон</th>
-                <th>Доп. телефон</th>
-                <th>ИНН</th>
                 <th>Статус</th>
                 <th className="data-table__cell--actions"> </th>
               </tr>
@@ -183,8 +205,6 @@ const ClientsPage = () => {
                   <td><Badge variant={clientTypeValue(c) === 'company' ? 'primary' : 'default'}>{clientTypeLabel(c)}</Badge></td>
                   <td className="data-table__cell--lead">{textOrDash(c.name || c.title)}</td>
                   <td className="data-table__cell--muted">{textOrDash(c.phone || c.phone_number)}</td>
-                  <td className="data-table__cell--muted">{textOrDash(getPhoneExtra(c))}</td>
-                  <td className="data-table__cell--muted">{textOrDash(innField(c))}</td>
                   <td>
                     {clientIsActive(c) ? (
                       <Badge variant="success">Активен</Badge>
@@ -419,7 +439,6 @@ const ClientProfileModal = ({ clientId, onClose, onPaymentSaved }) => {
   const summary = profile?.summary && typeof profile.summary === 'object' ? profile.summary : {};
   const purchases = Array.isArray(profile?.purchases) ? profile.purchases : [];
   const orders = Array.isArray(profile?.orders) ? profile.orders : [];
-  const returns = Array.isArray(profile?.returns) ? profile.returns : [];
   const debts = Array.isArray(profile?.debts) ? profile.debts : [];
   const fallbackDebtRows = paymentSales.filter((s) => toNum(s.debt_amount) > 0);
   const debtRows = debts.length > 0 ? debts : fallbackDebtRows;
@@ -504,7 +523,13 @@ const ClientProfileModal = ({ clientId, onClose, onPaymentSaved }) => {
                 <dl className="clients-profile__dl">
                   <div className="clients-profile__row"><dt>Тип</dt><dd>{clientTypeLabel(client)}</dd></div>
                   <div className="clients-profile__row"><dt>{clientTypeValue(client) === 'company' ? 'Компания' : 'ФИО'}</dt><dd>{textDisplay(client.name || client.label)}</dd></div>
-                  <div className="clients-profile__row"><dt>Телефоны</dt><dd>{textDisplay([client.phone, client.phone_extra, client.phone_alt].filter(Boolean).join(', '))}</dd></div>
+                  <div className="clients-profile__row"><dt>Телефон</dt><dd>{textDisplay(client.phone || client.phone_number)}</dd></div>
+                  {getPhoneExtra(client) ? (
+                    <div className="clients-profile__row"><dt>Доп. телефон</dt><dd>{textDisplay(getPhoneExtra(client))}</dd></div>
+                  ) : null}
+                  {innField(client) && clientTypeValue(client) !== 'company' ? (
+                    <div className="clients-profile__row"><dt>ИНН</dt><dd>{textDisplay(innField(client))}</dd></div>
+                  ) : null}
                   {clientTypeValue(client) === 'company' ? (
                     <>
                       <div className="clients-profile__row"><dt>Расчётный счёт</dt><dd>{textDisplay(companyAccountField(client))}</dd></div>
@@ -522,10 +547,9 @@ const ClientProfileModal = ({ clientId, onClose, onPaymentSaved }) => {
                   <div className="clients-profile__row"><dt>Оплачено</dt><dd>{toMoney(totalPaidAmount)}</dd></div>
                   <div className="clients-profile__row"><dt>Долг</dt><dd>{toMoney(totalDebt)}</dd></div>
                   <div className="clients-profile__row"><dt>Заявок</dt><dd>{textDisplay(summary.total_orders)}</dd></div>
-                  <div className="clients-profile__row"><dt>Возвратов</dt><dd>{textDisplay(summary.total_returns)}</dd></div>
                 </dl>
               </section>
-              <section className="clients-profile__block">
+              <section className="clients-profile__block clients-profile__block--accent">
                 <div className="clients-profile__head-row">
                   <h4 className="clients-profile__title">Погашение долга</h4>
                   <button type="button" className="btn btn--primary" onClick={() => setPayModalOpen(true)}>Погасить долг</button>
@@ -533,12 +557,12 @@ const ClientProfileModal = ({ clientId, onClose, onPaymentSaved }) => {
               </section>
               <section className="clients-profile__block">
                 <h4 className="clients-profile__title">История покупок</h4>
-                {purchases.length === 0 ? <p className="clients-profile__muted">Нет.</p> : (
-                  <div className="commercial-table-wrap">
-                    <table className="data-table data-table--order-detail-lines">
+                {purchases.length === 0 ? <p className="clients-profile__muted">Нет покупок.</p> : (
+                  <div className="commercial-table-wrap clients-profile__table-wrap">
+                    <table className="data-table data-table--order-detail-lines clients-profile__table">
                       <thead><tr><th>Дата</th><th>Продажа</th><th className="data-table__cell--num">Сумма</th></tr></thead>
                       <tbody>{purchases.map((x) => (
-                        <tr key={x.id}><td>{formatDate(x.date || x.created_at)}</td><td>{textDisplay(x.display || x.label)}</td><td className="data-table__cell--num">{toMoney(x.total_amount ?? x.revenue)}</td></tr>
+                        <tr key={x.id}><td className="clients-profile__td-date">{formatDate(x.date || x.created_at)}</td><td><ProfileSaleLabel item={x} /></td><td className="data-table__cell--num">{toMoney(x.total_amount ?? x.revenue)}</td></tr>
                       ))}</tbody>
                     </table>
                   </div>
@@ -546,9 +570,9 @@ const ClientProfileModal = ({ clientId, onClose, onPaymentSaved }) => {
               </section>
               <section className="clients-profile__block">
                 <h4 className="clients-profile__title">Заявки</h4>
-                {orders.length === 0 ? <p className="clients-profile__muted">Нет.</p> : (
-                  <div className="commercial-table-wrap">
-                    <table className="data-table data-table--order-detail-lines">
+                {orders.length === 0 ? <p className="clients-profile__muted">Нет заявок.</p> : (
+                  <div className="commercial-table-wrap clients-profile__table-wrap">
+                    <table className="data-table data-table--order-detail-lines clients-profile__table">
                       <thead><tr><th>Заявка</th><th>Дата</th><th>Статус</th></tr></thead>
                       <tbody>{orders.map((x) => (
                         <tr key={x.id}><td>{textDisplay(x.display || x.order_display)}</td><td>{formatDate(x.date || x.created_at)}</td><td>{textDisplay(x.status_label || x.request_status)}</td></tr>
@@ -559,29 +583,16 @@ const ClientProfileModal = ({ clientId, onClose, onPaymentSaved }) => {
               </section>
               <section className="clients-profile__block">
                 <h4 className="clients-profile__title">Долги</h4>
-                {debtRows.length === 0 ? <p className="clients-profile__muted">Нет.</p> : (
-                  <div className="commercial-table-wrap">
-                    <table className="data-table data-table--order-detail-lines">
+                {debtRows.length === 0 ? <p className="clients-profile__muted">Нет долгов по продажам.</p> : (
+                  <div className="commercial-table-wrap clients-profile__table-wrap">
+                    <table className="data-table data-table--order-detail-lines clients-profile__table">
                       <thead><tr><th>Продажа</th><th className="data-table__cell--num">Сумма</th><th className="data-table__cell--num">Долг</th></tr></thead>
                       <tbody>{debtRows.map((d, i) => (
                         <tr key={d.id != null ? `debt-${d.id}` : `debt-${i}`}>
-                          <td>{textDisplay(d.display || d.label)}</td>
+                          <td><ProfileSaleLabel item={d} /></td>
                           <td className="data-table__cell--num">{toMoney(d.total_amount ?? d.amount)}</td>
                           <td className="data-table__cell--num">{toMoney(d.debt_amount)}</td>
                         </tr>
-                      ))}</tbody>
-                    </table>
-                  </div>
-                )}
-              </section>
-              <section className="clients-profile__block">
-                <h4 className="clients-profile__title">Возвраты</h4>
-                {returns.length === 0 ? <p className="clients-profile__muted">Нет.</p> : (
-                  <div className="commercial-table-wrap">
-                    <table className="data-table data-table--order-detail-lines">
-                      <thead><tr><th>Возврат</th><th>Дата</th><th>Причина</th></tr></thead>
-                      <tbody>{returns.map((x) => (
-                        <tr key={x.id}><td>{textDisplay(x.display || x.label)}</td><td>{formatDate(x.date || x.created_at)}</td><td>{textDisplay(x.return_reason)}</td></tr>
                       ))}</tbody>
                     </table>
                   </div>

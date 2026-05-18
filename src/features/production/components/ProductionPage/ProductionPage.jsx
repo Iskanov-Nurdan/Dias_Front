@@ -1,21 +1,21 @@
-import React, { useState, useMemo, useEffect, useSyncExternalStore } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   useServerQuery,
   formatQuantityDisplay,
   formatNumberForInput,
   getApiErrorMessage,
+  pickFirstIsoDate,
+  matchesClientDateFilter,
 } from '../../../../shared/lib';
-import { Loading, EmptyState, ErrorState, useToast, SearchableSelect } from '../../../../shared/ui';
+import { Loading, EmptyState, ErrorState, useToast, SearchableSelect, ClientDateFilter } from '../../../../shared/ui';
 import { useOperationalRefetch } from '../../../../shared/realtime';
 import ProduceBlankModal from '../ProduceBlankModal/ProduceBlankModal';
-import { getLines } from '../../../lines/api/linesApi';
 import { getOrderSelectSources } from '../../../orders/api/ordersApi';
 import { startProductionRequest } from '../../api/productionApi';
 import {
-  subscribeBlankRuns,
-  getBlankRunsSnapshot,
-  loadBlankProductionRuns,
-} from '../../../chemistry/lib/localBlankStore';
+  mapBlankProductionRunFromApi,
+  mapWorkshopBlankFromApi,
+} from '../../../chemistry/api/blankWorkshopApi';
 import './ProductionPage.scss';
 
 const formatRunDateTime = (d) => {
@@ -96,62 +96,61 @@ const rqProfile = (o, list) => {
   return '—';
 };
 
-const pickRc = (r) => {
-  if (!r) return '';
-  if (r.label != null) {
-    const lab = String(r.label).trim();
-    if (lab) return lab;
-  }
-  const n =
-    (typeof r.recipe === 'string' && r.recipe.trim())
-    || (typeof r.recipe_name === 'string' && r.recipe_name.trim())
-    || (typeof r.name === 'string' && r.name.trim())
-    || (typeof r.product_name === 'string' && r.product_name.trim())
-    || (typeof r.product === 'string' && r.product.trim());
-  if (n) return n;
-  return '';
+/** Список ID заготовок, разрешённых для этой заявки (сериализатор production). */
+const readAllowedBlankIds = (order) => {
+  const raw = order?.allowed_blank_ids ?? order?.allowedBlankIds;
+  if (raw == null) return null;
+  if (!Array.isArray(raw)) return null;
+  if (raw.length === 0) return [];
+  return raw.map((x) => String(x));
 };
 
-const rqRecipe = (o, list) => {
-  if (o?.recipe && typeof o.recipe === 'object') {
-    const t = pickRc(o.recipe);
-    if (t) return t;
-  }
-  if (o?.recipe_name && String(o.recipe_name).trim()) return String(o.recipe_name).trim();
-  let rid = o?.recipe_id;
-  if (rid == null && o?.recipe != null && typeof o.recipe !== 'object') rid = o.recipe;
-  if (rid != null && Array.isArray(list)) {
-    const row = list.find((r) => String(r.id) === String(rid));
-    if (row) return pickRc(row);
-  }
-  if (rid != null) return '—';
-  return '—';
+/**
+ * Опции селекта заготовки: если бэк отдал allowed_blank_ids — только они (без «левых» заготовок).
+ * Пустой массив с бэка = нет подходящих заготовок в каталоге.
+ */
+const filterBlankSelectOptions = (allWithPlaceholder, order) => {
+  const allowed = readAllowedBlankIds(order);
+  const data = allWithPlaceholder.filter((o) => o.value !== '');
+  if (allowed === null) return allWithPlaceholder;
+  if (allowed.length === 0) return [{ value: '', label: '—' }];
+  const set = new Set(allowed);
+  const filtered = data.filter((o) => set.has(String(o.value)));
+  return [{ value: '', label: '—' }, ...filtered];
 };
 
-const ProductionClientRequestsPanel = ({ queryEnabled }) => {
+const ProductionClientRequestsPanel = ({ queryEnabled, clientDateFilter }) => {
   const toast = useToast();
-  const [lines, setLines] = useState([]);
-  const [lineByOrder, setLineByOrder] = useState({});
+  const [blankByOrder, setBlankByOrder] = useState({});
   const [startBusy, setStartBusy] = useState(null);
   const [srcClients, setSrcClients] = useState([]);
   const [srcProfiles, setSrcProfiles] = useState([]);
-  const [srcRecipes, setSrcRecipes] = useState([]);
 
   const q = useMemo(() => ({ page: 1, page_size: 200 }), []);
   const { items, loading, error, refetch } = useServerQuery('production/requests/', q, {
     enabled: queryEnabled,
   });
 
-  useOperationalRefetch(['order', 'production_batch'], refetch, queryEnabled);
+  const blanksQ = useMemo(() => ({ page: 1, page_size: 500, ordering: 'name' }), []);
+  const { items: blankItems, refetch: refetchBlanks } = useServerQuery('workshop/blanks/', blanksQ, {
+    enabled: queryEnabled,
+  });
 
-  useEffect(() => {
-    getLines({ page_size: 200 })
-      .then((res) => {
-        const list = res.data?.items ?? (Array.isArray(res.data) ? res.data : []);
-        setLines(Array.isArray(list) ? list : []);
-      })
-      .catch(() => setLines([]));
-  }, []);
+  useOperationalRefetch(['order', 'production_batch', 'orders'], refetch, queryEnabled);
+  useOperationalRefetch(['workshop_blank'], refetchBlanks, queryEnabled);
+
+  const orderDateFields = useMemo(
+    () => ['created_at', 'updated_at', 'date', 'order_date', 'requested_at'],
+    [],
+  );
+
+  const visibleItems = useMemo(() => {
+    const list = items || [];
+    if (!clientDateFilter) return list;
+    return list.filter((o) =>
+      matchesClientDateFilter(clientDateFilter, pickFirstIsoDate(o, orderDateFields)),
+    );
+  }, [items, clientDateFilter, orderDateFields]);
 
   useEffect(() => {
     getOrderSelectSources()
@@ -159,32 +158,60 @@ const ProductionClientRequestsPanel = ({ queryEnabled }) => {
         const data = res.data || {};
         setSrcClients(Array.isArray(data.clients) ? data.clients : []);
         setSrcProfiles(Array.isArray(data.profiles) ? data.profiles : []);
-        setSrcRecipes(Array.isArray(data.recipes) ? data.recipes : []);
       })
       .catch(() => {
         setSrcClients([]);
         setSrcProfiles([]);
-        setSrcRecipes([]);
       });
   }, []);
 
-  const lineOptions = useMemo(
-    () => [
+  const blankOptions = useMemo(() => {
+    const list = (blankItems || []).map(mapWorkshopBlankFromApi).filter(Boolean);
+    return [
       { value: '', label: '—' },
-      ...lines.map((ln) => ({ value: String(ln.id), label: ln.name || `Линия ${ln.id}` })),
-    ],
-    [lines],
-  );
+      ...list.map((b) => ({
+        value: b.id,
+        label: b.name || `Заготовка ${b.id}`,
+        searchText: [b.name, b.id].filter((x) => x != null && String(x).trim() !== '').join(' '),
+      })),
+    ];
+  }, [blankItems]);
+
+  useEffect(() => {
+    if (!items?.length) return;
+    setBlankByOrder((prev) => {
+      let next = { ...prev };
+      let changed = false;
+      for (const o of items) {
+        const rowOpts = filterBlankSelectOptions(blankOptions, o);
+        const validSet = new Set(rowOpts.filter((x) => x.value).map((x) => String(x.value)));
+        const cur = prev[o.id] != null ? String(prev[o.id]) : '';
+        if (cur && !validSet.has(cur)) {
+          delete next[o.id];
+          changed = true;
+        }
+      }
+      for (const o of items) {
+        const onlyData = filterBlankSelectOptions(blankOptions, o).filter((x) => x.value);
+        const cur = next[o.id] != null ? String(next[o.id]) : '';
+        if (!cur && onlyData.length === 1) {
+          next[o.id] = onlyData[0].value;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [items, blankOptions]);
 
   const onStart = async (orderId) => {
-    const lineVal = lineByOrder[orderId];
-    if (!lineVal) {
-      toast.show('Выберите линию');
+    const blankVal = blankByOrder[orderId];
+    if (!blankVal) {
+      toast.show('Выберите заготовку');
       return;
     }
     setStartBusy(orderId);
     try {
-      await startProductionRequest(orderId, Number(lineVal));
+      await startProductionRequest(orderId, Number(blankVal));
       await refetch();
       toast.show('Старт');
     } catch (e) {
@@ -199,41 +226,35 @@ const ProductionClientRequestsPanel = ({ queryEnabled }) => {
       {loading && <Loading />}
       {error && <ErrorState error={error} onRetry={refetch} />}
       {!loading && !error && (!items || items.length === 0) && <EmptyState title="Нет заявок" />}
-      {!loading && !error && items && items.length > 0 && (
+      {!loading && !error && items && items.length > 0 && visibleItems.length === 0 && (
+        <EmptyState title="На выбранную дату заявок нет" />
+      )}
+      {!loading && !error && visibleItems.length > 0 && (
         <div className="production-table-wrap">
           <div className="production-table production-table--client-rq">
             <div className="production-table__header">
               <span className="production-table__th">Клиент</span>
               <span className="production-table__th">Профиль</span>
-              <span className="production-table__th">Рецепт</span>
-              <span className="production-table__th production-table__th--num">Длина, м</span>
               <span className="production-table__th production-table__th--num">Кол-во</span>
-              <span className="production-table__th production-table__th--num">Всего, м</span>
-              <span className="production-table__th">Линия</span>
+              <span className="production-table__th">Заготовка</span>
               <span className="production-table__th production-table__th--actions"> </span>
             </div>
-            {items.map((o) => {
-              const lineVal = lineByOrder[o.id] != null ? String(lineByOrder[o.id]) : '';
+            {visibleItems.map((o) => {
+              const blankVal = blankByOrder[o.id] != null ? String(blankByOrder[o.id]) : '';
+              const rowBlankOptions = filterBlankSelectOptions(blankOptions, o);
               return (
                 <div key={o.id} className="production-table__row">
                   <span className="production-table__cell-clip">{rqClient(o, srcClients)}</span>
                   <span className="production-table__cell-clip">{rqProfile(o, srcProfiles)}</span>
-                  <span className="production-table__cell-clip">{rqRecipe(o, srcRecipes)}</span>
-                  <span className="production-table__num">
-                    {o.length != null && o.length !== '' ? String(o.length) : '—'}
-                  </span>
                   <span className="production-table__num">
                     {o.quantity != null && o.quantity !== '' ? formatQuantityDisplay(o.quantity) : '—'}
                   </span>
-                  <span className="production-table__num">
-                    {o.total_meters != null && o.total_meters !== '' ? String(o.total_meters) : '—'}
-                  </span>
                   <span className="production-table__cell-clip">
                     <SearchableSelect
-                      value={lineVal}
-                      onChange={(v) => setLineByOrder((prev) => ({ ...prev, [o.id]: v != null ? String(v) : '' }))}
-                      options={lineOptions}
-                      placeholder="—"
+                      value={blankVal}
+                      onChange={(v) => setBlankByOrder((prev) => ({ ...prev, [o.id]: v != null ? String(v) : '' }))}
+                      options={rowBlankOptions}
+                      placeholder="Выберите"
                       disabled={startBusy === o.id}
                     />
                   </span>
@@ -266,16 +287,26 @@ const producedDefectLabel = (run) => {
   return '—';
 };
 
-const ProductionProducedPanel = () => {
-  useSyncExternalStore(subscribeBlankRuns, getBlankRunsSnapshot, getBlankRunsSnapshot);
-  const runs = loadBlankProductionRuns();
+const ProductionProducedPanel = ({ runs, loading, error, onRetry, clientDateFilter }) => {
+  const visibleRuns = useMemo(() => {
+    const list = runs || [];
+    if (!clientDateFilter) return list;
+    return list.filter((run) =>
+      matchesClientDateFilter(clientDateFilter, pickFirstIsoDate(run, ['createdAt'])),
+    );
+  }, [runs, clientDateFilter]);
 
   return (
     <>
-      {runs.length === 0 && (
+      {loading && <Loading />}
+      {error && <ErrorState error={error} onRetry={onRetry} />}
+      {!loading && !error && (!runs || runs.length === 0) && (
         <EmptyState title="Пока нет записей — нажмите «Произвести» во вкладке «Заявки»" />
       )}
-      {runs.length > 0 && (
+      {!loading && !error && runs && runs.length > 0 && visibleRuns.length === 0 && (
+        <EmptyState title="На выбранную дату записей нет" />
+      )}
+      {!loading && !error && visibleRuns.length > 0 && (
         <div className="production-table-wrap">
           <div className="production-table production-table--produced-local">
             <div className="production-table__header">
@@ -284,7 +315,7 @@ const ProductionProducedPanel = () => {
               <span className="production-table__th">Дата</span>
               <span className="production-table__th production-table__th--num">Брак</span>
             </div>
-            {runs.map((run) => (
+            {visibleRuns.map((run) => (
               <div key={run.id} className="production-table__row">
                 <span className="production-table__cell-clip">{run.productName || '—'}</span>
                 <span className="production-table__cell-clip">{run.blankName || '—'}</span>
@@ -299,11 +330,28 @@ const ProductionProducedPanel = () => {
   );
 };
 
+const blankRunsQuery = { page: 1, page_size: 200, ordering: '-created_at' };
+
 const ProductionPage = () => {
   const toast = useToast();
   const [mainTab, setMainTab] = useState('requests');
   const [produceBlankOpen, setProduceBlankOpen] = useState(false);
+  const [clientDateFilter, setClientDateFilter] = useState('');
   const isRequests = mainTab === 'requests';
+
+  const {
+    items: runItems,
+    loading: runsLoading,
+    error: runsError,
+    refetch: refetchBlankRuns,
+  } = useServerQuery('workshop/blank-production-runs/', blankRunsQuery, {
+    enabled: true,
+  });
+
+  const mappedRuns = useMemo(
+    () => (runItems || []).map(mapBlankProductionRunFromApi).filter(Boolean),
+    [runItems],
+  );
 
   return (
     <div className="page page--production">
@@ -327,6 +375,13 @@ const ProductionPage = () => {
           Произведённые
         </button>
       </div>
+      <div className="production-page__date-row">
+        <ClientDateFilter
+          value={clientDateFilter}
+          onChange={setClientDateFilter}
+          id="production-page-date-filter"
+        />
+      </div>
       <div className="production-card production-card--client-requests">
         {isRequests ? (
           <div className="production-card__head ds-toolbar ds-toolbar--in-card">
@@ -342,13 +397,24 @@ const ProductionPage = () => {
             </div>
           </div>
         ) : null}
-        {isRequests ? <ProductionClientRequestsPanel queryEnabled /> : null}
-        {mainTab === 'produced' ? <ProductionProducedPanel /> : null}
+        {isRequests ? <ProductionClientRequestsPanel queryEnabled clientDateFilter={clientDateFilter} /> : null}
+        {mainTab === 'produced' ? (
+          <ProductionProducedPanel
+            runs={mappedRuns}
+            loading={runsLoading}
+            error={runsError}
+            onRetry={refetchBlankRuns}
+            clientDateFilter={clientDateFilter}
+          />
+        ) : null}
       </div>
       {produceBlankOpen && (
         <ProduceBlankModal
           onClose={() => setProduceBlankOpen(false)}
-          onSaved={() => toast.show('Сохранено')}
+          onSaved={() => {
+            toast.show('Сохранено');
+            refetchBlankRuns();
+          }}
         />
       )}
     </div>

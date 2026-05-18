@@ -394,51 +394,10 @@ async function main() {
     }
     log('ОТК 90/10');
 
-    // 12–13. Склад
+    // 12–13. Склад (приёмка ГП)
     await goto('/warehouse');
-    const whSel = page.locator('.page--warehouse__filters-inline button.dias-select');
-    await whSel.nth(2).click();
-    await pickOption(page, 'Годные');
-    log('Склад: фильтр годные');
-    await whSel.nth(2).click();
-    await pickOption(page, 'Брак');
-    log('Склад: фильтр брак');
-    await whSel.nth(2).click();
-    await pickOption(page, 'Все');
-
-    const whRows = page.locator('.data-table--warehouse tbody tr');
-    await whRows.first().click();
-    await page.locator('.warehouse-detail-modal').getByRole('button', { name: 'Закрыть' }).click();
-
-    await whRows.nth(0).locator('.action-menu__trigger').click();
-    await page.getByRole('menuitem', { name: 'Резерв' }).click();
-    await page.locator('.modal').filter({ hasText: 'Резерв' }).getByRole('button', { name: 'Зарезервировать' }).click();
-    await page.locator('.modal').filter({ hasText: 'Резерв' }).waitFor({ state: 'detached', timeout: 15000 }).catch(() => {});
-    log('Резерв (первая строка)');
-
-    await page.getByRole('button', { name: 'Упаковать' }).first().click();
-    {
-      const root = page.locator('.modal-overlay').filter({ has: page.locator('.pack-from-otk-modal') });
-      await root.locator('button.dias-select').first().click();
-      await page.locator('[role="listbox"] [role="option"]').filter({ hasNotText: 'Брак ·' }).first().click();
-      await page.locator('#pack-from-otk-items-per-pack').fill('10');
-      await page.locator('#pack-from-otk-packages-count').fill('9');
-      await root.locator('form.pack-from-otk-form').getByRole('button', { name: 'Упаковать' }).click();
-      await root.waitFor({ state: 'detached', timeout: 40000 }).catch(() => {});
-    }
-    log('Упаковка good');
-
-    await page.getByRole('button', { name: 'Упаковать' }).first().click();
-    {
-      const root = page.locator('.modal-overlay').filter({ has: page.locator('.pack-from-otk-modal') });
-      await root.locator('button.dias-select').first().click();
-      await page.locator('[role="listbox"] [role="option"]', { hasText: 'Брак ·' }).first().click();
-      await page.locator('#pack-from-otk-items-per-pack').fill('10');
-      await page.locator('#pack-from-otk-packages-count').fill('1');
-      await root.locator('form.pack-from-otk-form').getByRole('button', { name: 'Упаковать' }).click();
-      await root.waitFor({ state: 'detached', timeout: 40000 }).catch(() => {});
-    }
-    log('Упаковка defect');
+    await page.locator('.warehouse-gp').waitFor({ state: 'visible', timeout: 20000 });
+    log('Склад: приёмка ГП');
 
     // 14–15. Клиенты и продажи
     await goto('/clients');

@@ -26,5 +26,6 @@ export const submitProductionBatchForOtk = (id) =>
 
 export const getProductionReadyRequests = (params) => apiClient.get('production/requests/', { params });
 
-export const startProductionRequest = (id, lineId) =>
-  apiClient.post(`production/requests/${id}/start/`, { line: lineId });
+/** Тело: `{ blank: number }` — линия больше не передаётся с фронта. */
+export const startProductionRequest = (id, blankId) =>
+  apiClient.post(`production/requests/${id}/start/`, { blank: blankId });

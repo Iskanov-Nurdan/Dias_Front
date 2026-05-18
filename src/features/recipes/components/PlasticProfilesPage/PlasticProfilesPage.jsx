@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useServerQuery, getApiErrorMessage } from '../../../../shared/lib';
-import { Loading, EmptyState, ErrorState, ConfirmModal, useToast, Select, ActionMenu } from '../../../../shared/ui';
+import { useServerQuery, getApiErrorMessage, formatNumberForInput, parseLocaleNumber } from '../../../../shared/lib';
+import { Loading, EmptyState, ErrorState, ConfirmModal, useToast, Select, ActionMenu, DecimalInput } from '../../../../shared/ui';
 import {
   createPlasticProfile,
   updatePlasticProfile,
   deletePlasticProfile,
 } from '../../../production/api/productionApi';
+import { readPlasticProfileWeightKg } from '../../../production/lib/readPlasticProfilePieceWeight';
 import { useOperationalRefetch } from '../../../../shared/realtime';
 import './PlasticProfilesPage.scss';
 
@@ -242,6 +243,7 @@ const ProfileMetaModal = ({ initial, onSave, onClose, error }) => {
   const [code, setCode] = useState('');
   const [comment, setComment] = useState('');
   const [statusActive, setStatusActive] = useState(true);
+  const [weightKgStr, setWeightKgStr] = useState('');
 
   useEffect(() => {
     if (isEdit && initial) {
@@ -249,11 +251,14 @@ const ProfileMetaModal = ({ initial, onSave, onClose, error }) => {
       setCode(initial.code || '');
       setComment(initial.comment ?? initial.note ?? '');
       setStatusActive(initial.is_active !== false);
+      const w = readPlasticProfileWeightKg(initial);
+      setWeightKgStr(w != null ? formatNumberForInput(w) : '');
     } else {
       setName('');
       setCode('');
       setComment('');
       setStatusActive(true);
+      setWeightKgStr('');
     }
   }, [isEdit, initial]);
 
@@ -268,6 +273,10 @@ const ProfileMetaModal = ({ initial, onSave, onClose, error }) => {
       is_active: statusActive,
       ...(comment.trim() ? { comment: comment.trim() } : { comment: '' }),
     };
+    const w = parseLocaleNumber(String(weightKgStr ?? '').trim());
+    if (Number.isFinite(w) && w > 0) {
+      body.weight_kg_per_piece = w;
+    }
     onSave(body);
   };
 
@@ -295,6 +304,14 @@ const ProfileMetaModal = ({ initial, onSave, onClose, error }) => {
           />
           <label>Комментарий</label>
           <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Опционально" />
+          <label>Вес одной штуки, кг</label>
+          <DecimalInput
+            min={0}
+            value={weightKgStr}
+            onChange={setWeightKgStr}
+            placeholder="Например 2,5 — для ОТК и склада ГП"
+          />
+          <p className="plastic-profiles-modal__hint">Нужен для окна «Произвести», ОТК и склада ГП.</p>
           <label>Статус *</label>
           <Select
             value={statusActive ? 'active' : 'inactive'}

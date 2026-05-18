@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { apiClient } from '../api';
-import { parseApiListResponse } from './apiList';
+import { parseApiListResponse, parseApiListMeta } from './apiList';
 
 const buildQueryString = (queryState) => {
   const params = new URLSearchParams();
@@ -76,7 +76,7 @@ export const useServerQuery = (url, queryState, options = {}) => {
 
   return {
     items: data == null ? [] : parseApiListResponse(data),
-    meta: data?.meta ?? null,
+    meta: data == null ? null : parseApiListMeta(data),
     links: data?.links ?? null,
     raw: data,
     loading,

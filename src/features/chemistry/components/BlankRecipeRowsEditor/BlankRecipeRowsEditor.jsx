@@ -1,14 +1,9 @@
 import React from 'react';
 import { DecimalInput, Select } from '../../../../shared/ui';
-import {
-  materialOptions,
-  newLineKey,
-  previewSumKgFromRows,
-  compositionTotalSummaryText,
-} from '../../lib/blankRecipeShared';
+import { newLineKey, previewSumKgFromRows, compositionTotalSummaryText } from '../../lib/blankRecipeShared';
 import '../ChemistryPage/ChemistryPage.scss';
 
-const BlankRecipeRowsEditor = ({ recipeRows, setRecipeRows, errorText }) => {
+const BlankRecipeRowsEditor = ({ recipeRows, setRecipeRows, errorText, materialOptions = [] }) => {
   const addRow = () => {
     setRecipeRows((prev) => [...prev, { key: newLineKey(), raw_material_id: '', quantity_per_unit: '' }]);
   };

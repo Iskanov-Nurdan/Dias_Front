@@ -32,6 +32,7 @@ import { getGpPackages } from '../../../warehouse/api/warehouseApi';
 import './SalesPage.scss';
 import './WaybillPreviewModal.scss';
 import { WAYBILL_DEFAULT_UNIT } from '../../config/waybillConfig';
+import { readPiecesPerPackage, readPackagesCount } from '../../../../shared/lib/warehousePackaging';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -175,10 +176,10 @@ const batchHaystackFieldsForSearch = (b) => [
 const batchMatchesStockFilter = (q, b) => rowMatchesSaleMultiTokenQuery(q, ...batchHaystackFieldsForSearch(b));
 const formatBatchOptionLabel = (b) => {
   const base = batchLabel(b);
-  const ap = toNumber(b.available_pieces ?? b.unpacked_pieces);
-  const pk = toNumber(b.available_packages);
+  const loose = resolveUnpackedPiecesForSale(b);
+  const pk = resolveBatchAvailPackages(b);
   const bits = [];
-  if (ap > 0) bits.push(`${formatQuantityDisplay(ap)} шт`);
+  if (loose > 0) bits.push(`${formatQuantityDisplay(loose)} шт`);
   if (pk > 0) bits.push(`${formatQuantityDisplay(pk)} уп`);
   return bits.length ? `${base} · ${bits.join(' · ')}` : base;
 };
@@ -204,10 +205,50 @@ const resolveBatchAvailPackages = (b) =>
     ?? b?.qty_packages
   );
 
+const UNPACKED_PIECE_FIELD_KEYS = [
+  'unpacked_pieces',
+  'unpacked_available',
+  'available_unpacked_pieces',
+  'loose_pieces',
+  'unpackaged_pieces_available',
+  'unpackaged_available_pieces',
+];
+
+const hasOwnNumericBatchField = (b, keys) =>
+  keys.some((k) => {
+    if (b == null || typeof b !== 'object' || !Object.prototype.hasOwnProperty.call(b, k)) return false;
+    const v = b[k];
+    return v != null && v !== '';
+  });
+
+/**
+ * Штуки для вкладки «Неупакованные»: явное поле с бэка или остаток total − (упаковки × шт/упак),
+ * если бэк отдаёт общий available_pieces по партии вместе с упаковками.
+ */
+const resolveUnpackedPiecesForSale = (b) => {
+  if (!b) return 0;
+  if (hasOwnNumericBatchField(b, UNPACKED_PIECE_FIELD_KEYS)) {
+    for (const k of UNPACKED_PIECE_FIELD_KEYS) {
+      const v = toNumber(b[k]);
+      if (Number.isFinite(v) && v > 0) return v;
+    }
+    return 0;
+  }
+  const ap = resolveBatchAvailPieces(b);
+  const pkRead = readPackagesCount(b);
+  const pk = pkRead != null && pkRead >= 1 ? pkRead : resolveBatchAvailPackages(b);
+  const ipp = readPiecesPerPackage(b);
+  if (!(pk >= 1)) return ap;
+  if (ipp != null && ipp >= 1) {
+    return Math.max(0, Math.floor(ap) - Math.floor(pk) * Math.floor(ipp));
+  }
+  return 0;
+};
+
 const maxSaleQtyForBatch = (line, batch) => {
   if (!batch) return 0;
   if (line?.unit_type === 'packages') return resolveBatchAvailPackages(batch);
-  return resolveBatchAvailPieces(batch);
+  return resolveUnpackedPiecesForSale(batch);
 };
 
 /** Штуки внутри одной GP-упаковки (для подписи в UI). */
@@ -714,8 +755,10 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
   }, []);
 
   useOperationalRefetch(
-    ['warehouse_package'],
-    () => { setInventoryRefreshNonce((n) => n + 1); },
+    ['warehouse_package', 'sale', 'payment', 'warehouse_batch', 'return'],
+    () => {
+      setInventoryRefreshNonce((n) => n + 1);
+    },
     true,
   );
 
@@ -864,10 +907,10 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
   const saleAvailableBatches = useMemo(() => {
     const source = batches.filter(isGoodBatchForSale);
     return source
-      .filter((b) => resolveBatchAvailPieces(b) > 0 || resolveBatchAvailPackages(b) > 0)
+      .filter((b) => resolveUnpackedPiecesForSale(b) > 0 || resolveBatchAvailPackages(b) > 0)
       .sort((a, b) => {
-        const ap = resolveBatchAvailPieces(a) + resolveBatchAvailPackages(a);
-        const bp = resolveBatchAvailPieces(b) + resolveBatchAvailPackages(b);
+        const ap = resolveUnpackedPiecesForSale(a) + resolveBatchAvailPackages(a);
+        const bp = resolveUnpackedPiecesForSale(b) + resolveBatchAvailPackages(b);
         return bp - ap;
       });
   }, [batches]);
@@ -875,8 +918,7 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
     if (lineUnitType === 'packages') {
       return saleAvailableBatches.filter((b) => resolveBatchAvailPackages(b) > 0);
     }
-    // "Неупакованные": only truly loose pieces — batches that have NO packages
-    return saleAvailableBatches.filter((b) => resolveBatchAvailPieces(b) > 0 && resolveBatchAvailPackages(b) === 0);
+    return saleAvailableBatches.filter((b) => resolveUnpackedPiecesForSale(b) > 0);
   }, [saleAvailableBatches]);
   const pickBatchForOrderLine = useCallback((orderLine, lineUnitType) => {
     const list = filteredBatchesByUnitType(lineUnitType || 'pieces');
@@ -1064,6 +1106,7 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
     try {
       await createSale(payload);
       toast.show('Продажа создана');
+      setInventoryRefreshNonce((n) => n + 1);
       onSaved();
     } catch (err) {
       setSubmitError(getApiErrorMessage(err, 'Ошибка создания продажи'));

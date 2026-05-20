@@ -8,7 +8,7 @@ import { LinesPage } from '../../features/lines';
 import { UsersPage } from '../../features/users';
 import { AnalyticsPage } from '../../features/analytics';
 import { MaterialsPage } from '../../features/materials';
-import { ChemistryPage, EmployeePrepareBlanksPage } from '../../features/chemistry';
+import { ChemistryPage, EmployeePrepareBlanksPage, EmployeeBlankDetailPage } from '../../features/chemistry';
 import { ProductionPage } from '../../features/production';
 import { OTKPage } from '../../features/otk';
 import { WarehousePage } from '../../features/warehouse';
@@ -41,6 +41,14 @@ const DefaultHomeRedirect = () => {
 const AppRoutes = () => (
   <Routes>
     <Route path="/login" element={<LoginPage />} />
+    <Route
+      path="/prepare-blanks/view/:blankId"
+      element={(
+        <ProtectedRoute requiredAccess="chemistry">
+          <EmployeeBlankDetailPage />
+        </ProtectedRoute>
+      )}
+    />
     <Route
       path="/"
       element={

@@ -55,35 +55,88 @@ const innField = (c) => c?.inn ?? c?.tax_id ?? '';
 const addressField = (c) => c?.address ?? c?.legal_address ?? '';
 const formatDate = (v) => (v ? String(v).slice(0, 10) : '—');
 
-/** Разбирает строку вида «ORD-… — долг 19000» на номер и подпись. */
-const splitSaleDisplayParts = (item) => {
-  const raw = String(item?.display ?? item?.label ?? item?.order_display ?? '').trim();
-  if (!raw) return { primary: '—', secondary: null };
-  const m = raw.match(/^(.+?)\s*[—–−]\s*(.+)$/);
-  if (m) {
-    return { primary: m[1].trim(), secondary: m[2].trim() };
+const toNum = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const firstText = (...parts) => {
+  for (let i = 0; i < parts.length; i += 1) {
+    const v = parts[i];
+    if (v != null && String(v).trim() !== '') return String(v).trim();
   }
-  return { primary: raw, secondary: null };
+  return '';
+};
+
+const saleProductsText = (s) => {
+  const direct = firstText(s?.products_summary, s?.product_summary, s?.items_summary);
+  if (direct) return direct;
+  const lines = Array.isArray(s?.sale_lines) ? s.sale_lines : Array.isArray(s?.lines) ? s.lines : [];
+  return lines
+    .map((ln) => firstText(ln?.product_name, ln?.product, ln?.profile_name, ln?.warehouse_batch_display))
+    .filter(Boolean)
+    .slice(0, 3)
+    .join(', ');
+};
+
+/** Человекочитаемое имя продажи (не ORD-… из заявки). */
+const saleListLabel = (s) => {
+  if (!s) return '—';
+  const prod = saleProductsText(s);
+  if (prod) return prod;
+  const date = firstText(s.date, s.created_at).slice(0, 10);
+  const total = s.total_amount ?? s.total ?? s.amount ?? s.revenue;
+  const totalPart = total != null && total !== '' ? `${formatQuantityDisplay(total)} сом` : '';
+  const saleNo = firstText(s.sale_number, s.number);
+  const parts = [];
+  if (saleNo && !/^ORD-/i.test(saleNo)) parts.push(`№${saleNo}`);
+  if (date) parts.push(date);
+  if (totalPart) parts.push(totalPart);
+  if (parts.length) return `Продажа ${parts.join(' · ')}`;
+  const fallback = firstText(s.sale_display, s.title, s.name);
+  if (fallback && !/^ORD-/i.test(fallback)) return fallback;
+  if (s.id != null) return `Продажа #${s.id}`;
+  return 'Продажа';
+};
+
+const saleSearchText = (s) => [
+  saleListLabel(s),
+  s?.label,
+  s?.display,
+  s?.sale_display,
+  s?.sale_number,
+  s?.order_display,
+  s?.id,
+  s?.date,
+  s?.created_at,
+  saleProductsText(s),
+  s?.debt_amount,
+  s?.total_amount,
+].filter((v) => v != null && String(v).trim() !== '').join(' ');
+
+const debtSaleOptionLabel = (d) => {
+  const title = saleListLabel(d);
+  const debt = toNum(d.debt_amount);
+  if (!(debt > 0)) return title;
+  return `${title} — долг ${formatQuantityDisplay(debt)} сом`;
 };
 
 const ProfileSaleLabel = ({ item }) => {
-  const { primary, secondary } = splitSaleDisplayParts(item);
-  if (!secondary) {
-    return <span className="clients-profile__sale-label clients-profile__sale-label--plain">{primary}</span>;
+  const title = saleListLabel(item);
+  const debt = toNum(item?.debt_amount);
+  const debtMeta = debt > 0 ? `долг ${formatQuantityDisplay(debt)} сом` : null;
+  if (!debtMeta) {
+    return <span className="clients-profile__sale-label clients-profile__sale-label--plain">{title}</span>;
   }
   return (
     <div className="clients-profile__sale-label">
-      <span className="clients-profile__sale-label-id">{primary}</span>
-      <span className="clients-profile__sale-label-meta">{secondary}</span>
+      <span className="clients-profile__sale-label-id">{title}</span>
+      <span className="clients-profile__sale-label-meta">{debtMeta}</span>
     </div>
   );
 };
 const toMoney = (v) => (v != null && v !== '' ? `${formatQuantityDisplay(v)} сом` : '—');
 const textDisplay = (v) => (v == null || String(v).trim() === '' ? '—' : String(v).trim());
-const toNum = (v) => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-};
 
 const ClientsPage = () => {
   const toast = useToast();
@@ -441,7 +494,20 @@ const ClientProfileModal = ({ clientId, onClose, onPaymentSaved }) => {
   const orders = Array.isArray(profile?.orders) ? profile.orders : [];
   const debts = Array.isArray(profile?.debts) ? profile.debts : [];
   const fallbackDebtRows = paymentSales.filter((s) => toNum(s.debt_amount) > 0);
-  const debtRows = debts.length > 0 ? debts : fallbackDebtRows;
+  const debtRowsRaw = debts.length > 0 ? debts : fallbackDebtRows;
+  const debtRows = useMemo(() => {
+    const salesById = new Map(paymentSales.map((s) => [String(s.id), s]));
+    return debtRowsRaw.map((d) => {
+      const extra = salesById.get(String(d.id));
+      if (!extra) return d;
+      return {
+        ...extra,
+        ...d,
+        debt_amount: d.debt_amount ?? extra.debt_amount,
+        sale_lines: d.sale_lines ?? extra.sale_lines ?? extra.lines,
+      };
+    });
+  }, [debtRowsRaw, paymentSales]);
   const summaryDebt = summary.total_debt ?? profile?.total_debt;
   const derivedDebt = debtRows.reduce((acc, d) => acc + toNum(d.debt_amount), 0);
   const totalDebt = toNum(summaryDebt) > 0 ? summaryDebt : (derivedDebt > 0 ? String(derivedDebt) : summaryDebt);
@@ -456,7 +522,14 @@ const ClientProfileModal = ({ clientId, onClose, onPaymentSaved }) => {
   const totalPaidAmount = toNum(summaryPaid) > 0 ? summaryPaid : (derivedPaid > 0 ? String(derivedPaid) : summaryPaid);
 
   const debtSaleOptions = useMemo(
-    () => [{ value: '', label: 'Не выбрана' }, ...debtRows.map((d) => ({ value: String(d.id), label: textDisplay(d.display || d.label) }))],
+    () => [
+      { value: '', label: 'Не выбрана' },
+      ...debtRows.map((d) => ({
+        value: String(d.id),
+        label: debtSaleOptionLabel(d),
+        searchText: saleSearchText(d),
+      })),
+    ],
     [debtRows],
   );
   const paymentMethodOptions = useMemo(
@@ -496,6 +569,7 @@ const ClientProfileModal = ({ clientId, onClose, onPaymentSaved }) => {
       setPaymentAmount('');
       setPaymentComment('');
       setSelectedDebtSale('');
+      setPayModalOpen(false);
       toast.show('Оплата долга сохранена');
       await loadProfile();
       onPaymentSaved?.();

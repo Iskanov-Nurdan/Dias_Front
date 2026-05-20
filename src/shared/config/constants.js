@@ -50,15 +50,43 @@ export const ACCESS_LABELS = {
   shifts:     'Смены',
 };
 
-/** Группы для UI модалки доступов (все ключи из ACCESS_KEYS по одному разу). */
+/** Ключи раздела «Касса» (один пункт меню, несколько access_keys на бэке). */
+export const ACCESS_CASH_BUNDLE_KEYS = ['clients', 'client_orders', 'sales', 'returns', 'defects'];
+
+/** Бандлы для модалки доступов (id → ключи API). */
+export const ACCESS_BUNDLES = {
+  cash: {
+    label: 'Касса',
+    keys: ACCESS_CASH_BUNDLE_KEYS,
+    iconKey: 'clients',
+  },
+};
+
+/**
+ * Группы модалки «Доступы к разделам» — только пункты из сайдбара.
+ * keys — отдельные access_key; bundles — id из ACCESS_BUNDLES.
+ */
 export const ACCESS_GROUPS = [
+  { id: 'overview', title: 'Общее', keys: ['analytics', 'my_shift'] },
   {
     id: 'production',
     title: 'Производство',
-    keys: ['lines', 'materials', 'chemistry', 'recipes', 'orders', 'production', 'otk'],
+    keys: ['materials', 'chemistry', 'production', 'otk'],
   },
   { id: 'warehouse', title: 'Склад', keys: ['warehouse'] },
-  { id: 'sales', title: 'Продажи', keys: ['clients', 'client_orders', 'sales', 'payments', 'returns', 'defects', 'shipments'] },
-  { id: 'personnel', title: 'Персонал', keys: ['users', 'shifts', 'my_shift'] },
-  { id: 'analytics', title: 'Аналитика', keys: ['analytics'] },
+  ...(STAGE2_TABS_ENABLED ? [{ id: 'cash', bundles: ['cash'] }] : []),
+  { id: 'personnel', title: 'Персонал', keys: ['shifts', 'users'] },
 ];
+
+/** Все access_key, которые можно выставить в модалке (для «Выбрать всё» и сохранения). */
+export function getAccessModalApiKeys(groups = ACCESS_GROUPS) {
+  const out = [];
+  for (const g of groups) {
+    if (g.keys) out.push(...g.keys);
+    for (const bundleId of g.bundles || []) {
+      const bundle = ACCESS_BUNDLES[bundleId];
+      if (bundle?.keys) out.push(...bundle.keys);
+    }
+  }
+  return out;
+}

@@ -14,7 +14,12 @@ import {
 import { useAuth } from '../../../auth/model';
 import { createUser, updateUser, deleteUser, updateUserAccess, getUser } from '../../api/usersApi';
 import { createRole, updateRole, deleteRole } from '../../api/rolesApi';
-import { ACCESS_LABELS, ACCESS_GROUPS } from '../../../../shared/config/constants';
+import {
+  ACCESS_LABELS,
+  ACCESS_GROUPS,
+  ACCESS_BUNDLES,
+  getAccessModalApiKeys,
+} from '../../../../shared/config/constants';
 import { ACCESS_NAV_ICONS } from '../../../../shared/config/navPageIcons';
 import { getUserShifts, getUserActivity, getShiftDetails, getActivityDetail } from '../../../shifts/api/shiftsApi';
 import { fetchShiftActivityList } from '../../../shifts/lib/fetchShiftActivityList';
@@ -495,10 +500,7 @@ const AccessModal = ({ user, accessGroups, accessLabels, onSave, onClose, error 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const allKeys = React.useMemo(
-    () => accessGroups.flatMap((g) => g.keys),
-    [accessGroups],
-  );
+  const allKeys = React.useMemo(() => getAccessModalApiKeys(accessGroups), [accessGroups]);
 
   React.useEffect(() => {
     if (!user?.id) {
@@ -526,6 +528,24 @@ const AccessModal = ({ user, accessGroups, accessLabels, onSave, onClose, error 
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
+      return next;
+    });
+  };
+
+  const isBundleChecked = (bundleId) => {
+    const bundle = ACCESS_BUNDLES[bundleId];
+    if (!bundle?.keys?.length) return false;
+    return bundle.keys.some((k) => selected.has(k));
+  };
+
+  const toggleBundle = (bundleId) => {
+    const bundle = ACCESS_BUNDLES[bundleId];
+    if (!bundle?.keys?.length) return;
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const on = bundle.keys.some((k) => next.has(k));
+      if (on) bundle.keys.forEach((k) => next.delete(k));
+      else bundle.keys.forEach((k) => next.add(k));
       return next;
     });
   };
@@ -602,16 +622,26 @@ const AccessModal = ({ user, accessGroups, accessLabels, onSave, onClose, error 
             </div>
 
             <div className="access-modal__body">
-              {accessGroups.map((group, gi) => (
-                <section key={group.id} className="access-modal__group" aria-labelledby={`access-gr-${group.id}`}>
+              {accessGroups.map((group, gi) => {
+                const groupKeys = group.keys || [];
+                const groupBundles = group.bundles || [];
+                const hasTitle = Boolean(String(group.title || '').trim());
+                return (
+                <section
+                  key={group.id}
+                  className="access-modal__group"
+                  aria-labelledby={hasTitle ? `access-gr-${group.id}` : undefined}
+                >
                   {gi > 0 && <div className="access-modal__divider" aria-hidden />}
-                  <div className="access-modal__group-head">
-                    <h4 id={`access-gr-${group.id}`} className="access-modal__group-title">
-                      {group.title}
-                    </h4>
-                  </div>
+                  {hasTitle ? (
+                    <div className="access-modal__group-head">
+                      <h4 id={`access-gr-${group.id}`} className="access-modal__group-title">
+                        {group.title}
+                      </h4>
+                    </div>
+                  ) : null}
                   <div className="access-modal__grid">
-                    {group.keys.map((key) => {
+                    {groupKeys.map((key) => {
                       const IconComp = ACCESS_NAV_ICONS[key];
                       return (
                         <label key={key} className="access-modal__row">
@@ -632,9 +662,34 @@ const AccessModal = ({ user, accessGroups, accessLabels, onSave, onClose, error 
                         </label>
                       );
                     })}
+                    {groupBundles.map((bundleId) => {
+                      const bundle = ACCESS_BUNDLES[bundleId];
+                      if (!bundle) return null;
+                      const iconKey = bundle.iconKey || bundleId;
+                      const IconComp = ACCESS_NAV_ICONS[iconKey];
+                      return (
+                        <label key={`bundle-${bundleId}`} className="access-modal__row">
+                          <span className="access-modal__row-leading">
+                            {IconComp ? (
+                              <span className="access-modal__row-icon" aria-hidden>
+                                <IconComp />
+                              </span>
+                            ) : null}
+                            <span className="access-modal__row-label">{bundle.label}</span>
+                          </span>
+                          <input
+                            type="checkbox"
+                            className="access-modal__checkbox"
+                            checked={isBundleChecked(bundleId)}
+                            onChange={() => toggleBundle(bundleId)}
+                          />
+                        </label>
+                      );
+                    })}
                   </div>
                 </section>
-              ))}
+                );
+              })}
             </div>
 
             {error && <p className="modal__error access-modal__error">{error}</p>}

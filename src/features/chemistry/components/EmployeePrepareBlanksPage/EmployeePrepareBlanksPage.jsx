@@ -2,7 +2,6 @@ import React, { useMemo, useState, useCallback } from 'react';
 import {
   useServerQuery,
   formatNumberForInput,
-  parseLocaleNumber,
   getApiErrorMessage,
 } from '../../../../shared/lib';
 import { useToast, EmptyState, ErrorState, Loading } from '../../../../shared/ui';
@@ -11,40 +10,19 @@ import {
   mapPreparedBlankRowFromApi,
   postWorkshopAddBarrel,
 } from '../../api/blankWorkshopApi';
-import { sumCompositionKg, compositionTotalSummaryText } from '../../lib/blankRecipeShared';
+import EmployeeBlankDetailContent from './EmployeeBlankDetailContent';
 import '../ChemistryPage/ChemistryPage.scss';
 import './EmployeePrepareBlanksPage.scss';
 
+const prepareBlankDetailPageUrl = (blankId) =>
+  `${window.location.origin}/prepare-blanks/view/${blankId}`;
+
 const EmployeeBlankDetailModal = ({ blank, preparedRow, materialNameById, onClose }) => {
   if (!blank) return null;
-  const recipeKg = Number(blank.recipeKgPerBarrel) || 0;
-  const breakdown =
-    preparedRow && preparedRow.blankId
-      ? preparedRow
-      : {
-          recipeKgPerBarrel: recipeKg,
-          barrels: 0,
-          extraKg: 0,
-          totalKg: 0,
-          fromMachineRemainderKg: null,
-          fromDefectKg: null,
-          pureKg: null,
-        };
-  const composition = Array.isArray(blank.composition) ? blank.composition : [];
-  const sumKg = sumCompositionKg(composition);
 
-  const fmtKgOpt = (v) => {
-    if (v == null || !Number.isFinite(Number(v))) return '—';
-    return `${formatNumberForInput(Number(v))} кг`;
+  const openFullPage = () => {
+    window.open(prepareBlankDetailPageUrl(blank.id), '_blank', 'noopener,noreferrer');
   };
-
-  const m = breakdown.fromMachineRemainderKg;
-  const b = breakdown.fromDefectKg;
-  const p = breakdown.pureKg;
-  const sumParts =
-    m != null && Number.isFinite(Number(m)) && b != null && Number.isFinite(Number(b)) && p != null && Number.isFinite(Number(p))
-      ? Number(m) + Number(b) + Number(p)
-      : null;
 
   return (
     <div className="modal-overlay" role="presentation" onClick={onClose}>
@@ -61,89 +39,17 @@ const EmployeeBlankDetailModal = ({ blank, preparedRow, materialNameById, onClos
           </button>
         </div>
         <div className="modal__body employee-prepare-detail-modal__body">
-          {recipeKg > 0 ? (
-            <section className="employee-prepare-detail-modal__summary">
-              <h4 className="employee-prepare-detail-modal__h4">Накоплено в цехе</h4>
-              <ul className="employee-prepare-detail-modal__stats">
-                <li>
-                  <span>1 бочка</span>
-                  <strong>{formatNumberForInput(breakdown.recipeKgPerBarrel || recipeKg)} кг</strong>
-                </li>
-                <li>
-                  <span>Бочек</span>
-                  <strong>{formatNumberForInput(breakdown.barrels)}</strong>
-                </li>
-                <li>
-                  <span>Доп. кг (после приёмки ГП)</span>
-                  <strong>{formatNumberForInput(breakdown.extraKg)} кг</strong>
-                </li>
-                <li className="employee-prepare-detail-modal__stats-total">
-                  <span>Всего заготовки</span>
-                  <strong>{formatNumberForInput(breakdown.totalKg)} кг</strong>
-                </li>
-                <li>
-                  <span>Из остатка машины, кг</span>
-                  <strong>{fmtKgOpt(m)}</strong>
-                </li>
-                <li>
-                  <span>Из брака, кг</span>
-                  <strong>{fmtKgOpt(b)}</strong>
-                </li>
-                <li>
-                  <span>Чисто, кг</span>
-                  <strong>{fmtKgOpt(p)}</strong>
-                </li>
-                {sumParts != null ? (
-                  <li className="employee-prepare-detail-modal__stats-sum">
-                    <span>Сумма (остаток машины + брак + чисто)</span>
-                    <strong>{formatNumberForInput(sumParts)} кг</strong>
-                  </li>
-                ) : null}
-              </ul>
-            </section>
-          ) : (
-            <p className="modal__error">Нет recipe_kg_per_barrel — проверьте заготовку в админке.</p>
-          )}
-
-          <section className="employee-prepare-detail-modal__recipe-block">
-            <h4 className="employee-prepare-detail-modal__h4">Состав (рецепт)</h4>
-            {composition.length === 0 ? (
-              <p className="employee-prepare-detail-modal__empty">Состав не передан в API или пустой.</p>
-            ) : (
-              <>
-                <div className="employee-prepare-recipe-grid employee-prepare-recipe-grid--head">
-                  <span>Сырьё</span>
-                  <span className="employee-prepare-recipe-grid__num">Вес, кг</span>
-                </div>
-                {composition
-                  .map((row, idx) => {
-                    const q = parseLocaleNumber(row.quantity_per_unit ?? row.quantity ?? '');
-                    if (!Number.isFinite(q) || q <= 0) return null;
-                    const lab =
-                      row.raw_material_name ||
-                      materialNameById.get(String(row.raw_material_id)) ||
-                      `Сырьё #${row.raw_material_id}`;
-                    return (
-                      <div
-                        key={`${row.raw_material_id}-${idx}`}
-                        className="employee-prepare-recipe-grid employee-prepare-recipe-grid--row"
-                      >
-                        <span>{lab}</span>
-                        <span className="employee-prepare-recipe-grid__num">{formatNumberForInput(q)} кг</span>
-                      </div>
-                    );
-                  })
-                  .filter(Boolean)}
-                {sumKg != null && Number.isFinite(sumKg) ? (
-                  <p className="employee-prepare-detail-modal__recipe-total">
-                    {compositionTotalSummaryText(sumKg)}
-                  </p>
-                ) : null}
-              </>
-            )}
-          </section>
+          <EmployeeBlankDetailContent
+            blank={blank}
+            preparedRow={preparedRow}
+            materialNameById={materialNameById}
+            variant="modal"
+          />
         </div>
         <div className="modal__actions">
+          <button type="button" className="btn btn--secondary" onClick={openFullPage}>
+            Страница
+          </button>
           <button type="button" className="btn btn--secondary" onClick={onClose}>
             Закрыть
           </button>

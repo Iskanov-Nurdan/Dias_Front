@@ -24,7 +24,7 @@
   }
 }
 
-/* Большое модальное окно с рецептом */
+/* Модальное окно подробностей */
 .employee-prepare-detail-modal {
   &.modal {
     min-width: min(920px, 96vw);
@@ -35,71 +35,164 @@
   &__body {
     overflow-y: auto;
     flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
+    min-height: 0;
+
+    .employee-prepare-detail--modal {
+      min-height: min(58vh, 520px);
+
+      .employee-prepare-detail__recipe-block {
+        flex: 1 1 auto;
+      }
+    }
+  }
+}
+
+/* Общий контент: модалка и полноэкранная страница */
+.employee-prepare-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 0;
+
+  &--modal {
+    gap: 1rem;
+  }
+
+  &--page {
+    flex: 1 1 auto;
+    gap: 1.25rem;
+    min-height: 0;
   }
 
   &__h4 {
-    margin: 0 0 0.65rem;
-    font-size: 0.8125rem;
+    margin: 0 0 0.5rem;
+    font-size: 0.6875rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.04em;
     color: var(--text-secondary);
   }
 
-  &__summary {
-    padding: 0.85rem 1rem;
-    border-radius: var(--radius-md);
-    background: var(--bg-hover);
-    border: 1px solid var(--border-subtle);
+  &__h4--recipe {
+    font-size: 0.8125rem;
+    margin-bottom: 0.75rem;
   }
 
-  &__stats {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 0.45rem;
+/* Панель «Накоплено в цехе» — сетка метрик */
+.employee-prepare-stock-panel {
+  flex: 0 0 auto;
+
+  &__title {
+    margin: 0 0 0.5rem;
+    font-size: 0.625rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+}
+
+.employee-prepare-stock-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.25rem, 1fr));
+  gap: 0.5rem;
+}
+
+.employee-prepare-stock-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: var(--radius-md, 10px);
+  background: var(--bg-hover, #f4f5f7);
+  border: 1px solid var(--border-subtle, var(--border));
+  min-width: 0;
+
+  &__label {
+    font-size: 0.625rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+    line-height: 1.2;
+  }
+
+  &__value {
     font-size: 0.9375rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
 
-    li {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 1rem;
+  &__unit {
+    margin-left: 0.15rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
 
-      span {
-        color: var(--text-secondary);
-      }
+  &--primary {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(139, 92, 246, 0.04));
+    border-color: rgba(139, 92, 246, 0.35);
 
-      strong {
-        font-variant-numeric: tabular-nums;
-        color: var(--text);
-      }
+    .employee-prepare-stock-metric__value {
+      font-size: 1.125rem;
+      color: #6d28d9;
     }
   }
 
-  &__stats-total {
-    padding-top: 0.5rem;
-    margin-top: 0.35rem;
-    border-top: 1px solid var(--border-subtle);
+  &--ok .employee-prepare-stock-metric__value {
+    color: var(--success, #15803d);
   }
 
-  &__stats-sum {
-    margin-top: 0.35rem;
-    padding-top: 0.35rem;
-    border-top: 1px dashed var(--border-subtle);
-    font-size: 0.875rem;
+  &--warn .employee-prepare-stock-metric__value {
+    color: var(--danger, #b91c1c);
+  }
 
-    span {
-      color: var(--text-secondary);
+  &--muted {
+    opacity: 0.85;
+    background: transparent;
+    border-style: dashed;
+  }
+}
+
+.employee-prepare-detail--page .employee-prepare-stock-grid {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  max-width: 100%;
+
+  @media (max-width: 1100px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  @media (max-width: 560px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .employee-prepare-stock-metric--primary {
+    grid-column: span 2;
+
+    @media (max-width: 560px) {
+      grid-column: span 2;
     }
   }
+}
+
+.employee-prepare-detail--modal .employee-prepare-stock-grid {
+  grid-template-columns: repeat(auto-fill, minmax(6.25rem, 1fr));
+}
 
   &__recipe-block {
+    flex: 1 1 auto;
     min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem 1.15rem;
+    border-radius: var(--radius-lg, 14px);
+    border: 1px solid var(--card-border, var(--border));
+    background: var(--card, #fff);
+    box-shadow: var(--shadow-sm);
   }
 
   &__empty {
@@ -109,11 +202,113 @@
   }
 
   &__recipe-total {
-    margin: 0.85rem 0 0;
-    font-size: 0.9375rem;
-    font-weight: 600;
+    margin: 1rem 0 0;
+    padding-top: 0.75rem;
+    border-top: 2px solid var(--border);
+    font-size: 1.0625rem;
+    font-weight: 700;
     color: var(--text);
   }
+}
+
+.employee-prepare-detail--page {
+  .employee-prepare-recipe-grid {
+    font-size: 1.0625rem;
+    padding: 0.65rem 0.5rem;
+    grid-template-columns: 1fr 9rem;
+
+    &--head {
+      font-size: 0.75rem;
+    }
+
+    &--row span:first-child {
+      font-weight: 500;
+    }
+  }
+
+  .employee-prepare-detail__recipe-total {
+    font-size: 1.25rem;
+  }
+}
+
+/* Полноэкранная вкладка «Страница» — без сайдбара и app-header */
+.employee-prepare-detail-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background: var(--bg, #eef0f3);
+  box-sizing: border-box;
+}
+
+.employee-prepare-detail-view__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--card, #fff);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.employee-prepare-detail-view__header-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.employee-prepare-detail-view__back {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text);
+  }
+}
+
+.employee-prepare-detail-view__list-link {
+  font-size: 0.8125rem;
+  color: var(--accent, var(--info));
+  text-decoration: none;
+  font-weight: 500;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.employee-prepare-detail-view__title {
+  margin: 0;
+  font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.employee-prepare-detail-view__header-actions {
+  flex-shrink: 0;
+}
+
+.employee-prepare-detail-view__main {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--space-4);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .employee-prepare-recipe-grid {

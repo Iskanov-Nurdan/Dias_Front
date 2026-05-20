@@ -89,10 +89,18 @@ export function OperationalRealtimeProvider({ children, active, sessionKey = '' 
       if (msg?.event === 'connected') {
         return;
       }
-      if (msg?.event !== 'change') return;
+      const evKind = String(msg?.event ?? msg?.action ?? '').toLowerCase();
+      const isChange =
+        evKind === 'change'
+        || evKind === 'changed'
+        || evKind === 'created'
+        || evKind === 'updated'
+        || evKind === 'deleted';
+      if (!isChange) return;
+      const normalized = { ...msg, event: 'change' };
       listenersRef.current.forEach((fn) => {
         try {
-          fn(msg);
+          fn(normalized);
         } catch {
           /* ignore subscriber errors */
         }

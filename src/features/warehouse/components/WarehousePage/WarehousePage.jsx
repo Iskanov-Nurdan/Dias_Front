@@ -18,7 +18,12 @@ import {
   resolveUsedKgForRun,
   getGpAcceptBounds,
 } from '../../../chemistry/lib/workshopRunUtils';
-import { postGpPackage, getGpUnpackedBalance, getGpPackages } from '../../api/warehouseApi';
+import {
+  postGpPackage,
+  getGpUnpackedBalance,
+  getGpPackages,
+  getWarehouseOperations,
+} from '../../api/warehouseApi';
 import { useOperationalRefetch } from '../../../../shared/realtime';
 import './WarehousePage.scss';
 
@@ -288,7 +293,9 @@ const mapApiBalanceGroupToGroup = (g, runsById) => {
     .map((ln) => {
       const rid = String(ln.run_id ?? ln.id ?? ln.blank_production_run_id ?? '');
       if (!rid) return null;
-      return runsById.get(rid) || mapBalanceLineToRunStub(ln, pidStr, bidStr);
+      const stub = mapBalanceLineToRunStub(ln, pidStr, bidStr);
+      const fromMap = runsById.get(rid);
+      return fromMap ? { ...fromMap, ...stub } : stub;
     })
     .filter(Boolean);
   const up = Number(g.unpacked_pieces ?? g.unpackedPieces ?? 0);
@@ -1217,7 +1224,48 @@ const WarehouseGpRunDetailModal = ({ run, accepted, onClose }) => {
 
 const gpRunsQuery = { page: 1, page_size: 500, ordering: '-created_at' };
 
-const gpPackagesListQuery = { page: 1, page_size: 500, ordering: '-created_at' };
+/**
+ * Список упаковок для вкладки «Упаковано» — только доступные (не проданные/не списанные).
+ * Бэк должен поддерживать ?status=available; если не поддерживает — фронт дополнительно
+ * отфильтрует через isGpPackageSold().
+ */
+const gpPackagesListQuery = { page: 1, page_size: 500, ordering: '-created_at', status: 'available' };
+
+/** Лента движений для вкладки «История» (упаковка/продажа/возврат/брак/переделка/приёмка). */
+const warehouseOperationsListQuery = { page: 1, page_size: 500, ordering: '-at' };
+
+const OPERATION_KIND_RU = {
+  accept: 'Приёмка',
+  package: 'Упаковка',
+  sale: 'Продажа',
+  return: 'Возврат',
+  defect: 'Брак',
+  rework: 'Переделка',
+};
+
+const operationKindLabel = (kind, fallback) => {
+  if (fallback && String(fallback).trim()) return String(fallback).trim();
+  const k = String(kind || '').toLowerCase();
+  return OPERATION_KIND_RU[k] || (kind ? String(kind) : '—');
+};
+
+/** Проданная/списанная упаковка? Читаем все известные алиасы. */
+const isGpPackageSold = (row) => {
+  if (!row) return false;
+  if (row.is_sold === true) return true;
+  const candidates = [
+    row.status,
+    row.warehouse_batch_status,
+    row.warehouse_batch?.status,
+    row.batch_status,
+    row.state,
+  ];
+  for (const c of candidates) {
+    const s = String(c || '').toLowerCase();
+    if (s === 'sold' || s === 'shipped' || s === 'closed' || s === 'written_off') return true;
+  }
+  return false;
+};
 
 const normalizePackagesListPayload = (data) => {
   if (!data || typeof data !== 'object') return { items: [] };
@@ -1258,8 +1306,79 @@ const mapGpPackageHistoryRow = (row, idx) => {
     label: row.label ?? row.code ?? '',
     pieces,
     kg,
+    isSold: isGpPackageSold(row),
+    soldAt: row.sold_at ?? row.soldAt ?? null,
+    soldSaleId: row.sold_sale_id ?? row.soldSaleId ?? row.sale_id ?? null,
   };
 };
+
+const mapWarehouseOperationRow = (row, idx) => {
+  const id = row.id ?? row.pk ?? `op-${idx}`;
+  const at = row.at ?? row.performed_at ?? row.created_at ?? row.createdAt;
+  const kindRaw = String(row.kind || '').toLowerCase();
+  return {
+    id: String(id),
+    at,
+    kind: kindRaw,
+    kindLabel: operationKindLabel(kindRaw, row.kind_label),
+    direction: row.direction || (kindRaw === 'sale' || kindRaw === 'defect' || kindRaw === 'rework' ? 'out' : 'in'),
+    productId: row.product_id ?? row.product?.id ?? null,
+    productName: row.product_name ?? row.product?.name ?? '—',
+    blankId: row.blank_id ?? row.blank?.id ?? null,
+    blankName: row.blank_name ?? row.blank?.name ?? '—',
+    pieces: row.pieces != null ? Number(row.pieces) : null,
+    kg: row.kg ?? row.weight_kg ?? null,
+    packages: row.packages != null ? Number(row.packages) : null,
+    warehouseBatchId: row.warehouse_batch_id ?? null,
+    gpPackageId: row.gp_package_id ?? null,
+    saleId: row.sale_id ?? null,
+    orderId: row.order_id ?? null,
+    returnId: row.return_id ?? null,
+    label: row.label ?? row.code ?? '',
+    actor: row.actor ?? row.user_name ?? '',
+    comment: row.comment ?? '',
+    packageKind: row.package_kind ?? row.kind_subtype ?? '',
+  };
+};
+
+const operationDirectionSign = (op) => (op.direction === 'out' ? '−' : '+');
+
+const operationKindBadgeClass = (kind) => {
+  const k = String(kind || '').toLowerCase();
+  if (k === 'sale') return 'wh-op-badge wh-op-badge--out';
+  if (k === 'return') return 'wh-op-badge wh-op-badge--in';
+  if (k === 'defect' || k === 'rework') return 'wh-op-badge wh-op-badge--warn';
+  if (k === 'package') return 'wh-op-badge wh-op-badge--pack';
+  if (k === 'accept') return 'wh-op-badge wh-op-badge--accept';
+  return 'wh-op-badge';
+};
+
+/** Fallback: если /warehouse/operations/ недоступен — собираем «История» из gp-packages
+ * (включая sold) — без записей о продаже/возврате. Возвращает массив с тем же shape, что и operations. */
+const fallbackOperationsFromPackageRows = (packageRows) =>
+  (packageRows || []).map((row, idx) => ({
+    id: String(row.id ?? `pkg-${idx}`),
+    at: row.at,
+    kind: row.isSold ? 'sale' : 'package',
+    kindLabel: row.isSold ? 'Продажа' : 'Упаковка',
+    direction: row.isSold ? 'out' : 'in',
+    productId: row.productId,
+    productName: row.productName,
+    blankId: row.blankId,
+    blankName: row.blankName,
+    pieces: row.pieces != null ? Number(row.pieces) : null,
+    kg: row.kg,
+    packages: 1,
+    warehouseBatchId: null,
+    gpPackageId: row.id,
+    saleId: row.soldSaleId ?? null,
+    orderId: null,
+    returnId: null,
+    label: row.label,
+    actor: '',
+    comment: '',
+    packageKind: row.kind,
+  }));
 
 const WarehouseGpAcceptPanel = () => {
   const [acceptRun, setAcceptRun] = useState(null);
@@ -1322,10 +1441,40 @@ const WarehouseGpAcceptPanel = () => {
     },
   });
 
-  const packageHistoryRows = useMemo(
+  const packageHistoryRowsAll = useMemo(
     () => (packageRawItems || []).map(mapGpPackageHistoryRow),
     [packageRawItems],
   );
+
+  /** Для агрегации «Упаковано» исключаем проданные упаковки (страховка, если бэк не отфильтровал). */
+  const packageHistoryRows = useMemo(
+    () => packageHistoryRowsAll.filter((r) => !r.isSold),
+    [packageHistoryRowsAll],
+  );
+
+  const {
+    items: operationsRawItems,
+    loading: operationsLoading,
+    error: operationsError,
+    refetch: refetchOperations,
+  } = useServerQuery('warehouse/operations/', warehouseOperationsListQuery, {
+    enabled: true,
+    fetcher: async (query, signal) => {
+      const res = await getWarehouseOperations(query, { signal });
+      return normalizePackagesListPayload(res.data);
+    },
+  });
+
+  const operationsAvailable = !operationsError;
+
+  /** Если /warehouse/operations/ ещё не выкатили на бэк — лента собирается из gp-packages
+   * (упаковка/продажа упаковки), без частных движений по неупакованным/возвратам. */
+  const operationRows = useMemo(() => {
+    if (operationsAvailable && Array.isArray(operationsRawItems) && operationsRawItems.length > 0) {
+      return operationsRawItems.map(mapWarehouseOperationRow);
+    }
+    return fallbackOperationsFromPackageRows(packageHistoryRowsAll);
+  }, [operationsAvailable, operationsRawItems, packageHistoryRowsAll]);
 
   const unpackedGroups = useMemo(() => {
     const balanceGroupsForMerge = balanceError ? [] : balanceRawItems;
@@ -1341,10 +1490,11 @@ const WarehouseGpAcceptPanel = () => {
   }, [balanceError, balanceRawItems, accepted, runsById]);
 
   const packedGroups = useMemo(() => {
-    const fromPkgs = aggregatePackedGroupsFromPackages(packageHistoryRows);
-    if (fromPkgs.length > 0) return fromPkgs;
-    return mergePackedRunGroupsByProductBlank(aggregatePackedGroupsFromRuns(accepted));
-  }, [packageHistoryRows, accepted]);
+    if (packagesError) {
+      return mergePackedRunGroupsByProductBlank(aggregatePackedGroupsFromRuns(accepted));
+    }
+    return aggregatePackedGroupsFromPackages(packageHistoryRows);
+  }, [packageHistoryRows, packagesError, accepted]);
 
   const [listQuery, setListQuery] = useState('');
   const [dateFilterIso, setDateFilterIso] = useState('');
@@ -1404,28 +1554,33 @@ const WarehouseGpAcceptPanel = () => {
     return packedGroupsAfterSearch.filter((g) => packedGroupMatchesClientDate(g, dateFilterIso));
   }, [packedGroupsAfterSearch, dateFilterIso]);
 
-  const packageHistoryAfterSearch = useMemo(
+  const operationsAfterSearch = useMemo(
     () =>
-      packageHistoryRows.filter((row) =>
+      operationRows.filter((row) =>
         rowMatchesMultiTokenQuery(
           listQuery,
           row.productName,
           row.blankName,
           row.label,
-          gpKindRu(row.kind),
+          row.kindLabel,
+          gpKindRu(row.packageKind),
+          row.actor,
+          row.comment,
           String(row.id ?? ''),
+          row.saleId != null ? `#${row.saleId}` : '',
+          row.returnId != null ? `#${row.returnId}` : '',
           gpFmtIso(row.at),
         ),
       ),
-    [packageHistoryRows, listQuery],
+    [operationRows, listQuery],
   );
 
-  const filteredPackageHistoryRows = useMemo(() => {
-    if (!dateFilterIso) return packageHistoryAfterSearch;
-    return packageHistoryAfterSearch.filter((row) =>
+  const filteredOperationRows = useMemo(() => {
+    if (!dateFilterIso) return operationsAfterSearch;
+    return operationsAfterSearch.filter((row) =>
       matchesClientDateFilter(dateFilterIso, extractIsoDatePart(row.at)),
     );
-  }, [packageHistoryAfterSearch, dateFilterIso]);
+  }, [operationsAfterSearch, dateFilterIso]);
 
   const searchStats = useMemo(() => {
     if (mainTab === 'pending') return { shown: filteredPending.length, total: pendingAfterSearch.length };
@@ -1434,7 +1589,7 @@ const WarehouseGpAcceptPanel = () => {
     }
     if (mainTab === 'packed') return { shown: filteredPackedGroups.length, total: packedGroupsAfterSearch.length };
     if (mainTab === 'history') {
-      return { shown: filteredPackageHistoryRows.length, total: packageHistoryAfterSearch.length };
+      return { shown: filteredOperationRows.length, total: operationsAfterSearch.length };
     }
     return { shown: 0, total: 0 };
   }, [
@@ -1445,17 +1600,22 @@ const WarehouseGpAcceptPanel = () => {
     unpackedGroupsAfterSearch,
     filteredPackedGroups,
     packedGroupsAfterSearch,
-    filteredPackageHistoryRows,
-    packageHistoryAfterSearch,
+    filteredOperationRows,
+    operationsAfterSearch,
   ]);
 
   const refetchAllGp = useCallback(() => {
     refetch();
     refetchBalance();
     refetchPackages();
-  }, [refetch, refetchBalance, refetchPackages]);
+    refetchOperations();
+  }, [refetch, refetchBalance, refetchPackages, refetchOperations]);
 
-  useOperationalRefetch(['warehouse_package'], refetchAllGp, true);
+  useOperationalRefetch(
+    ['warehouse_package', 'warehouse_batch', 'sale', 'return', 'defect_record', 'rework_request'],
+    refetchAllGp,
+    true,
+  );
 
   const openPendingDetail = useCallback((r) => {
     setGroupModal(null);
@@ -1757,50 +1917,68 @@ const WarehouseGpAcceptPanel = () => {
 
       {mainTab === 'history' ? (
         <section className="warehouse-gp__block">
-          <h2 className="warehouse-gp__title">История упаковок</h2>
-          {packagesLoading && <Loading />}
-          {packagesError ? (
+          <h2 className="warehouse-gp__title">История движений склада</h2>
+          {(operationsLoading && operationsAvailable) || (packagesLoading && !operationsAvailable) ? <Loading /> : null}
+          {!operationsAvailable && packagesError ? (
             <ErrorState error={packagesError} onRetry={refetchPackages} />
           ) : null}
-          {!packagesLoading && !packagesError && packageHistoryRows.length === 0 ? (
+          {!operationsLoading && operationsAvailable && operationRows.length === 0 ? (
+            <EmptyState title="Движений за период нет" />
+          ) : null}
+          {!packagesLoading && !operationsAvailable && operationRows.length === 0 ? (
             <EmptyState title="Записей нет или список недоступен с бэка" />
           ) : null}
-          {!packagesLoading && !packagesError && packageHistoryAfterSearch.length > 0 && filteredPackageHistoryRows.length === 0 ? (
-            <EmptyState title="На выбранную дату записей нет" />
-          ) : null}
-          {!packagesLoading && !packagesError && packageHistoryRows.length > 0 && packageHistoryAfterSearch.length === 0 ? (
+          {operationRows.length > 0 && operationsAfterSearch.length === 0 ? (
             <EmptyState title="Ничего не найдено — измените поиск или сбросьте" />
           ) : null}
-          {!packagesLoading && !packagesError && filteredPackageHistoryRows.length > 0 ? (
+          {operationsAfterSearch.length > 0 && filteredOperationRows.length === 0 ? (
+            <EmptyState title="На выбранную дату записей нет" />
+          ) : null}
+          {filteredOperationRows.length > 0 ? (
             <div className="commercial-table-wrap warehouse-gp__table-wrap warehouse-gp__table-wrap--scroll">
               <table className="data-table data-table--warehouse-gp data-table--warehouse-gp-compact">
                 <thead>
                   <tr>
                     <th>Дата</th>
+                    <th>Операция</th>
                     <th>Товар</th>
                     <th>Заготовка</th>
-                    <th>Тип</th>
                     <th>Метка</th>
+                    <th>Документ</th>
                     <th className="data-table__cell--num">Шт</th>
                     <th className="data-table__cell--num">Кг</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredPackageHistoryRows.map((row) => (
-                    <tr key={String(row.id)}>
-                      <td className="data-table__cell--muted">{gpFmtIso(row.at)}</td>
-                      <td className="warehouse-gp__product">{row.productName}</td>
-                      <td className="data-table__cell--muted">{row.blankName}</td>
-                      <td>{gpKindRu(row.kind)}</td>
-                      <td>{row.label ? String(row.label) : '—'}</td>
-                      <td className="data-table__cell--num">
-                        {row.pieces != null && Number.isFinite(Number(row.pieces))
-                          ? formatNumberForInput(Number(row.pieces))
-                          : '—'}
-                      </td>
-                      <td className="data-table__cell--num">{cellNum(row.kg, ' кг')}</td>
-                    </tr>
-                  ))}
+                  {filteredOperationRows.map((row) => {
+                    const docParts = [];
+                    if (row.saleId != null) docParts.push(`Продажа #${row.saleId}`);
+                    if (row.orderId != null) docParts.push(`Заявка #${row.orderId}`);
+                    if (row.returnId != null) docParts.push(`Возврат #${row.returnId}`);
+                    if (row.actor) docParts.push(row.actor);
+                    return (
+                      <tr key={row.id}>
+                        <td className="data-table__cell--muted">{gpFmtIso(row.at)}</td>
+                        <td>
+                          <span className={operationKindBadgeClass(row.kind)}>{row.kindLabel}</span>
+                        </td>
+                        <td className="warehouse-gp__product">{row.productName}</td>
+                        <td className="data-table__cell--muted">{row.blankName}</td>
+                        <td>{row.label ? String(row.label) : (row.packageKind ? gpKindRu(row.packageKind) : '—')}</td>
+                        <td className="data-table__cell--muted">{docParts.length ? docParts.join(' · ') : '—'}</td>
+                        <td className="data-table__cell--num">
+                          {row.pieces != null && Number.isFinite(Number(row.pieces))
+                            ? `${operationDirectionSign(row)}${formatNumberForInput(Math.abs(Number(row.pieces)))}`
+                            : '—'}
+                        </td>
+                        <td className="data-table__cell--num">
+                          {row.kg != null && Number.isFinite(Number(row.kg))
+                            ? `${operationDirectionSign(row)}${formatNumberForInput(Math.abs(Number(row.kg)))} кг`
+                            : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

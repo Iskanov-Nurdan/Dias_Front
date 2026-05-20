@@ -13,18 +13,21 @@ import {
   Line,
 } from 'recharts';
 import './AnalyticsPage.scss';
-import { apiClient } from '../../../../shared/api';
-import { parseApiListResponse } from '../../../../shared/lib';
 import {
   getAnalyticsSummary,
   getRevenueDetails,
   getSalesCostDetails,
+  getProductUnitCosts,
   getProfitDetails,
+  getDebtDetails,
   getProductionCostDetails,
   getPurchaseDetails,
+  getOtherExpenses,
 } from '../../api';
-import { Loading, ErrorState, Select, FiltersModal } from '../../../../shared/ui';
+import { STAGE2_TABS_ENABLED } from '../../../../shared/config/constants';
+import { Loading, ErrorState, Select } from '../../../../shared/ui';
 import { useOperationalRefetch } from '../../../../shared/realtime';
+import OtherExpensesModal from '../OtherExpensesModal';
 
 const formatNumber = (num) => Number(num || 0).toLocaleString('ru-RU');
 
@@ -34,10 +37,6 @@ const buildAnalyticsQueryParams = ({
   day,
   lineId,
   clientId,
-  profileId,
-  recipeId,
-  batchId,
-  statusFilter,
   dateFrom,
   dateTo,
   trendGroup,
@@ -48,10 +47,6 @@ const buildAnalyticsQueryParams = ({
   if (day !== '' && day != null) params.day = day;
   if (lineId && String(lineId).trim()) params.line_id = String(lineId).trim();
   if (clientId && String(clientId).trim()) params.client_id = String(clientId).trim();
-  if (profileId && String(profileId).trim()) params.profile_id = String(profileId).trim();
-  if (recipeId && String(recipeId).trim()) params.recipe_id = String(recipeId).trim();
-  if (batchId && String(batchId).trim()) params.batch_id = String(batchId).trim();
-  if (statusFilter && String(statusFilter).trim()) params.otk_status = String(statusFilter).trim();
   if (dateFrom && String(dateFrom).trim()) params.date_from = String(dateFrom).trim();
   if (dateTo && String(dateTo).trim()) params.date_to = String(dateTo).trim();
   if (trendGroup) params.trend_group = trendGroup;
@@ -94,35 +89,20 @@ const profileDisplayName = (p) => {
 };
 
 const clientDisplayName = (c) => {
-  const n = (c?.client_name || '').trim();
+  const n = (c?.client_name || c?.name || '').trim();
   return n || '—';
 };
 
-const lineDisplayName = (l) => {
-  const n = (l?.line_name || '').trim();
-  return n || '—';
+const clientDebtTotal = (cards) => Number(cards?.client_debt_total ?? 0) || 0;
+
+/** Подпись к долгу из debt_as_of summary (бэкенд). */
+const debtAsOfHint = (debtAsOf) => {
+  const k = String(debtAsOf ?? '').trim();
+  if (k === 'current_outstanding_by_sale_date_in_period') {
+    return 'Продажи за выбранный период · остаток долга на сейчас';
+  }
+  return '';
 };
-
-const purchaseTotalFromCards = (c) =>
-  Number(
-    c?.purchase_total ??
-      c?.purchases_total ??
-      c?.material_purchase_total ??
-      c?.total_purchase_amount ??
-      c?.raw_purchase_total ??
-      0,
-  ) || 0;
-
-const trendPurchaseAmount = (t) =>
-  Number(
-    t?.purchase_total ??
-      t?.purchase_cost ??
-      t?.purchase_amount ??
-      t?.material_purchase ??
-      t?.purchases_total ??
-      t?.purchase ??
-      0,
-  ) || 0;
 
 const AnalyticsChartLegend = ({ payload }) => {
   if (!payload?.length) return null;
@@ -138,45 +118,87 @@ const AnalyticsChartLegend = ({ payload }) => {
   );
 };
 
-const trendsSeriesHasValues = (rows) =>
-  Array.isArray(rows) &&
-  rows.some(
-    (r) =>
-      (Number(r.revenue) || 0) > 0 ||
-      (Number(r.sales_cost) || 0) > 0 ||
-      (Number(r.profit) || 0) !== 0 ||
-      (Number(r.production_cost) || 0) > 0 ||
-      (Number(r.purchase_cost) || 0) > 0,
-  );
-
-const barSeriesHasValues = (rows, key) =>
-  Array.isArray(rows) && rows.some((r) => (Number(r[key]) || 0) > 0);
-
 const pieSeriesHasValues = (rows) =>
   Array.isArray(rows) && rows.some((r) => (Number(r.value) || 0) > 0);
 
-const warehouseBlockVisible = (w) =>
-  w &&
-  ((Number(w.available) || 0) > 0 ||
-    (Number(w.reserved) || 0) > 0 ||
-    (Number(w.good) || 0) > 0 ||
-    (Number(w.defect) || 0) > 0);
-
-const otkBlockVisible = (o) => {
-  if (!o || typeof o !== 'object') return false;
-  const a = Number(o.accepted ?? o.accepted_total ?? 0) || 0;
-  const d = Number(o.defect ?? o.defect_total ?? o.rejected ?? 0) || 0;
-  return a > 0 || d > 0;
+const moneyGtZero = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0;
 };
 
-const productionBlockVisible = (cards, prodSummary, lineRows) => {
-  const q = Number(cards?.produced_units_total) || 0;
-  const b = Number(prodSummary?.batches_count) || 0;
-  if (b > 0 || q > 0) return true;
-  return barSeriesHasValues(lineRows, 'quantity');
+const trendsMoneyHasValues = (rows) =>
+  Array.isArray(rows) &&
+  rows.some((r) => moneyGtZero(r.revenue) || moneyGtZero(r.expenses));
+
+const otkDefectPercent = (o) => {
+  if (!o || typeof o !== 'object') return null;
+  if (o.defect_percent != null) return Number(o.defect_percent);
+  if (o.defect_rate_pct != null) return Number(o.defect_rate_pct);
+  if (o.defect_rate != null) return Number(o.defect_rate) * 100;
+  const a = Number(o.accepted ?? o.accepted_total ?? 0) || 0;
+  const d = Number(o.defect ?? o.defect_total ?? o.rejected ?? 0) || 0;
+  if (a + d <= 0) return null;
+  return (d / (a + d)) * 100;
+};
+
+/** Доля брака: 1 знак после запятой, без хвоста .0 → «6,9%», но «0%» при нуле. */
+const formatDefectPct = (pct) => {
+  if (pct == null || !Number.isFinite(pct)) return '—';
+  if (pct === 0) return '0%';
+  return `${pct.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+};
+
+/** Целое для штук ОТК (бэк может прислать дробное при пересчёте кг → шт). */
+const formatPiecesInt = (v) => {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '0';
+  return Math.round(n).toLocaleString('ru-RU');
 };
 
 const formatMoney = (num) => `${formatNumber(num)} сом`;
+
+const toMoneyNum = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+/** Закупки сырья за период (из cards summary). */
+const purchaseTotalFromCards = (c) =>
+  toMoneyNum(
+    c?.purchase_total ??
+      c?.purchases_total ??
+      c?.material_purchase_total ??
+      c?.total_purchase_amount ??
+      c?.raw_purchase_total,
+  );
+
+/** Прочие расходы (принятые) за период. */
+const otherExpensesFromCards = (c) =>
+  toMoneyNum(c?.other_expenses_total ?? c?.accepted_other_expenses_total ?? c?.misc_expenses_total);
+
+/** Расходы периода = приход сырья + принятые прочие (по дате расхода). */
+const periodExpensesFromCards = (c) => {
+  const purchase = purchaseTotalFromCards(c);
+  const other = otherExpensesFromCards(c);
+  if (c?.period_expenses_total != null || c?.operating_expenses_total != null) {
+    return toMoneyNum(c?.period_expenses_total ?? c?.operating_expenses_total);
+  }
+  return purchase + other;
+};
+
+/** Приход сырья за точку тренда (день/месяц). */
+const trendPurchaseFromPoint = (t) =>
+  toMoneyNum(t?.purchase_total ?? t?.purchase ?? t?.period_expenses);
+
+const trendOtherExpensesFromPoint = (t) =>
+  toMoneyNum(t?.other_expenses_total ?? t?.misc_expenses_total);
+
+/** Расходы за точку тренда. */
+const trendPeriodExpensesFromPoint = (t) => {
+  const combined = toMoneyNum(t?.period_expenses_total ?? t?.expenses);
+  if (t?.period_expenses_total != null || t?.expenses != null) return combined;
+  return trendPurchaseFromPoint(t) + trendOtherExpensesFromPoint(t);
+};
 
 const sliceIsoDate = (raw) => {
   if (raw == null || raw === '') return '—';
@@ -200,119 +222,54 @@ const productCell = (name, fallback) => {
   return f || '—';
 };
 
-const ANALYTICS_STATUS_OPTIONS = [
-  { value: '', label: 'Все статусы' },
-  { value: 'pending', label: 'Ожидает проверки' },
-  { value: 'accepted', label: 'Принято' },
-  { value: 'rejected', label: 'Брак' },
-];
+const DETAIL_MODAL_TYPES = new Set(['revenue', 'sales_cost', 'product_cost', 'profit', 'debt', 'production', 'purchase']);
 
-const DETAIL_MODAL_TYPES = new Set(['revenue', 'sales_cost', 'profit', 'production', 'purchase']);
+const unitCostPerPieceFromRecord = (row) => {
+  const raw =
+    row?.unit_cost_per_piece ??
+    row?.cost_per_piece ??
+    row?.material_cost_per_piece ??
+    row?.current_unit_cost ??
+    row?.unit_cost;
+  if (raw == null || raw === '') return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+};
 
-const KpiCard = ({ variant, title, value, onOpen }) => (
-  <article
-    className={`analytics-kpi-card analytics-kpi-card--${variant}`}
-    role="button"
-    tabIndex={0}
-    onClick={onOpen}
-    onKeyDown={(e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        onOpen();
-      }
-    }}
-  >
-    <span className="analytics-kpi-card__title">{title}</span>
-    <span className="analytics-kpi-card__value">{value}</span>
-    <span className="analytics-kpi-card__action">Детали</span>
-  </article>
-);
+const normalizeProductCostCatalog = (data) => {
+  const items = Array.isArray(data?.items) ? data.items : [];
+  return {
+    items: items.map((item) => ({
+      profile_id: item.profile_id ?? item.id,
+      profile_name: String(item.profile_name ?? item.name ?? '').trim(),
+      product_name: item.product_name != null ? String(item.product_name).trim() : '',
+      code: String(item.code ?? item.profile_code ?? '').trim(),
+      is_active: item.is_active !== false,
+      unit_cost_per_piece: unitCostPerPieceFromRecord(item),
+    })),
+  };
+};
 
 const AnalyticsPage = () => {
+  const now = new Date();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [month, setMonth] = useState('');
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(String(now.getMonth() + 1));
   const [day, setDay] = useState('');
   const [detailModal, setDetailModal] = useState(null);
-  const [lineId, setLineId] = useState('');
-  const [clientId, setClientId] = useState('');
-  const [profileId, setProfileId] = useState('');
-  const [recipeId, setRecipeId] = useState('');
-  const [batchId, setBatchId] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [lineOptions, setLineOptions] = useState([{ value: '', label: 'Все линии' }]);
-  const [clientOptions, setClientOptions] = useState([{ value: '', label: 'Все клиенты' }]);
-  const [profileOptions, setProfileOptions] = useState([{ value: '', label: 'Все профили' }]);
-  const [recipeOptions, setRecipeOptions] = useState([{ value: '', label: 'Все рецепты' }]);
-  const [batchOptions, setBatchOptions] = useState([{ value: '', label: 'Все партии' }]);
-
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      apiClient.get('lines/', { params: { page_size: 200 } }).then((r) => parseApiListResponse(r.data)).catch(() => []),
-      apiClient.get('clients/', { params: { page_size: 200 } }).then((r) => r.data?.items || []).catch(() => []),
-      apiClient.get('plastic-profiles/', { params: { page_size: 200 } }).then((r) => parseApiListResponse(r.data)).catch(() => []),
-      apiClient.get('recipes/', { params: { page_size: 200 } }).then((r) => parseApiListResponse(r.data)).catch(() => []),
-      apiClient.get('batches/', { params: { page_size: 100, ordering: '-id' } }).then((r) => parseApiListResponse(r.data)).catch(() => []),
-    ]).then(([lines, clients, profiles, recipes, batches]) => {
-      if (cancelled) return;
-      setLineOptions([
-        { value: '', label: 'Все линии' },
-        ...lines.map((l) => ({ value: String(l.id), label: l.name || 'Линия' })),
-      ]);
-      setClientOptions([
-        { value: '', label: 'Все клиенты' },
-        ...clients.map((c) => ({ value: String(c.id), label: c.name || 'Клиент' })),
-      ]);
-      setProfileOptions([
-        { value: '', label: 'Все профили' },
-        ...profiles.map((p) => ({
-          value: String(p.id),
-          label: p.name || 'Профиль',
-        })),
-      ]);
-      setRecipeOptions([
-        { value: '', label: 'Все рецепты' },
-        ...recipes.map((r) => ({
-          value: String(r.id),
-          label: r.recipe || r.name || r.product || 'Рецепт',
-        })),
-      ]);
-      setBatchOptions([
-        { value: '', label: 'Все партии' },
-        ...batches.map((b) => ({
-          value: String(b.id),
-          label: `${b.profile_name || b.profile?.name || b.recipe_name || b.recipe?.recipe || 'Партия'}`,
-        })),
-      ]);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const [otherExpensesOpen, setOtherExpensesOpen] = useState(false);
 
   const load = useCallback(
     (signal) => {
       setLoading(true);
       setError(null);
-      const trendGroup = resolveTrendGroup({ month, day, dateFrom, dateTo });
+      const trendGroup = resolveTrendGroup({ month, day, dateFrom: '', dateTo: '' });
       const params = buildAnalyticsQueryParams({
         year,
         month,
         day,
-        lineId,
-        clientId,
-        profileId,
-        recipeId,
-        batchId,
-        statusFilter,
-        dateFrom,
-        dateTo,
         trendGroup,
       });
       return getAnalyticsSummary({ ...params, signal })
@@ -326,25 +283,12 @@ const AnalyticsPage = () => {
         })
         .finally(() => setLoading(false));
     },
-    [year, month, day, lineId, clientId, profileId, recipeId, batchId, statusFilter, dateFrom, dateTo],
+    [year, month, day],
   );
 
   const detailQueryParams = useMemo(
-    () =>
-      buildAnalyticsQueryParams({
-        year,
-        month,
-        day,
-        lineId,
-        clientId,
-        profileId,
-        recipeId,
-        batchId,
-        statusFilter,
-        dateFrom,
-        dateTo,
-      }),
-    [year, month, day, lineId, clientId, profileId, recipeId, batchId, statusFilter, dateFrom, dateTo],
+    () => buildAnalyticsQueryParams({ year, month, day }),
+    [year, month, day],
   );
 
   useEffect(() => {
@@ -354,8 +298,10 @@ const AnalyticsPage = () => {
   }, [load]);
 
   useOperationalRefetch(
-    ['sale', 'payment', 'order', 'return', 'warehouse_batch', 'defect_record', 'rework_request'],
-    () => { load(); },
+    ['sale', 'payment', 'order', 'return', 'warehouse_batch', 'defect_record', 'rework_request', 'other_expense'],
+    () => {
+      load();
+    },
     true,
   );
 
@@ -365,7 +311,9 @@ const AnalyticsPage = () => {
   const cards = data?.cards || {};
   const otkSummary = data?.otk_summary || {};
   const warehouseSummary = data?.warehouse_summary || {};
-  const productionSummary = data?.production_summary || {};
+  const debtTotal = clientDebtTotal(cards);
+  const debtHint = debtAsOfHint(data?.debt_as_of);
+  const defectPct = otkDefectPercent(otkSummary);
 
   const months = [
     { value: '', label: 'Весь год' },
@@ -382,52 +330,33 @@ const AnalyticsPage = () => {
     revenue: p.revenue,
   }));
 
-  const salesByClient = Array.isArray(data?.sales_by_client) ? data.sales_by_client : [];
-  const clientChartData = salesByClient.map((c) => ({
-    name: clientDisplayName(c),
-    value: c.revenue,
-  }));
-
-  const productionByLine = Array.isArray(data?.production_by_line) ? data.production_by_line : [];
-  const lineChartData = productionByLine.map((l) => ({
-    name: lineDisplayName(l),
-    quantity: Number(l.produced_units) || 0,
-    batches: l.batches,
-  }));
-
   const trendsList = Array.isArray(data?.trends) ? data.trends : [];
   const trendsData = trendsList.map((t) => {
-    const period = t.period;
     const revenue = Number(t.revenue) || 0;
-    const salesCost = Number(t.sales_cost) || 0;
-    const profit = Number(t.profit) || 0;
-    const productionCost = Number(t.production_cost) || 0;
-    const purchaseCost = trendPurchaseAmount(t);
+    const expenses = trendPeriodExpensesFromPoint(t);
     return {
-      date: formatTrendPeriodLabel(period),
-      fullDate: period,
+      date: formatTrendPeriodLabel(t.period),
+      fullDate: t.period,
       revenue,
-      sales_cost: salesCost,
-      profit,
-      production_cost: productionCost,
-      purchase_cost: purchaseCost,
+      expenses,
     };
   });
 
-  const showTrendChart = trendsList.length > 0 && trendsSeriesHasValues(trendsData);
+  const showTrendChart = trendsList.length > 0 && trendsMoneyHasValues(trendsData);
   const showProfilesChart = pieSeriesHasValues(productChartData);
-  const showClientsChart = pieSeriesHasValues(clientChartData);
-  const showProdLines = productionBlockVisible(cards, productionSummary, lineChartData);
-  const showWarehouseStrip = warehouseBlockVisible(warehouseSummary);
-  const showOtk = otkBlockVisible(otkSummary);
   const salesCount = Number(cards.sales_count) || 0;
   const salesQty = Number(cards.sold_units_total) || 0;
-  const showSalesBlock = salesCount > 0 || salesQty > 0 || showProfilesChart;
-  const showSkladBlock = showWarehouseStrip;
-  const showRow2 = showSalesBlock || showOtk || showSkladBlock;
-  const showRow3 = showProfilesChart || showClientsChart;
-
-  const kpiPurchase = purchaseTotalFromCards(cards);
+  const revenueVal = toMoneyNum(cards.revenue_total);
+  const expenseTotalSum = periodExpensesFromCards(cards);
+  const netMargin = revenueVal - expenseTotalSum;
+  const packagingSummary = data?.packaging_summary && typeof data.packaging_summary === 'object' ? data.packaging_summary : null;
+  const packagingPieces = Number(packagingSummary?.pieces_total ?? packagingSummary?.pieces ?? 0) || 0;
+  const packagingPackages = Number(packagingSummary?.packages_count ?? packagingSummary?.packages ?? 0) || 0;
+  const packagingKg = packagingSummary?.weight_kg_total ?? packagingSummary?.weight_kg;
+  const showPackagingCard =
+    packagingSummary &&
+    (packagingPieces > 0 || packagingPackages > 0 || (packagingKg != null && Number(packagingKg) > 0));
+  const showDebtBlock = STAGE2_TABS_ENABLED;
 
   return (
     <div className="page page--analytics">
@@ -471,90 +400,89 @@ const AnalyticsPage = () => {
                 ]}
               />
             </div>
-            <div className="analytics-filters__group analytics-filters__group--toolbar-wide">
-              <label>Профиль</label>
-              <Select
-                value={profileId === '' || profileId == null ? '' : String(profileId)}
-                onChange={setProfileId}
-                options={profileOptions}
-                placeholder="Все профили"
-              />
-            </div>
-            <div className="analytics-filters__group analytics-filters__group--toolbar-wide">
-              <label>Партия</label>
-              <Select
-                value={batchId === '' || batchId == null ? '' : String(batchId)}
-                onChange={setBatchId}
-                options={batchOptions}
-                placeholder="Все партии"
-              />
-            </div>
           </div>
           <div className="analytics-toolbar__actions">
             <button
               type="button"
               className="btn btn--secondary btn--sm"
               onClick={() => {
-                setMonth('');
+                const d = new Date();
+                setYear(d.getFullYear());
+                setMonth(String(d.getMonth() + 1));
                 setDay('');
-                setLineId('');
-                setClientId('');
-                setProfileId('');
-                setRecipeId('');
-                setBatchId('');
-                setStatusFilter('');
-                setDateFrom('');
-                setDateTo('');
               }}
             >
               Сброс
-            </button>
-            <button type="button" className="btn btn--secondary btn--sm" onClick={() => setFiltersOpen(true)}>
-              Фильтры
             </button>
           </div>
         </div>
       </header>
 
-      <section className="analytics-finance-shell" aria-label="Ключевые показатели">
+      <section className="analytics-finance-shell analytics-pnl" aria-label="Финансы за период">
         <header className="analytics-finance-shell__head">
-          <h2 className="analytics-finance-shell__title">Сводка</h2>
-          <p className="analytics-finance-shell__hint">Нажмите карточку, чтобы открыть список операций</p>
-        </header>
-        <div className="analytics-kpi-dashboard">
-          <div className="analytics-kpi-dashboard__row analytics-kpi-dashboard__row--3">
-            <KpiCard
-              variant="revenue"
-              title="Выручка"
-              value={formatMoney(cards.revenue_total)}
-              onOpen={() => setDetailModal({ type: 'revenue' })}
-            />
-            <KpiCard
-              variant="cost"
-              title="Себестоимость продаж"
-              value={formatMoney(cards.sales_cost_total)}
-              onOpen={() => setDetailModal({ type: 'sales_cost' })}
-            />
-            <KpiCard
-              variant="profit"
-              title="Прибыль"
-              value={formatMoney(cards.profit_total)}
-              onOpen={() => setDetailModal({ type: 'profit' })}
-            />
+          <div>
+            <h2 className="analytics-finance-shell__title">Финансы</h2>
+            <p className="analytics-finance-shell__hint">
+              Выручка — продажи · расходы — приход сырья и принятые прочие
+            </p>
           </div>
-          <div className="analytics-kpi-dashboard__row analytics-kpi-dashboard__row--2">
-            <KpiCard
-              variant="production"
-              title="Затраты производства"
-              value={formatMoney(cards.production_cost_total)}
-              onOpen={() => setDetailModal({ type: 'production' })}
-            />
-            <KpiCard
-              variant="purchase"
-              title="Закупки сырья"
-              value={formatMoney(kpiPurchase)}
-              onOpen={() => setDetailModal({ type: 'purchase' })}
-            />
+          <div className="analytics-finance-shell__actions">
+            <button
+              type="button"
+              className="btn btn--secondary btn--sm"
+              onClick={() => setDetailModal({ type: 'product_cost' })}
+            >
+              Себестоимость товара
+            </button>
+            <button
+              type="button"
+              className="btn btn--secondary btn--sm"
+              onClick={() => setOtherExpensesOpen(true)}
+            >
+              Прочие расходы
+            </button>
+          </div>
+        </header>
+        <div className="analytics-pnl__grid">
+          <div className="analytics-pnl__card analytics-pnl__card--in">
+            <div className="analytics-pnl__card-body">
+              <h3 className="analytics-pnl__card-title">Выручка</h3>
+              <p className="analytics-pnl__card-caption analytics-pnl__card-caption--spacer" aria-hidden="true">
+                &nbsp;
+              </p>
+              <p className="analytics-pnl__card-figure">{formatMoney(revenueVal)}</p>
+            </div>
+            <div className="analytics-pnl__card-actions">
+              <button
+                type="button"
+                className="btn btn--secondary btn--sm"
+                onClick={() => setDetailModal({ type: 'revenue' })}
+              >
+                Детали
+              </button>
+            </div>
+          </div>
+          <div className="analytics-pnl__card analytics-pnl__card--out">
+            <div className="analytics-pnl__card-body">
+              <h3 className="analytics-pnl__card-title">Расходы</h3>
+              <p className="analytics-pnl__card-caption">Приход сырья и прочие</p>
+              <p className="analytics-pnl__card-figure">{formatMoney(expenseTotalSum)}</p>
+            </div>
+            <div className="analytics-pnl__card-actions">
+              <button
+                type="button"
+                className="btn btn--secondary btn--sm"
+                onClick={() => setDetailModal({ type: 'purchase' })}
+              >
+                Детали
+              </button>
+            </div>
+          </div>
+          <div
+            className={`analytics-pnl__card analytics-pnl__card--net${netMargin >= 0 ? ' analytics-pnl__card--net-pos' : ' analytics-pnl__card--net-neg'}`}
+          >
+            <h3 className="analytics-pnl__card-title">Маржа</h3>
+            <p className="analytics-pnl__card-figure analytics-pnl__card-figure--net">{formatMoney(netMargin)}</p>
           </div>
         </div>
       </section>
@@ -563,9 +491,7 @@ const AnalyticsPage = () => {
         <section className="analytics-panel analytics-panel--chart">
           <header className="analytics-panel__header">
             <h2 className="analytics-panel__title">Динамика</h2>
-            <p className="analytics-panel__lede">
-              Выручка, себестоимость продаж, прибыль, затраты производства и закупки сырья по периоду
-            </p>
+            <p className="analytics-panel__lede">Выручка и расходы по периоду</p>
           </header>
           <div className="analytics-chart-surface">
             <ResponsiveContainer width="100%" height={360}>
@@ -574,10 +500,6 @@ const AnalyticsPage = () => {
                   <linearGradient id="analyticsFillRevenue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="var(--success)" stopOpacity={0.22} />
                     <stop offset="100%" stopColor="var(--success)" stopOpacity={0.02} />
-                  </linearGradient>
-                  <linearGradient id="analyticsFillCost" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--danger)" stopOpacity={0.18} />
-                    <stop offset="100%" stopColor="var(--danger)" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="4 10" stroke="var(--border)" strokeOpacity={0.45} vertical={false} />
@@ -619,44 +541,14 @@ const AnalyticsPage = () => {
                   dot={false}
                   activeDot={false}
                 />
-                <Area
-                  type="monotone"
-                  dataKey="sales_cost"
-                  stroke="var(--danger)"
-                  strokeWidth={2}
-                  fill="url(#analyticsFillCost)"
-                  name="Себестоимость продаж"
-                  dot={false}
-                  activeDot={false}
-                />
                 <Line
                   type="monotone"
-                  dataKey="profit"
-                  stroke="var(--info)"
+                  dataKey="expenses"
+                  stroke="var(--danger)"
                   strokeWidth={2.25}
-                  name="Прибыль"
+                  name="Расходы"
                   dot={false}
                   activeDot={{ r: 4 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="production_cost"
-                  stroke="var(--accent)"
-                  strokeWidth={1.85}
-                  strokeOpacity={0.9}
-                  name="Затраты производства"
-                  dot={false}
-                  activeDot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="purchase_cost"
-                  stroke="var(--accent-2, var(--accent))"
-                  strokeWidth={1.85}
-                  strokeOpacity={0.9}
-                  name="Закупки сырья"
-                  dot={false}
-                  activeDot={false}
                 />
               </ComposedChart>
             </ResponsiveContainer>
@@ -664,289 +556,164 @@ const AnalyticsPage = () => {
         </section>
       )}
 
-      {showRow2 && (
-        <section className="analytics-summary-row" aria-label="Сводка по продажам, ОТК и складу">
-          {showSalesBlock && (
-            <div className="analytics-summary-card">
-              <h3 className="analytics-summary-card__title">Продажи</h3>
-              <dl className="analytics-summary-card__dl">
-                <div className="analytics-summary-card__pair">
-                  <dt>Сделок</dt>
-                  <dd>{formatNumber(salesCount)}</dd>
-                </div>
-                <div className="analytics-summary-card__pair">
-                  <dt>Единиц</dt>
-                  <dd>{formatNumber(salesQty)}</dd>
-                </div>
-              </dl>
-            </div>
-          )}
-          {showOtk && (
-            <div className="analytics-summary-card">
-              <h3 className="analytics-summary-card__title">ОТК</h3>
-              <dl className="analytics-summary-card__dl analytics-summary-card__dl--3">
-                <div className="analytics-summary-card__pair">
-                  <dt>Годных</dt>
-                  <dd>{formatNumber(otkSummary.accepted ?? otkSummary.accepted_total ?? 0)}</dd>
-                </div>
-                <div className="analytics-summary-card__pair">
-                  <dt>Брак</dt>
-                  <dd>{formatNumber(otkSummary.defect ?? otkSummary.defect_total ?? otkSummary.rejected ?? 0)}</dd>
-                </div>
-                <div className="analytics-summary-card__pair">
-                  <dt>Доля брака</dt>
-                  <dd>
-                    {otkSummary.defect_percent != null
-                      ? `${formatNumber(otkSummary.defect_percent)}%`
-                      : otkSummary.defect_rate_pct != null
-                        ? `${formatNumber(otkSummary.defect_rate_pct)}%`
-                        : otkSummary.defect_rate != null
-                          ? `${formatNumber(Number(otkSummary.defect_rate) * 100)}%`
-                          : '—'}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-          )}
-          {showSkladBlock && showWarehouseStrip && (
-            <div className="analytics-summary-card">
-              <h3 className="analytics-summary-card__title">Склад</h3>
-              <dl className="analytics-summary-card__dl analytics-summary-card__dl--strip">
-                <div className="analytics-summary-card__pair analytics-summary-card__pair--avail">
-                  <dt>Доступно</dt>
-                  <dd>{formatNumber(warehouseSummary.available)}</dd>
-                </div>
-                <div className="analytics-summary-card__pair analytics-summary-card__pair--res">
-                  <dt>Резерв</dt>
-                  <dd>{formatNumber(warehouseSummary.reserved)}</dd>
-                </div>
-              </dl>
-            </div>
-          )}
-        </section>
-      )}
+      {trendsList.length > 0 && !showTrendChart ? (
+        <p className="analytics-empty analytics-empty--inline analytics-empty--soft" role="status">
+          Динамика скрыта: за период нет выручки и расходов по дням/месяцам (все нули).
+        </p>
+      ) : null}
 
-      {showRow3 && (
-        <section className="analytics-charts-grid">
-          {showProfilesChart && (
-            <div className="analytics-panel analytics-panel--subchart">
-              <header className="analytics-panel__header analytics-panel__header--compact">
-                <h2 className="analytics-panel__title">Объём по профилям</h2>
-                <p className="analytics-panel__lede">Продано, шт.</p>
-              </header>
-              <div className="analytics-chart-surface analytics-chart-surface--compact">
-                <ResponsiveContainer width="100%" height={236}>
-                  <BarChart data={productChartData} margin={{ top: 8, right: 12, left: 0, bottom: 32 }}>
-                    <CartesianGrid strokeDasharray="4 10" stroke="var(--border)" strokeOpacity={0.4} vertical={false} />
-                    <XAxis
-                      dataKey="name"
-                      tickLine={false}
-                      axisLine={{ stroke: 'var(--border)', strokeOpacity: 0.5 }}
-                      interval={0}
-                      angle={0}
-                      textAnchor="middle"
-                      tickMargin={8}
-                      height={40}
-                      tick={{ fontSize: 10, fill: 'var(--text-muted)', fontWeight: 500 }}
-                      tickFormatter={(v) => truncateAxisLabel(v, 18)}
-                    />
-                    <YAxis
-                      tickLine={false}
-                      axisLine={false}
-                      width={40}
-                      tick={{ fontSize: 10, fill: 'var(--text-muted)', fontWeight: 500 }}
-                    />
-                    <Tooltip
-                      cursor={{ fill: 'var(--bg-hover)' }}
-                      contentStyle={{
-                        background: 'var(--card)',
-                        border: '1px solid var(--card-border)',
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                      }}
-                      formatter={(value) => [formatNumber(value), 'Продано, шт']}
-                      labelFormatter={(label) => String(label)}
-                    />
-                    <Bar dataKey="value" fill="var(--success)" fillOpacity={0.85} radius={[4, 4, 0, 0]} maxBarSize={36} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
-          {showClientsChart && (
-            <div className="analytics-panel analytics-panel--subchart">
-              <header className="analytics-panel__header analytics-panel__header--compact">
-                <h2 className="analytics-panel__title">Клиенты</h2>
-                <p className="analytics-panel__lede">Выручка</p>
-              </header>
-              <div className="analytics-chart-surface analytics-chart-surface--compact">
-                <ResponsiveContainer width="100%" height={Math.min(56 + clientChartData.length * 32, 268)}>
-                  <BarChart layout="vertical" data={clientChartData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
-                    <CartesianGrid strokeDasharray="4 10" stroke="var(--border)" strokeOpacity={0.4} horizontal={false} />
-                    <XAxis
-                      type="number"
-                      tickLine={false}
-                      axisLine={false}
-                      tick={{ fontSize: 10, fill: 'var(--text-muted)', fontWeight: 500 }}
-                      tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`)}
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      width={112}
-                      tickLine={false}
-                      axisLine={false}
-                      tick={{ fontSize: 10, fill: 'var(--text-muted)', fontWeight: 500 }}
-                      tickFormatter={(v) => truncateAxisLabel(v, 16)}
-                    />
-                    <Tooltip
-                      cursor={{ fill: 'var(--bg-hover)' }}
-                      contentStyle={{
-                        background: 'var(--card)',
-                        border: '1px solid var(--card-border)',
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                      }}
-                      formatter={(value) => formatMoney(value)}
-                      labelFormatter={(label) => String(label)}
-                    />
-                    <Bar dataKey="value" fill="var(--info)" fillOpacity={0.85} radius={[0, 4, 4, 0]} maxBarSize={20} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
-        </section>
-      )}
-
-      {showProdLines && (
-        <section className="analytics-panel analytics-panel--production">
-          <header className="analytics-panel__header analytics-panel__header--split">
-            <div>
-              <h2 className="analytics-panel__title">Производство по линиям</h2>
-              <p className="analytics-panel__lede">Выпуск и загрузка линий</p>
-            </div>
-            <dl className="analytics-production-kpis">
-              <div className="analytics-production-kpis__item">
-                <dt>Партий</dt>
-                <dd>{formatNumber(productionSummary.batches_count ?? 0)}</dd>
-              </div>
-              <div className="analytics-production-kpis__item">
-                <dt>Выпуск, шт</dt>
-                <dd>{formatNumber(cards.produced_units_total)}</dd>
-              </div>
-              {(Number(cards.produced_meters_total) || 0) > 0 && (
-                <div className="analytics-production-kpis__item">
-                  <dt>Выпуск, м</dt>
-                  <dd>{formatNumber(cards.produced_meters_total)}</dd>
-                </div>
-              )}
-            </dl>
+      <section className="analytics-kpi-grid" aria-label="Операционные показатели">
+        <article className="analytics-kpi analytics-kpi--sales">
+          <header className="analytics-kpi__head">
+            <span className="analytics-kpi__tag">Продажи</span>
           </header>
-          {barSeriesHasValues(lineChartData, 'quantity') && lineChartData.length > 0 && (
-            <div className="analytics-chart-surface analytics-chart-surface--compact">
-              <ResponsiveContainer width="100%" height={216}>
-                <BarChart data={lineChartData} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
-                  <CartesianGrid strokeDasharray="4 10" stroke="var(--border)" strokeOpacity={0.4} vertical={false} />
-                  <XAxis
-                    dataKey="name"
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fontSize: 10, fill: 'var(--text-muted)', fontWeight: 500 }}
-                    tickFormatter={(v) => truncateAxisLabel(v, 14)}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    width={40}
-                    tick={{ fontSize: 10, fill: 'var(--text-muted)', fontWeight: 500 }}
-                  />
-                  <Tooltip
-                    cursor={{ fill: 'var(--bg-hover)' }}
-                    contentStyle={{
-                      background: 'var(--card)',
-                      border: '1px solid var(--card-border)',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                    }}
-                    formatter={(value) => [formatNumber(value), 'Шт']}
-                    labelFormatter={(label) => String(label)}
-                  />
-                  <Bar dataKey="quantity" fill="var(--accent)" fillOpacity={0.85} radius={[4, 4, 0, 0]} maxBarSize={36} />
-                </BarChart>
-              </ResponsiveContainer>
+          <p className="analytics-kpi__value">{formatNumber(salesCount)}</p>
+          <p className="analytics-kpi__caption">сделок</p>
+          <dl className="analytics-kpi__sub">
+            <div className="analytics-kpi__sub-item">
+              <dt>Единиц</dt>
+              <dd>{formatNumber(salesQty)}</dd>
             </div>
-          )}
-        </section>
-      )}
+          </dl>
+        </article>
 
-      <FiltersModal
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        onReset={() => {
-          setLineId('');
-          setClientId('');
-          setProfileId('');
-          setRecipeId('');
-          setBatchId('');
-          setStatusFilter('');
-          setDateFrom('');
-          setDateTo('');
-        }}
-        title="Фильтры"
-      >
-        <div className="analytics-advanced-filters">
-          <div className="analytics-advanced-filters__row">
-            <div className="analytics-advanced-filters__field">
-              <label>Линия</label>
-              <Select value={lineId} onChange={setLineId} options={lineOptions} placeholder="Все линии" />
+        <article className="analytics-kpi analytics-kpi--otk">
+          <header className="analytics-kpi__head">
+            <span className="analytics-kpi__tag">ОТК</span>
+          </header>
+          <p className="analytics-kpi__value">
+            {formatPiecesInt(otkSummary.accepted ?? otkSummary.accepted_total ?? 0)}
+          </p>
+          <p className="analytics-kpi__caption">годных</p>
+          <dl className="analytics-kpi__sub">
+            <div className="analytics-kpi__sub-item">
+              <dt>Брак</dt>
+              <dd>{formatPiecesInt(otkSummary.defect ?? otkSummary.defect_total ?? otkSummary.rejected ?? 0)}</dd>
             </div>
-            <div className="analytics-advanced-filters__field">
-              <label>Клиент</label>
-              <Select value={clientId} onChange={setClientId} options={clientOptions} placeholder="Все клиенты" />
+            <div className="analytics-kpi__sub-item">
+              <dt>Доля</dt>
+              <dd>{formatDefectPct(defectPct)}</dd>
             </div>
-            <div className="analytics-advanced-filters__field">
-              <label>Профиль</label>
-              <Select value={profileId} onChange={setProfileId} options={profileOptions} placeholder="Все профили" />
-            </div>
+          </dl>
+        </article>
+
+        <article className="analytics-kpi analytics-kpi--stock">
+          <header className="analytics-kpi__head">
+            <span className="analytics-kpi__tag">Склад</span>
+          </header>
+          <p className="analytics-kpi__value">{formatNumber(warehouseSummary.available ?? 0)}</p>
+          <p className="analytics-kpi__caption">доступно, шт</p>
+        </article>
+
+        {showPackagingCard && (
+          <article className="analytics-kpi analytics-kpi--pack">
+            <header className="analytics-kpi__head">
+              <span className="analytics-kpi__tag">Упаковка за период</span>
+            </header>
+            <p className="analytics-kpi__value">{formatNumber(packagingPackages)}</p>
+            <p className="analytics-kpi__caption">упаковок</p>
+            <dl className="analytics-kpi__sub">
+              <div className="analytics-kpi__sub-item">
+                <dt>Шт</dt>
+                <dd>{formatNumber(packagingPieces)}</dd>
+              </div>
+              <div className="analytics-kpi__sub-item">
+                <dt>Кг</dt>
+                <dd>
+                  {packagingKg != null && Number(packagingKg) > 0 ? formatNumber(Number(packagingKg)) : '—'}
+                </dd>
+              </div>
+            </dl>
+          </article>
+        )}
+
+        {showDebtBlock && (
+          <article
+            className="analytics-kpi analytics-kpi--debt analytics-kpi--action"
+            role="button"
+            tabIndex={0}
+            onClick={() => setDetailModal({ type: 'debt' })}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setDetailModal({ type: 'debt' });
+              }
+            }}
+          >
+            <header className="analytics-kpi__head">
+              <span className="analytics-kpi__tag">Долг клиентов</span>
+            </header>
+            <p className="analytics-kpi__value analytics-kpi__value--money">{formatMoney(debtTotal)}</p>
+            {debtHint ? <p className="analytics-kpi__caption">{debtHint}</p> : null}
+            <span className="analytics-kpi__action-hint">Детали →</span>
+          </article>
+        )}
+      </section>
+
+      <section className="analytics-panel analytics-panel--subchart">
+        <header className="analytics-panel__header analytics-panel__header--compact">
+          <h2 className="analytics-panel__title">Объём по профилям</h2>
+          <p className="analytics-panel__lede">Продано, шт.</p>
+        </header>
+        {showProfilesChart ? (
+          <div className="analytics-chart-surface analytics-chart-surface--compact">
+            <ResponsiveContainer width="100%" height={236}>
+              <BarChart data={productChartData} margin={{ top: 8, right: 12, left: 0, bottom: 32 }}>
+                <CartesianGrid strokeDasharray="4 10" stroke="var(--border)" strokeOpacity={0.4} vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  tickLine={false}
+                  axisLine={{ stroke: 'var(--border)', strokeOpacity: 0.5 }}
+                  interval={0}
+                  angle={0}
+                  textAnchor="middle"
+                  tickMargin={8}
+                  height={40}
+                  tick={{ fontSize: 10, fill: 'var(--text-muted)', fontWeight: 500 }}
+                  tickFormatter={(v) => truncateAxisLabel(v, 18)}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  width={40}
+                  tick={{ fontSize: 10, fill: 'var(--text-muted)', fontWeight: 500 }}
+                />
+                <Tooltip
+                  cursor={{ fill: 'var(--bg-hover)' }}
+                  contentStyle={{
+                    background: 'var(--card)',
+                    border: '1px solid var(--card-border)',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                  }}
+                  formatter={(value) => [formatNumber(value), 'Продано, шт']}
+                  labelFormatter={(label) => String(label)}
+                />
+                <Bar dataKey="value" fill="var(--success)" fillOpacity={0.85} radius={[4, 4, 0, 0]} maxBarSize={36} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-          <div className="analytics-advanced-filters__row">
-            <div className="analytics-advanced-filters__field">
-              <label>Рецепт</label>
-              <Select value={recipeId} onChange={setRecipeId} options={recipeOptions} placeholder="Все рецепты" />
-            </div>
-            <div className="analytics-advanced-filters__field">
-              <label>Партия</label>
-              <Select value={batchId} onChange={setBatchId} options={batchOptions} placeholder="Все партии" />
-            </div>
-            <div className="analytics-advanced-filters__field">
-              <label>Статус</label>
-              <Select
-                value={statusFilter}
-                onChange={setStatusFilter}
-                options={ANALYTICS_STATUS_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
-                placeholder="Все статусы"
-              />
-            </div>
-          </div>
-          <div className="analytics-advanced-filters__row analytics-advanced-filters__row--2">
-            <div className="analytics-advanced-filters__field">
-              <label>Период с</label>
-              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-            </div>
-            <div className="analytics-advanced-filters__field">
-              <label>Период по</label>
-              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-            </div>
-          </div>
-        </div>
-      </FiltersModal>
+        ) : (
+          <p className="analytics-empty analytics-empty--inline">
+            Нет продаж за период — график по профилям строится только по проданным штукам. Упаковку смотрите в «Склад».
+          </p>
+        )}
+      </section>
+      <OtherExpensesModal
+        open={otherExpensesOpen}
+        onClose={() => setOtherExpensesOpen(false)}
+        onChanged={load}
+        initialYear={year}
+        initialMonth={month}
+        initialDay={day}
+      />
 
       {detailModal && DETAIL_MODAL_TYPES.has(detailModal.type) && (
         <DetailModal
           type={detailModal.type}
           queryParams={detailQueryParams}
           summaryCards={cards}
+          debtAsOfHint={debtHint}
           onClose={() => setDetailModal(null)}
         />
       )}
@@ -957,12 +724,14 @@ const AnalyticsPage = () => {
 const DETAIL_TITLES = {
   revenue: 'Выручка',
   sales_cost: 'Себестоимость продаж',
+  product_cost: 'Себестоимость товара',
   profit: 'Прибыль',
+  debt: 'Долг клиентов',
   production: 'Затраты производства',
-  purchase: 'Закупки сырья',
+  purchase: 'Расходы',
 };
 
-const DetailModal = ({ type, queryParams, summaryCards, onClose }) => {
+const DetailModal = ({ type, queryParams, summaryCards, debtAsOfHint: debtHintText, onClose }) => {
   const [details, setDetails] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -975,23 +744,64 @@ const DetailModal = ({ type, queryParams, summaryCards, onClose }) => {
     const ctrl = new AbortController();
     const p = queryParams || {};
     const req = { ...p, signal: ctrl.signal };
-    const fetchDetails =
-      type === 'revenue'
-        ? getRevenueDetails(req)
-        : type === 'sales_cost'
-          ? getSalesCostDetails(req)
-          : type === 'profit'
-            ? getProfitDetails(req)
-            : type === 'production'
-              ? getProductionCostDetails(req)
-              : getPurchaseDetails(req);
+    const loadDetails = async () => {
+      try {
+        if (type === 'product_cost') {
+          const res = await getProductUnitCosts(req);
+          setDetails(normalizeProductCostCatalog(res.data));
+          return;
+        }
 
-    fetchDetails
-      .then((res) => setDetails(res.data))
-      .catch((err) => {
-        if (err.name !== 'CanceledError' && err.name !== 'AbortError') setError(true);
-      })
-      .finally(() => setLoading(false));
+        if (type === 'purchase') {
+          const [purchaseRes, otherRes] = await Promise.all([
+            getPurchaseDetails(req),
+            getOtherExpenses(req),
+          ]);
+          const purchaseData = purchaseRes.data || {};
+          const otherRaw = Array.isArray(otherRes.data?.items) ? otherRes.data.items : [];
+          const otherAccepted = otherRaw.filter(
+            (row) => String(row.status ?? '').toLowerCase() === 'accepted',
+          );
+          const purchaseTotal =
+            Number(purchaseData.total_purchase_amount ?? purchaseData.total ?? 0) || 0;
+          const otherTotal = otherAccepted.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+          setDetails({
+            purchase: purchaseData,
+            purchase_items: Array.isArray(purchaseData.items) ? purchaseData.items : [],
+            other_items: otherAccepted,
+            purchase_total: purchaseTotal,
+            other_total: otherTotal,
+            period_total: purchaseTotal + otherTotal,
+          });
+          return;
+        }
+
+        const fetchDetails =
+          type === 'revenue'
+            ? getRevenueDetails(req)
+            : type === 'sales_cost'
+              ? getSalesCostDetails(req)
+              : type === 'profit'
+                ? getProfitDetails(req)
+                : type === 'production'
+                  ? getProductionCostDetails(req)
+                  : getDebtDetails(req);
+
+        const res = await fetchDetails;
+        setDetails(res.data);
+      } catch (err) {
+        if (err.name === 'CanceledError' || err.name === 'AbortError') return;
+        if (type === 'debt' && err.response?.status === 404) {
+          setDetails({ total_debt: summaryCards?.client_debt_total, items: [] });
+          return;
+        }
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDetails();
 
     return () => ctrl.abort();
   }, [type, queryParams]);
@@ -1003,6 +813,9 @@ const DetailModal = ({ type, queryParams, summaryCards, onClose }) => {
   const displayCost = profitTotals?.sales_cost ?? summary.sales_cost_total;
 
   const itemsLen = (() => {
+    if (type === 'purchase' && details) {
+      return (details.purchase_items?.length || 0) + (details.other_items?.length || 0);
+    }
     if (!details?.items || !Array.isArray(details.items)) return 0;
     return details.items.length;
   })();
@@ -1014,8 +827,13 @@ const DetailModal = ({ type, queryParams, summaryCards, onClose }) => {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal--wide modal--detail-tight" onClick={(e) => e.stopPropagation()}>
-        <div className="modal__head modal__head--compact">
-          <h3>{DETAIL_TITLES[type] || 'Детализация'}</h3>
+        <div className="modal__head modal__head--compact modal__head--with-lede">
+          <div>
+            <h3>{DETAIL_TITLES[type] || 'Детализация'}</h3>
+            {type === 'debt' && debtHintText ? (
+              <p className="analytics-debt-modal__lede">{debtHintText}</p>
+            ) : null}
+          </div>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <div className="detail-content detail-content--tight">
@@ -1061,6 +879,56 @@ const DetailModal = ({ type, queryParams, summaryCards, onClose }) => {
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {type === 'product_cost' && details && !loading && !error && (
+            <>
+              {itemsLen === 0 ? (
+                <EmptyHint />
+              ) : (
+                <div className="detail-section detail-section--tight">
+                  <div className="detail-table-header detail-table-header--2">
+                    <div className="detail-table-cell">Товар (профиль)</div>
+                    <div className="detail-table-cell detail-table-cell--num">Себестоимость за шт</div>
+                  </div>
+                  <div className="detail-table">
+                    {[...details.items]
+                      .sort((a, b) =>
+                        String(a.profile_name || a.code || '').localeCompare(
+                          String(b.profile_name || b.code || ''),
+                          'ru',
+                        ),
+                      )
+                      .map((item) => {
+                        const title =
+                          String(item.profile_name || '').trim() ||
+                          String(item.product_name || '').trim() ||
+                          String(item.code || '').trim() ||
+                          (item.profile_id != null ? `Профиль #${item.profile_id}` : '—');
+                        const sub = [item.code, item.product_name].filter(Boolean).join(' · ');
+                        const cost = item.unit_cost_per_piece;
+                        return (
+                          <div
+                            key={item.profile_id ?? `${title}-${sub}`}
+                            className="detail-table-row detail-table-row--2"
+                          >
+                            <div className="detail-table-cell detail-table-cell--object">
+                              {title}
+                              {sub ? <span className="detail-table-cell__sub">{sub}</span> : null}
+                              {item.is_active === false ? (
+                                <span className="detail-table-cell__sub"> · неактивен</span>
+                              ) : null}
+                            </div>
+                            <div className="detail-table-cell detail-table-cell--strong detail-table-cell--num">
+                              {cost != null ? formatMoney(cost) : '—'}
+                            </div>
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
               )}
@@ -1181,47 +1049,130 @@ const DetailModal = ({ type, queryParams, summaryCards, onClose }) => {
           {type === 'purchase' && details && !loading && !error && (
             <>
               <div className="detail-row detail-row--big detail-row--compact">
+                <span className="detail-row__label">Итого расходов</span>
+                <span className="detail-row__value">{formatMoney(details.period_total ?? 0)}</span>
+              </div>
+              <div className="detail-section detail-section--tight detail-section--subtotals">
+                <div className="detail-row detail-row--compact">
+                  <span className="detail-row__label">Приход сырья</span>
+                  <span className="detail-row__value">{formatMoney(details.purchase_total ?? 0)}</span>
+                </div>
+                <div className="detail-row detail-row--compact">
+                  <span className="detail-row__label">Прочие расходы</span>
+                  <span className="detail-row__value">{formatMoney(details.other_total ?? 0)}</span>
+                </div>
+              </div>
+              {itemsLen === 0 ? (
+                <EmptyHint />
+              ) : (
+                <>
+                  {details.purchase_items?.length > 0 ? (
+                    <div className="detail-section detail-section--tight">
+                      <h4 className="detail-section__title">Приход сырья</h4>
+                      <div className="detail-table-header detail-table-header--6">
+                        <div className="detail-table-cell">Дата</div>
+                        <div className="detail-table-cell">Материал</div>
+                        <div className="detail-table-cell">Поставщик</div>
+                        <div className="detail-table-cell detail-table-cell--num">Кол-во</div>
+                        <div className="detail-table-cell detail-table-cell--num">Цена</div>
+                        <div className="detail-table-cell detail-table-cell--num">Сумма</div>
+                      </div>
+                      <div className="detail-table">
+                        {details.purchase_items.map((item, i) => {
+                          const rawD = item.date || item.created_at;
+                          const d = sliceIsoDate(rawD);
+                          const mat = String(item.material_name ?? '').trim() || '—';
+                          const sup = String(item.supplier_name ?? '').trim() || '—';
+                          const q = item.quantity;
+                          const sum = Number(item.total_amount ?? 0) || 0;
+                          const up = item.unit_price;
+                          return (
+                            <div key={`${d}-${mat}-${i}`} className="detail-table-row detail-table-row--6">
+                              <div className="detail-table-cell">{d}</div>
+                              <div className="detail-table-cell detail-table-cell--object">{mat}</div>
+                              <div className="detail-table-cell detail-table-cell--object">{sup}</div>
+                              <div className="detail-table-cell detail-table-cell--num">
+                                {q != null && q !== '' ? formatNumber(q) : '—'}
+                              </div>
+                              <div className="detail-table-cell detail-table-cell--num">{formatMoney(up)}</div>
+                              <div className="detail-table-cell detail-table-cell--strong detail-table-cell--num">
+                                {formatMoney(sum)}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                  {details.other_items?.length > 0 ? (
+                    <div className="detail-section detail-section--tight">
+                      <h4 className="detail-section__title">Прочие расходы</h4>
+                      <div className="detail-table-header detail-table-header--3">
+                        <div className="detail-table-cell">Дата</div>
+                        <div className="detail-table-cell">Название</div>
+                        <div className="detail-table-cell detail-table-cell--num">Сумма</div>
+                      </div>
+                      <div className="detail-table">
+                        {details.other_items.map((item, i) => (
+                          <div
+                            key={item.id ?? `${item.date}-${item.name}-${i}`}
+                            className="detail-table-row detail-table-row--3"
+                          >
+                            <div className="detail-table-cell">{sliceIsoDate(item.date)}</div>
+                            <div className="detail-table-cell detail-table-cell--object">
+                              {String(item.name ?? '').trim() || '—'}
+                            </div>
+                            <div className="detail-table-cell detail-table-cell--strong detail-table-cell--num">
+                              {formatMoney(item.amount)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </>
+          )}
+
+          {type === 'debt' && !loading && !error && (
+            <>
+              <div className="detail-row detail-row--big detail-row--compact">
                 <span className="detail-row__label">Итого</span>
                 <span className="detail-row__value">
-                  {formatMoney(details.total_purchase_amount ?? details.total ?? 0)}
+                  {formatMoney(details?.total_debt ?? summaryCards?.client_debt_total ?? 0)}
                 </span>
               </div>
               {itemsLen === 0 ? (
                 <EmptyHint />
               ) : (
                 <div className="detail-section detail-section--tight">
-                  <div className="detail-table-header detail-table-header--6">
-                    <div className="detail-table-cell">Дата</div>
-                    <div className="detail-table-cell">Материал</div>
-                    <div className="detail-table-cell">Поставщик</div>
-                    <div className="detail-table-cell detail-table-cell--num">Кол-во</div>
-                    <div className="detail-table-cell detail-table-cell--num">Цена</div>
-                    <div className="detail-table-cell detail-table-cell--num">Сумма</div>
+                  <div className="detail-table-header detail-table-header--4">
+                    <div className="detail-table-cell">Клиент</div>
+                    <div className="detail-table-cell detail-table-cell--num">Продаж</div>
+                    <div className="detail-table-cell">Старый долг</div>
+                    <div className="detail-table-cell detail-table-cell--num">Сумма долга</div>
                   </div>
                   <div className="detail-table">
-                    {details.items.map((item, i) => {
-                      const rawD = item.date || item.created_at;
-                      const d = sliceIsoDate(rawD);
-                      const mat = String(item.material_name ?? '').trim() || '—';
-                      const sup = String(item.supplier_name ?? '').trim() || '—';
-                      const q = item.quantity;
-                      const sum = Number(item.total_amount ?? 0) || 0;
-                      const up = item.unit_price;
-                      return (
-                        <div key={`${d}-${mat}-${i}`} className="detail-table-row detail-table-row--6">
-                          <div className="detail-table-cell">{d}</div>
-                          <div className="detail-table-cell detail-table-cell--object">{mat}</div>
-                          <div className="detail-table-cell detail-table-cell--object">{sup}</div>
-                          <div className="detail-table-cell detail-table-cell--num">
-                            {q != null && q !== '' ? formatNumber(q) : '—'}
-                          </div>
-                          <div className="detail-table-cell detail-table-cell--num">{formatMoney(up)}</div>
-                          <div className="detail-table-cell detail-table-cell--strong detail-table-cell--num">
-                            {formatMoney(sum)}
-                          </div>
+                    {details.items.map((item, i) => (
+                      <div
+                        key={item.client_id ?? `${item.client_name}-${i}`}
+                        className="detail-table-row detail-table-row--4"
+                      >
+                        <div className="detail-table-cell detail-table-cell--object">
+                          {clientDisplayName(item)}
                         </div>
-                      );
-                    })}
+                        <div className="detail-table-cell detail-table-cell--num">
+                          {item.sales_count != null ? formatNumber(item.sales_count) : '—'}
+                        </div>
+                        <div className="detail-table-cell">
+                          {sliceIsoDate(item.oldest_debt_date)}
+                        </div>
+                        <div className="detail-table-cell detail-table-cell--strong detail-table-cell--num">
+                          {formatMoney(item.debt_amount)}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

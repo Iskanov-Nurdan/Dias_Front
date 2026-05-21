@@ -9,3 +9,4 @@ export * from './recipeRelease';
 export * from './warehousePackaging';
 export * from './warehouseQuality';
 export * from './clientDateFilter';
+export * from './orderLines';

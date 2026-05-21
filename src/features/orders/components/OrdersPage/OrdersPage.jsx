@@ -24,6 +24,7 @@ import {
 import {
   approveOrder,
   createOrder,
+  getOrder,
   getOrdersNoCache,
   getOrderSelectSources,
   recheckOrder,
@@ -93,36 +94,108 @@ const orderProfileLabel = (o, profileList) => {
   return '—';
 };
 
-const pickRecipeName = (r) => {
-  if (!r) return '';
-  if (r.label != null) {
-    const lab = String(r.label).trim();
-    if (lab) return lab;
+/** Строки заявки: order_lines с бэка или одна legacy-строка с корня заказа. */
+const extractOrderLines = (order) => {
+  const source = order || {};
+  const buckets = [
+    source.order_lines,
+    source.lines,
+    source.items,
+    source.request_lines,
+    source.positions,
+    source.products,
+  ];
+  const raw = buckets.find((x) => Array.isArray(x) && x.length) || [];
+  if (raw.length) {
+    return raw.map((ln, idx) => {
+      const profileId = ln?.profile_id ?? ln?.profile?.id ?? ln?.profile ?? null;
+      return {
+        id: ln?.id ?? `line-${idx}`,
+        profile_id: profileId,
+        profile_name:
+          String(ln?.profile_name ?? ln?.profile_display ?? '').trim()
+          || pickProfileName(ln?.profile)
+          || '',
+        quantity: ln?.quantity ?? ln?.qty ?? ln?.required_quantity ?? '',
+      };
+    });
   }
-  const n =
-    (typeof r.recipe === 'string' && r.recipe.trim())
-    || (typeof r.recipe_name === 'string' && r.recipe_name.trim())
-    || (typeof r.name === 'string' && r.name.trim())
-    || (typeof r.product === 'string' && r.product.trim())
-    || (typeof r.product_name === 'string' && r.product_name.trim());
-  if (n) return n;
-  return '';
+  const hasRoot =
+    source.profile_id != null
+    || source.profile != null
+    || String(source.profile_name ?? '').trim()
+    || source.quantity != null;
+  if (!hasRoot) return [];
+  return [
+    {
+      id: 'root',
+      profile_id: source.profile_id ?? (typeof source.profile === 'object' ? source.profile?.id : source.profile),
+      profile_name: String(source.profile_name ?? '').trim() || pickProfileName(source.profile) || '',
+      quantity: source.quantity,
+    },
+  ];
 };
 
-const orderRecipeLabel = (o, recipeList) => {
-  if (o?.recipe && typeof o.recipe === 'object') {
-    const t = pickRecipeName(o.recipe);
-    if (t) return t;
+const lineProfileLabel = (ln, profileList) => {
+  if (ln?.profile_name) return ln.profile_name;
+  if (ln?.profile_id != null && profileList?.length) {
+    const row = profileList.find((p) => String(p.id) === String(ln.profile_id));
+    if (row) return pickProfileName(row);
   }
-  if (o?.recipe_name && String(o.recipe_name).trim()) return String(o.recipe_name).trim();
-  let rid = o?.recipe_id;
-  if (rid == null && o?.recipe != null && typeof o.recipe !== 'object') rid = o.recipe;
-  if (rid != null && Array.isArray(recipeList)) {
-    const row = recipeList.find((r) => String(r.id) === String(rid));
-    if (row) return pickRecipeName(row);
-  }
-  if (rid != null) return '—';
   return '—';
+};
+
+const OrderLinesCell = ({ lines, profileList, column }) => {
+  if (!lines?.length) return '—';
+  if (lines.length === 1) {
+    const ln = lines[0];
+    if (column === 'profile') return lineProfileLabel(ln, profileList);
+    const q = ln.quantity;
+    return q != null && q !== '' ? formatQuantityDisplay(q) : '—';
+  }
+  return (
+    <ul className="orders-rq__multi">
+      {lines.map((ln, idx) => {
+        const text =
+          column === 'profile'
+            ? lineProfileLabel(ln, profileList)
+            : ln.quantity != null && ln.quantity !== ''
+              ? formatQuantityDisplay(ln.quantity)
+              : '—';
+        return (
+          <li key={ln.id ?? idx} className="orders-rq__multi-item">
+            {text}
+          </li>
+        );
+      })}
+    </ul>
+  );
+};
+
+const OrderRowActions = ({ status, busy, onApprove, onReject, onRecheck }) => {
+  const st = String(status || '').toLowerCase();
+  if (st === 'draft') {
+    return (
+      <div className="orders-rq__row-actions">
+        <button type="button" className="btn btn--primary btn--sm" disabled={busy} onClick={onApprove}>
+          Принять
+        </button>
+        <button type="button" className="btn btn--danger btn--sm" disabled={busy} onClick={onReject}>
+          Отклонить
+        </button>
+      </div>
+    );
+  }
+  if (st === 'not_ready') {
+    return (
+      <div className="orders-rq__row-actions">
+        <button type="button" className="btn btn--secondary btn--sm" disabled={busy} onClick={onRecheck}>
+          Проверить снова
+        </button>
+      </div>
+    );
+  }
+  return null;
 };
 
 const requestStatusText = (s) => {
@@ -166,9 +239,8 @@ const OrdersPage = () => {
   const [queryState, setQueryState] = useState({ page: 1, page_size: 20, request_status: '' });
   const [clients, setClients] = useState([]);
   const [profiles, setProfiles] = useState([]);
-  const [recipes, setRecipes] = useState([]);
   const [createOpen, setCreateOpen] = useState(false);
-  const [expandedId, setExpandedId] = useState(null);
+  const [orderDetailById, setOrderDetailById] = useState({});
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState('');
   const [clientDateFilter, setClientDateFilter] = useState('');
@@ -187,12 +259,10 @@ const OrdersPage = () => {
         const data = res.data || {};
         setClients(Array.isArray(data.clients) ? data.clients : []);
         setProfiles(Array.isArray(data.profiles) ? data.profiles : []);
-        setRecipes(Array.isArray(data.recipes) ? data.recipes : []);
       })
       .catch(() => {
         setClients([]);
         setProfiles([]);
-        setRecipes([]);
       });
   }, []);
 
@@ -209,6 +279,45 @@ const OrdersPage = () => {
       matchesClientDateFilter(clientDateFilter, pickFirstIsoDate(o, orderDateFields)),
     );
   }, [items, clientDateFilter, orderDateFields]);
+
+  const orderWithLines = useCallback(
+    (o) => {
+      const detailed = orderDetailById[o?.id];
+      const fromDetail = extractOrderLines(detailed);
+      const fromList = extractOrderLines(o);
+      return fromDetail.length > fromList.length ? detailed || o : o;
+    },
+    [orderDetailById],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const needDetail = (visibleOrders || []).filter((o) => {
+      if (o?.id == null) return false;
+      if (orderDetailById[o.id]) return false;
+      return extractOrderLines(o).length <= 1;
+    });
+    if (!needDetail.length) return undefined;
+    Promise.all(
+      needDetail.map((o) =>
+        getOrder(o.id)
+          .then((res) => [o.id, res.data])
+          .catch(() => [o.id, null]),
+      ),
+    ).then((pairs) => {
+      if (cancelled) return;
+      setOrderDetailById((prev) => {
+        const next = { ...prev };
+        pairs.forEach(([id, data]) => {
+          if (data && extractOrderLines(data).length) next[id] = data;
+        });
+        return next;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [visibleOrders, orderDetailById]);
 
   const onApprove = useCallback(
     async (id) => {
@@ -307,10 +416,8 @@ const OrdersPage = () => {
           <table className="data-table data-table--orders-rq">
             <thead>
               <tr>
-                <th className="data-table__cell--narrow"> </th>
                 <th>Клиент</th>
                 <th>Профиль</th>
-                <th>Рецепт</th>
                 <th>Количество</th>
                 <th>Статус</th>
               </tr>
@@ -319,70 +426,28 @@ const OrdersPage = () => {
               {visibleOrders.map((o) => {
                 const st = resolveOrderStatusValue(o);
                 const stText = resolveOrderStatusText(o);
-                const isOpen = expandedId === o.id;
+                const displayOrder = orderWithLines(o);
+                const lines = extractOrderLines(displayOrder);
                 return (
-                  <React.Fragment key={o.id}>
-                    <tr>
-                      <td>
-                        <button
-                          type="button"
-                          className="btn btn--ghost btn--sm"
-                          onClick={() => setExpandedId(isOpen ? null : o.id)}
-                          aria-expanded={isOpen}
-                        >
-                          {isOpen ? '▼' : '▶'}
-                        </button>
-                      </td>
-                      <td>{orderClientLabel(o, clients)}</td>
-                      <td>{orderProfileLabel(o, profiles)}</td>
-                      <td>{orderRecipeLabel(o, recipes)}</td>
-                      <td>{o.quantity != null && o.quantity !== '' ? formatQuantityDisplay(o.quantity) : '—'}</td>
-                      <td>
-                        <Badge variant={requestStatusBadgeVariant(st)}>{stText}</Badge>
-                      </td>
-                    </tr>
-                    {isOpen && (
-                      <tr className="orders-rq__detail-row">
-                        <td colSpan={6}>
-                          <div className="orders-rq__card">
-                            {String(st).toLowerCase() === 'draft' && (
-                              <div className="orders-rq__actions">
-                                <button
-                                  type="button"
-                                  className="btn btn--primary"
-                                  disabled={actionBusy}
-                                  onClick={() => onApprove(o.id)}
-                                >
-                                  Принять
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn btn--danger"
-                                  disabled={actionBusy}
-                                  onClick={() => onReject(o.id)}
-                                >
-                                  Отклонить
-                                </button>
-                              </div>
-                            )}
-
-                            {String(st).toLowerCase() === 'not_ready' && (
-                              <div className="orders-rq__actions">
-                                <button
-                                  type="button"
-                                  className="btn btn--secondary"
-                                  disabled={actionBusy}
-                                  onClick={() => onRecheck(o.id)}
-                                >
-                                  Проверить снова
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
+                  <tr key={o.id}>
+                    <td>{orderClientLabel(o, clients)}</td>
+                    <td>
+                      <OrderLinesCell lines={lines} profileList={profiles} column="profile" />
+                    </td>
+                    <td>
+                      <OrderLinesCell lines={lines} column="quantity" />
+                    </td>
+                    <td className="orders-rq__status-cell">
+                      <Badge variant={requestStatusBadgeVariant(st)}>{stText}</Badge>
+                      <OrderRowActions
+                        status={st}
+                        busy={actionBusy}
+                        onApprove={() => onApprove(o.id)}
+                        onReject={() => onReject(o.id)}
+                        onRecheck={() => onRecheck(o.id)}
+                      />
+                    </td>
+                  </tr>
                 );
               })}
             </tbody>
@@ -400,6 +465,7 @@ const OrdersPage = () => {
           onClose={() => setCreateOpen(false)}
           onCreated={async () => {
             setCreateOpen(false);
+            setOrderDetailById({});
             await refetch();
             toast.show('Заявка создана');
           }}

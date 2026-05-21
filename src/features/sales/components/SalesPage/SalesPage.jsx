@@ -6,6 +6,8 @@ import {
   getApiErrorMessage,
   pickFirstIsoDate,
   matchesClientDateFilter,
+  extractOrderLines,
+  orderLineApiId,
 } from '../../../../shared/lib';
 import {
   EmptyState,
@@ -92,8 +94,8 @@ const orderLabel = (o) => {
 const orderPrepaidAmount = (o) => {
   if (!o) return 0;
   const candidates = [
-    o.prepaid_amount,
     o.paid_amount,
+    o.prepaid_amount,
     o.advance_amount,
     o.prepayment_amount,
     o.order_paid_amount,
@@ -105,11 +107,54 @@ const orderPrepaidAmount = (o) => {
   }
   return 0;
 };
+
+const normalizePaymentMethod = (raw) => {
+  const s = String(raw || 'cash').toLowerCase();
+  if (s.includes('card') || s.includes('карт')) return 'card';
+  if (s.includes('transfer') || s.includes('перевод')) return 'transfer';
+  return 'cash';
+};
+
+const orderPaymentTypeLabel = (t) => {
+  const k = String(t || '').toLowerCase();
+  if (k === 'partial') return 'Частичная';
+  if (k === 'debt') return 'В долг';
+  return 'Полная';
+};
+
+/** Снимок оплаты из заявки (как при создании в Кассе). */
+const orderPaymentSnapshot = (o) => {
+  if (!o) return null;
+  const type = String(o.payment_type || 'full').toLowerCase();
+  const method = normalizePaymentMethod(o.payment_method);
+  const total = toNumber(o.total_amount ?? o.order_total);
+  const paid = orderPrepaidAmount(o);
+  const remRaw = toNumber(o.amount_remaining);
+  const remainingAtOrder = remRaw > 0 ? remRaw : (total > 0 ? Math.max(0, total - paid) : 0);
+  return { type, method, total, paid, remainingAtOrder };
+};
+
 const resolveOrderAppliedAmount = (orderPrepaid, previewTotal) => {
   const prepaid = toNumber(orderPrepaid);
   const total = toNumber(previewTotal);
   if (!(prepaid > 0) || !(total > 0)) return 0;
   return Math.min(prepaid, total);
+};
+
+/** Доплата при продаже (не аванс заявки). */
+const resolveSaleSupplementalPaid = ({ paymentType, paidAmount, saleTotal, orderPrepaid }) => {
+  const total = toNumber(saleTotal);
+  const applied = resolveOrderAppliedAmount(orderPrepaid, total);
+  if (paymentType === 'debt') return 0;
+  if (paymentType === 'partial') return parseLocaleNumber(paidAmount);
+  return total > 0 ? Math.max(0, total - applied) : 0;
+};
+
+const resolveSaleDebtRemaining = ({ paymentType, paidAmount, saleTotal, orderPrepaid }) => {
+  const total = toNumber(saleTotal);
+  const applied = resolveOrderAppliedAmount(orderPrepaid, total);
+  const supplemental = resolveSaleSupplementalPaid({ paymentType, paidAmount, saleTotal, orderPrepaid });
+  return Math.max(0, total - applied - supplemental);
 };
 const isClosedOrder = (o) => {
   const raw = String(o?.request_status || o?.status || o?.status_label || '').toLowerCase();
@@ -183,12 +228,16 @@ const formatBatchOptionLabel = (b) => {
   if (pk > 0) bits.push(`${formatQuantityDisplay(pk)} уп`);
   return bits.length ? `${base} · ${bits.join(' · ')}` : base;
 };
-const cartBatchTitle = (b, idx) => {
-  if (!b) return `Товар ${idx + 1}`;
-  const pn = String(b.product_name ?? b.productName ?? '').trim();
-  const bn = String(b.blank_name ?? b.blankName ?? '').trim();
-  if (pn || bn) return [pn, bn].filter(Boolean).join(' · ');
-  return formatBatchOptionLabel(b);
+const cartLineTitle = (line, batch, idx) => {
+  if (batch) {
+    const pn = String(batch.product_name ?? batch.productName ?? '').trim();
+    const bn = String(batch.blank_name ?? batch.blankName ?? '').trim();
+    if (pn || bn) return [pn, bn].filter(Boolean).join(' · ');
+    return formatBatchOptionLabel(batch);
+  }
+  const profile = String(line?.profile_name ?? '').trim();
+  if (profile) return profile;
+  return `Товар ${idx + 1}`;
 };
 const resolveBatchAvailPieces = (b) =>
   toNumber(b?.available_pieces ?? b?.unpacked_pieces ?? b?.pieces_available ?? b?.pieces_count ?? b?.qty_pieces);
@@ -250,6 +299,32 @@ const maxSaleQtyForBatch = (line, batch) => {
   if (line?.unit_type === 'packages') return resolveBatchAvailPackages(batch);
   return resolveUnpackedPiecesForSale(batch);
 };
+
+/** Кол-во из заявки, не больше остатка на складе. */
+const capQuantityForOrderLine = (line, batch) => {
+  const orderQty = parseLocaleNumber(line.order_quantity ?? line.quantity);
+  if (line?.unit_type === 'packages') {
+    return orderQty > 0 ? '1' : (line.quantity || '1');
+  }
+  if (!(orderQty > 0)) return line.quantity || '';
+  const maxQ = maxSaleQtyForBatch(line, batch);
+  if (maxQ > 0) return String(Math.min(orderQty, Math.floor(maxQ)));
+  return String(Math.floor(orderQty));
+};
+
+const enrichCartLinesFromOrder = (lines, batches) =>
+  (lines || []).map((ln) => {
+    const batch =
+      ln.warehouse_batch && batches?.length
+        ? batches.find((b) => String(b.id) === String(ln.warehouse_batch))
+        : null;
+    const orderQty = ln.quantity != null && ln.quantity !== '' ? String(ln.quantity) : '';
+    return {
+      ...ln,
+      order_quantity: orderQty,
+      quantity: capQuantityForOrderLine({ ...ln, order_quantity: orderQty }, batch),
+    };
+  });
 
 /** Штуки внутри одной GP-упаковки (для подписи в UI). */
 const gpPackagePiecesInside = (gp) => toNumber(
@@ -542,32 +617,88 @@ const normalizeUnitType = (v) => {
   if (s.includes('упак') || s.includes('package')) return 'packages';
   return 'pieces';
 };
+const rawOrderLinesBucket = (source) => {
+  const buckets = [
+    source?.order_lines,
+    source?.lines,
+    source?.items,
+    source?.products,
+    source?.request_lines,
+    source?.positions,
+  ];
+  return buckets.find((x) => Array.isArray(x) && x.length) || [];
+};
+
 const extractOrderProductLines = (orderDetail) => {
   const source = orderDetail || {};
-  const buckets = [
-    source.order_lines,
-    source.lines,
-    source.items,
-    source.products,
-    source.request_lines,
-    source.positions,
-  ];
-  const raw = buckets.find((x) => Array.isArray(x) && x.length) || [];
-  return raw.map((ln, idx) => {
-    const profileId = ln?.profile_id ?? ln?.profile?.id ?? ln?.profile ?? null;
-    const profileName = ln?.profile_name || ln?.profile_display || ln?.display || '';
-    const qty = ln?.quantity ?? ln?.qty ?? ln?.required_quantity ?? '';
-    const price = ln?.unit_price ?? ln?.price ?? ln?.sale_price ?? '';
-    const unitType = normalizeUnitType(ln?.unit_type || source?.unit_type);
+  const raw = rawOrderLinesBucket(source);
+  return extractOrderLines(source).map((ln, idx) => {
+    const rawLn = raw[idx] || {};
+    const price = rawLn?.unit_price ?? rawLn?.price ?? rawLn?.sale_price ?? source?.unit_price ?? '';
     return {
-      id: ln?.id ?? `order-line-${idx}`,
-      profile_id: profileId,
-      profile_name: profileName,
-      quantity: qty != null && qty !== '' ? String(qty) : '',
+      ...ln,
       unit_price: price != null && price !== '' ? String(price) : '',
-      unit_type: unitType,
+      unit_type: normalizeUnitType(rawLn?.unit_type || source?.unit_type),
     };
   });
+};
+
+const mergeOrderDetailForCart = (listItem, apiDetail) => {
+  const base = { ...(listItem || {}), ...(apiDetail || {}) };
+  const fromApi = extractOrderProductLines(apiDetail);
+  const fromList = extractOrderProductLines(listItem);
+  const lines = fromApi.length >= fromList.length ? fromApi : fromList;
+  if (lines.length) return { ...base, order_lines: lines };
+  return base;
+};
+
+const formatOrderSelectDate = (o) => {
+  const iso = pickFirstIsoDate(o, ['date', 'order_date', 'created_at', 'requested_at', 'updated_at']);
+  if (!iso) return '—';
+  const s = String(iso).slice(0, 10);
+  if (s.length === 10) return `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)}`;
+  return s;
+};
+
+const orderProfileLinesCount = (o) => {
+  const lines = extractOrderProductLines(o);
+  if (lines.length) return lines.length;
+  const n = o?.lines_count ?? o?.linesCount;
+  if (n != null && Number.isFinite(Number(n)) && Number(n) > 0) return Number(n);
+  if (o?.profile_id != null || String(o?.profile_name ?? '').trim()) return 1;
+  return 0;
+};
+
+/** Краткая подпись заявки в селекте продажи: дата — число профилей. */
+const orderSelectLabel = (o) => {
+  if (!o) return '—';
+  const date = formatOrderSelectDate(o);
+  const n = orderProfileLinesCount(o);
+  if (n > 0) return `${date} — ${n}`;
+  return date;
+};
+
+/** Один пункт селекта на заявку (бэк иногда отдаёт несколько строк на один id). */
+const dedupeOrdersById = (list) => {
+  const map = new Map();
+  for (const o of list || []) {
+    if (o?.id == null) continue;
+    const key = String(o.id);
+    const incomingLines = extractOrderProductLines(o);
+    if (!map.has(key)) {
+      map.set(key, incomingLines.length ? { ...o, order_lines: incomingLines } : { ...o });
+      continue;
+    }
+    const prev = map.get(key);
+    const prevLines = extractOrderProductLines(prev);
+    const merged = [...prevLines, ...incomingLines];
+    map.set(key, {
+      ...prev,
+      ...o,
+      ...(merged.length ? { order_lines: merged } : {}),
+    });
+  }
+  return [...map.values()];
 };
 
 const SalesPage = () => {
@@ -717,10 +848,11 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [paidAmount, setPaidAmount] = useState('');
   const [orderPrepaid, setOrderPrepaid] = useState(0);
+  const [orderPaymentSnap, setOrderPaymentSnap] = useState(null);
   const [saleLines, setSaleLines] = useState([newEmptySaleLine()]);
   const [activeLineIdx, setActiveLineIdx] = useState(0);
   const [orderCartLoading, setOrderCartLoading] = useState(false);
-  const [, setOrderCartError] = useState('');
+  const [orderCartError, setOrderCartError] = useState('');
   const [autoFilledFromOrder, setAutoFilledFromOrder] = useState(false);
   const [preview, setPreview] = useState(null);
   const [, setPreviewError] = useState('');
@@ -833,12 +965,26 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
         payment_method: paymentMethod,
       };
       if (order) payload.order = Number(order);
+      const lineTotal = cleanLines.reduce(
+        (acc, ln) => acc + parseLocaleNumber(ln.quantity) * parseLocaleNumber(ln.unit_price),
+        0,
+      );
+      const applied = order ? resolveOrderAppliedAmount(orderPrepaid, lineTotal) : 0;
+      if (applied > 0) payload.order_paid_amount_applied = String(applied);
       if (paymentType === 'partial') {
         const p = parseLocaleNumber(paidAmount);
         if (!(p > 0)) return null;
         payload.paid_amount = String(p);
+      } else if (paymentType === 'debt') {
+        payload.paid_amount = '0';
+      } else {
+        payload.paid_amount = String(resolveSaleSupplementalPaid({
+          paymentType,
+          paidAmount,
+          saleTotal: lineTotal,
+          orderPrepaid,
+        }));
       }
-      if (paymentType === 'debt') payload.paid_amount = '0';
       return payload;
     };
 
@@ -872,32 +1018,27 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
       alive = false;
       clearTimeout(t);
     };
-  }, [client, order, saleLines, paymentType, paymentMethod, paidAmount]);
-
-  useEffect(() => {
-    if (!(orderPrepaid > 0) || !preview) return;
-    const total = toNumber(preview.total_amount);
-    if (!(total > 0)) return;
-    if (orderPrepaid >= total) {
-      setPaymentType('full');
-      setPaidAmount('');
-    } else if (paymentType !== 'partial') {
-      setPaymentType('partial');
-      setPaidAmount(String(orderPrepaid));
-    }
-  }, [orderPrepaid, preview, paymentType]);
+  }, [client, order, saleLines, paymentType, paymentMethod, paidAmount, orderPrepaid]);
 
   const filteredOrders = useMemo(() => {
     if (!client) return [];
-    return orders.filter((o) => {
+    const scoped = orders.filter((o) => {
       if (isClosedOrder(o)) return false;
       const oid = o?.client_id ?? o?.client?.id ?? o?.client;
       if (oid == null || oid === '') return true;
       return String(oid) === String(client);
     });
+    return dedupeOrdersById(scoped);
   }, [orders, client]);
   const orderOptions = useMemo(
-    () => [{ value: '', label: 'Не выбрана' }, ...filteredOrders.map((o) => ({ value: String(o.id), label: orderLabel(o) }))],
+    () => [
+      { value: '', label: 'Не выбрана' },
+      ...filteredOrders.map((o) => ({
+        value: String(o.id),
+        label: orderSelectLabel(o),
+        searchText: [formatOrderSelectDate(o), orderProfileLinesCount(o), o.id].filter((x) => x != null).join(' '),
+      })),
+    ],
     [filteredOrders],
   );
   const clientOptions = useMemo(
@@ -938,15 +1079,67 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
   const buildCartFromOrder = useCallback((orderDetail) => {
     const orderLines = extractOrderProductLines(orderDetail);
     if (!orderLines.length) return null;
-    return orderLines.map((ln) => ({
-      warehouse_batch: pickBatchForOrderLine(ln, ln.unit_type),
-      quantity: ln.quantity,
-      unit_price: ln.unit_price,
-      unit_type: ln.unit_type || 'pieces',
-      order_line_id: ln.id,
-      from_order: true,
-    }));
+    return orderLines.map((ln) => {
+      const lineId = orderLineApiId(ln);
+      return {
+        warehouse_batch: pickBatchForOrderLine(ln, ln.unit_type),
+        quantity: ln.quantity,
+        unit_price: ln.unit_price,
+        unit_type: ln.unit_type || 'pieces',
+        profile_id: ln.profile_id,
+        profile_name: ln.profile_name,
+        ...(lineId != null ? { order_line_id: lineId } : {}),
+        from_order: true,
+      };
+    });
   }, [pickBatchForOrderLine]);
+
+  const applyOrderPaymentDefaults = useCallback((snap, saleTotal) => {
+    if (!snap) return;
+    setPaymentMethod(snap.method);
+    setOrderPrepaid(snap.paid);
+    const total = toNumber(saleTotal);
+    const dueAtSale = total > 0 ? Math.max(0, total - snap.paid) : 0;
+    if (snap.type === 'debt' && snap.paid <= 0) {
+      setPaymentType(total > 0 ? 'partial' : 'debt');
+      setPaidAmount(total > 0 ? String(total) : '');
+      return;
+    }
+    if (total > 0 && snap.paid >= total) {
+      setPaymentType('full');
+      setPaidAmount('');
+      return;
+    }
+    if (snap.paid > 0 || snap.type === 'partial' || snap.remainingAtOrder > 0) {
+      setPaymentType(dueAtSale > 0 ? 'partial' : 'full');
+      setPaidAmount(dueAtSale > 0 ? String(dueAtSale) : '');
+      return;
+    }
+    setPaymentType('full');
+    setPaidAmount('');
+  }, []);
+
+  const applyCartFromOrder = useCallback((orderDetail) => {
+    const autoCart = buildCartFromOrder(orderDetail);
+    if (!autoCart?.length) {
+      setOrderCartError('В заявке нет позиций для продажи.');
+      setAutoFilledFromOrder(false);
+      return false;
+    }
+    setSaleLines(enrichCartLinesFromOrder(autoCart, saleAvailableBatches));
+    setActiveLineIdx(0);
+    setAutoFilledFromOrder(true);
+    setOrderCartError('');
+    return true;
+  }, [buildCartFromOrder, saleAvailableBatches]);
+
+  useEffect(() => {
+    if (!order || !orderPaymentSnap || !autoFilledFromOrder || !preview) return;
+    const total = toNumber(preview.total_amount);
+    if (!(total > 0)) return;
+    applyOrderPaymentDefaults(orderPaymentSnap, total);
+  }, [order, orderPaymentSnap, autoFilledFromOrder, preview?.total_amount, applyOrderPaymentDefaults]);
+
   useEffect(() => {
     setActiveLineIdx((prev) => {
       if (!saleLines.length) return 0;
@@ -958,53 +1151,60 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
   useEffect(() => {
     if (!order) {
       setOrderPrepaid(0);
+      setOrderPaymentSnap(null);
       setOrderCartLoading(false);
       setOrderCartError('');
       setAutoFilledFromOrder(false);
-      return;
+      return undefined;
     }
     const selected = filteredOrders.find((o) => String(o.id) === String(order));
-    const prepaid = orderPrepaidAmount(selected);
-    setOrderPrepaid(prepaid);
-    if (prepaid > 0) {
-      setPaymentType('partial');
-      setPaidAmount(String(prepaid));
+    const snapFromList = orderPaymentSnapshot(selected);
+    setOrderPaymentSnap(snapFromList);
+    if (snapFromList) applyOrderPaymentDefaults(snapFromList, 0);
+    if (selected) {
+      applyCartFromOrder(mergeOrderDetailForCart(selected, {}));
     }
+    let cancelled = false;
     setOrderCartLoading(true);
     setOrderCartError('');
     getOrder(order)
       .then((res) => {
-        const detail = res?.data || {};
-        const autoCart = buildCartFromOrder(detail);
-        if (!autoCart || !autoCart.length) {
-          setOrderCartError('В заявке нет товарных строк для автокорзины.');
-          setAutoFilledFromOrder(false);
-          return;
-        }
-        setSaleLines((prev) => {
-          const manualLines = prev.filter((x) => !x.from_order && !isLineEmpty(x));
-          return [...autoCart, ...manualLines];
-        });
-        setActiveLineIdx(0);
-        setAutoFilledFromOrder(true);
+        if (cancelled) return;
+        const merged = mergeOrderDetailForCart(selected, res?.data || {});
+        const snap = orderPaymentSnapshot(merged);
+        setOrderPaymentSnap(snap);
+        applyCartFromOrder(merged);
       })
       .catch((err) => {
-        setOrderCartError(getApiErrorMessage(err, 'Не удалось загрузить товары из заявки'));
-        setAutoFilledFromOrder(false);
+        if (cancelled) return;
+        if (!applyCartFromOrder(mergeOrderDetailForCart(selected, {}))) {
+          setOrderCartError(getApiErrorMessage(err, 'Не удалось загрузить товары из заявки'));
+        }
       })
       .finally(() => {
-        setOrderCartLoading(false);
+        if (!cancelled) setOrderCartLoading(false);
       });
-  }, [order, filteredOrders, buildCartFromOrder, isLineEmpty]);
+    return () => {
+      cancelled = true;
+    };
+  }, [order, filteredOrders, applyCartFromOrder, applyOrderPaymentDefaults]);
   useEffect(() => {
-    setSaleLines((prev) => prev.map((line) => {
-      const lineBatches = filteredBatchesByUnitType(line.unit_type || 'pieces');
-      const allowedBatchIds = new Set(lineBatches.map((b) => String(b.id)));
-      if (!line.warehouse_batch) return line;
-      return allowedBatchIds.has(String(line.warehouse_batch))
-        ? line
-        : { ...line, warehouse_batch: '' };
-    }));
+    setSaleLines((prev) =>
+      prev.map((line) => {
+        const lineBatches = filteredBatchesByUnitType(line.unit_type || 'pieces');
+        const allowedBatchIds = new Set(lineBatches.map((b) => String(b.id)));
+        let next = line;
+        if (line.warehouse_batch && !allowedBatchIds.has(String(line.warehouse_batch))) {
+          next = { ...next, warehouse_batch: '', quantity: '' };
+        }
+        if (next.from_order && next.warehouse_batch) {
+          const batch = lineBatches.find((b) => String(b.id) === String(next.warehouse_batch));
+          const qty = capQuantityForOrderLine(next, batch);
+          if (qty && qty !== next.quantity) next = { ...next, quantity: qty };
+        }
+        return next;
+      }),
+    );
   }, [filteredBatchesByUnitType]);
 
   useEffect(() => {
@@ -1077,25 +1277,26 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
     const topLevelUnitType = cleanLines.length > 0
       ? (cleanLines[0].unit_type === 'packages' ? 'packages' : 'pieces')
       : 'pieces';
+    const saleTotal = toNumber(preview?.total_amount) > 0
+      ? toNumber(preview.total_amount)
+      : cleanLines.reduce((acc, ln) => acc + parseLocaleNumber(ln.quantity) * parseLocaleNumber(ln.unit_price), 0);
     const payload = {
       client: Number(client),
       unit_type: topLevelUnitType,
       sale_lines: cleanLines,
       payment_type: paymentType,
       payment_method: paymentMethod,
-      paid_amount: paymentType === 'debt' ? '0' : String(paidAmount || ''),
+      paid_amount: String(resolveSaleSupplementalPaid({
+        paymentType,
+        paidAmount,
+        saleTotal,
+        orderPrepaid,
+      })),
     };
     if (order) payload.order = Number(order);
-    const appliedFromOrder = resolveOrderAppliedAmount(orderPrepaid, preview?.total_amount);
+    const appliedFromOrder = resolveOrderAppliedAmount(orderPrepaid, saleTotal);
     if (order && appliedFromOrder > 0) {
       payload.order_paid_amount_applied = String(appliedFromOrder);
-    }
-    if (paymentType === 'full') {
-      if (preview?.total_amount != null && preview.total_amount !== '') {
-        payload.paid_amount = String(preview.total_amount);
-      } else {
-        delete payload.paid_amount;
-      }
     }
     if (paymentType === 'partial' && !(parseLocaleNumber(paidAmount) > 0)) {
       setPaidAmountError('Укажите сумму оплаты');
@@ -1126,12 +1327,18 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
     [saleLines],
   );
   const totalAmount = toNumber(preview?.total_amount) > 0 ? toNumber(preview.total_amount) : totalFromLines;
-  const paidAmountValue = (() => {
-    if (paymentType === 'debt') return 0;
-    if (paymentType === 'full') return totalAmount;
-    return parseLocaleNumber(paidAmount);
-  })();
-  const debtAmountValue = Math.max(0, totalAmount - toNumber(paidAmountValue));
+  const paidAmountValue = resolveSaleSupplementalPaid({
+    paymentType,
+    paidAmount,
+    saleTotal: totalAmount,
+    orderPrepaid,
+  });
+  const debtAmountValue = resolveSaleDebtRemaining({
+    paymentType,
+    paidAmount,
+    saleTotal: totalAmount,
+    orderPrepaid,
+  });
   const saleDate = new Date().toISOString().slice(0, 10);
   const selectedLine = saleLines[activeLineIdx] || null;
   const selectedBatchMeta = useMemo(() => {
@@ -1239,12 +1446,39 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
                       setActiveLineIdx(0);
                       setOrderCartError('');
                       setAutoFilledFromOrder(false);
+                      setOrderPaymentSnap(null);
+                      setOrderPrepaid(0);
                     }
                   }}
                   options={orderOptions}
                   disabled={!client}
                   placeholder={client ? 'Выберите заявку' : 'Сначала выберите клиента'}
                 />
+                {orderCartLoading && (
+                  <p className="sales-modal__hint-line">Загрузка товаров из заявки…</p>
+                )}
+                {orderCartError && (
+                  <p className="sales-modal__field-error">{orderCartError}</p>
+                )}
+                {autoFilledFromOrder && !orderCartError && (
+                  <p className="sales-modal__hint-line">
+                    Товары и кол-во из заявки — при необходимости смените партию на складе.
+                  </p>
+                )}
+                {orderPaymentSnap && (
+                  <div className="sales-modal__order-pay-banner">
+                    <span>
+                      Оплата заявки: {orderPaymentTypeLabel(orderPaymentSnap.type)}
+                      {orderPaymentSnap.total > 0 ? ` · ${moneySafe(orderPaymentSnap.total)}` : ''}
+                    </span>
+                    {orderPaymentSnap.paid > 0 && (
+                      <span>Уже оплачено: {moneySafe(orderPaymentSnap.paid)}</span>
+                    )}
+                    {orderPaymentSnap.remainingAtOrder > 0 && (
+                      <span>Остаток по заявке: {moneySafe(orderPaymentSnap.remainingAtOrder)}</span>
+                    )}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="sales-modal__label">Дата</label>
@@ -1294,7 +1528,7 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
                           return parts.length ? parts.join(' · ') : `Упаковка #${selectedGpPkg.id ?? ''}`;
                         })()
                         : null;
-                      const title = gpPkgTitle || cartBatchTitle(selectedBatch, idx);
+                      const title = gpPkgTitle || cartLineTitle(line, selectedBatch, idx);
                       const lineTotal = parseLocaleNumber(line.quantity) * parseLocaleNumber(line.unit_price);
                       const maxL = (line.gp_package_id && selectedGpPkg && line.unit_type === 'packages')
                         ? 1
@@ -1409,11 +1643,18 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
                               key={String(b.id)}
                               type="button"
                               className={`sales-modal__batch-card${isSelected ? ' is-selected' : ''}`}
-                              onClick={() => setSaleLines((prev) => prev.map((x, i) => (
-                                i === activeLineIdx
-                                  ? { ...x, warehouse_batch: String(b.id), gp_package_id: undefined, quantity: '' }
-                                  : x
-                              )))}
+                              onClick={() => setSaleLines((prev) => prev.map((x, i) => {
+                                if (i !== activeLineIdx) return x;
+                                const next = {
+                                  ...x,
+                                  warehouse_batch: String(b.id),
+                                  gp_package_id: undefined,
+                                };
+                                return {
+                                  ...next,
+                                  quantity: capQuantityForOrderLine(next, b),
+                                };
+                              }))}
                             >
                               <div className="sales-modal__batch-card__body">
                                 <div className="sales-modal__batch-card__name">{displayName}</div>
@@ -1616,6 +1857,15 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
                       <label className="sales-modal__label">Итого (сумма)</label>
                       <div className="sales-modal__payment-display">{moneySafe(totalAmount)}</div>
                     </div>
+                    {orderPaymentSnap && orderPaymentSnap.paid > 0 && (
+                      <div>
+                        <label className="sales-modal__label">Уже по заявке</label>
+                        <div className="sales-modal__payment-display">{moneySafe(orderPaymentSnap.paid)}</div>
+                        <p className="sales-modal__hint-line sales-modal__hint-line--tight">
+                          К доплате при продаже: {moneySafe(Math.max(0, totalAmount - orderPaymentSnap.paid))}
+                        </p>
+                      </div>
+                    )}
                     <div>
                       <label className="sales-modal__label">Оплачено сейчас</label>
                       <input

@@ -1,17 +1,22 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   useServerQuery,
-  formatQuantityDisplay,
   formatNumberForInput,
-  getApiErrorMessage,
   pickFirstIsoDate,
   matchesClientDateFilter,
+  extractOrderLines,
+  lineProfileLabel,
+  lineQuantityLabel,
 } from '../../../../shared/lib';
-import { Loading, EmptyState, ErrorState, useToast, SearchableSelect, ClientDateFilter } from '../../../../shared/ui';
+import { Loading, EmptyState, ErrorState, useToast, ClientDateFilter, SearchableSelect } from '../../../../shared/ui';
 import { useOperationalRefetch } from '../../../../shared/realtime';
 import ProduceBlankModal from '../ProduceBlankModal/ProduceBlankModal';
-import { getOrderSelectSources } from '../../../orders/api/ordersApi';
+import { getOrder, getOrderSelectSources } from '../../../orders/api/ordersApi';
+import { orderLineKey, orderLineApiId } from '../../lib/orderLineKeys';
+import { getMyShift } from '../../../shifts/api/shiftsApi';
+import { setAuditShiftId } from '../../../../shared/lib/auditContext';
 import { startProductionRequest } from '../../api/productionApi';
+import { getProductionStartErrorMessage } from '../../lib/productionStartError';
 import {
   mapBlankProductionRunFromApi,
   mapWorkshopBlankFromApi,
@@ -50,20 +55,6 @@ const pickCl = (c) => {
   return '';
 };
 
-const pickPr = (p) => {
-  if (!p) return '';
-  if (p.label != null) {
-    const lab = String(p.label).trim();
-    if (lab) return lab;
-  }
-  const n =
-    (typeof p.name === 'string' && p.name.trim()) ||
-    (typeof p.title === 'string' && p.title.trim()) ||
-    (typeof p.code === 'string' && p.code.trim());
-  if (n) return n;
-  return '';
-};
-
 const rqClient = (o, list) => {
   if (o?.client && typeof o.client === 'object') {
     const t = pickCl(o.client);
@@ -80,24 +71,10 @@ const rqClient = (o, list) => {
   return '—';
 };
 
-const rqProfile = (o, list) => {
-  if (o?.profile && typeof o.profile === 'object') {
-    const t = pickPr(o.profile);
-    if (t) return t;
-  }
-  if (o?.profile_name && String(o.profile_name).trim()) return String(o.profile_name).trim();
-  let rid = o?.profile_id;
-  if (rid == null && o?.profile != null && typeof o.profile !== 'object') rid = o.profile;
-  if (rid != null && Array.isArray(list)) {
-    const row = list.find((p) => String(p.id) === String(rid));
-    if (row) return pickPr(row);
-  }
-  if (rid != null) return '—';
-  return '—';
-};
-
-/** Список ID заготовок, разрешённых для этой заявки (сериализатор production). */
-const readAllowedBlankIds = (order) => {
+/** allowed_blank_ids на позиции или на всей заявке. */
+const readAllowedBlankIds = (order, line) => {
+  const lineRaw = line?.allowed_blank_ids ?? line?.allowedBlankIds;
+  if (Array.isArray(lineRaw)) return lineRaw.map((x) => String(x));
   const raw = order?.allowed_blank_ids ?? order?.allowedBlankIds;
   if (raw == null) return null;
   if (!Array.isArray(raw)) return null;
@@ -105,23 +82,30 @@ const readAllowedBlankIds = (order) => {
   return raw.map((x) => String(x));
 };
 
-/**
- * Опции селекта заготовки: если бэк отдал allowed_blank_ids — только они (без «левых» заготовок).
- * Пустой массив с бэка = нет подходящих заготовок в каталоге.
- */
-const filterBlankSelectOptions = (allWithPlaceholder, order) => {
-  const allowed = readAllowedBlankIds(order);
-  const data = allWithPlaceholder.filter((o) => o.value !== '');
-  if (allowed === null) return allWithPlaceholder;
-  if (allowed.length === 0) return [{ value: '', label: '—' }];
-  const set = new Set(allowed);
-  const filtered = data.filter((o) => set.has(String(o.value)));
-  return [{ value: '', label: '—' }, ...filtered];
+const buildLineBlankSelectOptions = (catalogOptions, order, line) => {
+  const data = (catalogOptions || []).filter((o) => o.value);
+  const allowed = readAllowedBlankIds(order, line);
+  let picked = data;
+  if (allowed !== null) {
+    if (allowed.length === 0) picked = [];
+    else {
+      const set = new Set(allowed);
+      picked = data.filter((o) => set.has(String(o.value)));
+      const matchedIds = new Set(picked.map((o) => String(o.value)));
+      const fallbacks = allowed
+        .filter((id) => !matchedIds.has(id))
+        .map((id) => ({ value: id, label: `Заготовка #${id}` }));
+      picked = [...picked, ...fallbacks];
+    }
+  }
+  return [{ value: '', label: '—' }, ...picked];
 };
 
 const ProductionClientRequestsPanel = ({ queryEnabled, clientDateFilter }) => {
   const toast = useToast();
-  const [blankByOrder, setBlankByOrder] = useState({});
+  /** `${orderId}:${lineKey}` → blank id */
+  const [blankByLineKey, setBlankByLineKey] = useState({});
+  const [orderDetailById, setOrderDetailById] = useState({});
   const [startBusy, setStartBusy] = useState(null);
   const [srcClients, setSrcClients] = useState([]);
   const [srcProfiles, setSrcProfiles] = useState([]);
@@ -152,6 +136,45 @@ const ProductionClientRequestsPanel = ({ queryEnabled, clientDateFilter }) => {
     );
   }, [items, clientDateFilter, orderDateFields]);
 
+  const orderWithLines = useCallback(
+    (o) => {
+      const detailed = orderDetailById[o?.id];
+      const fromDetail = extractOrderLines(detailed);
+      const fromList = extractOrderLines(o);
+      return fromDetail.length > fromList.length ? detailed || o : o;
+    },
+    [orderDetailById],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const needDetail = (visibleItems || []).filter((o) => {
+      if (o?.id == null) return false;
+      if (orderDetailById[o.id]) return false;
+      return extractOrderLines(o).length <= 1;
+    });
+    if (!needDetail.length) return undefined;
+    Promise.all(
+      needDetail.map((o) =>
+        getOrder(o.id)
+          .then((res) => [o.id, res.data])
+          .catch(() => [o.id, null]),
+      ),
+    ).then((pairs) => {
+      if (cancelled) return;
+      setOrderDetailById((prev) => {
+        const next = { ...prev };
+        pairs.forEach(([id, data]) => {
+          if (data && extractOrderLines(data).length) next[id] = data;
+        });
+        return next;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [visibleItems, orderDetailById]);
+
   useEffect(() => {
     getOrderSelectSources()
       .then((res) => {
@@ -165,57 +188,92 @@ const ProductionClientRequestsPanel = ({ queryEnabled, clientDateFilter }) => {
       });
   }, []);
 
-  const blankOptions = useMemo(() => {
+  const blankCatalogOptions = useMemo(() => {
     const list = (blankItems || []).map(mapWorkshopBlankFromApi).filter(Boolean);
-    return [
-      { value: '', label: '—' },
-      ...list.map((b) => ({
-        value: b.id,
-        label: b.name || `Заготовка ${b.id}`,
-        searchText: [b.name, b.id].filter((x) => x != null && String(x).trim() !== '').join(' '),
-      })),
-    ];
+    return list.map((b) => ({
+      value: b.id,
+      label: b.name || `Заготовка ${b.id}`,
+    }));
   }, [blankItems]);
 
   useEffect(() => {
     if (!items?.length) return;
-    setBlankByOrder((prev) => {
+    setBlankByLineKey((prev) => {
       let next = { ...prev };
       let changed = false;
       for (const o of items) {
-        const rowOpts = filterBlankSelectOptions(blankOptions, o);
-        const validSet = new Set(rowOpts.filter((x) => x.value).map((x) => String(x.value)));
-        const cur = prev[o.id] != null ? String(prev[o.id]) : '';
-        if (cur && !validSet.has(cur)) {
-          delete next[o.id];
-          changed = true;
-        }
-      }
-      for (const o of items) {
-        const onlyData = filterBlankSelectOptions(blankOptions, o).filter((x) => x.value);
-        const cur = next[o.id] != null ? String(next[o.id]) : '';
-        if (!cur && onlyData.length === 1) {
-          next[o.id] = onlyData[0].value;
-          changed = true;
-        }
+        const displayOrder = orderDetailById[o.id] || o;
+        const lines = extractOrderLines(displayOrder);
+        lines.forEach((ln, idx) => {
+          const sk = `${o.id}:${orderLineKey(ln, idx)}`;
+          const opts = buildLineBlankSelectOptions(blankCatalogOptions, o, ln).filter((x) => x.value);
+          const validSet = new Set(opts.map((x) => String(x.value)));
+          const cur = prev[sk] != null ? String(prev[sk]) : '';
+          if (cur && !validSet.has(cur)) {
+            delete next[sk];
+            changed = true;
+          }
+          if (!next[sk] && opts.length === 1) {
+            next[sk] = opts[0].value;
+            changed = true;
+          }
+        });
       }
       return changed ? next : prev;
     });
-  }, [items, blankOptions]);
+  }, [items, blankCatalogOptions, orderDetailById]);
 
-  const onStart = async (orderId) => {
-    const blankVal = blankByOrder[orderId];
-    if (!blankVal) {
-      toast.show('Выберите заготовку');
+  const onStart = async (order) => {
+    const orderId = order?.id;
+    if (orderId == null) return;
+    const displayOrder = orderWithLines(order);
+    const lines = extractOrderLines(displayOrder);
+    if (!lines.length) {
+      toast.show('В заявке нет позиций');
       return;
+    }
+    const lineStarts = [];
+    for (let idx = 0; idx < lines.length; idx += 1) {
+      const ln = lines[idx];
+      const sk = `${orderId}:${orderLineKey(ln, idx)}`;
+      const blankRaw = blankByLineKey[sk];
+      if (!blankRaw) {
+        toast.show(`Выберите заготовку для: ${lineProfileLabel(ln, srcProfiles)}`);
+        return;
+      }
+      lineStarts.push({
+        orderLineId: orderLineApiId(ln),
+        profileId: ln.profile_id != null ? Number(ln.profile_id) : null,
+        blankId: Number(blankRaw),
+      });
     }
     setStartBusy(orderId);
     try {
-      await startProductionRequest(orderId, Number(blankVal));
+      try {
+        const shiftRes = await getMyShift();
+        const data = shiftRes.data || {};
+        const shift = Object.prototype.hasOwnProperty.call(data, 'shift') ? data.shift : data;
+        const open = shift?.status === 'open' && shift?.id != null;
+        if (!open) {
+          toast.show('Откройте смену в «Моя смена» (линия не нужна)');
+          return;
+        }
+        setAuditShiftId(shift.id);
+      } catch {
+        /* если my/ недоступен — пробуем start, бэк вернёт код */
+      }
+      await startProductionRequest(orderId, lineStarts);
       await refetch();
-      toast.show('Старт');
+      setBlankByLineKey((prev) => {
+        const next = { ...prev };
+        lines.forEach((ln, idx) => {
+          delete next[`${orderId}:${orderLineKey(ln, idx)}`];
+        });
+        return next;
+      });
+      toast.show(lines.length > 1 ? `Старт: ${lines.length} поз. в ОТК` : 'Старт');
     } catch (e) {
-      toast.show(getApiErrorMessage(e, 'Ошибка'));
+      toast.show(getProductionStartErrorMessage(e, 'Ошибка'));
     } finally {
       setStartBusy(null);
     }
@@ -239,37 +297,71 @@ const ProductionClientRequestsPanel = ({ queryEnabled, clientDateFilter }) => {
               <span className="production-table__th">Заготовка</span>
               <span className="production-table__th production-table__th--actions"> </span>
             </div>
-            {visibleItems.map((o) => {
-              const blankVal = blankByOrder[o.id] != null ? String(blankByOrder[o.id]) : '';
-              const rowBlankOptions = filterBlankSelectOptions(blankOptions, o);
-              return (
-                <div key={o.id} className="production-table__row">
-                  <span className="production-table__cell-clip">{rqClient(o, srcClients)}</span>
-                  <span className="production-table__cell-clip">{rqProfile(o, srcProfiles)}</span>
-                  <span className="production-table__num">
-                    {o.quantity != null && o.quantity !== '' ? formatQuantityDisplay(o.quantity) : '—'}
-                  </span>
-                  <span className="production-table__cell-clip">
-                    <SearchableSelect
-                      value={blankVal}
-                      onChange={(v) => setBlankByOrder((prev) => ({ ...prev, [o.id]: v != null ? String(v) : '' }))}
-                      options={rowBlankOptions}
-                      placeholder="Выберите"
-                      disabled={startBusy === o.id}
-                    />
-                  </span>
-                  <span className="production-table__actions">
-                    <button
-                      type="button"
-                      className="btn btn--primary btn--sm"
-                      disabled={startBusy === o.id}
-                      onClick={() => onStart(o.id)}
-                    >
-                      {startBusy === o.id ? '…' : 'Старт'}
-                    </button>
-                  </span>
-                </div>
-              );
+            {visibleItems.flatMap((o) => {
+              const displayOrder = orderWithLines(o);
+              const lines = extractOrderLines(displayOrder);
+              const clientLabel = rqClient(o, srcClients);
+              if (!lines.length) {
+                return [
+                  <div key={o.id} className="production-table__row production-table__row--order-line">
+                    <span className="production-table__cell-clip">{clientLabel}</span>
+                    <span className="production-table__cell-clip">—</span>
+                    <span className="production-table__num">—</span>
+                    <span className="production-table__cell-clip production-table__cell--blank">—</span>
+                    <span className="production-table__actions" />
+                  </div>,
+                ];
+              }
+              return lines.map((ln, idx) => {
+                const lk = orderLineKey(ln, idx);
+                const stateKey = `${o.id}:${lk}`;
+                const lineOpts = buildLineBlankSelectOptions(blankCatalogOptions, o, ln);
+                const blankVal = blankByLineKey[stateKey] != null ? String(blankByLineKey[stateKey]) : '';
+                const isFirst = idx === 0;
+                const isLast = idx === lines.length - 1;
+                return (
+                  <div
+                    key={stateKey}
+                    className={`production-table__row production-table__row--order-line${
+                      isFirst ? ' production-table__row--order-first' : ''
+                    }${isLast && lines.length > 1 ? ' production-table__row--order-last' : ''}`}
+                  >
+                    <span className="production-table__cell-clip production-table__cell--client">
+                      {isFirst ? clientLabel : ''}
+                    </span>
+                    <span className="production-table__cell-clip production-table__cell--profile">
+                      {lineProfileLabel(ln, srcProfiles)}
+                    </span>
+                    <span className="production-table__num">{lineQuantityLabel(ln)}</span>
+                    <span className="production-table__cell-clip production-table__cell--blank">
+                      <SearchableSelect
+                        value={blankVal}
+                        onChange={(v) =>
+                          setBlankByLineKey((prev) => ({
+                            ...prev,
+                            [stateKey]: v != null ? String(v) : '',
+                          }))
+                        }
+                        options={lineOpts}
+                        placeholder="Заготовка для профиля"
+                        disabled={startBusy === o.id}
+                      />
+                    </span>
+                    <span className="production-table__actions">
+                      {isLast ? (
+                        <button
+                          type="button"
+                          className="btn btn--primary btn--sm"
+                          disabled={startBusy === o.id}
+                          onClick={() => onStart(o)}
+                        >
+                          {startBusy === o.id ? '…' : 'Старт'}
+                        </button>
+                      ) : null}
+                    </span>
+                  </div>
+                );
+              });
             })}
           </div>
         </div>

@@ -401,19 +401,30 @@
 }
 
 .data-table--orders-rq {
-  th.data-table__cell--narrow {
-    width: 2.5rem;
+  .orders-rq__status-cell {
+    vertical-align: top;
+
+    .orders-rq__row-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: var(--space-2);
+    }
   }
-}
 
-.orders-rq__detail-row td {
-  background: var(--bg-muted, rgba(0, 0, 0, 0.03));
-  padding: var(--space-3);
-  vertical-align: top;
-}
+  .orders-rq__multi {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
 
-.orders-rq__card {
-  max-width: 720px;
+  .orders-rq__multi-item {
+    font-size: var(--font-label);
+    line-height: 1.35;
+  }
 }
 
 .orders-rq__row {
@@ -456,13 +467,6 @@
 
 .orders-rq__table {
   font-size: var(--font-caption);
-}
-
-.orders-rq__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
 }
 
 .orders-rq__hint {

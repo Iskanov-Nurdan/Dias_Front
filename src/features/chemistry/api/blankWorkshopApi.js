@@ -131,6 +131,8 @@ export function mapBlankProductionRunFromApi(r) {
     blankName: r.blank_name != null ? String(r.blank_name) : '',
     productId: r.product_id != null ? String(r.product_id) : '',
     productName: r.product_name != null ? String(r.product_name) : '',
+    orderLineId: r.order_line_id != null ? String(r.order_line_id) : '',
+    clientRequestId: r.client_request_id != null ? String(r.client_request_id) : '',
     blankTotalKg: r.blank_total_kg != null ? Number(r.blank_total_kg) : null,
     blankUsedInProductionKg:
       r.blank_used_in_production_kg != null ? Number(r.blank_used_in_production_kg) : null,

@@ -6,6 +6,7 @@ import { ACCESS_LABELS } from '../../../shared/config/constants';
 import { NavIcons as Icons, ACCESS_NAV_ICONS as PAGE_ICONS } from '../../../shared/config/navPageIcons';
 import { getNavSections } from '../../../shared/config/navigation';
 import { getStoredTheme, toggleStoredTheme, Theme } from '../../../shared/lib/theme';
+import { DiasLogo } from '../../../shared/ui';
 import './MainLayout.scss';
 
 const SIDEBAR_COLLAPSED_KEY = 'dias_sidebar_collapsed';
@@ -14,7 +15,7 @@ const SidebarContent = memo(({ collapsed, inDrawer, navRows, currentPath, displa
   <div className={`main-layout__sidebar-inner${inDrawer ? ' main-layout__sidebar-inner--drawer' : ''}`}>
     <div className="main-layout__logo-row">
       <div className="main-layout__logo">
-        <span className="main-layout__logo-icon">D</span>
+        <DiasLogo size={!collapsed || inDrawer ? 'mark' : 'compact'} />
         {(!collapsed || inDrawer) && <span className="main-layout__logo-text">DIAS LINE</span>}
       </div>
       {inDrawer && onCloseDrawer && (

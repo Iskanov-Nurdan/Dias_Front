@@ -1,0 +1,30 @@
+.dias-logo {
+  display: block;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  user-select: none;
+}
+
+.dias-logo--hero {
+  width: min(92%, 520px);
+  max-height: min(42vh, 320px);
+}
+
+.dias-logo--md {
+  width: min(100%, 300px);
+  max-height: 150px;
+  margin: 0 auto var(--space-6);
+}
+
+.dias-logo--mark {
+  max-height: 32px;
+  max-width: 40px;
+  flex-shrink: 0;
+}
+
+.dias-logo--compact {
+  max-height: 32px;
+  max-width: 40px;
+  margin: 0 auto;
+}

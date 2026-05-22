@@ -54,6 +54,16 @@
   flex-direction: column;
   padding: var(--space-8);
 
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 85% 65% at 50% 42%, rgba(230, 30, 30, 0.28), transparent 72%),
+      radial-gradient(ellipse 90% 60% at 50% 100%, rgba(255, 255, 255, 0.04), transparent 55%);
+    pointer-events: none;
+  }
+
   @include mobile {
     display: none;
   }
@@ -62,29 +72,30 @@
 .login-page__brand {
   position: relative;
   z-index: 1;
+  width: 100%;
+  max-width: 560px;
+  padding: 0 var(--space-6);
   text-align: center;
+  filter: drop-shadow(0 12px 40px rgba(0, 0, 0, 0.45));
+
+  .dias-logo--hero {
+    width: 100%;
+    max-height: min(48vh, 360px);
+    margin: 0 auto;
+  }
 }
 
-.login-page__brand-logo {
-  width: 64px;
-  height: 64px;
-  border-radius: var(--radius-lg);
-  background: var(--primary);
-  color: #fff;
-  font-size: var(--font-title-lg);
-  font-weight: var(--weight-semibold);
-  font-family: var(--font-sans);
-  @include flex-center;
-  margin: 0 auto var(--space-4);
-}
+.login-page__brand-mobile {
+  display: none;
+  text-align: center;
 
-.login-page__brand-name {
-  font-size: var(--font-h1);
-  font-weight: var(--weight-semibold);
-  font-family: var(--font-sans);
-  color: #ffffff;
-  margin: 0;
-  line-height: var(--leading-h);
+  @include mobile {
+    display: block;
+  }
+
+  .dias-logo--md {
+    margin-bottom: var(--space-5);
+  }
 }
 
 .login-page__form-area {

@@ -20,3 +20,4 @@ export { default as PageHeader } from './PageHeader/PageHeader';
 export { default as ActionMenu } from './ActionMenu/ActionMenu';
 export { default as Collapse } from './Collapse/Collapse';
 export { default as ClientDateFilter } from './ClientDateFilter/ClientDateFilter';
+export { default as DiasLogo } from './DiasLogo';

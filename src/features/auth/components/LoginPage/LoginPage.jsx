@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FiSun, FiMoon } from 'react-icons/fi';
 import { useAuth } from '../../model';
 import { getApiErrorMessage, getStoredTheme, toggleStoredTheme, Theme } from '../../../../shared/lib';
-import { Button, Field } from '../../../../shared/ui';
+import { Button, Field, DiasLogo } from '../../../../shared/ui';
 import './LoginPage.scss';
 
 const LoginPage = () => {
@@ -49,13 +49,15 @@ const LoginPage = () => {
       </button>
       <div className="login-page__panel">
         <div className="login-page__brand">
-          <div className="login-page__brand-logo">D</div>
-          <h1 className="login-page__brand-name">DIAS</h1>
+          <DiasLogo size="hero" />
         </div>
       </div>
 
       <div className="login-page__form-area">
         <div className="login-page__card">
+          <div className="login-page__brand-mobile">
+            <DiasLogo size="md" />
+          </div>
           <h2 className="login-page__title">Вход</h2>
 
           <form className="login-page__form" onSubmit={handleSubmit} noValidate>

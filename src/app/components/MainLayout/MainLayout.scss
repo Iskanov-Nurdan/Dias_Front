@@ -57,20 +57,8 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  min-width: 0;
   overflow: hidden;
-}
-
-.main-layout__logo-icon {
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-md);
-  background: var(--primary);
-  color: #fff;
-  font-size: var(--font-label);
-  font-weight: var(--weight-medium);
-  font-family: var(--font-sans);
-  @include flex-center;
 }
 
 .main-layout__logo-text {
@@ -80,6 +68,11 @@
   color: rgba(255, 255, 255, 0.92);
   letter-spacing: 0.04em;
   white-space: nowrap;
+}
+
+.main-layout--collapsed .main-layout__logo {
+  justify-content: center;
+  flex: 1;
 }
 
 .main-layout__drawer-close {

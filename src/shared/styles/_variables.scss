@@ -57,6 +57,9 @@
   --grid-unit: 8px;
   --content-max-width: 1184px;
   --card-padding: var(--space-4);
+  --page-padding-x: var(--space-6);
+  --page-padding-x-mobile: var(--space-4);
+  --page-padding-x-xs: var(--space-3);
   --ds-tab-bar-height: 44px;
   --ds-tab-bar-margin-bottom: var(--space-4);
   --field-gap: var(--space-3);
@@ -269,4 +272,11 @@
 
   --scrollbar-thumb: rgba(15, 23, 42, 0.14);
   --scrollbar-thumb-hover: rgba(15, 23, 42, 0.24);
+}
+
+/* ── Mobile token overrides ── */
+@media (max-width: 768px) {
+  :root {
+    --input-height: 44px;
+  }
 }

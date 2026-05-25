@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider, useAuth } from '../../features/auth';
+import AuditShiftSync from '../../features/shifts/components/AuditShiftSync/AuditShiftSync';
 import { ToastProvider } from '../../shared/ui';
 import { OperationalRealtimeProvider } from '../../shared/realtime';
 
@@ -17,6 +18,7 @@ function RealtimeWithAuth({ children }) {
 const AppProviders = ({ children }) => (
   <BrowserRouter>
     <AuthProvider>
+      <AuditShiftSync />
       <RealtimeWithAuth>
         <ToastProvider>{children}</ToastProvider>
       </RealtimeWithAuth>

@@ -5,6 +5,7 @@ import { useAuth } from '../../../features/auth';
 import { ACCESS_LABELS } from '../../../shared/config/constants';
 import { NavIcons as Icons, ACCESS_NAV_ICONS as PAGE_ICONS } from '../../../shared/config/navPageIcons';
 import { getNavSections } from '../../../shared/config/navigation';
+import { getPageTitle } from '../../../shared/config/pageTitles';
 import { getStoredTheme, toggleStoredTheme, Theme } from '../../../shared/lib/theme';
 import { DiasLogo } from '../../../shared/ui';
 import './MainLayout.scss';
@@ -171,7 +172,7 @@ const MainLayout = () => {
     (item) =>
       location.pathname === item.path || location.pathname.startsWith(`${item.path}/`),
   );
-  const pageTitle = currentPage?.label || 'DIAS LINE';
+  const pageTitle = getPageTitle(location.pathname, currentPage?.label);
 
   return (
     <div className={`main-layout${collapsed ? ' main-layout--collapsed' : ''}`}>

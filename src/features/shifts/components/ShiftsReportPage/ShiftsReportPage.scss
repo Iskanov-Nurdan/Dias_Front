@@ -110,14 +110,20 @@
 
 .shifts-report__filter-input {
   height: var(--input-height);
+  min-height: var(--input-height);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .shifts-report__filter-select.dias-select {
-  min-height: 40px;
+  min-height: var(--input-height);
   min-width: 0;
   width: 100%;
   max-width: min(220px, 100%);
-  padding: 8px 32px 8px 10px;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 10px;
+  padding-right: 32px;
 
   .dias-select__arrow {
     right: 8px;
@@ -129,6 +135,8 @@
   margin-bottom: 0;
   color: var(--text-muted);
   font-size: var(--font-sm);
+  min-height: var(--input-height);
+  height: var(--input-height);
 }
 
 // в”Ђв”Ђ Table в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
@@ -140,7 +148,8 @@
     var(--shadow-sm),
     0 0 0 1px rgba(17, 24, 39, 0.04);
   border: none;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .shifts-report__table {
@@ -243,6 +252,12 @@
   width: 600px;
   max-width: 95vw;
   max-height: 90vh;
+
+  @include mobile {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+  }
 }
 
 // Info stats row under header
@@ -253,6 +268,12 @@
   padding: var(--space-4) 0;
   border-bottom: 1px solid var(--card-border);
   margin-bottom: var(--space-4);
+
+  @include mobile {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-2);
+    padding: var(--space-3) 0;
+  }
 }
 
 .shifts-report__detail-stat {
@@ -373,7 +394,7 @@
 
     .btn {
       width: 100%;
-      min-height: 44px;
+      min-height: var(--input-height);
       justify-content: center;
     }
   }
@@ -381,6 +402,11 @@
   .shifts-report__stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-2);
+  }
+
+  /* equal-height stat cards on tablet/mobile */
+  .shifts-report__stat-card {
+    align-items: flex-start;
   }
 
   .shifts-report__filters {
@@ -397,6 +423,10 @@
     max-width: none !important;
   }
 
+  .shifts-report__filter-input {
+    width: 100%;
+  }
+
   .shifts-report__filter-select.dias-select {
     max-width: none !important;
     width: 100%;
@@ -407,5 +437,30 @@
     width: 100%;
     justify-self: stretch;
     margin-top: 0;
+    height: auto;
+  }
+}
+
+@include mobile {
+  .shifts-report__filters {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+
+  .shifts-report__filter-group {
+    flex: none;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .shifts-report__filter-select.dias-select {
+    max-width: none;
+    width: 100%;
+  }
+
+  .shifts-report__filter-clear {
+    width: 100%;
+    height: auto;
+    justify-self: stretch;
   }
 }

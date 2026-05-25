@@ -102,11 +102,26 @@
   @include flex-center;
   padding: var(--space-8);
   background: var(--card);
+
+  @include mobile {
+    padding: var(--space-6) var(--space-4);
+    align-items: flex-start;
+    padding-top: max(var(--space-6), env(safe-area-inset-top, var(--space-6)));
+  }
+
+  @include xs {
+    padding: var(--space-4) var(--space-3);
+    padding-top: max(var(--space-4), env(safe-area-inset-top, var(--space-4)));
+  }
 }
 
 .login-page__card {
   width: 100%;
   max-width: 360px;
+
+  @include mobile {
+    max-width: 100%;
+  }
 }
 
 .login-page__title {

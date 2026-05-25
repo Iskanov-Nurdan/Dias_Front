@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { API_BASE } from '../config/api';
 import { getAuditShiftId } from '../lib/auditContext';
+import { isAuditShiftMutation } from '../lib/auditShiftRoutes';
 
 const client = axios.create({
   baseURL: API_BASE,
@@ -34,8 +35,17 @@ client.interceptors.request.use((config) => {
   }
   const shiftId = getAuditShiftId();
   if (shiftId) {
-    config.headers['X-Audit-Shift-Id'] = shiftId;
-    config.headers['X-Shift-Id'] = shiftId;
+    const h = config.headers;
+    const hasAuditHeader =
+      (h['X-Audit-Shift-Id'] ?? h['x-audit-shift-id']) ||
+      (h['X-Shift-Id'] ?? h['x-shift-id']);
+    if (
+      !hasAuditHeader &&
+      isAuditShiftMutation(config.url, config.method, config.baseURL || API_BASE)
+    ) {
+      config.headers['X-Audit-Shift-Id'] = shiftId;
+      config.headers['X-Shift-Id'] = shiftId;
+    }
   }
   ensureRequestId(config);
   return config;

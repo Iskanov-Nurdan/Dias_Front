@@ -393,7 +393,6 @@ const MaterialsPage = () => {
                       <span className="materials-table__th">Название</span>
                       <span className="materials-table__th">Текущий остаток</span>
                       <span className="materials-table__th materials-table__th--min">Минимальный остаток</span>
-                      <span className="materials-table__th">Комментарий</span>
                       <span className="materials-table__th materials-table__th--actions">Действия</span>
                     </div>
                     {balancesFiltered.map((b, idx) => {
@@ -424,9 +423,6 @@ const MaterialsPage = () => {
                           </span>
                           <span className="materials-table__min" title={minCell?.title}>
                             {minCell ? minCell.display : '—'}
-                          </span>
-                          <span className="materials-table__comment" title={getComment(b)}>
-                            {getComment(b) ? getComment(b) : '—'}
                           </span>
                           <div className="materials-table__actions">
                             <button
@@ -605,7 +601,6 @@ const MaterialsPage = () => {
                       <span className="materials-table__th">Сырьё</span>
                       <span className="materials-table__th">Тип</span>
                       <span className="materials-table__th">Количество</span>
-                      <span className="materials-table__th">Комментарий</span>
                     </div>
                     {movementList.map((m) => {
                       const at = m.occurred_at ?? m.created_at ?? m.date;
@@ -618,7 +613,6 @@ const MaterialsPage = () => {
                           <span>{m.material_name ?? m.name ?? '—'}</span>
                           <span>{movementTypeLabel(m.movement_type ?? m.type)}</span>
                           <span title={qCell.title}>{qCell.display}</span>
-                          <span className="materials-table__comment">{m.comment ?? '—'}</span>
                         </div>
                       );
                     })}

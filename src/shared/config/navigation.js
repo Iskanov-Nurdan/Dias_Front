@@ -3,9 +3,7 @@ import { STAGE2_TABS_ENABLED } from './constants';
 /** Маршруты по ключу доступа (совпадает с access_keys бэкенда). */
 export const ACCESS_ROUTE_MAP = {
   my_shift: '/my-shift',
-  recipes: '/directories',
   materials: '/materials',
-  lines: '/lines',
   chemistry: '/chemistry',
   production: '/production',
   otk: '/otk',
@@ -17,8 +15,6 @@ export const ACCESS_ROUTE_MAP = {
   sales: '/cash',
   client_orders: '/cash',
   payments: '/payments',
-  returns: '/cash/returns',
-  defects: '/cash/defects',
 };
 
 /** Первый экран после входа. */
@@ -34,14 +30,12 @@ export const HOME_ACCESS_PRIORITY = [
   'client_orders',
   'sales',
   'payments',
-  'returns',
-  'defects',
   'clients',
   'users',
 ];
 
 export function isCommerceAccess(accessKey) {
-  return ['clients', 'sales', 'client_orders', 'payments', 'returns', 'defects'].includes(accessKey);
+  return ['clients', 'sales', 'client_orders', 'payments'].includes(accessKey);
 }
 
 export function isAccessRoutable(accessKey) {
@@ -78,7 +72,7 @@ export function getNavSections() {
         {
           path: '/prepare-blanks',
           accessKey: 'chemistry',
-          label: 'Заготовка (цех)',
+          label: 'Цех',
           iconKey: 'chemistry',
         },
       ],
@@ -100,7 +94,7 @@ export function getNavSections() {
         {
           path: '/cash',
           accessKey: 'clients',
-          accessAnyKeys: ['clients', 'client_orders', 'sales', 'returns', 'defects'],
+          accessAnyKeys: ['clients', 'client_orders', 'sales'],
           label: 'Касса',
           iconKey: 'clients',
         },

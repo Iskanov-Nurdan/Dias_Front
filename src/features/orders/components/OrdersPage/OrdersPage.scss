@@ -24,7 +24,7 @@
 
   .commercial-toolbar__filters .ds-toolbar__search {
     flex: 0 1 320px;
-    min-width: 260px;
+    min-width: min(200px, 100%);
     max-width: 340px;
   }
 
@@ -38,7 +38,7 @@
 
   .ds-toolbar__end .dias-select {
     flex: 0 1 220px;
-    min-width: 200px;
+    min-width: min(160px, 100%);
     max-width: 260px;
   }
 
@@ -281,7 +281,7 @@
 
   .orders-detail-modal__footer.modal__actions {
     flex-shrink: 0;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     margin: 0;
     margin-top: 0;
     padding-top: var(--space-2);
@@ -390,7 +390,7 @@
 
 .orders-rq-page {
   .commercial-toolbar__filters {
-    min-width: 200px;
+    min-width: 0;
   }
 }
 

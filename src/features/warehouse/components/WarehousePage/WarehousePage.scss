@@ -71,6 +71,17 @@
   .ds-toolbar__end {
     margin-left: auto;
     flex: 0 0 auto;
+
+    @include mobile {
+      margin-left: 0;
+      width: 100%;
+      flex: 1 1 100%;
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
   }
 
   &__modal-filters {
@@ -106,6 +117,13 @@
     min-width: 148px;
     max-width: 200px;
     flex: 0 0 auto;
+
+    @include mobile {
+      min-width: 0;
+      width: 100%;
+      max-width: none;
+      flex: 1 1 100%;
+    }
   }
 
   .badge {
@@ -352,6 +370,11 @@
     grid-template-columns: 1fr 1fr;
     gap: var(--space-4);
     align-items: start;
+
+    @include mobile {
+      grid-template-columns: 1fr;
+      gap: var(--space-3);
+    }
   }
 
   &__field {
@@ -963,6 +986,17 @@
     flex-wrap: wrap;
     gap: var(--space-2) var(--space-4);
     margin-bottom: var(--space-3);
+
+    @media (max-width: 374px) {
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    @media (min-width: 375px) and (max-width: 480px) {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-2);
+    }
   }
 
   &__mode {
@@ -973,9 +1007,11 @@
     color: var(--text);
     cursor: pointer;
     user-select: none;
+    min-height: 32px;
 
     input {
       margin: 0;
+      flex-shrink: 0;
     }
   }
 

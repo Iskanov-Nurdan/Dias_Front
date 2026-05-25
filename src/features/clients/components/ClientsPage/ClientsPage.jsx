@@ -9,6 +9,8 @@ import {
   useToast,
   Badge,
   SearchableSelect,
+  RecordDetailsModal,
+  DetailFields,
 } from '../../../../shared/ui';
 import { createClient, updateClient, getClientProfile } from '../../api/clientsApi';
 import { createPayment, getPaymentSelectSources } from '../../../payments/api/paymentsApi';
@@ -143,6 +145,7 @@ const ClientsPage = () => {
   const [queryState, setQueryState] = useState({ page: 1, page_size: 20, search: '' });
   const [activityFilter, setActivityFilter] = useState('all');
   const [modalClient, setModalClient] = useState(null);
+  const [viewClient, setViewClient] = useState(null);
   const [profileClientId, setProfileClientId] = useState(null);
   const [submitError, setSubmitError] = useState('');
 
@@ -245,8 +248,7 @@ const ClientsPage = () => {
           <table className="data-table data-table--row-actions data-table--clients data-table--clients-min">
             <thead>
               <tr>
-                <th>Тип</th>
-                <th>ФИО / Компания</th>
+                <th>Имя</th>
                 <th>Телефон</th>
                 <th>Статус</th>
                 <th className="data-table__cell--actions"> </th>
@@ -255,7 +257,6 @@ const ClientsPage = () => {
             <tbody>
               {items.map((c) => (
                 <tr key={c.id}>
-                  <td><Badge variant={clientTypeValue(c) === 'company' ? 'primary' : 'default'}>{clientTypeLabel(c)}</Badge></td>
                   <td className="data-table__cell--lead">{textOrDash(c.name || c.title)}</td>
                   <td className="data-table__cell--muted">{textOrDash(c.phone || c.phone_number)}</td>
                   <td>
@@ -265,12 +266,19 @@ const ClientsPage = () => {
                       <Badge variant="default">Неактивен</Badge>
                     )}
                   </td>
-                  <td className="data-table__cell--actions">
+                  <td className="data-table__cell--actions clients-table__actions">
+                    <button
+                      type="button"
+                      className="btn btn--ghost btn--sm"
+                      onClick={() => setViewClient(c)}
+                    >
+                      Подробнее
+                    </button>
                     <ActionMenu
                       ariaLabel="Действия"
                       items={[
-                        { label: 'Редактировать', onClick: () => setModalClient(c) },
-                        { label: 'Карточка клиента', onClick: () => setProfileClientId(c.id) },
+                        { label: 'Изменить', onClick: () => setModalClient(c) },
+                        { label: 'Карточка', onClick: () => setProfileClientId(c.id) },
                         ...(clientIsActive(c)
                           ? [{ label: 'Деактивировать', danger: true, onClick: () => handleDeactivate(c) }]
                           : []),
@@ -286,6 +294,49 @@ const ClientsPage = () => {
       {!loading && (!error || error.status === 404) && (
         <Pagination meta={listMeta} onPageChange={(nextPage) => setQueryState((p) => ({ ...p, page: nextPage }))} />
       )}
+
+      {viewClient ? (
+        <RecordDetailsModal
+          open
+          onClose={() => setViewClient(null)}
+          title={textOrDash(viewClient.name || viewClient.title)}
+          footer={(
+            <>
+              <button type="button" className="btn btn--secondary" onClick={() => setViewClient(null)}>
+                Закрыть
+              </button>
+              <button
+                type="button"
+                className="btn btn--primary"
+                onClick={() => {
+                  setModalClient(viewClient);
+                  setViewClient(null);
+                }}
+              >
+                Изменить
+              </button>
+            </>
+          )}
+        >
+          <DetailFields
+            rows={[
+              { label: 'Тип', value: clientTypeLabel(viewClient) },
+              { label: 'Телефон', value: textOrDash(viewClient.phone || viewClient.phone_number) },
+              {
+                label: 'Доп. телефон',
+                value: textOrDash(getPhoneExtra(viewClient)),
+              },
+              { label: 'Статус', value: clientIsActive(viewClient) ? 'Активен' : 'Неактивен' },
+              { label: 'Адрес', value: textOrDash(addressField(viewClient)), full: true },
+              { label: 'ИНН', value: textOrDash(innField(viewClient)) },
+              {
+                label: 'Расчётный счёт',
+                value: textOrDash(companyAccountField(viewClient)),
+              },
+            ]}
+          />
+        </RecordDetailsModal>
+      ) : null}
 
       {modalClient != null && (
         <ClientModal

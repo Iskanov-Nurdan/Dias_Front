@@ -48,7 +48,7 @@ export default function ActivityAuditDetailModal({
   const isAdmin = detailPresentation === 'admin';
   const changes = getActivityChanges(activity);
   const entityType = activity?.entity_type != null ? String(activity.entity_type) : '';
-  const displayChanges = getActivityChangesForDisplay(changes, entityType, isAdmin);
+  const displayChanges = getActivityChangesForDisplay(changes, entityType, isAdmin, activity);
   const summary = isAdmin ? getActivitySummary(activity) : getActivitySummaryForOperator(activity);
   const moduleLabel = getActivityModule(activity);
   const payloadMeta = getActivityPayloadMeta(activity);
@@ -217,7 +217,7 @@ export default function ActivityAuditDetailModal({
                             <span className={isAdmin ? 'activity-audit-detail__mono' : ''}>
                               {isAdmin
                                 ? row.path || row.field || '—'
-                                : getActivityFieldLabelForOperator(row.path || row.field)}
+                                : getActivityFieldLabelForOperator(row.path || row.field, activity)}
                             </span>
                             {isAdmin && row.raw_json ? (
                               <span className="activity-audit-detail__badge" title="Сравнение как сырой JSON">
@@ -226,8 +226,12 @@ export default function ActivityAuditDetailModal({
                             ) : null}
                           </td>
                           {isAdmin ? <td>{fieldTypeLabel(row.type)}</td> : null}
-                          <td className="activity-audit-detail__mono">{formatChangeOld(row, activity)}</td>
-                          <td className="activity-audit-detail__mono">{formatChangeNew(row, activity)}</td>
+                          <td className={isAdmin ? 'activity-audit-detail__mono' : ''}>
+                            {formatChangeOld(row, activity)}
+                          </td>
+                          <td className={isAdmin ? 'activity-audit-detail__mono' : ''}>
+                            {formatChangeNew(row, activity)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

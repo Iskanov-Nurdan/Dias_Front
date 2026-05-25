@@ -14,16 +14,17 @@
   align-items: center;
   gap: var(--space-3);
   flex: 1 1 auto;
+  min-width: 0;
 
   .ds-toolbar__search {
     flex: 0 1 320px;
-    min-width: 260px;
+    min-width: min(200px, 100%);
     max-width: 340px;
   }
 
   .dias-select {
     flex: 0 1 220px;
-    min-width: 200px;
+    min-width: min(160px, 100%);
     max-width: 260px;
   }
 
@@ -35,7 +36,7 @@
 
   .commercial-date-filter input {
     width: 200px;
-    min-width: 180px;
+    min-width: min(160px, 100%);
   }
 }
 

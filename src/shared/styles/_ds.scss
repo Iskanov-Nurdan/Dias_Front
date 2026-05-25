@@ -57,7 +57,7 @@
 /* ── Toolbar: filters / search left · primary right ───────────────────── */
 .ds-toolbar {
   display: flex;
-  // flex-wrap: wrap;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   row-gap: var(--space-2);
@@ -103,7 +103,7 @@
 }
 
 .ds-toolbar__search {
-  flex: 1 1 200px;
+  flex: 1 1 160px;
   max-width: 360px;
   min-width: 0;
   height: var(--control-height);
@@ -185,7 +185,8 @@
 
     .ds-toolbar__end .btn {
       width: 100%;
-      min-height: 44px;
+      min-height: var(--input-height);
+      height: var(--input-height);
       justify-content: center;
     }
   }
@@ -208,7 +209,8 @@
       .btn {
         width: 100%;
         justify-content: center;
-        min-height: 44px;
+        min-height: var(--input-height);
+        height: var(--input-height);
       }
     }
   }
@@ -248,9 +250,94 @@
 
     .btn--primary {
       flex: 1;
-      min-height: 48px;
+      min-height: var(--input-height);
       justify-content: center;
     }
+  }
+}
+
+@include mobile {
+  .ds-toolbar--page-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+
+    .ds-toolbar__start {
+      width: 100%;
+    }
+
+    .ds-toolbar__end {
+      flex-basis: auto !important;
+      width: 100%;
+      margin-left: 0 !important;
+      justify-content: stretch;
+
+      > .btn {
+        flex: 1;
+        justify-content: center;
+        min-height: var(--input-height);
+        height: var(--input-height);
+      }
+    }
+  }
+
+  /* ── Commercial toolbar (Orders, Sales, Payments) ── */
+  .commercial-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+
+    .commercial-toolbar__filters {
+      width: 100%;
+      flex-direction: column;
+      align-items: stretch;
+
+      .ds-toolbar__search,
+      input[type='text'],
+      input[type='search'] {
+        min-width: 0 !important;
+        width: 100%;
+        max-width: none;
+        flex: 1 1 100%;
+      }
+
+      .dias-select {
+        min-width: 0 !important;
+        width: 100%;
+        max-width: none;
+        flex: 1 1 100%;
+      }
+    }
+
+    .ds-toolbar__end {
+      flex-basis: auto !important;
+      width: 100%;
+      margin-left: 0 !important;
+
+      .btn {
+        flex: 1;
+        justify-content: center;
+        min-height: var(--input-height);
+        height: var(--input-height);
+      }
+    }
+  }
+
+  .commercial-date-filter input[type='date'] {
+    min-width: 0;
+    width: 100%;
+    max-width: none;
+    flex: 1 1 100%;
+  }
+
+  .commercial-toolbar__filters {
+    grid-template-columns: 1fr;
+  }
+
+  .commercial-toolbar .btn--primary {
+    min-width: 0;
+    width: 100%;
+    justify-content: center;
   }
 }
 
@@ -387,8 +474,8 @@
 .data-table--row-actions {
   th:last-child,
   td:last-child {
-    width: 72px;
-    min-width: 72px;
+    width: auto;
+    min-width: 10.5rem;
     padding-right: var(--space-2);
   }
 }

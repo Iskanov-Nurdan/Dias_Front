@@ -1,5 +1,16 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { EmptyState, useToast, DecimalInput, Loading, ErrorState, ClientDateFilter } from '../../../../shared/ui';
+import {
+  EmptyState,
+  useToast,
+  DecimalInput,
+  Loading,
+  ErrorState,
+  ClientDateFilter,
+  CompactList,
+  RecordDetailsModal,
+  DetailFields,
+  Badge,
+} from '../../../../shared/ui';
 import {
   parseLocaleNumber,
   formatNumberForInput,
@@ -16,29 +27,21 @@ import {
 import { isBlankRunOtkRecorded } from '../../../chemistry/lib/workshopRunUtils';
 import './OTKPage.scss';
 
-const formatDateTime = (d) => {
+const formatDateShort = (d) => {
   if (!d) return '—';
   const s = typeof d === 'string' ? d : String(d);
-  if (s.length >= 19) return `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)} ${s.slice(11, 19)}`;
+  if (s.length >= 16) return `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)} ${s.slice(11, 16)}`;
   return s.slice(0, 10);
 };
 
 const resolveRunTotals = (run) => {
   if (!run) {
-    return {
-      recipeKg: null,
-      usedKg: 0,
-      vatKg: DEMO_PRODUCTION_VAT_MAX_KG,
-    };
+    return { recipeKg: null, usedKg: 0, vatKg: DEMO_PRODUCTION_VAT_MAX_KG };
   }
   let recipe = run.blankTotalKg != null ? Number(run.blankTotalKg) : NaN;
   let used = run.blankUsedInProductionKg != null ? Number(run.blankUsedInProductionKg) : NaN;
-  if (!Number.isFinite(used)) {
-    used = Number.isFinite(recipe) ? recipe : 0;
-  }
-  if (!Number.isFinite(recipe)) {
-    recipe = Number.isFinite(used) ? used : null;
-  }
+  if (!Number.isFinite(used)) used = Number.isFinite(recipe) ? recipe : 0;
+  if (!Number.isFinite(recipe)) recipe = Number.isFinite(used) ? used : null;
   const vat = Number(run.vatMaxKgDemo);
   const vatKg = Number.isFinite(vat) && vat > 0 ? vat : DEMO_PRODUCTION_VAT_MAX_KG;
   return {
@@ -65,21 +68,27 @@ const defectKgDisplay = (run) => {
   }
   const leg = legacyDefectSumKg(run);
   if (leg != null) return `${formatNumberForInput(leg)} кг`;
-  return '—';
+  return '0 кг';
 };
 
 const gpFlowStatus = (run) => {
-  if (run.gpAcceptedAt) return 'Принято складом ГП';
-  if (isBlankRunOtkRecorded(run)) return 'Ожидает склад ГП';
-  return '—';
+  if (run.gpAcceptedAt) return 'На складе';
+  if (isBlankRunOtkRecorded(run)) return 'Ждёт склад';
+  return 'Нужен учёт';
 };
+
+const OTK_COLUMNS = [
+  { key: 'product', label: 'Изделие', width: '1.4fr' },
+  { key: 'defect', label: 'Брак', width: '0.7fr', className: 'compact-list__cell--num' },
+  { key: 'status', label: 'Статус', width: '0.9fr' },
+];
 
 const BlankRunOtkDetailModal = ({ run, onClose, onSaved }) => {
   const toast = useToast();
   const { recipeKg, usedKg, vatKg } = useMemo(() => resolveRunTotals(run), [run]);
-
   const [defectDraft, setDefectDraft] = useState('');
   const [saving, setSaving] = useState(false);
+  const needsOtk = run && !isBlankRunOtkRecorded(run);
 
   useEffect(() => {
     if (!run) return;
@@ -102,11 +111,11 @@ const BlankRunOtkDetailModal = ({ run, onClose, onSaved }) => {
     e.preventDefault();
     if (!run?.id) return;
     if (!defectInputOk || !Number.isFinite(defectNum) || defectNum < 0) {
-      toast.show('Укажите брак, кг (≥ 0). Можно 0, если брака нет');
+      toast.show('Укажите брак в кг (можно 0)');
       return;
     }
     if (noMass && defectNum > 0) {
-      toast.show('Нет массы заготовки в записи — оформите выпуск заново на производстве');
+      toast.show('Нет массы заготовки — оформите выпуск в производстве');
       return;
     }
     if (overUsed) {
@@ -116,9 +125,7 @@ const BlankRunOtkDetailModal = ({ run, onClose, onSaved }) => {
     setSaving(true);
     try {
       await postWorkshopRunOtkDefect(run.id, { defect_kg: defectNum });
-      toast.show(
-        'Сохранено. Строка на склад ГП; возврат брака в заготовку выполняет сервер (см. API).',
-      );
+      toast.show('Сохранено');
       onSaved?.();
       onClose();
     } catch (err) {
@@ -130,75 +137,66 @@ const BlankRunOtkDetailModal = ({ run, onClose, onSaved }) => {
 
   if (!run) return null;
 
-  return (
-    <div className="modal-overlay" onClick={onClose} role="presentation">
-      <div
-        className="modal modal--wide otk-blank-detail-modal"
-        onClick={(ev) => ev.stopPropagation()}
-        role="dialog"
-        aria-labelledby="otk-blank-detail-heading"
+  const footer = needsOtk ? (
+    <>
+      <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>
+        Закрыть
+      </button>
+      <button
+        type="submit"
+        form="otk-defect-form"
+        className="btn btn--primary"
+        disabled={overUsed || saving}
       >
-        <div className="modal__head">
-          <h3 id="otk-blank-detail-heading">Учёт: {run.productName || 'Товар'}</h3>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
-            ×
-          </button>
-        </div>
-        <form className="modal__body otk-blank-detail-modal__body" onSubmit={handleSave}>
-          <p className="otk-blank-detail-modal__lede">
-            Укажите брак в килограммах; если брака нет — 0. После сохранения масса брака должна
-            вернуться в остаток заготовки в цехе; годный объём и штуки — на складе ГП.
-          </p>
-          <div className="otk-modal-summary otk-blank-detail-modal__summary">
-            <div className="otk-modal-summary__item">
-              <span className="otk-modal-summary__label">Заготовка по составу (рецепт)</span>
-              <span className="otk-modal-summary__value">
-                {recipeKg != null ? `${formatNumberForInput(recipeKg)} кг` : '—'}
-              </span>
-            </div>
-            <div className="otk-modal-summary__item">
-              <span className="otk-modal-summary__label">Ёмкость партии (демо, макс.)</span>
-              <span className="otk-modal-summary__value">до {formatNumberForInput(vatKg)} кг</span>
-            </div>
-            <div className="otk-modal-summary__item">
-              <span className="otk-modal-summary__label">Заготовка ушла в производство</span>
-              <span className="otk-modal-summary__value">
-                {usedKg > 0 ? `${formatNumberForInput(usedKg)} кг` : '—'}
-              </span>
-            </div>
-          </div>
+        {saving ? '…' : 'Сохранить'}
+      </button>
+    </>
+  ) : (
+    <button type="button" className="btn btn--secondary" onClick={onClose}>
+      Закрыть
+    </button>
+  );
 
-          <div className="otk-blank-detail-modal__field">
-            <label htmlFor="otk-defect-kg">Брак, кг (можно 0)</label>
-            <DecimalInput
-              id="otk-defect-kg"
-              min={0}
-              value={defectDraft}
-              onChange={setDefectDraft}
-              placeholder="0"
-            />
-          </div>
-
+  return (
+    <RecordDetailsModal
+      open
+      onClose={onClose}
+      title={run.productName || 'Изделие'}
+      lead={needsOtk ? 'Укажите брак в кг. Если брака нет — 0.' : null}
+      footer={footer}
+      wide
+    >
+      <DetailFields
+        rows={[
+          { label: 'Заготовка', value: run.blankName || '—' },
+          { label: 'Дата', value: formatDateShort(run.createdAt) },
+          { label: 'Статус', value: gpFlowStatus(run) },
+          { label: 'По рецепту', value: recipeKg != null ? `${formatNumberForInput(recipeKg)} кг` : '—' },
+          { label: 'В производстве', value: usedKg > 0 ? `${formatNumberForInput(usedKg)} кг` : '—' },
+          { label: 'Ёмкость (макс.)', value: `до ${formatNumberForInput(vatKg)} кг` },
+        ]}
+      />
+      {needsOtk ? (
+        <form id="otk-defect-form" className="otk-defect-form" onSubmit={handleSave}>
+          <label htmlFor="otk-defect-kg" className="otk-defect-form__label">
+            Брак, кг
+          </label>
+          <DecimalInput
+            id="otk-defect-kg"
+            min={0}
+            value={defectDraft}
+            onChange={setDefectDraft}
+            placeholder="0"
+          />
           {noMass ? (
-            <p className="modal__error otk-blank-detail-modal__hint">
-              В записи нет массы заготовки. Создайте выпуск через «Произвести».
-            </p>
+            <p className="otk-defect-form__hint">Сначала оформите выпуск в разделе «Производство».</p>
           ) : null}
           {overUsed ? (
-            <p className="modal__error">Брак не может превысить массу, ушедшую в производство.</p>
+            <p className="modal__error">Брак не больше массы в производстве.</p>
           ) : null}
-
-          <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>
-              Отмена
-            </button>
-            <button type="submit" className="btn btn--primary" disabled={overUsed || saving}>
-              {saving ? '…' : 'Сохранить'}
-            </button>
-          </div>
         </form>
-      </div>
-    </div>
+      ) : null}
+    </RecordDetailsModal>
   );
 };
 
@@ -206,6 +204,7 @@ const runsQuery = { page: 1, page_size: 200, ordering: '-created_at' };
 
 const BlankProductionOtkPanel = () => {
   const [detailRun, setDetailRun] = useState(null);
+  const [viewRun, setViewRun] = useState(null);
   const [dateFilterIso, setDateFilterIso] = useState('');
   const { items, loading, error, refetch } = useServerQuery(
     'workshop/blank-production-runs/',
@@ -224,57 +223,71 @@ const BlankProductionOtkPanel = () => {
     );
   }, [runs, dateFilterIso]);
 
+  const sortedRuns = useMemo(() => {
+    return [...visibleRuns].sort((a, b) => {
+      const pendingA = !isBlankRunOtkRecorded(a) ? 0 : 1;
+      const pendingB = !isBlankRunOtkRecorded(b) ? 0 : 1;
+      if (pendingA !== pendingB) return pendingA - pendingB;
+      const da = pickFirstIsoDate(a, ['createdAt']) || '';
+      const db = pickFirstIsoDate(b, ['createdAt']) || '';
+      return db.localeCompare(da);
+    });
+  }, [visibleRuns]);
+
   const handleSaved = useCallback(() => {
     refetch();
   }, [refetch]);
 
+  const openDetails = (run) => {
+    if (!isBlankRunOtkRecorded(run)) {
+      setDetailRun(run);
+      setViewRun(null);
+    } else {
+      setViewRun(run);
+      setDetailRun(null);
+    }
+  };
+
   return (
     <div className="otk-card">
       <div className="otk-card__toolbar">
-        <h2 className="otk-card__title">Заявки</h2>
+        <h2 className="otk-card__title">Проверки</h2>
         <ClientDateFilter value={dateFilterIso} onChange={setDateFilterIso} id="otk-date-filter" />
       </div>
       {loading && <Loading />}
       {error && <ErrorState error={error} onRetry={refetch} />}
       {!loading && !error && runs.length === 0 && (
-        <EmptyState title="Пока нет записей — на производстве нажмите «Произвести»" />
+        <EmptyState title="Пока нет выпусков" description="Оформите выпуск в «Производство»." />
       )}
       {!loading && !error && runs.length > 0 && visibleRuns.length === 0 && (
-        <EmptyState title="На выбранную дату записей нет" />
+        <EmptyState title="На эту дату записей нет" />
       )}
       {!loading && !error && visibleRuns.length > 0 && (
-        <div className="otk-table otk-table--blank-runs">
-          <div className="otk-table__header">
-            <span className="otk-table__th">Товар</span>
-            <span className="otk-table__th">Заготовка</span>
-            <span className="otk-table__th">Дата</span>
-            <span className="otk-table__th otk-table__th--narrow">Брак</span>
-            <span className="otk-table__th">Статус ГП</span>
-            <span className="otk-table__th otk-table__th--actions" aria-hidden="true" />
-          </div>
-          {visibleRuns.map((run) => (
-            <div key={run.id} className="otk-table__row">
-              <span className="otk-table__cell-clip">{run.productName || '—'}</span>
-              <span className="otk-table__cell-clip">{run.blankName || '—'}</span>
-              <span>{formatDateTime(run.createdAt)}</span>
-              <span className="otk-table__num-like">{defectKgDisplay(run)}</span>
-              <span className="otk-table__muted">{gpFlowStatus(run)}</span>
-              <span className="otk-table__actions-cell">
-                {isBlankRunOtkRecorded(run) ? (
-                  <span className="otk-table__muted">—</span>
-                ) : (
-                  <button
-                    type="button"
-                    className="btn btn--secondary btn--sm"
-                    onClick={() => setDetailRun(run)}
-                  >
-                    Товар
-                  </button>
-                )}
-              </span>
-            </div>
-          ))}
-        </div>
+        <CompactList
+          columns={OTK_COLUMNS}
+          items={sortedRuns}
+          getRowKey={(r) => r.id}
+          rowClassName={(run) =>
+            (!isBlankRunOtkRecorded(run) ? 'compact-list__row--attention' : '')
+          }
+          renderCell={(run, key) => {
+            if (key === 'product') return run.productName || '—';
+            if (key === 'defect') return defectKgDisplay(run);
+            if (key === 'status') {
+              const label = gpFlowStatus(run);
+              if (!isBlankRunOtkRecorded(run)) {
+                return <Badge variant="warning">{label}</Badge>;
+              }
+              if (run.gpAcceptedAt) {
+                return <Badge variant="success">{label}</Badge>;
+              }
+              return <span className="compact-list__status-muted">{label}</span>;
+            }
+            return '—';
+          }}
+          detailsLabel={(run) => (!isBlankRunOtkRecorded(run) ? 'Учесть' : 'Подробнее')}
+          onDetails={openDetails}
+        />
       )}
       {detailRun ? (
         <BlankRunOtkDetailModal
@@ -282,6 +295,27 @@ const BlankProductionOtkPanel = () => {
           onClose={() => setDetailRun(null)}
           onSaved={handleSaved}
         />
+      ) : null}
+      {viewRun ? (
+        <RecordDetailsModal
+          open
+          onClose={() => setViewRun(null)}
+          title={viewRun.productName || 'Изделие'}
+          footer={(
+            <button type="button" className="btn btn--secondary" onClick={() => setViewRun(null)}>
+              Закрыть
+            </button>
+          )}
+        >
+          <DetailFields
+            rows={[
+              { label: 'Заготовка', value: viewRun.blankName || '—' },
+              { label: 'Дата', value: formatDateShort(viewRun.createdAt) },
+              { label: 'Брак', value: defectKgDisplay(viewRun) },
+              { label: 'Статус', value: gpFlowStatus(viewRun) },
+            ]}
+          />
+        </RecordDetailsModal>
       ) : null}
     </div>
   );

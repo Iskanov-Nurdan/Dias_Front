@@ -120,3 +120,58 @@
     background: color-mix(in srgb, var(--text) 9%, transparent);
   }
 }
+
+/* ── Mobile: tab bars scroll horizontally ── */
+@media (max-width: 479px) {
+  .materials-tabs,
+  .otk-tabs,
+  .chemistry-tabs,
+  .lines-tabs,
+  .production-main-tabs,
+  .warehouse-tabs,
+  .my-shift__tabs,
+  .shifts-report__main-tabs,
+  .page--users .page__tabs {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .materials-tabs__tab,
+  .otk-tabs__tab,
+  .chemistry-tabs__tab,
+  .lines-tabs__tab,
+  .production-main-tabs__btn,
+  .warehouse-tabs__btn,
+  .my-shift__tab,
+  .shifts-report__main-tab,
+  .page--users .page__tab {
+    flex: 0 0 auto;
+    min-width: max-content;
+    font-size: var(--font-caption);
+    padding: var(--space-2) var(--space-3);
+    white-space: nowrap;
+  }
+}
+
+/* ── 320–374px: extra compact ── */
+@media (max-width: 374px) {
+  .materials-tabs__tab,
+  .otk-tabs__tab,
+  .chemistry-tabs__tab,
+  .lines-tabs__tab,
+  .production-main-tabs__btn,
+  .warehouse-tabs__btn,
+  .my-shift__tab,
+  .shifts-report__main-tab,
+  .page--users .page__tab {
+    padding: var(--space-2) var(--space-2);
+    font-size: 11px;
+  }
+}

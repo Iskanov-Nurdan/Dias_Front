@@ -1241,8 +1241,13 @@
 
 .analytics-stats {
   display: flex;
-  gap: 3rem;
+  flex-wrap: wrap;
+  gap: 2rem;
   margin-bottom: 1rem;
+
+  @include mobile {
+    gap: var(--space-4);
+  }
 }
 
 .analytics-stat {

@@ -65,7 +65,7 @@
   }
 
   @include mobile {
-    min-height: 48px;
+    min-height: var(--input-height);
   }
 
   &__value {
@@ -98,7 +98,7 @@
     min-height: calc(var(--input-height) - 2px);
 
     @include mobile {
-      min-height: calc(48px - 2px);
+      min-height: calc(var(--input-height) - 2px);
     }
   }
 
@@ -134,7 +134,7 @@
     }
 
     @include mobile {
-      min-height: calc(48px - 2px);
+      min-height: calc(var(--input-height) - 2px);
     }
   }
 
@@ -295,9 +295,10 @@
   flex-shrink: 0;
   width: 36px;
   height: 4px;
-  margin: var(--space-2) auto 0;
+  margin: var(--space-3) auto var(--space-1);
   border-radius: var(--radius-full);
   background: var(--border);
+  opacity: 0.6;
 }
 
 .dias-select-sheet__header {
@@ -305,7 +306,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-4) var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
@@ -375,7 +376,7 @@
 .dias-select-sheet__list {
   list-style: none;
   margin: 0;
-  padding: 0 var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-3) var(--space-4);
   overflow-y: auto;
   flex: 1;
   min-height: 0;

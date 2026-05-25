@@ -8,10 +8,8 @@ export const STAGE2_TABS_ENABLED = true;
 /** Синхронизировано с config.settings.ACCESS_KEYS бэка (см. docs/DIAS_BACKEND_CONTRACT.md). */
 export const ACCESS_KEYS = [
   'users',
-  'lines',
   'materials',
   'chemistry',
-  'recipes',
   'orders',
   'production',
   'otk',
@@ -20,8 +18,6 @@ export const ACCESS_KEYS = [
   'sales',
   'client_orders',
   'payments',
-  'returns',
-  'defects',
   'shipments',
   'analytics',
   'shifts',
@@ -31,10 +27,8 @@ export const ACCESS_KEYS = [
 export const ACCESS_LABELS = {
   analytics:  'Аналитика',
   users:      'Сотрудники',
-  lines:      'Линии',
   materials:  'Сырьё',
   chemistry:  'Заготовка',
-  recipes:    'Рецепты',
   orders:     'Заказы',
   production: 'Производство',
   otk:        'ОТК',
@@ -43,15 +37,13 @@ export const ACCESS_LABELS = {
   sales:      'Продажи',
   client_orders: 'Заявки',
   payments:   'Оплаты',
-  returns:    'Возвраты',
-  defects:    'Брак / переделка',
   shipments:  'Отгрузки',
   my_shift:   'Моя смена',
   shifts:     'Смены',
 };
 
 /** Ключи раздела «Касса» (один пункт меню, несколько access_keys на бэке). */
-export const ACCESS_CASH_BUNDLE_KEYS = ['clients', 'client_orders', 'sales', 'returns', 'defects'];
+export const ACCESS_CASH_BUNDLE_KEYS = ['clients', 'client_orders', 'sales'];
 
 /** Бандлы для модалки доступов (id → ключи API). */
 export const ACCESS_BUNDLES = {

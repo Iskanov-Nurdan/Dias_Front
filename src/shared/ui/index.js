@@ -21,3 +21,6 @@ export { default as ActionMenu } from './ActionMenu/ActionMenu';
 export { default as Collapse } from './Collapse/Collapse';
 export { default as ClientDateFilter } from './ClientDateFilter/ClientDateFilter';
 export { default as DiasLogo } from './DiasLogo';
+export { default as CompactList } from './CompactList/CompactList';
+export { default as RecordDetailsModal } from './RecordDetailsModal/RecordDetailsModal';
+export { default as DetailFields } from './DetailFields/DetailFields';

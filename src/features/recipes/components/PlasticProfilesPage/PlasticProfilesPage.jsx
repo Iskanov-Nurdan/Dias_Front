@@ -76,14 +76,14 @@ const PlasticProfilesPage = () => {
 
   const goCreateRecipe = useCallback(
     (profileId) => {
-      navigate(`/recipes?profile_id=${profileId}&open=recipe`);
+      navigate(`/chemistry?profile_id=${profileId}&open=recipe`);
     },
     [navigate],
   );
 
   const goRecipesFiltered = useCallback(
     (profileId) => {
-      navigate(`/recipes?filter_profile_id=${profileId}`);
+      navigate(`/chemistry?filter_profile_id=${profileId}`);
     },
     [navigate],
   );

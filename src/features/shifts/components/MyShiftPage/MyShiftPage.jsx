@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../../auth';
 import { useToast } from '../../../../shared/ui';
-import { setAuditShiftId } from '../../../../shared/lib/auditContext';
+import { applyAuditShiftFromShift } from '../../../../shared/lib/auditShiftSync';
 import { getApiErrorMessage } from '../../../../shared/lib';
 import {
   getMyShift, openShift, closeShift,
@@ -174,11 +174,8 @@ const MyShiftPage = () => {
   }, [loadShift, loadNotes]);
 
   useEffect(() => {
-    const open = shift?.status === 'open' && shift?.id != null;
-    if (open) setAuditShiftId(shift.id);
-    else setAuditShiftId(null);
-    return () => setAuditShiftId(null);
-  }, [shift?.id, shift?.status]);
+    applyAuditShiftFromShift(shift);
+  }, [shift]);
 
   useEffect(() => {
     getAllUsers({ page_size: 500 })

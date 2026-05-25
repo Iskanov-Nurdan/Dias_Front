@@ -8,13 +8,23 @@ import {
   lineProfileLabel,
   lineQuantityLabel,
 } from '../../../../shared/lib';
-import { Loading, EmptyState, ErrorState, useToast, ClientDateFilter, SearchableSelect } from '../../../../shared/ui';
+import {
+  Loading,
+  EmptyState,
+  ErrorState,
+  useToast,
+  ClientDateFilter,
+  SearchableSelect,
+  CompactList,
+  RecordDetailsModal,
+  DetailFields,
+} from '../../../../shared/ui';
 import { useOperationalRefetch } from '../../../../shared/realtime';
 import ProduceBlankModal from '../ProduceBlankModal/ProduceBlankModal';
 import { getOrder, getOrderSelectSources } from '../../../orders/api/ordersApi';
 import { orderLineKey, orderLineApiId } from '../../lib/orderLineKeys';
 import { getMyShift } from '../../../shifts/api/shiftsApi';
-import { setAuditShiftId } from '../../../../shared/lib/auditContext';
+import { isPersonalShiftOpen, parseMyShiftFromResponse } from '../../../../shared/lib/auditShiftSync';
 import { startProductionRequest } from '../../api/productionApi';
 import { getProductionStartErrorMessage } from '../../lib/productionStartError';
 import {
@@ -107,6 +117,7 @@ const ProductionClientRequestsPanel = ({ queryEnabled, clientDateFilter }) => {
   const [blankByLineKey, setBlankByLineKey] = useState({});
   const [orderDetailById, setOrderDetailById] = useState({});
   const [startBusy, setStartBusy] = useState(null);
+  const [lineModal, setLineModal] = useState(null);
   const [srcClients, setSrcClients] = useState([]);
   const [srcProfiles, setSrcProfiles] = useState([]);
 
@@ -223,61 +234,84 @@ const ProductionClientRequestsPanel = ({ queryEnabled, clientDateFilter }) => {
     });
   }, [items, blankCatalogOptions, orderDetailById]);
 
-  const onStart = async (order) => {
-    const orderId = order?.id;
-    if (orderId == null) return;
-    const displayOrder = orderWithLines(order);
-    const lines = extractOrderLines(displayOrder);
-    if (!lines.length) {
-      toast.show('В заявке нет позиций');
-      return;
-    }
-    const lineStarts = [];
-    for (let idx = 0; idx < lines.length; idx += 1) {
-      const ln = lines[idx];
-      const sk = `${orderId}:${orderLineKey(ln, idx)}`;
-      const blankRaw = blankByLineKey[sk];
-      if (!blankRaw) {
-        toast.show(`Выберите заготовку для: ${lineProfileLabel(ln, srcProfiles)}`);
-        return;
+  const lineRows = useMemo(() => {
+    const rows = [];
+    for (const o of visibleItems) {
+      const displayOrder = orderWithLines(o);
+      const lines = extractOrderLines(displayOrder);
+      const clientLabel = rqClient(o, srcClients);
+      if (!lines.length) {
+        rows.push({
+          id: `order-${o.id}`,
+          order: o,
+          line: null,
+          idx: 0,
+          stateKey: `${o.id}:empty`,
+          clientLabel,
+        });
+        continue;
       }
-      lineStarts.push({
-        orderLineId: orderLineApiId(ln),
-        profileId: ln.profile_id != null ? Number(ln.profile_id) : null,
-        blankId: Number(blankRaw),
+      lines.forEach((ln, idx) => {
+        rows.push({
+          id: `${o.id}:${orderLineKey(ln, idx)}`,
+          order: o,
+          line: ln,
+          idx,
+          stateKey: `${o.id}:${orderLineKey(ln, idx)}`,
+          clientLabel,
+        });
       });
+    }
+    return rows;
+  }, [visibleItems, orderWithLines, srcClients]);
+
+  const runStart = async (row, blankId) => {
+    const orderId = row.order?.id;
+    if (orderId == null || !row.line) return;
+    const blankRaw = blankId ?? blankByLineKey[row.stateKey];
+    if (!blankRaw) {
+      toast.show('Выберите заготовку');
+      return;
     }
     setStartBusy(orderId);
     try {
-      try {
-        const shiftRes = await getMyShift();
-        const data = shiftRes.data || {};
-        const shift = Object.prototype.hasOwnProperty.call(data, 'shift') ? data.shift : data;
-        const open = shift?.status === 'open' && shift?.id != null;
-        if (!open) {
-          toast.show('Откройте смену в «Моя смена» (линия не нужна)');
-          return;
-        }
-        setAuditShiftId(shift.id);
-      } catch {
-        /* если my/ недоступен — пробуем start, бэк вернёт код */
+      const shiftRes = await getMyShift();
+      const shift = parseMyShiftFromResponse(shiftRes.data);
+      if (!isPersonalShiftOpen(shift)) {
+        toast.show('Откройте смену в «Моя смена»');
+        return;
       }
-      await startProductionRequest(orderId, lineStarts);
+    } catch {
+      /* бэк вернёт код */
+    }
+    try {
+      await startProductionRequest(orderId, [
+        {
+          orderLineId: orderLineApiId(row.line),
+          profileId: row.line.profile_id != null ? Number(row.line.profile_id) : null,
+          blankId: Number(blankRaw),
+        },
+      ]);
       await refetch();
       setBlankByLineKey((prev) => {
         const next = { ...prev };
-        lines.forEach((ln, idx) => {
-          delete next[`${orderId}:${orderLineKey(ln, idx)}`];
-        });
+        delete next[row.stateKey];
         return next;
       });
-      toast.show(lines.length > 1 ? `Старт: ${lines.length} поз. в ОТК` : 'Старт');
+      setLineModal(null);
+      toast.show('Запущено в ОТК');
     } catch (e) {
       toast.show(getProductionStartErrorMessage(e, 'Ошибка'));
     } finally {
       setStartBusy(null);
     }
   };
+
+  const REQUEST_COLUMNS = [
+    { key: 'client', label: 'Клиент', width: '1.1fr' },
+    { key: 'profile', label: 'Профиль', width: '1.2fr' },
+    { key: 'qty', label: 'Кол-во', width: '0.55fr', className: 'compact-list__cell--num' },
+  ];
 
   return (
     <>
@@ -288,84 +322,77 @@ const ProductionClientRequestsPanel = ({ queryEnabled, clientDateFilter }) => {
         <EmptyState title="На выбранную дату заявок нет" />
       )}
       {!loading && !error && visibleItems.length > 0 && (
-        <div className="production-table-wrap">
-          <div className="production-table production-table--client-rq">
-            <div className="production-table__header">
-              <span className="production-table__th">Клиент</span>
-              <span className="production-table__th">Профиль</span>
-              <span className="production-table__th production-table__th--num">Кол-во</span>
-              <span className="production-table__th">Заготовка</span>
-              <span className="production-table__th production-table__th--actions"> </span>
-            </div>
-            {visibleItems.flatMap((o) => {
-              const displayOrder = orderWithLines(o);
-              const lines = extractOrderLines(displayOrder);
-              const clientLabel = rqClient(o, srcClients);
-              if (!lines.length) {
-                return [
-                  <div key={o.id} className="production-table__row production-table__row--order-line">
-                    <span className="production-table__cell-clip">{clientLabel}</span>
-                    <span className="production-table__cell-clip">—</span>
-                    <span className="production-table__num">—</span>
-                    <span className="production-table__cell-clip production-table__cell--blank">—</span>
-                    <span className="production-table__actions" />
-                  </div>,
-                ];
-              }
-              return lines.map((ln, idx) => {
-                const lk = orderLineKey(ln, idx);
-                const stateKey = `${o.id}:${lk}`;
-                const lineOpts = buildLineBlankSelectOptions(blankCatalogOptions, o, ln);
-                const blankVal = blankByLineKey[stateKey] != null ? String(blankByLineKey[stateKey]) : '';
-                const isFirst = idx === 0;
-                const isLast = idx === lines.length - 1;
-                return (
-                  <div
-                    key={stateKey}
-                    className={`production-table__row production-table__row--order-line${
-                      isFirst ? ' production-table__row--order-first' : ''
-                    }${isLast && lines.length > 1 ? ' production-table__row--order-last' : ''}`}
-                  >
-                    <span className="production-table__cell-clip production-table__cell--client">
-                      {isFirst ? clientLabel : ''}
-                    </span>
-                    <span className="production-table__cell-clip production-table__cell--profile">
-                      {lineProfileLabel(ln, srcProfiles)}
-                    </span>
-                    <span className="production-table__num">{lineQuantityLabel(ln)}</span>
-                    <span className="production-table__cell-clip production-table__cell--blank">
-                      <SearchableSelect
-                        value={blankVal}
-                        onChange={(v) =>
-                          setBlankByLineKey((prev) => ({
-                            ...prev,
-                            [stateKey]: v != null ? String(v) : '',
-                          }))
-                        }
-                        options={lineOpts}
-                        placeholder="Заготовка для профиля"
-                        disabled={startBusy === o.id}
-                      />
-                    </span>
-                    <span className="production-table__actions">
-                      {isLast ? (
-                        <button
-                          type="button"
-                          className="btn btn--primary btn--sm"
-                          disabled={startBusy === o.id}
-                          onClick={() => onStart(o)}
-                        >
-                          {startBusy === o.id ? '…' : 'Старт'}
-                        </button>
-                      ) : null}
-                    </span>
-                  </div>
-                );
-              });
-            })}
-          </div>
-        </div>
+        <CompactList
+          columns={REQUEST_COLUMNS}
+          items={lineRows}
+          getRowKey={(r) => r.id}
+          renderCell={(row, key) => {
+            if (key === 'client') return row.clientLabel || '—';
+            if (key === 'profile') {
+              return row.line ? lineProfileLabel(row.line, srcProfiles) : '—';
+            }
+            if (key === 'qty') {
+              return row.line ? lineQuantityLabel(row.line) : '—';
+            }
+            return '—';
+          }}
+          onDetails={(row) => row.line && setLineModal(row)}
+          showDetails={(row) => Boolean(row.line)}
+        />
       )}
+      {lineModal?.line ? (
+        <RecordDetailsModal
+          open
+          onClose={() => setLineModal(null)}
+          title={lineProfileLabel(lineModal.line, srcProfiles)}
+          lead={`Клиент: ${lineModal.clientLabel || '—'}`}
+          footer={(
+            <>
+              <button type="button" className="btn btn--secondary" onClick={() => setLineModal(null)}>
+                Отмена
+              </button>
+              <button
+                type="button"
+                className="btn btn--primary"
+                disabled={startBusy === lineModal.order?.id}
+                onClick={() => runStart(lineModal)}
+              >
+                {startBusy === lineModal.order?.id ? '…' : 'Запустить'}
+              </button>
+            </>
+          )}
+        >
+          <DetailFields
+            rows={[
+              { label: 'Клиент', value: lineModal.clientLabel || '—' },
+              { label: 'Кол-во', value: lineQuantityLabel(lineModal.line) },
+            ]}
+          />
+          <div className="production-line-modal__field">
+            <label className="production-line-modal__label">Заготовка</label>
+            <SearchableSelect
+              value={
+                blankByLineKey[lineModal.stateKey] != null
+                  ? String(blankByLineKey[lineModal.stateKey])
+                  : ''
+              }
+              onChange={(v) =>
+                setBlankByLineKey((prev) => ({
+                  ...prev,
+                  [lineModal.stateKey]: v != null ? String(v) : '',
+                }))
+              }
+              options={buildLineBlankSelectOptions(
+                blankCatalogOptions,
+                lineModal.order,
+                lineModal.line,
+              )}
+              placeholder="Выберите заготовку"
+              disabled={startBusy === lineModal.order?.id}
+            />
+          </div>
+        </RecordDetailsModal>
+      ) : null}
     </>
   );
 };
@@ -379,7 +406,14 @@ const producedDefectLabel = (run) => {
   return '—';
 };
 
+const PRODUCED_COLUMNS = [
+  { key: 'product', label: 'Изделие', width: '1.4fr' },
+  { key: 'defect', label: 'Брак', width: '0.65fr', className: 'compact-list__cell--num' },
+  { key: 'date', label: 'Дата', width: '0.85fr' },
+];
+
 const ProductionProducedPanel = ({ runs, loading, error, onRetry, clientDateFilter }) => {
+  const [viewRun, setViewRun] = useState(null);
   const visibleRuns = useMemo(() => {
     const list = runs || [];
     if (!clientDateFilter) return list;
@@ -393,31 +427,45 @@ const ProductionProducedPanel = ({ runs, loading, error, onRetry, clientDateFilt
       {loading && <Loading />}
       {error && <ErrorState error={error} onRetry={onRetry} />}
       {!loading && !error && (!runs || runs.length === 0) && (
-        <EmptyState title="Пока нет записей — нажмите «Произвести» во вкладке «Заявки»" />
+        <EmptyState title="Пока нет выпусков" description="Запустите заявку во вкладке «В работе»." />
       )}
       {!loading && !error && runs && runs.length > 0 && visibleRuns.length === 0 && (
-        <EmptyState title="На выбранную дату записей нет" />
+        <EmptyState title="На эту дату записей нет" />
       )}
       {!loading && !error && visibleRuns.length > 0 && (
-        <div className="production-table-wrap">
-          <div className="production-table production-table--produced-local">
-            <div className="production-table__header">
-              <span className="production-table__th">Товар</span>
-              <span className="production-table__th">Заготовка</span>
-              <span className="production-table__th">Дата</span>
-              <span className="production-table__th production-table__th--num">Брак</span>
-            </div>
-            {visibleRuns.map((run) => (
-              <div key={run.id} className="production-table__row">
-                <span className="production-table__cell-clip">{run.productName || '—'}</span>
-                <span className="production-table__cell-clip">{run.blankName || '—'}</span>
-                <span className="production-table__cell-clip">{formatRunDateTime(run.createdAt)}</span>
-                <span className="production-table__num">{producedDefectLabel(run)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <CompactList
+          columns={PRODUCED_COLUMNS}
+          items={visibleRuns}
+          getRowKey={(r) => r.id}
+          renderCell={(run, key) => {
+            if (key === 'product') return run.productName || '—';
+            if (key === 'defect') return producedDefectLabel(run);
+            if (key === 'date') return formatRunDateTime(run.createdAt);
+            return '—';
+          }}
+          onDetails={(run) => setViewRun(run)}
+        />
       )}
+      {viewRun ? (
+        <RecordDetailsModal
+          open
+          onClose={() => setViewRun(null)}
+          title={viewRun.productName || 'Выпуск'}
+          footer={(
+            <button type="button" className="btn btn--secondary" onClick={() => setViewRun(null)}>
+              Закрыть
+            </button>
+          )}
+        >
+          <DetailFields
+            rows={[
+              { label: 'Заготовка', value: viewRun.blankName || '—' },
+              { label: 'Дата', value: formatRunDateTime(viewRun.createdAt) },
+              { label: 'Брак', value: producedDefectLabel(viewRun) },
+            ]}
+          />
+        </RecordDetailsModal>
+      ) : null}
     </>
   );
 };
@@ -455,7 +503,7 @@ const ProductionPage = () => {
           className={`production-main-tabs__btn${isRequests ? ' production-main-tabs__btn--active' : ''}`}
           onClick={() => setMainTab('requests')}
         >
-          Заявки
+          В работе
         </button>
         <button
           type="button"
@@ -464,7 +512,7 @@ const ProductionPage = () => {
           className={`production-main-tabs__btn${mainTab === 'produced' ? ' production-main-tabs__btn--active' : ''}`}
           onClick={() => setMainTab('produced')}
         >
-          Произведённые
+          Выпуск
         </button>
       </div>
       <div className="production-page__date-row">

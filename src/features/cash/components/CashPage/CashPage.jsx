@@ -8,14 +8,11 @@ const CASH_TABS = [
   { key: 'sales', label: 'Продажи', path: '/cash/sales' },
 ];
 
-/** Доступ к оболочке «Касса» (вкл. страницы без вкладок: возвраты, брак). */
-const CASH_SHELL_ACCESS_KEYS = ['clients', 'client_orders', 'sales', 'returns', 'defects'];
+const CASH_SHELL_ACCESS_KEYS = ['clients', 'client_orders', 'sales'];
 
 const matchTabByPath = (pathname) => {
   if (pathname.startsWith('/cash/orders')) return 'client_orders';
   if (pathname.startsWith('/cash/sales')) return 'sales';
-  if (pathname.startsWith('/cash/returns')) return 'returns';
-  if (pathname.startsWith('/cash/defects')) return 'defects';
   if (pathname.startsWith('/cash/clients')) return 'clients';
   return '';
 };
@@ -39,16 +36,13 @@ const CashPage = () => {
   if (!hasCashShellAccess) return <Navigate to="/forbidden" replace />;
 
   const activeKey = matchTabByPath(location.pathname);
-  const isHiddenCashView = activeKey === 'returns' || activeKey === 'defects';
 
   if (!activeKey) {
     if (tabs.length > 0) return <Navigate to={tabs[0].path} replace />;
-    if (accesses.includes('returns')) return <Navigate to="/cash/returns" replace />;
-    if (accesses.includes('defects')) return <Navigate to="/cash/defects" replace />;
     return <Navigate to="/forbidden" replace />;
   }
 
-  if (!isHiddenCashView && !accesses.includes(activeKey)) {
+  if (!accesses.includes(activeKey)) {
     if (tabs.length > 0) return <Navigate to={tabs[0].path} replace />;
     return <Navigate to="/forbidden" replace />;
   }

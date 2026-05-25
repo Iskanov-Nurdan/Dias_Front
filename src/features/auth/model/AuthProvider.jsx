@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { OPERATIONAL_WS_TOKEN_REJECTED_EVENT } from '../../../shared/realtime/operationalWsConstants';
+import { clearAuditShift } from '../../../shared/lib/auditShiftSync';
 import { login as loginApi, logout as logoutApi, getMe } from '../api';
 
 const AuthContext = createContext(null);
@@ -37,6 +38,7 @@ export const AuthProvider = ({ children }) => {
     const onWsTokenRejected = () => {
       localStorage.removeItem('token');
       localStorage.removeItem('refresh');
+      clearAuditShift();
       setUser(null);
     };
     window.addEventListener(OPERATIONAL_WS_TOKEN_REJECTED_EVENT, onWsTokenRejected);
@@ -55,6 +57,7 @@ export const AuthProvider = ({ children }) => {
     await logoutApi();
     localStorage.removeItem('token');
     localStorage.removeItem('refresh');
+    clearAuditShift();
     setUser(null);
   }, []);
 

@@ -1,4 +1,5 @@
 @use '../../../../shared/styles/variables' as *;
+@use '../../../../shared/styles/mixins' as *;
 
 .activity-feed-overlay {
   z-index: 1000;
@@ -21,6 +22,12 @@
 
 .activity-feed-modal--detail {
   max-width: 720px;
+  width: 100%;
+
+  @include mobile {
+    max-width: calc(100vw - 24px);
+    width: calc(100vw - 24px);
+  }
 
   .modal__body {
     max-height: min(520px, 75vh);
@@ -30,8 +37,13 @@
 .activity-feed-item {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-4);
-  padding: var(--space-4) var(--space-5);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+
+  @include mobile {
+    gap: var(--space-2);
+    padding: var(--space-3);
+  }
   border-bottom: 1px solid var(--border-subtle);
   transition: background var(--transition-fast);
   text-align: left;

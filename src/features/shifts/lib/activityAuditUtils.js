@@ -1,3 +1,8 @@
+/**
+ * Журнал действий смены — UI для оператора.
+ * Контракт API: summary, field_labels, changes[].old_display/new_display (DIas_ERP audit_messages).
+ * Локальная логика ниже — fallback для записей до обновления бэка.
+ */
 export const ACTIVITY_ACTION_LABELS = {
   create: 'Создал',
   update: 'Изменил',
@@ -43,16 +48,35 @@ function fixComplaintAccusativeRu(s) {
     .replace(/\bПросмотрел\s+жалоба\b/g, 'Просмотрел жалобу');
 }
 
-/** Убираем хвосты вида «: #1 — 4», « №10» — клиенту не показываем внутренние id. */
+/** Убираем хвосты вида «: #1 — 4», « №10», API и ISO-даты — клиенту не показываем. */
 function stripOperatorSummaryTechnicalTail(s) {
   let t = String(s).trim();
   if (!t) return t;
+  t = t.replace(/\s*(POST|GET|PUT|PATCH|DELETE)\s+\/api\/\S+/gi, '');
+  t = t.replace(/:\s*POST\s+\/api\/\S+/gi, '');
+  t = t.replace(/\s*\(\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}[^\)]*\)/g, '');
+  t = t.replace(
+    /\s+\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}(:\d{2})?(\.\d+)?([Zz]|[+-]\d{2}:\d{2})?/g,
+    ''
+  );
   if (/жалоб|смен/i.test(t)) {
     t = t.replace(/\s*[:：]\s*#.*$/u, '');
   }
   t = t.replace(/\s+#\d+(\s*[—–-]\s*#?\d+)*\s*$/u, '');
   t = t.replace(/\s+№\s*\d+\s*$/u, '');
-  return t.trim();
+  t = t.replace(/\s*—\s*—\s*/g, ' — ');
+  t = t.replace(/\s{2,}/g, ' ').trim();
+  return t;
+}
+
+/** 1.0000 → 1, 1.50 → 1,5 (в тексте сводки). */
+function normalizeDecimalInSummaryText(s) {
+  return String(s).replace(/(\d+)(?:\.(\d+))?/g, (full, intPart, decPart) => {
+    if (!decPart) return intPart;
+    const trimmed = decPart.replace(/0+$/, '');
+    if (!trimmed) return intPart;
+    return `${intPart},${trimmed}`;
+  });
 }
 
 /** Сводка целиком похожа на тех. строку (модель #pk) — не показываем оператору. */
@@ -61,23 +85,88 @@ function operatorSummaryLooksTechnical(s) {
   const t = String(s).trim();
   if (/^[a-z][a-z0-9_.]*\s*[#№]\s*\d+$/i.test(t)) return true;
   if (/\w+\.\w+\s*#\d+/i.test(t)) return true;
+  if (/\/api\//i.test(t)) return true;
+  if (/^(POST|GET|PUT|PATCH|DELETE)\s/i.test(t)) return true;
   return false;
 }
 
-/** Текст для списка/карточки без технических fallback (sales.client #4). */
+/** Понятная сводка по entity_type + action, если бэк отдал тех. description. */
+function buildEntityOperatorSummary(a) {
+  if (!a) return '';
+  const action = a.action || a.action_type || 'view';
+  const et = a.entity_type != null ? String(a.entity_type) : '';
+  const verb = ACTIVITY_ACTION_LABELS[action] || 'Изменение';
+
+  if (et === 'production.shift' || et === 'production.shiftnote' || et === 'production.shiftcomplaint') {
+    if (action === 'create' && et === 'production.shift') return 'Открыта смена';
+    if (action === 'update' && et === 'production.shift') {
+      const desc = `${a.description || ''} ${a.summary || ''}`;
+      if (/close|закры/i.test(desc)) return 'Смена закрыта';
+      return 'Изменена смена';
+    }
+    if (action === 'delete' && et === 'production.shift') return 'Смена закрыта';
+    if (et === 'production.shiftnote') {
+      if (action === 'create') return 'Добавлена заметка к смене';
+      return `${verb} заметку к смене`;
+    }
+    if (et === 'production.shiftcomplaint') {
+      if (action === 'create') return 'Добавлена жалоба';
+      return `${verb} жалобу`;
+    }
+  }
+
+  const section = getActivityModule(a);
+  const labelByEntity = {
+    'sales.client': 'клиента',
+    'materials.rawmaterial': 'сырьё',
+    'materials.materialbatch': 'приход материала',
+    'sales.order': 'заявку',
+    'sales.sale': 'продажу',
+    'sales.payment': 'оплату',
+    'sales.return': 'возврат',
+    'sales.defectrecord': 'брак',
+    'sales.reworkrequest': 'переделку',
+    'warehouse.warehousebatch': 'партию на складе',
+    'chemistry.chemistrybatch': 'партию химии',
+    'workshop.workshopblank': 'заготовку',
+    'production.productionbatch': 'партию производства',
+  };
+  const objLabel = labelByEntity[et];
+  if (objLabel && section) {
+    if (action === 'create') return `Создан ${objLabel}`;
+    if (action === 'update') return `Изменён ${objLabel}`;
+    if (action === 'delete') return `Удалён ${objLabel}`;
+  }
+  if (section) return `${verb} — раздел «${section}»`;
+  return '';
+}
+
+/**
+ * Подписи полей с бэка (activity.field_labels) или пустой объект для legacy.
+ */
+export function getActivityFieldLabels(activity) {
+  const fl = activity?.field_labels;
+  if (!fl || typeof fl !== 'object' || Array.isArray(fl)) return {};
+  return fl;
+}
+
+/** Текст списка: summary/description с API как есть; санитизация только для старых тех. строк. */
 export function getActivitySummaryForOperator(a) {
   if (!a) return '';
   const fromApi =
     (a.summary && String(a.summary).trim()) ||
     (a.description && String(a.description).trim()) ||
-    (a.object_repr && String(a.object_repr).trim()) ||
     '';
   if (fromApi) {
-    let s = fixComplaintAccusativeRu(fromApi);
-    s = stripOperatorSummaryTechnicalTail(s);
-    if (operatorSummaryLooksTechnical(s)) s = '';
-    if (s) return s;
+    if (!operatorSummaryLooksTechnical(fromApi)) {
+      return fixComplaintAccusativeRu(fromApi);
+    }
+    let s = fixComplaintAccusativeRu(stripOperatorSummaryTechnicalTail(fromApi));
+    s = normalizeDecimalInSummaryText(s);
+    if (s && !operatorSummaryLooksTechnical(s)) return s;
   }
+  const built = buildEntityOperatorSummary(a);
+  if (built) return built;
   const section = getActivityModule(a);
   if (section) return `Изменение в разделе «${section}»`;
   return 'Запись в журнале';
@@ -193,10 +282,54 @@ const CLIENT_FORM_FIELD_KEYS = new Set([
   'comment',
 ]);
 
+/** Поля, которые клиенту не показываем никогда (служебные). */
+const GLOBAL_OPERATOR_HIDDEN_FIELD_KEYS = new Set([
+  'created_at',
+  'updated_at',
+  'modified_at',
+  'last_login',
+  'password',
+  'token',
+  'secret',
+  'refresh',
+  'csrf',
+  'payload_version',
+  'request_id',
+  'client_ip',
+  'user_agent',
+  'actor_role_snapshot',
+]);
+
+const MATERIAL_BATCH_FORM_KEYS = new Set([
+  'material',
+  'quantity_initial',
+  'quantity_remaining',
+  'unit',
+  'unit_price',
+  'total_price',
+  'supplier_name',
+  'supplier_batch_number',
+  'comment',
+  'received_at',
+]);
+
+const RAW_MATERIAL_FORM_KEYS = new Set([
+  'name',
+  'unit',
+  'min_balance',
+  'is_active',
+  'comment',
+]);
+
 /** entity_type с бэка → whitelist ключей для клиентского diff. */
 const ENTITY_OPERATOR_FIELD_ALLOWLIST = {
   'sales.client': CLIENT_FORM_FIELD_KEYS,
   'clients.client': CLIENT_FORM_FIELD_KEYS,
+  'materials.materialbatch': MATERIAL_BATCH_FORM_KEYS,
+  'materials.rawmaterial': RAW_MATERIAL_FORM_KEYS,
+  'production.shift': new Set(['opened_at', 'closed_at', 'comment', 'status', 'session_title']),
+  'production.shiftnote': new Set(['note', 'text', 'content', 'comment']),
+  'production.shiftcomplaint': new Set(['body', 'text', 'content', 'comment']),
 };
 
 const SALES_CLIENT_FIELD_ORDER = [
@@ -215,6 +348,19 @@ const SALES_CLIENT_FIELD_ORDER = [
 const ENTITY_FIELD_ORDER_OVERRIDES = {
   'sales.client': SALES_CLIENT_FIELD_ORDER,
   'clients.client': SALES_CLIENT_FIELD_ORDER,
+  'materials.materialbatch': [
+    'material',
+    'quantity_initial',
+    'quantity_remaining',
+    'unit',
+    'unit_price',
+    'total_price',
+    'received_at',
+    'supplier_name',
+    'supplier_batch_number',
+    'comment',
+  ],
+  'materials.rawmaterial': ['name', 'unit', 'min_balance', 'is_active', 'comment'],
   'production.line': ['name', 'code', 'title', 'description', 'height', 'width', 'angle_deg', 'comment'],
   'lines.line': ['name', 'code', 'title', 'description', 'height', 'width', 'angle_deg', 'comment'],
 };
@@ -262,31 +408,70 @@ function sortKeyIndex(key, entityType) {
   return i === -1 ? 10000 : i;
 }
 
+function hasOperatorFieldLabel(key, activity) {
+  if (!key) return false;
+  const apiLabels = getActivityFieldLabels(activity);
+  if (Object.keys(apiLabels).length > 0) return Object.prototype.hasOwnProperty.call(apiLabels, key);
+  return Boolean(FALLBACK_FIELD_LABELS[key]);
+}
+
+function isEmptyChangeDisplay(row, activity) {
+  const old = formatChangeOld(row, activity);
+  const neu = formatChangeNew(row, activity);
+  const empty = (v) => v === '—' || v === '' || v == null;
+  return empty(old) && empty(neu);
+}
+
 /** Фильтр технических полей + только «форменные» поля по сущности + порядок. */
-export function getActivityChangesForDisplay(changes, entityType, isAdmin) {
+export function getActivityChangesForDisplay(changes, entityType, isAdmin, activity = null) {
   if (!Array.isArray(changes)) return [];
   if (isAdmin) return changes;
   const et = entityType != null ? String(entityType) : '';
-  let filtered = changes.filter((row) => !isTechnicalAuditFieldKey(extractChangeFieldKey(row)));
-  const allow = ENTITY_OPERATOR_FIELD_ALLOWLIST[et];
-  if (allow) {
-    filtered = filtered.filter((row) => allow.has(extractChangeFieldKey(row)));
+  let filtered = changes.filter((row) => {
+    const key = extractChangeFieldKey(row);
+    if (!key || isTechnicalAuditFieldKey(key)) return false;
+    if (GLOBAL_OPERATOR_HIDDEN_FIELD_KEYS.has(key)) return false;
+    return true;
+  });
+  const apiLabels = getActivityFieldLabels(activity);
+  const apiLabelKeys = Object.keys(apiLabels);
+  if (apiLabelKeys.length > 0) {
+    const allowed = new Set(apiLabelKeys);
+    filtered = filtered.filter((row) => allowed.has(extractChangeFieldKey(row)));
+  } else {
+    const allow = ENTITY_OPERATOR_FIELD_ALLOWLIST[et];
+    if (allow) {
+      filtered = filtered.filter((row) => allow.has(extractChangeFieldKey(row)));
+    } else {
+      filtered = filtered.filter((row) => hasOperatorFieldLabel(extractChangeFieldKey(row), activity));
+    }
   }
+  filtered = filtered.filter((row) => !isEmptyChangeDisplay(row, activity));
   return [...filtered].sort((a, b) => {
     const ka = extractChangeFieldKey(a);
     const kb = extractChangeFieldKey(b);
-    const ia = sortKeyIndex(ka, et);
-    const ib = sortKeyIndex(kb, et);
+    const ia = sortKeyIndexFromApiLabels(ka, activity, et);
+    const ib = sortKeyIndexFromApiLabels(kb, activity, et);
     if (ia !== ib) return ia - ib;
-    return getActivityFieldLabelForOperator(a.path || a.field).localeCompare(
-      getActivityFieldLabelForOperator(b.path || b.field),
+    return getActivityFieldLabelForOperator(a.path || a.field, activity).localeCompare(
+      getActivityFieldLabelForOperator(b.path || b.field, activity),
       'ru'
     );
   });
 }
 
-/** Понятные подписи полей (без сырого API на латинице, где возможно). */
-const OPERATOR_FIELD_LABELS = {
+function sortKeyIndexFromApiLabels(key, activity, entityType) {
+  const apiLabels = getActivityFieldLabels(activity);
+  const keys = Object.keys(apiLabels);
+  if (keys.length > 0) {
+    const i = keys.indexOf(key);
+    if (i !== -1) return i;
+  }
+  return sortKeyIndex(key, entityType);
+}
+
+/** Fallback, если бэк не прислал field_labels (старые записи). */
+const FALLBACK_FIELD_LABELS = {
   name: 'Название',
   title: 'Название',
   first_name: 'Имя',
@@ -315,15 +500,90 @@ const OPERATOR_FIELD_LABELS = {
   sku: 'Артикул',
   barcode: 'Штрихкод',
   quantity: 'Количество',
+  quantity_initial: 'Начальное количество',
+  quantity_remaining: 'Остаток',
   price: 'Цена',
+  unit_price: 'Цена за единицу',
+  total_price: 'Сумма партии',
   amount: 'Сумма',
   unit: 'Единица',
+  material: 'Материал',
+  raw_material: 'Сырьё',
+  received_at: 'Дата прихода',
+  supplier_name: 'Поставщик',
+  supplier_batch_number: 'Номер партии поставщика',
+  min_balance: 'Мин. остаток',
+  note: 'Заметка',
+  body: 'Текст жалобы',
+  mentioned_user: 'Упомянутый сотрудник',
+  mentioned_users: 'Упомянутые сотрудники',
+  is_paid: 'Оплачено',
+  paid_at: 'Дата оплаты',
+  due_date: 'Срок',
+  client: 'Клиент',
+  order_line: 'Позиция заявки',
+  order_lines: 'Позиции заявки',
+  blank: 'Заготовка',
+  profile: 'Профиль',
+  plastic_profile: 'Профиль',
+  recipe: 'Рецепт',
+  line_name: 'Линия',
+  line_label: 'Линия',
+  stock_bucket: 'Тип остатка',
+  payment_method: 'Способ оплаты',
+  payment_type: 'Тип оплаты',
+  sale_status: 'Статус продажи',
+  order_status: 'Статус заявки',
+  defect_type: 'Тип брака',
+  rework_status: 'Статус переделки',
+  result: 'Результат',
+  writeoff_reason: 'Причина списания',
+  package_count: 'Кол-во упаковок',
+  packages_count: 'Кол-во упаковок',
+  weight_kg: 'Вес, кг',
+  length_m: 'Длина, м',
+  pieces: 'Штук',
+  pcs: 'Штук',
+  total_amount: 'Итого',
+  subtotal: 'Подытог',
+  discount_percent: 'Скидка, %',
+  discount_amount: 'Сумма скидки',
+  tax_amount: 'Налог',
+  vat: 'НДС',
+  paid_amount: 'Оплачено',
+  remaining_amount: 'Остаток к оплате',
+  debt: 'Долг',
+  balance: 'Баланс',
+  cost: 'Себестоимость',
+  profit: 'Прибыль',
+  margin: 'Маржа',
+  batch_number: 'Номер партии',
+  document_number: 'Номер документа',
+  invoice_number: 'Номер счёта',
+  receipt_number: 'Номер чека',
+  tracking_number: 'Трек-номер',
+  carrier: 'Перевозчик',
+  delivery_address: 'Адрес доставки',
+  delivery_date: 'Дата доставки',
+  shipped_at: 'Дата отгрузки',
+  completed_at: 'Дата завершения',
+  canceled_at: 'Дата отмены',
+  approved_at: 'Дата согласования',
+  rejected_at: 'Дата отклонения',
+  started_at: 'Начало',
+  finished_at: 'Окончание',
+  duration: 'Длительность',
+  height_mm: 'Высота, мм',
+  width_mm: 'Ширина, мм',
+  angle: 'Угол',
+  session_title: 'Название смены',
+  closing_note: 'Комментарий при закрытии',
+  closing_comment: 'Комментарий при закрытии',
   weight: 'Вес',
   volume: 'Объём',
   height: 'Высота',
   width: 'Ширина',
   angle_deg: 'Угол, °',
-  session_title: 'Название смены',
   opened_at: 'Начало',
   closed_at: 'Окончание',
   line: 'Линия',
@@ -426,15 +686,79 @@ const OPERATOR_FIELD_LABELS = {
   hint: 'Подсказка',
 };
 
+/** Русские подписи из snake_case без англ. Title Case. */
 function humanizeFieldKeyRu(key) {
-  const k = String(key).toLowerCase().replace(/_/g, ' ');
-  return k.replace(/\b\w/g, (c) => c.toUpperCase());
+  const parts = String(key).toLowerCase().split('_').filter(Boolean);
+  const wordMap = {
+    qty: 'кол-во',
+    id: '',
+    at: '',
+    no: 'номер',
+    num: 'номер',
+    initial: 'начальное',
+    remaining: 'остаток',
+    supplier: 'поставщик',
+    batch: 'партия',
+    price: 'цена',
+    total: 'сумма',
+    unit: 'единица',
+    name: 'название',
+    status: 'статус',
+    date: 'дата',
+    time: 'время',
+    user: 'пользователь',
+    client: 'клиент',
+    order: 'заявка',
+    sale: 'продажа',
+    payment: 'оплата',
+    material: 'материал',
+    quantity: 'количество',
+    received: 'поступление',
+    comment: 'комментарий',
+    phone: 'телефон',
+    email: 'почта',
+    address: 'адрес',
+    type: 'тип',
+    count: 'количество',
+    amount: 'сумма',
+    discount: 'скидка',
+    tax: 'налог',
+    line: 'линия',
+    shift: 'смена',
+    note: 'заметка',
+    defect: 'брак',
+    rework: 'переделка',
+    return: 'возврат',
+    warehouse: 'склад',
+    production: 'производство',
+    chemistry: 'химия',
+    recipe: 'рецепт',
+    profile: 'профиль',
+    blank: 'заготовка',
+    package: 'упаковка',
+    height: 'высота',
+    width: 'ширина',
+    angle: 'угол',
+    deg: '°',
+    min: 'мин.',
+    max: 'макс.',
+    active: 'активен',
+    is: '',
+  };
+  const words = parts
+    .map((p) => wordMap[p] ?? p)
+    .filter((w) => w !== '');
+  if (!words.length) return 'Поле';
+  const phrase = words.join(' ');
+  return phrase.charAt(0).toUpperCase() + phrase.slice(1);
 }
 
-export function getActivityFieldLabelForOperator(fieldPath) {
+export function getActivityFieldLabelForOperator(fieldPath, activity = null) {
   const key = extractChangeFieldKey({ path: fieldPath, field: fieldPath });
   if (!key) return fieldPath != null ? String(fieldPath) : '—';
-  if (OPERATOR_FIELD_LABELS[key]) return OPERATOR_FIELD_LABELS[key];
+  const apiLabels = getActivityFieldLabels(activity);
+  if (apiLabels[key]) return apiLabels[key];
+  if (FALLBACK_FIELD_LABELS[key]) return FALLBACK_FIELD_LABELS[key];
   return humanizeFieldKeyRu(key);
 }
 
@@ -470,7 +794,7 @@ function pickUnmaskedFromObject(obj, keys) {
     if (!Object.prototype.hasOwnProperty.call(obj, k)) continue;
     const v = obj[k];
     if (v === undefined || v === null) continue;
-    const formatted = formatAuditValue(v);
+    const formatted = formatAuditValue(v, k);
     if (formatted !== '—' && !isLikelyMaskedDisplay(formatted)) return formatted;
   }
   return null;
@@ -495,7 +819,12 @@ export function formatChangeSideForDisplay(row, side, activity) {
   const displayRaw = row?.[displayKey];
   const displayStr =
     displayRaw != null && displayRaw !== '' ? String(displayRaw).trim() : '';
-  const rawVal = formatAuditValue(row?.[rawKey]);
+  const fieldKey = extractChangeFieldKey(row);
+  const rawVal = formatAuditValue(row?.[rawKey], fieldKey);
+
+  if (displayStr && !isLikelyMaskedDisplay(displayStr)) {
+    return displayStr;
+  }
 
   if (displayStr && isLikelyMaskedDisplay(displayStr)) {
     if (rawVal && rawVal !== '—' && !isLikelyMaskedDisplay(rawVal)) return rawVal;
@@ -503,8 +832,10 @@ export function formatChangeSideForDisplay(row, side, activity) {
     if (fromSnap) return fromSnap;
   }
 
-  if (displayStr) return displayStr;
-  return rawVal;
+  if (rawVal && rawVal !== '—') return rawVal;
+  const fromSnap = valueFromSnapshot(activity, row, isNew);
+  if (fromSnap) return fromSnap;
+  return '—';
 }
 
 export function formatChangeOld(row, activity = null) {
@@ -538,7 +869,8 @@ export function activityShowsDetailInPresentation(a, isAdmin) {
   const visible = getActivityChangesForDisplay(
     getActivityChanges(a),
     a?.entity_type != null ? String(a.entity_type) : '',
-    isAdmin
+    isAdmin,
+    a
   );
   if (visible.length > 0) return true;
   if (isAdmin && activityHasDetail(a)) return true;
@@ -549,14 +881,97 @@ export function fieldTypeLabel(type) {
   return FIELD_TYPE_LABELS[type] || type || '—';
 }
 
-export function formatAuditValue(val) {
+const UNIT_LABELS_RU = {
+  kg: 'кг',
+  g: 'г',
+  l: 'л',
+  ml: 'мл',
+  m: 'м',
+  mm: 'мм',
+  cm: 'см',
+  pcs: 'шт.',
+  pc: 'шт.',
+  piece: 'шт.',
+  pieces: 'шт.',
+  unit: 'ед.',
+};
+
+const ISO_DATE_RE =
+  /^\d{4}-\d{2}-\d{2}(?:[T\s]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?$/;
+
+function formatIsoDateString(s) {
+  try {
+    const d = new Date(s.includes('T') ? s : s.replace(' ', 'T'));
+    if (Number.isNaN(d.getTime())) return s;
+    const hasTime = /[T\s]\d{2}:\d{2}/.test(s);
+    if (hasTime) {
+      return d.toLocaleString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    }
+    return d.toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  } catch {
+    return s;
+  }
+}
+
+function formatNumberForOperator(val) {
+  const n = Number(val);
+  if (!Number.isFinite(n)) return null;
+  if (Number.isInteger(n)) return String(n);
+  const s = n.toFixed(4).replace(/\.?0+$/, '');
+  return s.replace('.', ',');
+}
+
+function formatScalarForOperator(val, fieldKey) {
+  if (val === undefined || val === null || val === '') return '—';
+  if (typeof val === 'boolean') return val ? 'Да' : 'Нет';
+  if (typeof val === 'number') return formatNumberForOperator(val) ?? String(val);
+
+  const str = String(val).trim();
+  if (!str) return '—';
+
+  if (fieldKey === 'unit' || fieldKey === 'unit_of_measure') {
+    const low = str.toLowerCase();
+    if (UNIT_LABELS_RU[low]) return UNIT_LABELS_RU[low];
+  }
+
+  if (ISO_DATE_RE.test(str) || /^\d{4}-\d{2}-\d{2}/.test(str)) {
+    return formatIsoDateString(str);
+  }
+
+  if (/^-?\d+(\.\d+)?$/.test(str)) {
+    const formatted = formatNumberForOperator(str);
+    if (formatted != null) return formatted;
+  }
+
+  if (str.toLowerCase() === 'true') return 'Да';
+  if (str.toLowerCase() === 'false') return 'Нет';
+
+  return str;
+}
+
+export function formatAuditValue(val, fieldKey = '') {
   if (val === undefined || val === null) return '—';
   if (typeof val === 'object') {
+    if (val && typeof val === 'object' && (val.name || val.label || val.title)) {
+      return formatScalarForOperator(val.name || val.label || val.title, fieldKey);
+    }
     try {
-      return JSON.stringify(val, null, 0);
+      const compact = JSON.stringify(val);
+      if (compact.length > 120) return '—';
+      return compact;
     } catch {
-      return String(val);
+      return '—';
     }
   }
-  return String(val);
+  return formatScalarForOperator(val, fieldKey);
 }

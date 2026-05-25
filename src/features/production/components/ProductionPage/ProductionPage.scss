@@ -1,6 +1,17 @@
 @use '../../../../shared/styles/variables' as *;
 @use '../../../../shared/styles/mixins' as *;
 
+.production-line-modal__field {
+  margin-top: var(--space-4);
+}
+
+.production-line-modal__label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--font-sm);
+  font-weight: var(--weight-medium);
+}
+
 .page--production {
   .production-page__date-row {
     margin-bottom: var(--space-3);

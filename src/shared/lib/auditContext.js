@@ -1,7 +1,6 @@
 /**
- * Текущий shift_id для X-Audit-Shift-Id / X-Shift-Id.
- * Бэк: заголовок, если это своя открытая смена; иначе при нескольких открытых — самая поздняя по opened_at (SHIFT_AND_AUDIT §6).
- * При одновременной личной и линейной смене для явной привязки аудита задавайте заголовок с нужным id.
+ * Глобальный id личной открытой смены для X-Audit-Shift-Id / X-Shift-Id.
+ * Живёт между роутами; сброс только при закрытии смены или logout (см. auditShiftSync, AuthProvider).
  */
 let auditShiftId = null;
 
@@ -11,4 +10,8 @@ export function setAuditShiftId(id) {
 
 export function getAuditShiftId() {
   return auditShiftId;
+}
+
+export function hasAuditShiftId() {
+  return auditShiftId != null;
 }

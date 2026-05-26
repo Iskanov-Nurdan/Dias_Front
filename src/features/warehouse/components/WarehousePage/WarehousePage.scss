@@ -1164,3 +1164,706 @@
     color: var(--text);
   }
 }
+
+@media (max-width: 768px) {
+  .page--warehouse {
+    padding-inline: var(--space-3);
+    overflow-x: hidden;
+  }
+
+  .warehouse-gp {
+    gap: var(--space-3);
+    max-width: 100%;
+    overflow-x: hidden;
+    padding-bottom: var(--space-3);
+
+    &__main-tabs {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: var(--space-2);
+      margin: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+
+      &::-webkit-scrollbar {
+        display: none;
+      }
+    }
+
+    &__main-tabs .production-main-tabs__btn {
+      flex: 0 0 auto;
+      min-width: max-content;
+      max-width: none;
+      min-height: 42px;
+      padding: 0 var(--space-3);
+      overflow: visible;
+      text-overflow: clip;
+      white-space: nowrap;
+    }
+
+    &__main-tabs.production-main-tabs {
+      display: flex;
+      flex-wrap: nowrap;
+      justify-content: flex-start;
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-padding-inline: var(--space-3);
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    &__main-tabs.production-main-tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    &__main-tabs.production-main-tabs .production-main-tabs__btn {
+      flex: 0 0 auto;
+      width: auto;
+      min-width: max-content;
+      max-width: none;
+    }
+
+    &__toolbar {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-2);
+      margin-bottom: 0;
+    }
+
+    &__search-input {
+      flex: 0 0 44px;
+      width: 100%;
+      max-width: none;
+      height: 44px;
+      min-height: 44px;
+      max-height: 48px;
+      box-sizing: border-box;
+      resize: none;
+      white-space: nowrap;
+      overflow: hidden;
+      line-height: 1.2;
+    }
+
+    &__date-filter,
+    .commercial-date-filter {
+      flex: 0 0 auto;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-1);
+    }
+
+    .commercial-date-filter__label {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: var(--font-caption);
+    }
+
+    .commercial-date-filter input[type='date'] {
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+      min-height: 44px;
+      height: 44px;
+      box-sizing: border-box;
+    }
+
+    &__toolbar-end {
+      flex: 0 0 auto;
+      width: 100%;
+      margin-left: 0;
+      justify-content: flex-start;
+      gap: var(--space-2);
+    }
+
+    &__toolbar-end .btn {
+      min-height: 40px;
+    }
+
+    &__toolbar-count {
+      display: block;
+      width: 100%;
+      color: var(--text-secondary);
+      white-space: normal;
+    }
+
+    &__block {
+      gap: var(--space-3);
+    }
+
+    &__title {
+      font-size: var(--font-body);
+      line-height: var(--leading-tight);
+    }
+
+    &__table-wrap--scroll,
+    &__table-wrap {
+      max-height: none;
+      overflow: visible;
+      border: none;
+      border-radius: 0;
+    }
+
+    .commercial-table-wrap {
+      max-width: 100%;
+      overflow: visible;
+    }
+
+    .data-table--warehouse-gp-compact {
+      display: block;
+      min-width: 0;
+      width: 100%;
+      border-collapse: separate;
+
+      thead {
+        display: none;
+      }
+
+      tbody {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+      }
+
+      tr {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--space-3);
+        height: auto;
+        min-height: 0;
+        padding: var(--space-3);
+        border: 1px solid var(--card-border);
+        border-radius: var(--radius-lg);
+        background: var(--card);
+        overflow: visible;
+      }
+
+      td {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 3px;
+        width: 100%;
+        padding: 0;
+        border: none;
+        min-width: 0;
+        text-align: left;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        color: var(--text);
+        font-size: var(--font-sm);
+        font-weight: var(--weight-medium);
+        line-height: var(--leading-tight);
+        overflow: visible;
+
+        &::before {
+          content: '';
+          color: var(--text-secondary);
+          font-size: var(--font-caption);
+          font-weight: var(--weight-medium);
+          line-height: 1.2;
+        }
+      }
+
+      .data-table__cell--num,
+      .data-table__cell--muted {
+        text-align: left;
+        color: var(--text);
+      }
+    }
+
+    &--pending .data-table--warehouse-gp-compact td:nth-child(1)::before {
+      content: 'Товар';
+    }
+
+    &--pending .data-table--warehouse-gp-compact td:nth-child(2)::before {
+      content: 'Заготовка';
+    }
+
+    &--unpacked .data-table--warehouse-gp-compact td:nth-child(1)::before {
+      content: 'Товар';
+    }
+
+    &--unpacked .data-table--warehouse-gp-compact td:nth-child(2)::before {
+      content: 'Заготовка';
+    }
+
+    &--unpacked .data-table--warehouse-gp-compact td:nth-child(3)::before {
+      content: 'Шт';
+    }
+
+    &--unpacked .data-table--warehouse-gp-compact td:nth-child(4)::before {
+      content: 'Вес';
+    }
+
+    &--unpacked .data-table--warehouse-gp-compact td:nth-child(5)::before {
+      content: 'Строк';
+    }
+
+    &--packed .data-table--warehouse-gp-compact td:nth-child(1)::before {
+      content: 'Товар';
+    }
+
+    &--packed .data-table--warehouse-gp-compact td:nth-child(2)::before {
+      content: 'Заготовка';
+    }
+
+    &--packed .data-table--warehouse-gp-compact td:nth-child(3)::before {
+      content: 'Упаковок';
+    }
+
+    &--packed .data-table--warehouse-gp-compact td:nth-child(4)::before {
+      content: 'Вес';
+    }
+
+    &--packed .data-table--warehouse-gp-compact td:nth-child(5)::before {
+      content: 'Строк';
+    }
+
+    &--history .data-table--warehouse-gp-compact td:nth-child(1)::before {
+      content: 'Дата';
+    }
+
+    &--history .data-table--warehouse-gp-compact td:nth-child(2)::before {
+      content: 'Тип';
+    }
+
+    &--history .data-table--warehouse-gp-compact td:nth-child(3)::before {
+      content: 'Товар';
+    }
+
+    &--history .data-table--warehouse-gp-compact td:nth-child(4)::before {
+      content: 'Заготовка';
+    }
+
+    &--history .data-table--warehouse-gp-compact td:nth-child(5)::before {
+      content: 'Источник';
+    }
+
+    &--history .data-table--warehouse-gp-compact td:nth-child(6)::before {
+      content: 'Документ';
+    }
+
+    &--history .data-table--warehouse-gp-compact td:nth-child(7)::before {
+      content: 'Количество';
+    }
+
+    &--history .data-table--warehouse-gp-compact td:nth-child(8)::before {
+      content: 'Вес';
+    }
+
+    &__actions {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-2);
+      width: 100%;
+      padding-top: var(--space-1);
+      border-top: 1px solid var(--border-subtle);
+      white-space: normal;
+    }
+
+    &__actions::before {
+      display: none;
+    }
+
+    &__actions .btn {
+      width: 100%;
+      min-height: 44px;
+      justify-content: center;
+    }
+
+    &--pending .warehouse-gp__actions,
+    &--unpacked .warehouse-gp__actions {
+      @media (min-width: 390px) {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  }
+
+  .warehouse-gp-group-modal,
+  .warehouse-gp-pack-modal,
+  .warehouse-gp-detail-modal,
+  .warehouse-gp-accept-modal {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .warehouse-gp-group-modal .modal__head,
+  .warehouse-gp-pack-modal .modal__head,
+  .warehouse-gp-detail-modal .modal__head,
+  .warehouse-gp-accept-modal .modal__head {
+    flex-shrink: 0;
+    padding: var(--space-3);
+  }
+
+  .warehouse-gp-group-modal .modal__head h3,
+  .warehouse-gp-pack-modal .modal__head h3,
+  .warehouse-gp-detail-modal .modal__head h3,
+  .warehouse-gp-accept-modal .modal__head h3 {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .warehouse-gp-group-modal .modal__body,
+  .warehouse-gp-pack-modal .modal__body,
+  .warehouse-gp-detail-modal .modal__body,
+  .warehouse-gp-accept-modal .modal__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0 var(--space-3) var(--space-3);
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .warehouse-gp-group-modal .modal__actions,
+  .warehouse-gp-pack-modal .modal__actions,
+  .warehouse-gp-detail-modal .modal__actions,
+  .warehouse-gp-accept-modal .modal__actions {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-3);
+    border-top: 1px solid var(--border-subtle);
+    background: var(--card);
+  }
+
+  .warehouse-gp-group-modal .modal__actions .btn,
+  .warehouse-gp-pack-modal .modal__actions .btn,
+  .warehouse-gp-detail-modal .modal__actions .btn,
+  .warehouse-gp-accept-modal .modal__actions .btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .warehouse-gp-detail-modal__body {
+    gap: var(--space-3);
+  }
+
+  .warehouse-gp-detail-modal__row {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 0;
+    border-bottom: none;
+  }
+
+  .warehouse-gp-detail-modal__k {
+    color: var(--text-secondary);
+    font-size: var(--font-caption);
+  }
+
+  .warehouse-gp-detail-modal__v {
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+
+  .warehouse-gp-group-modal__summary {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+    margin: 0 0 var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    background: var(--bg-hover);
+  }
+
+  .warehouse-gp-group-modal__summary-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .warehouse-gp-group-modal__summary-label {
+    color: var(--text-secondary);
+    font-size: var(--font-caption);
+    font-weight: var(--weight-medium);
+    line-height: 1.2;
+  }
+
+  .warehouse-gp-group-modal__summary-value {
+    max-width: 100%;
+    color: var(--text);
+    font-size: var(--font-sm);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+    overflow-wrap: anywhere;
+    text-align: left;
+  }
+
+  .warehouse-gp-group-modal__filter-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .warehouse-gp-group-modal__filter-input,
+  .warehouse-gp-group-modal__filter-row .btn {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: none;
+    height: 44px;
+    min-height: 44px;
+  }
+
+  .warehouse-gp-group-modal__table-wrap,
+  .warehouse-gp-group-modal__table-wrap--scroll {
+    max-height: none;
+    overflow: visible;
+    border: none;
+    border-radius: 0;
+  }
+
+  .warehouse-gp-group-modal__table {
+    display: block;
+    width: 100%;
+
+    thead {
+      display: none;
+    }
+
+    tbody {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+
+    tr {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-3);
+      height: auto;
+      min-height: 0;
+      padding: var(--space-3);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      background: var(--card);
+      overflow: visible;
+    }
+
+    td {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 3px;
+      padding: 0;
+      border: none;
+      text-align: left;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      color: var(--text);
+      font-weight: var(--weight-medium);
+      overflow: visible;
+
+      &::before {
+        color: var(--text-secondary);
+        font-size: var(--font-caption);
+        font-weight: var(--weight-medium);
+        line-height: 1.2;
+      }
+    }
+
+    .data-table__cell--num,
+    .data-table__cell--muted {
+      text-align: left;
+      color: var(--text);
+    }
+  }
+
+  .warehouse-gp-group-modal--packages .warehouse-gp-group-modal__table td:nth-child(1)::before {
+    content: 'Дата';
+  }
+
+  .warehouse-gp-group-modal--packages .warehouse-gp-group-modal__table td:nth-child(2)::before {
+    content: 'Тип';
+  }
+
+  .warehouse-gp-group-modal--packages .warehouse-gp-group-modal__table td:nth-child(3)::before {
+    content: 'Метка';
+  }
+
+  .warehouse-gp-group-modal--packages .warehouse-gp-group-modal__table td:nth-child(4)::before {
+    content: 'Кол-во';
+  }
+
+  .warehouse-gp-group-modal--packages .warehouse-gp-group-modal__table td:nth-child(5)::before {
+    content: 'Вес';
+  }
+
+  .warehouse-gp-group-modal--unpacked:not(.warehouse-gp-group-modal--packages) .warehouse-gp-group-modal__table td:nth-child(1)::before {
+    content: 'Дата';
+  }
+
+  .warehouse-gp-group-modal--unpacked:not(.warehouse-gp-group-modal--packages) .warehouse-gp-group-modal__table td:nth-child(2)::before {
+    content: 'Принято';
+  }
+
+  .warehouse-gp-group-modal--unpacked:not(.warehouse-gp-group-modal--packages) .warehouse-gp-group-modal__table td:nth-child(3)::before {
+    content: 'Остаток';
+  }
+
+  .warehouse-gp-group-modal--unpacked:not(.warehouse-gp-group-modal--packages) .warehouse-gp-group-modal__table td:nth-child(4)::before {
+    content: 'Вес';
+  }
+
+  .warehouse-gp-group-modal--unpacked:not(.warehouse-gp-group-modal--packages) .warehouse-gp-group-modal__table td:nth-child(5)::before {
+    display: none;
+  }
+
+  .warehouse-gp-group-modal--packed:not(.warehouse-gp-group-modal--packages) .warehouse-gp-group-modal__table td:nth-child(1)::before {
+    content: 'Дата';
+  }
+
+  .warehouse-gp-group-modal--packed:not(.warehouse-gp-group-modal--packages) .warehouse-gp-group-modal__table td:nth-child(2)::before {
+    content: 'Кол-во';
+  }
+
+  .warehouse-gp-group-modal--packed:not(.warehouse-gp-group-modal--packages) .warehouse-gp-group-modal__table td:nth-child(3)::before {
+    content: 'Вес';
+  }
+
+  .warehouse-gp-group-modal--packed:not(.warehouse-gp-group-modal--packages) .warehouse-gp-group-modal__table td:nth-child(4)::before {
+    display: none;
+  }
+
+  .warehouse-gp-group-modal--accepted:not(.warehouse-gp-group-modal--packages) .warehouse-gp-group-modal__table td:nth-child(1)::before {
+    content: 'Дата';
+  }
+
+  .warehouse-gp-group-modal--accepted:not(.warehouse-gp-group-modal--packages) .warehouse-gp-group-modal__table td:nth-child(2)::before {
+    content: 'Шт';
+  }
+
+  .warehouse-gp-group-modal--accepted:not(.warehouse-gp-group-modal--packages) .warehouse-gp-group-modal__table td:nth-child(3)::before {
+    content: 'Вес';
+  }
+
+  .warehouse-gp-group-modal--accepted:not(.warehouse-gp-group-modal--packages) .warehouse-gp-group-modal__table td:nth-child(4)::before {
+    display: none;
+  }
+
+  .warehouse-gp-group-modal__table .warehouse-gp__actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+    width: 100%;
+    padding-top: var(--space-1);
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .warehouse-gp-group-modal__table .warehouse-gp__actions::before {
+    display: none;
+  }
+
+  .warehouse-gp-group-modal__table .warehouse-gp__actions .btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .warehouse-gp-pack-modal .chemistry-element-form {
+    gap: var(--space-3);
+  }
+
+  .warehouse-gp-pack-modal input,
+  .warehouse-gp-pack-modal .dias-select,
+  .warehouse-gp-pack-modal .searchable-select,
+  .warehouse-gp-accept-modal input {
+    width: 100%;
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+
+  .warehouse-gp-pack-modal__lede {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+    margin-bottom: 0;
+    padding: var(--space-3);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    background: var(--bg-hover);
+  }
+
+  .warehouse-gp-pack-modal__lede-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .warehouse-gp-pack-modal__lede-label {
+    color: var(--text-secondary);
+    font-size: var(--font-caption);
+    font-weight: var(--weight-medium);
+    line-height: 1.2;
+  }
+
+  .warehouse-gp-pack-modal__lede-value {
+    max-width: 100%;
+    color: var(--text);
+    font-size: var(--font-sm);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+    overflow-wrap: anywhere;
+  }
+
+  .warehouse-gp-pack-modal__fieldset {
+    margin-bottom: 0;
+  }
+
+  .warehouse-gp-pack-modal__modes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .warehouse-gp-pack-modal__grid2,
+  .warehouse-gp-pack-modal__custom-row {
+    grid-template-columns: 1fr;
+  }
+
+  .warehouse-gp-pack-modal__custom-subtotal,
+  .warehouse-gp-pack-modal__row-remove {
+    grid-column: auto;
+    justify-self: stretch;
+    text-align: left;
+  }
+
+  .warehouse-gp-pack-modal__row-remove {
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .warehouse-gp-accept-modal__pieces-input {
+    max-width: none;
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .warehouse-gp-accept-modal__preview {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+    margin-top: var(--space-2);
+    padding: var(--space-3);
+  }
+}

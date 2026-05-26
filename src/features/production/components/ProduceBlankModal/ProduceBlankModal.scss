@@ -59,6 +59,103 @@
   }
 }
 
+@media (max-width: 768px) {
+  .produce-blank-modal__shell {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+
+  .produce-blank-modal {
+    width: 100%;
+    max-width: 100%;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    .modal__head {
+      flex-shrink: 0;
+      padding: var(--space-3);
+    }
+
+    .modal__head h3 {
+      min-width: 0;
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .modal__close {
+      flex: 0 0 auto;
+    }
+
+    .modal__body {
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: var(--space-3);
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    .chemistry-element-form {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .chemistry-element-form label {
+      margin: var(--space-1) 0 0;
+      color: var(--text-secondary);
+      font-size: var(--font-caption);
+      font-weight: var(--weight-medium);
+    }
+
+    .dias-select,
+    input,
+    select {
+      width: 100%;
+      min-height: 44px;
+      height: 44px;
+      box-sizing: border-box;
+    }
+
+    &__warn,
+    &__hint-cap,
+    &__product-hint,
+    .produce-side-panel__weight-hint {
+      margin: 0;
+      padding: var(--space-2);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--card) 88%, var(--bg));
+      line-height: 1.4;
+    }
+
+    &__warn {
+      color: var(--warning);
+      background: color-mix(in srgb, var(--warning) 8%, var(--card));
+      border-color: color-mix(in srgb, var(--warning) 30%, var(--border-subtle));
+    }
+
+    .modal__actions {
+      display: flex;
+      flex-direction: column-reverse;
+      gap: var(--space-2);
+      width: 100%;
+      margin-top: var(--space-3);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .modal__actions .btn {
+      width: 100%;
+      min-height: 44px;
+    }
+  }
+}
+
 .produce-side-panel {
   flex: 1 1 18rem;
   max-width: 100%;

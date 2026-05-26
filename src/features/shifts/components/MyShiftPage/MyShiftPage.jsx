@@ -360,13 +360,6 @@ const MyShiftPage = () => {
           <p className="my-shift__date">{today}</p>
         </div>
         <div className="my-shift__header-right">
-          <button
-            type="button"
-            className="btn btn--secondary btn--sm my-shift__complaint-header-btn"
-            onClick={() => setComplaintModalOpen(true)}
-          >
-            Добавить жалобу
-          </button>
           <div className={`my-shift__status-badge my-shift__status-badge--${isOpen ? 'open' : 'closed'}`}>
             <span className="my-shift__status-dot" />
             {isOpen ? 'Смена открыта' : 'Смена закрыта'}
@@ -640,7 +633,10 @@ const MyShiftPage = () => {
       )}
 
       {activeTab === 'complaints' && (
-        <ComplaintsInbox reloadToken={complaintsReloadToken} />
+        <ComplaintsInbox
+          reloadToken={complaintsReloadToken}
+          onAddComplaint={() => setComplaintModalOpen(true)}
+        />
       )}
 
       <ShiftActivityListModal

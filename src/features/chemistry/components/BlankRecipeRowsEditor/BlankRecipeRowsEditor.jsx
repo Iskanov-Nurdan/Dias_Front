@@ -29,12 +29,14 @@ const BlankRecipeRowsEditor = ({ recipeRows, setRecipeRows, errorText, materialO
       </div>
       {recipeRows.map((row) => (
         <div key={row.key} className="chemistry-recipe-grid chemistry-recipe-grid--row">
+          <span className="chemistry-recipe-grid__mobile-label">Сырьё</span>
           <Select
             value={row.raw_material_id === '' ? '' : String(row.raw_material_id)}
             onChange={(v) => setRow(row.key, 'raw_material_id', v)}
             placeholder="Выберите сырьё"
             options={materialOptions}
           />
+          <span className="chemistry-recipe-grid__mobile-label">Вес, кг</span>
           <DecimalInput
             className="chemistry-recipe-grid__kg-input"
             min={0}

@@ -197,6 +197,7 @@ const ProfileRow = ({ profile, onSaved }) => {
 
   return (
     <div className="chemistry-table__row chemistry-table__row--plastic-profile-edit">
+      <div className="chemistry-plastic-profiles__cell-name">
       <input
         className="chemistry-plastic-profiles__name"
         value={name}
@@ -204,6 +205,7 @@ const ProfileRow = ({ profile, onSaved }) => {
         autoComplete="off"
         aria-label="Имя товара"
       />
+      </div>
       <div className="chemistry-plastic-profiles__cell-num">
         <DecimalInput min={0} value={kgStr} onChange={setKgStr} placeholder="0" />
       </div>

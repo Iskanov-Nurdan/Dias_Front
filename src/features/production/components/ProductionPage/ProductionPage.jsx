@@ -407,8 +407,8 @@ const producedDefectLabel = (run) => {
 };
 
 const PRODUCED_COLUMNS = [
-  { key: 'product', label: 'Изделие', width: '1.4fr' },
-  { key: 'defect', label: 'Брак', width: '0.65fr', className: 'compact-list__cell--num' },
+  { key: 'product', label: 'Товар', width: '1.4fr' },
+  { key: 'defect', label: 'Вес', width: '0.65fr', className: 'compact-list__cell--num' },
   { key: 'date', label: 'Дата', width: '0.85fr' },
 ];
 
@@ -522,7 +522,7 @@ const ProductionPage = () => {
           id="production-page-date-filter"
         />
       </div>
-      <div className="production-card production-card--client-requests">
+      <div className={`production-card production-card--client-requests production-card--${isRequests ? 'requests' : 'produced'}`}>
         {isRequests ? (
           <div className="production-card__head ds-toolbar ds-toolbar--in-card">
             <div className="ds-toolbar__start" />

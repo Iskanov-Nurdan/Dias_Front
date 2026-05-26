@@ -19,6 +19,18 @@ export const buildPreparedBreakdown = (blank, preparedRow) => {
   };
 };
 
+const formatWorkshopNumber = (value) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return formatNumberForInput(value);
+  const rounded = Math.round((n + Number.EPSILON) * 100) / 100;
+  return formatNumberForInput(rounded);
+};
+
+const formatWorkshopKg = (value) => {
+  if (value == null || !Number.isFinite(Number(value))) return '—';
+  return `${formatWorkshopNumber(value)} кг`;
+};
+
 const EmployeeBlankDetailContent = ({ blank, preparedRow, materialNameById, variant = 'modal' }) => {
   if (!blank) return null;
 
@@ -28,10 +40,7 @@ const EmployeeBlankDetailContent = ({ blank, preparedRow, materialNameById, vari
   const composition = Array.isArray(blank.composition) ? blank.composition : [];
   const sumKg = sumCompositionKg(composition);
 
-  const fmtKgOpt = (v) => {
-    if (v == null || !Number.isFinite(Number(v))) return '—';
-    return `${formatNumberForInput(Number(v))} кг`;
-  };
+  const fmtKgOpt = (v) => formatWorkshopKg(v);
 
   const m = breakdown.fromMachineRemainderKg;
   const b = breakdown.fromDefectKg;
@@ -55,27 +64,27 @@ const EmployeeBlankDetailContent = ({ blank, preparedRow, materialNameById, vari
             <div className="employee-prepare-stock-metric employee-prepare-stock-metric--primary">
               <span className="employee-prepare-stock-metric__label">Всего заготовки</span>
               <span className="employee-prepare-stock-metric__value">
-                {formatNumberForInput(breakdown.totalKg)}
+                {formatWorkshopNumber(breakdown.totalKg)}
                 <span className="employee-prepare-stock-metric__unit">кг</span>
               </span>
             </div>
             <div className="employee-prepare-stock-metric">
               <span className="employee-prepare-stock-metric__label">1 бочка</span>
               <span className="employee-prepare-stock-metric__value">
-                {formatNumberForInput(breakdown.recipeKgPerBarrel || recipeKg)}
+                {formatWorkshopNumber(breakdown.recipeKgPerBarrel || recipeKg)}
                 <span className="employee-prepare-stock-metric__unit">кг</span>
               </span>
             </div>
             <div className="employee-prepare-stock-metric">
               <span className="employee-prepare-stock-metric__label">Бочек</span>
               <span className="employee-prepare-stock-metric__value">
-                {formatNumberForInput(breakdown.barrels)}
+                {formatWorkshopNumber(breakdown.barrels)}
               </span>
             </div>
             <div className="employee-prepare-stock-metric">
               <span className="employee-prepare-stock-metric__label">Доп. кг</span>
               <span className="employee-prepare-stock-metric__value">
-                {formatNumberForInput(breakdown.extraKg)}
+                {formatWorkshopNumber(breakdown.extraKg)}
                 <span className="employee-prepare-stock-metric__unit">кг</span>
               </span>
             </div>
@@ -95,7 +104,7 @@ const EmployeeBlankDetailContent = ({ blank, preparedRow, materialNameById, vari
               <div className="employee-prepare-stock-metric employee-prepare-stock-metric--muted">
                 <span className="employee-prepare-stock-metric__label">Сумма частей</span>
                 <span className="employee-prepare-stock-metric__value">
-                  {formatNumberForInput(sumParts)}
+                  {formatWorkshopNumber(sumParts)}
                   <span className="employee-prepare-stock-metric__unit">кг</span>
                 </span>
               </div>
@@ -130,7 +139,7 @@ const EmployeeBlankDetailContent = ({ blank, preparedRow, materialNameById, vari
                     className="employee-prepare-recipe-grid employee-prepare-recipe-grid--row"
                   >
                     <span>{lab}</span>
-                    <span className="employee-prepare-recipe-grid__num">{formatNumberForInput(q)} кг</span>
+                    <span className="employee-prepare-recipe-grid__num">{formatWorkshopKg(q)}</span>
                   </div>
                 );
               })

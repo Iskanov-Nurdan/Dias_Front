@@ -277,7 +277,7 @@ const UsersPage = () => {
                     }}
                   >
                     <td className="data-table__cell--lead">{r.name}</td>
-                    <td>
+                    <td className="users-page__role-actions">
                       {!locked && (
                       <ActionMenu
                         ariaLabel="Действия"
@@ -347,17 +347,17 @@ const UsersPage = () => {
                         {u.is_active === false ? 'Выкл' : 'Активен'}
                       </span>
                     </td>
-                    <td>
-                      <ActionMenu
-                        ariaLabel="Действия"
-                        items={[
-                          { label: 'Открыть', onClick: () => setUserDetail(u) },
-                          { label: 'Редактировать', onClick: () => setUserModal(u) },
-                          { label: 'Доступы к разделам', onClick: () => setAccessModal(u) },
-                          { label: 'Отчёт', onClick: () => setReportModal(u) },
-                          { label: 'Удалить', danger: true, onClick: () => setDeleteTarget({ type: 'user', id: u.id, name: u.name }) },
-                        ]}
-                      />
+                    <td className="users-page__employee-actions">
+                      <button
+                        type="button"
+                        className="btn btn--secondary users-page__details-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setUserDetail(u);
+                        }}
+                      >
+                        Подробнее
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -393,6 +393,10 @@ const UsersPage = () => {
           onReport={(u) => {
             setUserDetail(null);
             setReportModal(u);
+          }}
+          onDelete={(u) => {
+            setUserDetail(null);
+            setDeleteTarget({ type: 'user', id: u.id, name: u.name });
           }}
         />
       )}
@@ -457,22 +461,32 @@ const UsersPage = () => {
   );
 };
 
-const UserDetailModal = ({ user, roleName, onClose, onEdit, onAccess, onReport }) => (
+const UserDetailModal = ({ user, roleName, onClose, onEdit, onAccess, onReport, onDelete }) => (
   <div className="modal-overlay" onClick={onClose}>
-    <div className="modal" onClick={(e) => e.stopPropagation()}>
+    <div className="modal users-page__detail-modal" onClick={(e) => e.stopPropagation()}>
       <div className="modal__head">
         <h3>Карточка сотрудника</h3>
         <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
       </div>
-      <div style={{ padding: '1.5rem' }}>
-        <p><strong>Имя:</strong> {user?.name || '—'}</p>
-        <p><strong>Роль:</strong> {roleName}</p>
-        <p><strong>Статус:</strong> {user?.is_active === false ? 'Неактивен' : 'Активен'}</p>
+      <div className="users-page__detail-body">
+        <div className="users-page__detail-row">
+          <span>Имя:</span>
+          <strong>{user?.name || '—'}</strong>
+        </div>
+        <div className="users-page__detail-row">
+          <span>Роль:</span>
+          <strong>{roleName}</strong>
+        </div>
+        <div className="users-page__detail-row">
+          <span>Статус:</span>
+          <strong>{user?.is_active === false ? 'Неактивен' : 'Активен'}</strong>
+        </div>
       </div>
-      <div className="modal__actions">
-        <button type="button" className="btn btn--secondary" onClick={() => onAccess(user)}>Доступы</button>
-        <button type="button" className="btn btn--secondary" onClick={() => onReport(user)}>Отчёт</button>
+      <div className="modal__actions users-page__detail-actions">
         <button type="button" className="btn btn--primary" onClick={() => onEdit(user)}>Редактировать</button>
+        <button type="button" className="btn btn--secondary" onClick={() => onReport(user)}>Отчёт</button>
+        <button type="button" className="btn btn--secondary" onClick={() => onAccess(user)}>Доступы</button>
+        <button type="button" className="btn btn--danger users-page__detail-danger" onClick={() => onDelete(user)}>Удалить</button>
       </div>
     </div>
   </div>
@@ -736,12 +750,13 @@ const UserFormModal = ({ user, roles, onSubmit, onClose, error }) => {
         onConfirm={confirmDiscardAndClose}
         onCancel={cancelDiscard}
       />
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal users-page__form-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
           <h3>{user ? 'Редактировать сотрудника' : 'Добавить сотрудника'}</h3>
           <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
         <form
+          className="users-page__form"
           onSubmit={(e) => {
             e.preventDefault();
             if (!role) return;
@@ -1129,12 +1144,13 @@ const RoleFormModal = ({ role, onSubmit, onClose, error }) => {
         onConfirm={confirmDiscardAndClose}
         onCancel={cancelDiscard}
       />
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal users-page__form-modal users-page__form-modal--role" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
           <h3>{role ? 'Редактировать роль' : 'Создать роль'}</h3>
           <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
         <form
+          className="users-page__form"
           onSubmit={(e) => {
             e.preventDefault();
             onSubmit({ name });

@@ -50,7 +50,7 @@ const shiftContextLine = (c) => {
   return null;
 };
 
-const ComplaintsInbox = ({ className = '', reloadToken = 0 }) => {
+const ComplaintsInbox = ({ className = '', reloadToken = 0, onAddComplaint }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
@@ -78,9 +78,16 @@ const ComplaintsInbox = ({ className = '', reloadToken = 0 }) => {
     <div className={`complaints-inbox ${className}`.trim()}>
       <div className="complaints-inbox__top">
         <h2 className="complaints-inbox__title">Жалобы</h2>
-        <button type="button" className="btn btn--secondary btn--sm" onClick={load} disabled={loading}>
-          {loading ? 'Обновление…' : 'Обновить'}
-        </button>
+        <div className="complaints-inbox__actions">
+          <button type="button" className="btn btn--secondary btn--sm" onClick={load} disabled={loading}>
+            {loading ? 'Обновление…' : 'Обновить'}
+          </button>
+          {onAddComplaint ? (
+            <button type="button" className="btn btn--primary btn--sm" onClick={onAddComplaint}>
+              Добавить жалобу
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {forbidden ? (

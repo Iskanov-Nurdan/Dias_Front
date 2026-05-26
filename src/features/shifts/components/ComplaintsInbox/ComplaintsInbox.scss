@@ -10,6 +10,20 @@
     margin-bottom: var(--space-4);
   }
 
+  &__actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+
+    .btn {
+      min-height: 40px;
+      height: 40px;
+      justify-content: center;
+    }
+  }
+
   &__title {
     margin: 0;
     font-size: var(--font-lg);
@@ -85,5 +99,68 @@
     margin: var(--space-2) 0 0;
     font-size: var(--font-caption);
     color: var(--text-muted);
+  }
+}
+
+@media (max-width: 768px) {
+  .complaints-inbox {
+    &__top {
+      align-items: stretch;
+      gap: var(--space-2);
+      margin-bottom: var(--space-3);
+    }
+
+    &__title {
+      flex: 1 1 100%;
+      font-size: var(--font-base);
+    }
+
+    &__actions {
+      width: 100%;
+      justify-content: stretch;
+
+      .btn {
+        flex: 1 1 0;
+        min-width: 0;
+      }
+    }
+
+    &__list {
+      gap: var(--space-2);
+    }
+
+    &__item {
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
+    }
+
+    &__meta {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 4px;
+      margin-bottom: var(--space-2);
+      line-height: 1.35;
+    }
+
+    &__text {
+      font-size: var(--font-label);
+      line-height: 1.45;
+    }
+
+    &__loading,
+    &__empty {
+      padding: var(--space-8) var(--space-4);
+    }
+  }
+}
+
+@media (max-width: 389px) {
+  .complaints-inbox__actions {
+    flex-direction: column;
+
+    .btn {
+      width: 100%;
+      flex: 1 1 auto;
+    }
   }
 }

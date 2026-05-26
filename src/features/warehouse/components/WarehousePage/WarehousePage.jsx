@@ -567,16 +567,20 @@ const WarehouseGpAcceptedGroupModal = ({ group, listVariant = 'accepted', onClos
 
   if (!group) return null;
 
-  const acceptedTotalPieces = (group.runs || []).reduce((s, r) => s + gpPiecesNum(r), 0);
   const isPackedFromPackages = isPacked && group.source === 'packages' && (group.packages || []).length > 0;
   const allPackages = group.packages || [];
   const showDetailFilter =
     isPackedFromPackages ? allPackages.length > 0 : displayRuns.length > 0;
+  const detailRowsCount = isPackedFromPackages
+    ? allPackages.length
+    : isUnpacked || isPacked
+      ? displayRuns.length
+      : group.runs.length;
 
   return (
     <div className="modal-overlay" onClick={onClose} role="presentation">
       <div
-        className={`modal modal--wide warehouse-gp-group-modal${
+        className={`modal modal--wide warehouse-gp-group-modal warehouse-gp-group-modal--${listVariant}${
           isPackedFromPackages ? ' warehouse-gp-group-modal--packages' : ''
         }`}
         onClick={(ev) => ev.stopPropagation()}
@@ -592,39 +596,34 @@ const WarehouseGpAcceptedGroupModal = ({ group, listVariant = 'accepted', onClos
           </button>
         </div>
         <div className="modal__body warehouse-gp-group-modal__body">
-          <p className="warehouse-gp-group-modal__summary">
-            <strong>{group.blankName || '—'}</strong>
-            {isUnpacked && (
-              <>
-                {' · '}
-                неупаковано <strong>{formatNumberForInput(group.totalPieces)} шт</strong>,{' '}
-                <strong>{formatNumberForInput(group.totalKg)} кг</strong> · строк: {displayRuns.length}
-                <span className="warehouse-gp-group-modal__subline">
-                  Принято всего: {formatNumberForInput(acceptedTotalPieces)} шт
-                </span>
-              </>
-            )}
-            {isPacked && (
-              <>
-                {' · '}
-                упаковано <strong>{formatNumberForInput(group.totalPieces)} шт</strong>,{' '}
-                <strong>{formatNumberForInput(group.totalKg)} кг</strong>
-                {isPackedFromPackages ? (
-                  <> · упаковок: {group.packages.length}</>
-                ) : (
-                  <> · приёмок (строк): {displayRuns.length}</>
-                )}
-              </>
-            )}
-            {!isUnpacked && !isPacked && (
-              <>
-                {' · '}
-                всего <strong>{formatNumberForInput(group.totalPieces)} шт</strong>,{' '}
-                <strong>{formatNumberForInput(group.totalKg)} кг</strong> на склад · строк:{' '}
-                {group.runs.length}
-              </>
-            )}
-          </p>
+          <div className="warehouse-gp-group-modal__summary" aria-label="Сводка">
+            <div className="warehouse-gp-group-modal__summary-item">
+              <span className="warehouse-gp-group-modal__summary-label">Заготовка</span>
+              <strong className="warehouse-gp-group-modal__summary-value">{group.blankName || '—'}</strong>
+            </div>
+            <div className="warehouse-gp-group-modal__summary-item">
+              <span className="warehouse-gp-group-modal__summary-label">Статус</span>
+              <span className="warehouse-gp-group-modal__summary-value">
+                {isUnpacked ? 'Не упаковано' : isPacked ? 'Упаковано' : 'К приёмке'}
+              </span>
+            </div>
+            <div className="warehouse-gp-group-modal__summary-item">
+              <span className="warehouse-gp-group-modal__summary-label">{isPacked ? 'Упаковок' : 'Шт'}</span>
+              <span className="warehouse-gp-group-modal__summary-value">
+                {formatNumberForInput(group.totalPieces)}
+              </span>
+            </div>
+            <div className="warehouse-gp-group-modal__summary-item">
+              <span className="warehouse-gp-group-modal__summary-label">Вес</span>
+              <span className="warehouse-gp-group-modal__summary-value">
+                {formatNumberForInput(group.totalKg)} кг
+              </span>
+            </div>
+            <div className="warehouse-gp-group-modal__summary-item">
+              <span className="warehouse-gp-group-modal__summary-label">Строк</span>
+              <span className="warehouse-gp-group-modal__summary-value">{detailRowsCount}</span>
+            </div>
+          </div>
           {normGpSearch(detailFilter) && showDetailFilter ? (
             <p className="warehouse-gp-group-modal__filter-meta">
               {isPackedFromPackages
@@ -1005,14 +1004,24 @@ const WarehouseGpPackModal = ({ group, onClose, onPacked }) => {
           </button>
         </div>
         <form className="modal__body chemistry-element-form" onSubmit={submit}>
-          <p className="warehouse-gp-pack-modal__lede">
-            <span className="warehouse-gp-pack-modal__product-line">
-              {group.productName || '—'} · {group.blankName || '—'}
+          <div className="warehouse-gp-pack-modal__lede">
+            <span className="warehouse-gp-pack-modal__lede-item">
+              <span className="warehouse-gp-pack-modal__lede-label">Товар</span>
+              <strong className="warehouse-gp-pack-modal__lede-value">{group.productName || '—'}</strong>
             </span>
-            <span className="warehouse-gp-pack-modal__avail">
-              {formatNumberForInput(maxPieces)} шт · {formatNumberForInput(group.totalKg)} кг
+            <span className="warehouse-gp-pack-modal__lede-item">
+              <span className="warehouse-gp-pack-modal__lede-label">Заготовка</span>
+              <strong className="warehouse-gp-pack-modal__lede-value">{group.blankName || '—'}</strong>
             </span>
-          </p>
+            <span className="warehouse-gp-pack-modal__lede-item">
+              <span className="warehouse-gp-pack-modal__lede-label">Доступно</span>
+              <strong className="warehouse-gp-pack-modal__lede-value">{formatNumberForInput(maxPieces)} шт</strong>
+            </span>
+            <span className="warehouse-gp-pack-modal__lede-item">
+              <span className="warehouse-gp-pack-modal__lede-label">Вес</span>
+              <strong className="warehouse-gp-pack-modal__lede-value">{formatNumberForInput(group.totalKg)} кг</strong>
+            </span>
+          </div>
 
           <label>Тип</label>
           <SearchableSelect
@@ -1657,7 +1666,7 @@ const WarehouseGpAcceptPanel = () => {
   }, []);
 
   return (
-    <div className="warehouse-gp">
+    <div className={`warehouse-gp warehouse-gp--${mainTab}`}>
       <div
         className="warehouse-gp__main-tabs production-main-tabs"
         role="tablist"

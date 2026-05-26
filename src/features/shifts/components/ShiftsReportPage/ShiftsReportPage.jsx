@@ -155,7 +155,7 @@ const ShiftsReportPage = () => {
   const openShifts = shifts.filter((s) => s.status === 'open');
   const closedShifts = shifts.filter((s) => s.status === 'closed');
   const uniqueUsers = new Set(shifts.map((s) => s.user_id || s.user?.id));
-  const showEmployeeColumn = !filterUser;
+  const showEmployeeColumn = true;
 
   const userName = (s) => s.user_name || s.user?.name || s.user?.username || 'Сотрудник';
 
@@ -182,27 +182,31 @@ const ShiftsReportPage = () => {
         </button>
       </div>
 
-      <div className="ds-toolbar ds-toolbar--page-head shifts-report__toolbar">
-        <div className="ds-toolbar__start">
-          {mainTab === 'shifts' && (
+      {mainTab === 'shifts' && (
+        <div className="ds-toolbar ds-toolbar--page-head shifts-report__toolbar">
+          <div className="ds-toolbar__start">
             <button type="button" className="btn btn--secondary" onClick={loadShifts}>
               Обновить
             </button>
-          )}
+          </div>
+          <div className="ds-toolbar__end">
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={() => setComplaintModalOpen(true)}
+            >
+              Добавить жалобу
+            </button>
+          </div>
         </div>
-        <div className="ds-toolbar__end">
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={() => setComplaintModalOpen(true)}
-          >
-            Добавить жалобу
-          </button>
-        </div>
-      </div>
+      )}
 
       {mainTab === 'complaints' && (
-        <ComplaintsInbox reloadToken={complaintsReloadToken} className="shifts-report__complaints-block" />
+        <ComplaintsInbox
+          reloadToken={complaintsReloadToken}
+          className="shifts-report__complaints-block"
+          onAddComplaint={() => setComplaintModalOpen(true)}
+        />
       )}
 
       {mainTab === 'shifts' && (
@@ -298,7 +302,7 @@ const ShiftsReportPage = () => {
             <p>Попробуйте изменить фильтры или выбрать другую дату.</p>
           </div>
         ) : (
-          <table className="data-table shifts-report__table">
+          <table className="data-table shifts-report__table shifts-report__table--with-user">
             <thead>
               <tr>
                 {showEmployeeColumn ? <th>Сотрудник</th> : null}
@@ -339,8 +343,8 @@ const ShiftsReportPage = () => {
                         {isOpen ? 'Открыта' : 'Закрыта'}
                       </span>
                     </td>
-                    <td>
-                      <button
+                      <td className="shifts-report__table-actions">
+                        <button
                         type="button"
                         className="btn btn--secondary btn--sm"
                         onClick={() => openDetails(s)}
@@ -419,13 +423,6 @@ const ShiftsReportPage = () => {
               {/* Notes */}
               <div className="shifts-report__detail-notes-header">
                 <h4 className="shifts-report__detail-notes-title">Заметки за смену</h4>
-                <button
-                  type="button"
-                  className="btn btn--secondary btn--sm"
-                  onClick={() => openShiftActivity(selectedShift)}
-                >
-                  Действия за смену
-                </button>
               </div>
 
               {detailsLoading ? (
@@ -451,6 +448,16 @@ const ShiftsReportPage = () => {
                   )}
                 </div>
               )}
+
+              <div className="shifts-report__detail-actions">
+                <button
+                  type="button"
+                  className="btn btn--secondary btn--sm"
+                  onClick={() => openShiftActivity(selectedShift)}
+                >
+                  Действия за смену
+                </button>
+              </div>
             </div>
           </div>
         </div>

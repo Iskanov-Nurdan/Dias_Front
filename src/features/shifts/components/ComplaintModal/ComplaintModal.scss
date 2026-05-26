@@ -1,4 +1,5 @@
 @use '../../../../shared/styles/variables' as *;
+@use '../../../../shared/styles/mixins' as *;
 
 .complaint-modal {
   max-width: 520px;
@@ -6,6 +7,7 @@
 
   &__body {
     text-align: left;
+    padding-bottom: var(--space-3) !important;
   }
 
   &__hint {
@@ -13,6 +15,7 @@
     font-size: var(--font-caption);
     color: var(--text-muted);
     line-height: 1.45;
+    max-width: 34rem;
   }
 
   &__field-wrap {
@@ -28,15 +31,16 @@
     line-height: 1.45;
     padding: var(--space-3);
     border-radius: var(--radius-md);
-    border: 1px solid var(--border);
+    border: 1px solid var(--input-border);
     background: var(--input-bg);
     color: var(--text);
     box-sizing: border-box;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 
     &:focus {
       outline: none;
       border-color: var(--input-focus-border);
-      box-shadow: 0 0 0 3px var(--input-focus-ring);
+      box-shadow: 0 0 0 2px var(--input-focus-ring);
     }
   }
 
@@ -85,5 +89,61 @@
   &__mention-meta {
     font-size: var(--font-caption);
     color: var(--text-muted);
+  }
+
+  .modal__actions {
+    gap: var(--space-2);
+
+    .btn {
+      height: 44px;
+      min-height: 44px;
+      justify-content: center;
+    }
+  }
+}
+
+@include mobile {
+  .complaint-modal {
+    width: 100%;
+
+    .modal__head {
+      align-items: center;
+      padding: var(--space-3);
+    }
+
+    &__body {
+      padding: var(--space-3) !important;
+    }
+
+    &__hint {
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      line-height: 1.4;
+    }
+
+    &__textarea {
+      height: 150px !important;
+      min-height: 150px;
+      max-height: 50dvh;
+      resize: vertical;
+    }
+
+    .modal__actions {
+      padding-top: var(--space-2) !important;
+      padding-bottom: max(var(--space-2), env(safe-area-inset-bottom, 0px)) !important;
+      flex-direction: column-reverse;
+
+      .btn {
+        width: 100%;
+      }
+    }
+  }
+}
+
+@media (max-width: 375px) {
+  .complaint-modal__textarea {
+    height: 140px !important;
+    min-height: 140px;
   }
 }

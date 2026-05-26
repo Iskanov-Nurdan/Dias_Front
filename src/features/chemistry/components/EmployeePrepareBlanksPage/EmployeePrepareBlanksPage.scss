@@ -1,3 +1,5 @@
+@use '../../../../shared/styles/mixins' as *;
+
 .employee-prepare-blanks__lede {
   margin: 0 0 1rem;
 }
@@ -394,6 +396,264 @@
       content: 'Всего: ';
       font-weight: 600;
       color: var(--text-secondary);
+    }
+  }
+}
+
+@include mobile {
+  .chemistry-blank-stock {
+    .employee-prepare-table.chemistry-table {
+      min-width: 0 !important;
+      gap: var(--space-2);
+
+      .chemistry-table__header {
+        display: none;
+      }
+
+      .chemistry-table__row {
+        display: grid !important;
+        grid-template-columns: 1fr;
+        gap: var(--space-2) !important;
+        align-items: stretch;
+        margin: 0 0 var(--space-2);
+        padding: var(--space-3);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        background: var(--bg-elevated);
+        box-shadow: none;
+      }
+
+      .chemistry-table__row > * {
+        display: flex !important;
+        flex-direction: column;
+        align-items: flex-start !important;
+        justify-content: flex-start !important;
+        gap: 2px;
+        width: 100%;
+        min-width: 0;
+        padding: 0 !important;
+        border: none !important;
+        text-align: left !important;
+        line-height: 1.3;
+      }
+
+      .chemistry-table__row > *::before {
+        display: block;
+        flex: none;
+        color: var(--text-muted);
+        font-size: var(--font-caption);
+        font-weight: var(--weight-medium);
+        line-height: 1.25;
+        text-align: left;
+        white-space: nowrap;
+      }
+
+      .chemistry-table__row > *:nth-child(1)::before {
+        content: 'Рецепт';
+      }
+
+      .chemistry-table__row > *:nth-child(2)::before {
+        content: 'Кг / бочка';
+      }
+
+      .chemistry-table__row > *:nth-child(3)::before {
+        content: 'Бочек';
+      }
+
+      .chemistry-table__row > *:nth-child(4)::before {
+        content: 'Доп. кг';
+      }
+
+      .chemistry-table__row > *:nth-child(5)::before {
+        content: 'Всего';
+      }
+
+      .chemistry-table__name,
+      .chemistry-table__num {
+        color: var(--text);
+        text-align: left !important;
+        justify-self: start;
+        overflow-wrap: anywhere;
+        white-space: normal;
+      }
+
+      .chemistry-table__num {
+        font-variant-numeric: tabular-nums;
+      }
+
+      .chemistry-table__actions {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--space-2) !important;
+        padding-top: var(--space-2) !important;
+        margin-top: 0;
+        border-top: 1px solid var(--border-subtle) !important;
+        white-space: normal;
+
+        &::before {
+          display: none;
+          content: none;
+        }
+
+        .btn {
+          width: 100%;
+          min-width: 0;
+          height: 42px;
+          min-height: 42px;
+          justify-content: center;
+          white-space: normal;
+          line-height: 1.15;
+        }
+      }
+    }
+
+    .employee-prepare-detail-modal.modal {
+      width: calc(100vw - 24px);
+      max-width: calc(100vw - 24px);
+      min-width: 0;
+      max-height: calc(100dvh - 24px);
+      border-radius: var(--radius-lg);
+    }
+
+    .employee-prepare-detail-modal .modal__head {
+      align-items: center;
+      padding: var(--space-3);
+
+      h3 {
+        min-width: 0;
+        font-size: var(--font-body);
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+      }
+    }
+
+    .employee-prepare-detail-modal__body {
+      padding: var(--space-3);
+      padding-bottom: var(--space-4);
+      overflow-y: auto;
+
+      .employee-prepare-detail--modal {
+        min-height: 0;
+      }
+    }
+
+    .employee-prepare-detail-modal .modal__actions {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      position: sticky;
+      bottom: 0;
+      z-index: 2;
+      padding: var(--space-3) !important;
+      padding-bottom: max(var(--space-3), env(safe-area-inset-bottom, 0px)) !important;
+      background: var(--card);
+      box-shadow: 0 -8px 24px color-mix(in srgb, var(--bg) 82%, transparent);
+
+      .btn {
+        width: 100%;
+        height: 44px;
+        min-height: 44px;
+        justify-content: center;
+      }
+    }
+
+    .employee-prepare-detail {
+      gap: var(--space-3);
+    }
+
+    .employee-prepare-stock-panel__title {
+      margin-bottom: var(--space-2);
+      font-size: var(--font-caption);
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .employee-prepare-stock-grid,
+    .employee-prepare-detail--modal .employee-prepare-stock-grid,
+    .employee-prepare-detail--page .employee-prepare-stock-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-2);
+    }
+
+    .employee-prepare-stock-metric,
+    .employee-prepare-detail--page .employee-prepare-stock-metric--primary {
+      grid-column: auto;
+      min-height: 76px;
+      padding: var(--space-2);
+      gap: 4px;
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--card) 92%, var(--text) 8%);
+    }
+
+    .employee-prepare-stock-metric__label {
+      font-size: var(--font-caption);
+      line-height: 1.25;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .employee-prepare-stock-metric__value {
+      min-width: 0;
+      font-size: var(--font-body);
+      line-height: 1.2;
+      letter-spacing: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .employee-prepare-stock-metric--primary {
+      border-color: color-mix(in srgb, var(--accent) 42%, var(--border-subtle));
+
+      .employee-prepare-stock-metric__value {
+        font-size: var(--font-body);
+      }
+    }
+
+    .employee-prepare-detail__recipe-block {
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
+      box-shadow: none;
+    }
+
+    .employee-prepare-detail__h4--recipe {
+      margin-bottom: var(--space-2);
+      font-size: var(--font-label);
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .employee-prepare-recipe-grid,
+    .employee-prepare-detail--page .employee-prepare-recipe-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(74px, max-content);
+      gap: var(--space-2);
+      padding: var(--space-2) 0;
+      font-size: var(--font-label);
+    }
+
+    .employee-prepare-recipe-grid > span:first-child {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .employee-prepare-recipe-grid__num {
+      white-space: nowrap;
+    }
+
+    .employee-prepare-detail__recipe-total {
+      margin-top: var(--space-3);
+      padding-top: var(--space-3);
+      font-size: var(--font-body);
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+  }
+}
+
+@media (max-width: 374px) {
+  .chemistry-blank-stock {
+    .employee-prepare-stock-grid,
+    .employee-prepare-detail--modal .employee-prepare-stock-grid,
+    .employee-prepare-detail--page .employee-prepare-stock-grid {
+      grid-template-columns: 1fr;
     }
   }
 }

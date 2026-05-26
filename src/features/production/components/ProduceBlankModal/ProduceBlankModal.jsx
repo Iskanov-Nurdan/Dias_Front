@@ -1,8 +1,7 @@
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
-import { Select, DecimalInput, useToast } from '../../../../shared/ui';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Select } from '../../../../shared/ui';
 import {
   formatNumberForInput,
-  parseLocaleNumber,
   useServerQuery,
   getApiErrorMessage,
 } from '../../../../shared/lib';
@@ -13,38 +12,15 @@ import {
   mapWorkshopBlankFromApi,
   mapPreparedBlankRowFromApi,
 } from '../../../chemistry/api/blankWorkshopApi';
-import { createPlasticProfile, getPlasticProfile } from '../../api/productionApi';
+import { getPlasticProfile } from '../../api/productionApi';
 import { readPlasticProfileWeightKg } from '../../lib/readPlasticProfilePieceWeight';
 import './ProduceBlankModal.scss';
 
-const clampGramsInput = (raw) => {
-  const d = String(raw ?? '').replace(/\D/g, '').slice(0, 3);
-  if (d === '') return '';
-  return String(Math.min(999, parseInt(d, 10)));
-};
-
-const calcPieceKg = (kgStr, gramsStr) => {
-  const kgNum = parseLocaleNumber(kgStr ?? '');
-  const g = clampGramsInput(gramsStr);
-  const gNum = g === '' ? 0 : parseInt(g, 10);
-  const k = Number.isFinite(kgNum) ? kgNum : 0;
-  return k + gNum / 1000;
-};
-
 const listQ = { page: 1, page_size: 500, ordering: 'name' };
 const prepQ = { page: 1, page_size: 500 };
-
-/** Код для POST plastic-profiles/ — короткий (часто лимит поля на бэке). */
-const buildAutoPlasticCode = () => {
-  const t = Date.now().toString(36).toUpperCase();
-  const r = Math.random().toString(36).slice(2, 5).toUpperCase();
-  return `GP${t}${r}`.slice(0, 20);
-};
-
 const ProduceBlankModal = ({ onClose, onSaved }) => {
-  const toast = useToast();
   const { items: blankItems } = useServerQuery('workshop/blanks/', listQ, { enabled: true });
-  const { items: profileItems, refetch: refetchProfiles } = useServerQuery('plastic-profiles/', listQ, {
+  const { items: profileItems } = useServerQuery('plastic-profiles/', listQ, {
     enabled: true,
   });
   const { items: preparedItems } = useServerQuery('workshop/prepared-blanks/', prepQ, { enabled: true });
@@ -67,28 +43,9 @@ const ProduceBlankModal = ({ onClose, onSaved }) => {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const [sideOpen, setSideOpen] = useState(false);
-  const [newProductName, setNewProductName] = useState('');
-  const [newProductKg, setNewProductKg] = useState('');
-  const [newProductGrams, setNewProductGrams] = useState('');
-  const [sideError, setSideError] = useState('');
-  const [sideBusy, setSideBusy] = useState(false);
-  const [pieceWeightFromNewProduct, setPieceWeightFromNewProduct] = useState(null);
   /** Вес из GET plastic-profiles/:id/ (в списке поле часто не отдаётся). */
   const [detailWeightKg, setDetailWeightKg] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
-
-  const resetSideForm = useCallback(() => {
-    setNewProductName('');
-    setNewProductKg('');
-    setNewProductGrams('');
-    setSideError('');
-  }, []);
-
-  const handleCloseSide = useCallback(() => {
-    setSideOpen(false);
-    resetSideForm();
-  }, [resetSideForm]);
 
   const blankOptions = useMemo(
     () =>
@@ -129,16 +86,8 @@ const ProduceBlankModal = ({ onClose, onSaved }) => {
     ) {
       return detailWeightKg;
     }
-    if (
-      pieceWeightFromNewProduct &&
-      String(pieceWeightFromNewProduct.productId) === String(productId) &&
-      Number.isFinite(pieceWeightFromNewProduct.kg) &&
-      pieceWeightFromNewProduct.kg > 0
-    ) {
-      return pieceWeightFromNewProduct.kg;
-    }
     return null;
-  }, [selectedProduct, productId, pieceWeightFromNewProduct, detailWeightKg]);
+  }, [selectedProduct, productId, detailWeightKg]);
 
   const effectivePieceKg = productWeightResolved;
 
@@ -146,27 +95,8 @@ const ProduceBlankModal = ({ onClose, onSaved }) => {
     if (!productId) return null;
     if (readPlasticProfileWeightKg(selectedProduct) != null) return 'list';
     if (detailWeightKg != null) return 'detail';
-    if (
-      pieceWeightFromNewProduct &&
-      String(pieceWeightFromNewProduct.productId) === String(productId)
-    ) {
-      return 'session';
-    }
     return null;
-  }, [productId, selectedProduct, detailWeightKg, pieceWeightFromNewProduct]);
-
-  /** Если в списке появился вес — сбрасываем временный вес с «Нового товара». */
-  useEffect(() => {
-    if (!productId) {
-      setPieceWeightFromNewProduct(null);
-      return;
-    }
-    const p = (profileItems || []).find((x) => String(x.id) === String(productId));
-    if (readPlasticProfileWeightKg(p) != null) {
-      setPieceWeightFromNewProduct(null);
-    }
-  }, [productId, profileItems]);
-
+  }, [productId, selectedProduct, detailWeightKg]);
   /** Подгрузка полной карточки товара, если в списке нет веса штуки. */
   useEffect(() => {
     if (!productId) {
@@ -176,14 +106,6 @@ const ProduceBlankModal = ({ onClose, onSaved }) => {
     }
     const fromList = readPlasticProfileWeightKg(selectedProduct);
     if (fromList != null) {
-      setDetailWeightKg(null);
-      setDetailLoading(false);
-      return;
-    }
-    if (
-      pieceWeightFromNewProduct &&
-      String(pieceWeightFromNewProduct.productId) === String(productId)
-    ) {
       setDetailWeightKg(null);
       setDetailLoading(false);
       return;
@@ -206,19 +128,12 @@ const ProduceBlankModal = ({ onClose, onSaved }) => {
     return () => {
       cancelled = true;
     };
-  }, [productId, selectedProduct, pieceWeightFromNewProduct]);
+  }, [productId, selectedProduct]);
 
   const selectedProductLabel = useMemo(() => {
     const p = selectedProduct;
     return p?.name || p?.code || '';
   }, [selectedProduct]);
-
-  const sidePieceKg = useMemo(() => calcPieceKg(newProductKg, newProductGrams), [newProductKg, newProductGrams]);
-
-  const sideWeightHint =
-    sidePieceKg > 0
-      ? `Расчётный вес одной штуки: ${formatNumberForInput(sidePieceKg)} кг`
-      : 'Укажите килограммы и граммы выше — здесь появится расчётный вес одной штуки.';
 
   const recipeKg = selectedBlank ? Number(selectedBlank.recipeKgPerBarrel) || 0 : 0;
 
@@ -227,45 +142,6 @@ const ProduceBlankModal = ({ onClose, onSaved }) => {
     if (recipeKg <= DEMO_PRODUCTION_VAT_MAX_KG) return null;
     return `В партии учитывается не больше ${formatNumberForInput(DEMO_PRODUCTION_VAT_MAX_KG)} кг (ёмкость). По рецепту ${formatNumberForInput(recipeKg)} кг — в машину уходит ${formatNumberForInput(DEMO_PRODUCTION_VAT_MAX_KG)} кг.`;
   }, [selectedBlank, recipeKg]);
-
-  const handleSaveNewProduct = async (e) => {
-    e.preventDefault();
-    const n = newProductName.trim();
-    if (!n) {
-      setSideError('Введите имя товара.');
-      return;
-    }
-    if (!Number.isFinite(sidePieceKg) || sidePieceKg <= 0) {
-      setSideError('Укажите вес одной штуки (кг и/или граммы).');
-      return;
-    }
-    setSideBusy(true);
-    setSideError('');
-    const code = buildAutoPlasticCode();
-    try {
-      const payload = {
-        name: n,
-        code,
-        is_active: true,
-        comment: '',
-        weight_kg_per_piece: sidePieceKg,
-      };
-      const res = await createPlasticProfile(payload);
-      const id = res.data?.id;
-      await refetchProfiles();
-      if (id != null) {
-        setPieceWeightFromNewProduct({ productId: String(id), kg: sidePieceKg });
-        setProductId(String(id));
-      }
-      toast.show('Товар создан');
-      handleCloseSide();
-    } catch (err) {
-      setSideError(getApiErrorMessage(err, 'Не удалось создать товар'));
-    } finally {
-      setSideBusy(false);
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!blankId) {
@@ -273,13 +149,11 @@ const ProduceBlankModal = ({ onClose, onSaved }) => {
       return;
     }
     if (!productId) {
-      setError('Выберите товар или добавьте новый справа.');
+      setError('Выберите товар.');
       return;
     }
     if (!Number.isFinite(effectivePieceKg) || effectivePieceKg <= 0) {
-      setError(
-        'Нет веса одной штуки для выбранного товара. Укажите вес в «Профили» или создайте товар справа с весом.',
-      );
+      setError('Нет веса одной штуки для выбранного товара. Укажите вес в «Заготовка» -> «Профили».');
       return;
     }
     if (recipeKg <= 0) {
@@ -319,8 +193,7 @@ const ProduceBlankModal = ({ onClose, onSaved }) => {
   };
 
   const overlayClose = () => {
-    if (submitting || sideBusy) return;
-    handleCloseSide();
+    if (submitting) return;
     onClose();
   };
 
@@ -332,7 +205,7 @@ const ProduceBlankModal = ({ onClose, onSaved }) => {
         role="presentation"
       >
         <div
-          className={`modal modal--wide produce-blank-modal ${sideOpen ? 'produce-blank-modal--with-side' : ''}`}
+          className="modal modal--wide produce-blank-modal"
         >
           <div className="modal__head">
             <h3>Произвести</h3>
@@ -341,7 +214,7 @@ const ProduceBlankModal = ({ onClose, onSaved }) => {
               className="modal__close"
               onClick={overlayClose}
               aria-label="Закрыть"
-              disabled={submitting || sideBusy}
+              disabled={submitting}
             >
               ×
             </button>
@@ -372,33 +245,15 @@ const ProduceBlankModal = ({ onClose, onSaved }) => {
                 setError('');
                 if (!nid) {
                   setProductId('');
-                  setPieceWeightFromNewProduct(null);
                   return;
                 }
-                setPieceWeightFromNewProduct((cur) =>
-                  cur && String(cur.productId) !== nid ? null : cur,
-                );
                 setProductId(nid);
               }}
               placeholder="Выберите товар"
               options={productOptions}
             />
-            <p className="produce-blank-modal__product-hint">
-              Нет в списке?{' '}
-              <button
-                type="button"
-                className="produce-blank-modal__link"
-                onClick={() => {
-                  setSideOpen(true);
-                  setSideError('');
-                }}
-              >
-                Добавить товар
-              </button>
-              {' — форма справа.'}
-            </p>
-            {productOptions.length === 0 && !sideOpen ? (
-              <p className="produce-blank-modal__warn">Нет товаров в справочнике — добавьте через «Добавить товар».</p>
+            {productOptions.length === 0 ? (
+              <p className="produce-blank-modal__warn">Нет товаров в справочнике. Создайте товар в «Заготовка» -> «Профили».</p>
             ) : null}
 
             {productWeightResolved != null ? (
@@ -406,9 +261,7 @@ const ProduceBlankModal = ({ onClose, onSaved }) => {
                 <label>Вес одной штуки</label>
                 <p className="produce-side-panel__weight-hint">
                   <strong>{formatNumberForInput(productWeightResolved)} кг</strong>
-                  {weightDisplaySource === 'session'
-                    ? ' — из данных при создании товара (после сохранения на сервере будет в справочнике).'
-                    : ' — из карточки товара (ОТК и склад ГП).'}
+                  {weightDisplaySource ? ' — из карточки товара (ОТК и склад ГП).' : ''}
                 </p>
               </>
             ) : null}
@@ -418,7 +271,7 @@ const ProduceBlankModal = ({ onClose, onSaved }) => {
             {productId && !detailLoading && productWeightResolved == null ? (
               <p className="produce-blank-modal__warn">
                 Для этого товара сервер не отдал вес одной штуки — задайте его в «Профили» (редактирование
-                профиля) или создайте товар справа с весом.
+                профиля).
               </p>
             ) : null}
             {selectedProductLabel ? (
@@ -437,73 +290,6 @@ const ProduceBlankModal = ({ onClose, onSaved }) => {
             </div>
           </form>
         </div>
-
-        {sideOpen ? (
-          <aside className="produce-side-panel" aria-label="Новый товар">
-            <div className="produce-side-panel__head">
-              <h4 className="produce-side-panel__title">Новый товар</h4>
-              <button
-                type="button"
-                className="modal__close produce-side-panel__close"
-                onClick={handleCloseSide}
-                aria-label="Закрыть панель"
-                disabled={sideBusy}
-              >
-                ×
-              </button>
-            </div>
-            <form className="produce-side-panel__form chemistry-element-form" onSubmit={handleSaveNewProduct}>
-              <label>Имя *</label>
-              <input
-                value={newProductName}
-                onChange={(ev) => {
-                  setNewProductName(ev.target.value);
-                  if (sideError) setSideError('');
-                }}
-                autoComplete="off"
-                placeholder="Например, Батон 400 г"
-              />
-              <div className="produce-side-panel__kg-row">
-                <div className="produce-side-panel__field">
-                  <label>Кг</label>
-                  <DecimalInput
-                    min={0}
-                    value={newProductKg}
-                    onChange={(v) => {
-                      setNewProductKg(v);
-                      if (sideError) setSideError('');
-                    }}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="produce-side-panel__field">
-                  <label>Граммы</label>
-                  <input
-                    inputMode="numeric"
-                    className="produce-side-panel__grams"
-                    value={newProductGrams}
-                    onChange={(ev) => {
-                      setNewProductGrams(clampGramsInput(ev.target.value));
-                      if (sideError) setSideError('');
-                    }}
-                    placeholder="0–999"
-                    title="Граммы, 0–999"
-                  />
-                </div>
-              </div>
-              <p className="produce-side-panel__weight-hint">{sideWeightHint}</p>
-              {sideError ? <p className="modal__error">{sideError}</p> : null}
-              <div className="produce-side-panel__actions">
-                <button type="button" className="btn btn--secondary" onClick={handleCloseSide} disabled={sideBusy}>
-                  Отмена
-                </button>
-                <button type="submit" className="btn btn--primary" disabled={sideBusy}>
-                  {sideBusy ? '…' : 'Сохранить'}
-                </button>
-              </div>
-            </form>
-          </aside>
-        ) : null}
       </div>
     </div>
   );

@@ -17,6 +17,13 @@ import './EmployeePrepareBlanksPage.scss';
 const prepareBlankDetailPageUrl = (blankId) =>
   `${window.location.origin}/prepare-blanks/view/${blankId}`;
 
+const formatWorkshopNumber = (value) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return formatNumberForInput(value);
+  const rounded = Math.round((n + Number.EPSILON) * 100) / 100;
+  return formatNumberForInput(rounded);
+};
+
 const EmployeeBlankDetailModal = ({ blank, preparedRow, materialNameById, onClose }) => {
   if (!blank) return null;
 
@@ -176,17 +183,17 @@ const EmployeePrepareBlanksPage = () => {
                   </span>
                   <span className="chemistry-table__num">
                     {breakdown.recipeKgPerBarrel > 0
-                      ? `${formatNumberForInput(breakdown.recipeKgPerBarrel)} кг`
+                      ? `${formatWorkshopNumber(breakdown.recipeKgPerBarrel)} кг`
                       : '—'}
                   </span>
                   <span className="chemistry-table__num">
-                    {formatNumberForInput(breakdown.barrels)}
+                    {formatWorkshopNumber(breakdown.barrels)}
                   </span>
                   <span className="chemistry-table__num">
-                    {`${formatNumberForInput(breakdown.extraKg)} кг`}
+                    {`${formatWorkshopNumber(breakdown.extraKg)} кг`}
                   </span>
                   <span className="chemistry-table__num">
-                    {`${formatNumberForInput(breakdown.totalKg)} кг`}
+                    {`${formatWorkshopNumber(breakdown.totalKg)} кг`}
                   </span>
                   <span className="chemistry-table__actions chemistry-table__actions--wrap">
                     <button

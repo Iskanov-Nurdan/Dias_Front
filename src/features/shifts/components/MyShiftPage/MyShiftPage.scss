@@ -381,6 +381,38 @@
   50% { box-shadow: 0 0 0 5px rgba(22, 163, 74, 0.1); }
 }
 
+.my-shift__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-5);
+}
+
+.my-shift__tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  color: var(--text-secondary);
+  font-size: var(--font-label);
+  font-weight: var(--weight-medium);
+
+  svg {
+    flex-shrink: 0;
+  }
+
+  &--active {
+    background: var(--primary-muted);
+    border-color: color-mix(in srgb, var(--primary) 30%, var(--border-subtle));
+    color: var(--primary);
+  }
+}
+
 // в”Ђв”Ђ Start card (no active shift) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
 .my-shift__start-card {
@@ -692,4 +724,296 @@
   to { transform: rotate(360deg); }
 }
 
+@include mobile {
+  .my-shift-page {
+    padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  }
 
+  .my-shift__header {
+    align-items: stretch;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+
+  .my-shift__header > div:first-child {
+    min-width: 0;
+  }
+
+  .my-shift__header-right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .my-shift__greeting {
+    font-size: var(--font-xl);
+    line-height: var(--leading-tight);
+  }
+
+  .my-shift__role,
+  .my-shift__date {
+    font-size: var(--font-caption);
+    line-height: 1.35;
+  }
+
+  .my-shift__status-badge {
+    width: fit-content;
+    max-width: 100%;
+    min-height: 34px;
+    padding: 0 var(--space-3);
+    font-size: var(--font-caption);
+  }
+
+  .my-shift__tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-3);
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .my-shift__tab {
+    flex: 0 0 auto;
+    min-width: max-content;
+    height: 42px;
+    min-height: 42px;
+    padding: 0 var(--space-3);
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    white-space: nowrap;
+
+    svg {
+      flex-shrink: 0;
+    }
+  }
+
+  .my-shift__active-card,
+  .my-shift__notes-card {
+    border-radius: var(--radius-lg);
+    padding: var(--space-3);
+    margin-bottom: var(--space-3);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .my-shift__active-card {
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .my-shift__active-info {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-2);
+    width: 100%;
+  }
+
+  .my-shift__timer-block,
+  .my-shift__start-time,
+  .my-shift__notes-count,
+  .my-shift__line-badge {
+    min-width: 0;
+    padding: var(--space-2);
+    border-radius: var(--radius-md);
+    background: var(--bg);
+    border: 1px solid var(--border-subtle);
+  }
+
+  .my-shift__timer-block {
+    grid-column: span 2;
+    gap: var(--space-2);
+  }
+
+  .my-shift__timer-block svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+
+  .my-shift__timer-value,
+  .my-shift__start-time-value,
+  .my-shift__notes-count-value {
+    font-size: var(--font-base);
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .my-shift__timer-label,
+  .my-shift__start-time-label,
+  .my-shift__notes-count-label {
+    font-size: 11px;
+    letter-spacing: 0;
+  }
+
+  .my-shift__active-actions {
+    width: 100%;
+  }
+
+  .my-shift__close-btn {
+    width: 100%;
+    height: 44px;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .my-shift__notes-title,
+  .my-shift__section-title,
+  .complaints-inbox__title {
+    font-size: var(--font-base);
+    line-height: var(--leading-tight);
+  }
+
+  .my-shift__notes-title {
+    margin-bottom: var(--space-3);
+  }
+
+  .my-shift__note-form {
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+
+  .my-shift__note-input,
+  .my-shift__note-form .btn {
+    height: 44px;
+    min-height: 44px;
+  }
+
+  .my-shift__notes-empty {
+    padding: var(--space-4);
+    align-items: flex-start;
+    justify-content: flex-start;
+    line-height: 1.4;
+  }
+
+  .my-shift__note-item {
+    padding: var(--space-3);
+  }
+
+  .my-shift__history-top {
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+
+    .btn {
+      height: 40px;
+      min-height: 40px;
+    }
+  }
+
+  .my-shift__history-list {
+    gap: var(--space-2);
+  }
+
+  .my-shift__history-item {
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .my-shift__history-header {
+    min-height: 76px;
+    padding: var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .my-shift__history-date {
+    font-size: var(--font-label);
+    line-height: 1.25;
+  }
+
+  .my-shift__history-meta {
+    gap: var(--space-1) var(--space-2);
+  }
+
+  .my-shift__history-right {
+    align-self: center;
+    gap: var(--space-2);
+  }
+
+  .my-shift__history-status {
+    padding: 2px var(--space-2);
+  }
+
+  .my-shift__history-details {
+    padding: var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .my-shift__history-info-row {
+    display: grid;
+    grid-template-columns: minmax(82px, 34%) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-2);
+    font-size: var(--font-caption);
+
+    strong {
+      text-align: left;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  .my-shift__history-closing-note {
+    margin-top: var(--space-1);
+    padding: var(--space-3);
+  }
+
+  .my-shift__history-notes-section {
+    margin-top: var(--space-2);
+  }
+
+  .my-shift__history-notes-title {
+    margin-bottom: var(--space-2);
+    font-size: var(--font-caption);
+    letter-spacing: 0;
+  }
+
+  .my-shift__history-actions-row {
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+
+    .btn {
+      width: 100%;
+      height: 44px;
+      min-height: 44px;
+      flex: 1 1 100%;
+    }
+  }
+
+  .my-shift__empty-state {
+    padding: var(--space-8) var(--space-4);
+  }
+}
+
+@media (max-width: 389px) {
+  .my-shift__active-info {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .my-shift__timer-block {
+    grid-column: 1 / -1;
+  }
+
+  .my-shift__note-form {
+    flex-direction: column;
+
+    .btn,
+    .my-shift__note-input {
+      width: 100%;
+    }
+  }
+
+  .my-shift__history-top {
+    flex-direction: column;
+    align-items: stretch;
+
+    .btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}

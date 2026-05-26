@@ -483,3 +483,240 @@
     white-space: nowrap;
   }
 }
+
+@media (max-width: 768px) {
+  .page--production {
+    padding-inline: var(--space-3);
+    overflow-x: hidden;
+
+    .production-main-tabs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-2);
+      margin-bottom: var(--space-3);
+      overflow: hidden;
+    }
+
+    .production-main-tabs__btn {
+      min-width: 0;
+      min-height: 42px;
+      padding: 0 var(--space-3);
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    .production-page__date-row {
+      display: block;
+      margin-bottom: var(--space-3);
+    }
+
+    .commercial-date-filter {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-1);
+    }
+
+    .commercial-date-filter__label {
+      margin: 0;
+      font-size: var(--font-caption);
+      color: var(--text-secondary);
+    }
+
+    .commercial-date-filter input[type='date'] {
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+      min-height: 44px;
+      height: 44px;
+      box-sizing: border-box;
+    }
+
+    .production-card {
+      padding: var(--space-3);
+      border-radius: var(--radius-lg);
+    }
+
+    .production-card__head {
+      margin-bottom: var(--space-3);
+    }
+
+    .production-card__head,
+    .production-card__toolbar-actions,
+    .production-card__toolbar-actions .btn {
+      width: 100%;
+    }
+
+    .production-card__toolbar-actions .btn {
+      min-height: 44px;
+    }
+
+    .compact-list {
+      gap: var(--space-3);
+    }
+
+    .compact-list__head {
+      display: none;
+    }
+
+    .compact-list__row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-3);
+      align-items: stretch;
+      padding: var(--space-3);
+      border-radius: var(--radius-lg);
+    }
+
+    .compact-list__cell {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 3px;
+      min-width: 0;
+      overflow: visible;
+      text-align: left;
+      white-space: normal;
+      text-overflow: clip;
+      color: var(--text);
+      font-size: var(--font-sm);
+      font-weight: var(--weight-medium);
+      line-height: var(--leading-tight);
+    }
+
+    .compact-list__cell::before {
+      font-size: var(--font-caption);
+      font-weight: var(--weight-medium);
+      line-height: 1.2;
+      color: var(--text-secondary);
+    }
+
+    .production-card--requests .compact-list__cell:nth-child(1)::before {
+      content: 'Клиент';
+    }
+
+    .production-card--requests .compact-list__cell:nth-child(2)::before {
+      content: 'Товар';
+    }
+
+    .production-card--requests .compact-list__cell:nth-child(3)::before {
+      content: 'Количество';
+    }
+
+    .production-card--produced .compact-list__cell:nth-child(1)::before {
+      content: 'Товар';
+    }
+
+    .production-card--produced .compact-list__cell:nth-child(2)::before {
+      content: 'Вес';
+    }
+
+    .production-card--produced .compact-list__cell:nth-child(3)::before {
+      content: 'Дата';
+    }
+
+    .compact-list__cell--num {
+      text-align: left;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .compact-list__actions {
+      display: flex;
+      grid-column: auto;
+      grid-row: auto;
+      align-self: stretch;
+      justify-content: stretch;
+      width: 100%;
+      min-width: 0;
+      padding-top: var(--space-1);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .compact-list__actions .btn,
+    .compact-list__details-btn {
+      width: 100%;
+      min-height: 44px;
+      height: 44px;
+      justify-content: center;
+      font-size: var(--font-sm);
+      white-space: nowrap;
+    }
+
+    .empty-state {
+      margin: 0;
+      padding: var(--space-4) var(--space-3);
+    }
+  }
+
+  .production-line-modal__field {
+    margin-top: var(--space-3);
+  }
+
+  .production-line-modal__label {
+    margin-bottom: var(--space-1);
+    color: var(--text-secondary);
+    font-size: var(--font-caption);
+  }
+
+  .production-line-modal__field .searchable-select,
+  .production-line-modal__field .searchable-select__control,
+  .production-line-modal__field input,
+  .production-line-modal__field select {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .page--production .record-details-modal {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    overflow: hidden;
+  }
+
+  .page--production .record-details-modal .modal__head,
+  .page--production .record-details-modal .record-details-modal__body {
+    padding-inline: var(--space-3);
+  }
+
+  .page--production .record-details-modal .record-details-modal__body {
+    overflow-x: hidden;
+  }
+
+  .page--production .record-details-modal .detail-fields {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  .page--production .record-details-modal .detail-fields__row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+  }
+
+  .page--production .record-details-modal .detail-fields__label {
+    color: var(--text-secondary);
+    font-size: var(--font-caption);
+  }
+
+  .page--production .record-details-modal .detail-fields__value {
+    color: var(--text);
+    font-weight: var(--weight-medium);
+    overflow-wrap: anywhere;
+  }
+
+  .page--production .record-details-modal .modal__actions,
+  .page--production .record-details-modal__footer {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: var(--space-2);
+    width: 100%;
+  }
+
+  .page--production .record-details-modal .modal__actions .btn,
+  .page--production .record-details-modal__footer .btn {
+    width: 100%;
+    min-height: 44px;
+  }
+}

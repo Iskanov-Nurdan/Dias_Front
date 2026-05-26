@@ -763,6 +763,8 @@ const SalesPage = () => {
               <tr>
                 <th>Клиент</th>
                 <th>Дата</th>
+                <th>Заявка</th>
+                <th>Тип продажи</th>
                 <th className="data-table__cell--num">Сумма</th>
                 <th className="data-table__cell--num">Оплачено</th>
                 <th className="data-table__cell--num">Долг</th>
@@ -773,10 +775,17 @@ const SalesPage = () => {
             <tbody>
               {visibleSales.map((s) => {
                 const clientText = s.client_name || clientLabel(s.client) || s.display;
+                const orderText = s.order_display
+                  || s.order_name
+                  || (typeof s.order === 'object' ? orderLabel(s.order) : '')
+                  || '—';
+                const saleTypeText = s.unit_type === 'packages' ? 'Упаковки' : 'Штуки';
                 return (
                   <tr key={s.id}>
                     <td>{clientText || '—'}</td>
                     <td>{formatDate(s.date || s.created_at)}</td>
+                    <td>{orderText}</td>
+                    <td>{saleTypeText}</td>
                     <td className="data-table__cell--num">{toMoney(s.total_amount ?? s.revenue)}</td>
                     <td className="data-table__cell--num">{toMoney(s.paid_amount)}</td>
                     <td className="data-table__cell--num">{toMoney(s.debt_amount)}</td>
@@ -1573,18 +1582,6 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
                 <div className="sales-modal__line-card">
                   <div className="sales-modal__line-head">
                     <h4 className="sales-modal__section-title">Детали товара</h4>
-                    {selectedLine && (
-                      <button
-                        type="button"
-                        className="btn btn--secondary btn--sm sales-modal__delete-btn"
-                        onClick={() => {
-                          setSaleLines((prev) => prev.filter((_, i) => i !== activeLineIdx));
-                        }}
-                        disabled={saving}
-                      >
-                        Удалить
-                      </button>
-                    )}
                   </div>
                   {!selectedLine ? (
                     <p className="sales-modal__hint-line">Выберите позицию из списка слева</p>
@@ -1803,6 +1800,18 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
                         </div>
                       )}
                     </div>
+                  )}
+                  {selectedLine && (
+                    <button
+                      type="button"
+                      className="btn btn--secondary btn--sm sales-modal__delete-btn"
+                      onClick={() => {
+                        setSaleLines((prev) => prev.filter((_, i) => i !== activeLineIdx));
+                      }}
+                      disabled={saving}
+                    >
+                      Удалить
+                    </button>
                   )}
                 </div>
               </div>

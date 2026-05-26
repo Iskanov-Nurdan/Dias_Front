@@ -5,7 +5,6 @@ import {
   ErrorState,
   Loading,
   Pagination,
-  ActionMenu,
   useToast,
   Badge,
   SearchableSelect,
@@ -269,21 +268,11 @@ const ClientsPage = () => {
                   <td className="data-table__cell--actions clients-table__actions">
                     <button
                       type="button"
-                      className="btn btn--ghost btn--sm"
+                      className="btn btn--secondary btn--sm"
                       onClick={() => setViewClient(c)}
                     >
                       Подробнее
                     </button>
-                    <ActionMenu
-                      ariaLabel="Действия"
-                      items={[
-                        { label: 'Изменить', onClick: () => setModalClient(c) },
-                        { label: 'Карточка', onClick: () => setProfileClientId(c.id) },
-                        ...(clientIsActive(c)
-                          ? [{ label: 'Деактивировать', danger: true, onClick: () => handleDeactivate(c) }]
-                          : []),
-                      ]}
-                    />
                   </td>
                 </tr>
               ))}
@@ -307,6 +296,16 @@ const ClientsPage = () => {
               </button>
               <button
                 type="button"
+                className="btn btn--secondary"
+                onClick={() => {
+                  setProfileClientId(viewClient.id);
+                  setViewClient(null);
+                }}
+              >
+                Карточка
+              </button>
+              <button
+                type="button"
                 className="btn btn--primary"
                 onClick={() => {
                   setModalClient(viewClient);
@@ -315,6 +314,18 @@ const ClientsPage = () => {
               >
                 Изменить
               </button>
+              {clientIsActive(viewClient) ? (
+                <button
+                  type="button"
+                  className="btn btn--danger"
+                  onClick={() => {
+                    handleDeactivate(viewClient);
+                    setViewClient(null);
+                  }}
+                >
+                  Деактивировать
+                </button>
+              ) : null}
             </>
           )}
         >

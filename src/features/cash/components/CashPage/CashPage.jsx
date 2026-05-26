@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../auth';
+import './CashPage.scss';
 
 const CASH_TABS = [
   { key: 'clients', label: 'Клиенты', path: '/cash/clients' },

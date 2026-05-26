@@ -1501,4 +1501,524 @@
   }
 }
 
+@media (max-width: 768px) {
+  .page--sales {
+    padding-inline: var(--space-3);
+    overflow-x: hidden;
+
+    .commercial-toolbar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-2);
+      margin-bottom: var(--space-3);
+    }
+
+    .commercial-toolbar__filters,
+    .ds-toolbar__start,
+    .ds-toolbar__end {
+      width: 100%;
+      min-width: 0;
+      margin-left: 0;
+    }
+
+    .commercial-toolbar__filters {
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-2);
+    }
+
+    .dias-select,
+    .searchable-select,
+    .commercial-date-filter,
+    .commercial-date-filter input[type='date'],
+    .ds-toolbar__end .btn {
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+    }
+
+    .commercial-date-filter {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-1);
+    }
+
+    .commercial-date-filter input[type='date'],
+    .ds-toolbar__end .btn {
+      min-height: 44px;
+      height: 44px;
+      box-sizing: border-box;
+    }
+
+    .commercial-table-wrap {
+      max-width: 100%;
+      overflow: visible;
+      border: none;
+      border-radius: 0;
+    }
+  }
+
+  .data-table--sales {
+    display: block;
+    min-width: 0;
+    width: 100%;
+
+    thead {
+      display: none;
+    }
+
+    tbody {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+
+    tr {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-2);
+      height: auto;
+      min-height: 0;
+      padding: var(--space-3);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      background: var(--card);
+      overflow: visible;
+    }
+
+    td {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start !important;
+      justify-content: flex-start !important;
+      gap: 3px;
+      width: 100%;
+      min-width: 0;
+      padding: 0;
+      border: none;
+      color: var(--text);
+      font-size: var(--font-sm);
+      font-weight: var(--weight-medium);
+      line-height: var(--leading-tight);
+      overflow: visible;
+      overflow-wrap: anywhere;
+      text-align: left !important;
+      white-space: normal;
+
+      &::before {
+        content: '';
+        color: var(--text-secondary);
+        font-size: var(--font-caption);
+        font-weight: var(--weight-medium);
+        line-height: 1.2;
+      }
+    }
+
+    td:nth-child(1)::before {
+      content: 'Клиент';
+    }
+
+    td:nth-child(2)::before {
+      content: 'Дата';
+    }
+
+    td:nth-child(3)::before {
+      content: 'Заявка';
+    }
+
+    td:nth-child(4)::before {
+      content: 'Тип продажи';
+    }
+
+    td:nth-child(5)::before {
+      content: 'Сумма';
+    }
+
+    td:nth-child(6)::before {
+      content: 'Оплачено';
+    }
+
+    td:nth-child(7)::before {
+      content: 'Долг';
+    }
+
+    td:nth-child(8)::before {
+      content: 'Статус';
+    }
+
+    td:nth-child(9)::before {
+      display: none;
+    }
+
+    .data-table__cell--num {
+      color: var(--text);
+      text-align: left !important;
+    }
+
+    .badge {
+      align-self: flex-start;
+      max-width: max-content;
+    }
+
+    td:nth-child(9) {
+      align-items: stretch !important;
+      padding-top: var(--space-1);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    td:nth-child(9) .btn {
+      width: 100%;
+      min-height: 44px;
+      justify-content: center;
+    }
+  }
+
+  .modal.sales-modal,
+  .sales-detail-modal {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+    height: auto;
+    max-height: calc(100dvh - 24px);
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+  }
+
+  .modal.sales-modal {
+    .modal__head {
+      min-height: 0;
+      flex-shrink: 0;
+      padding: var(--space-3);
+    }
+
+    .modal__head h3 {
+      min-width: 0;
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    > form.sales-modal__form {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+    }
+
+    .sales-modal__scroll {
+      flex: 0 0 auto;
+      gap: var(--space-3);
+      padding: 0 var(--space-3) var(--space-3);
+      overflow: visible;
+    }
+
+    .sales-modal__section--top,
+    .sales-modal__cart-layout,
+    .sales-modal__detail-grid,
+    .sales-modal__inventory-ref-grid,
+    .sales-modal__qty-price-row,
+    .sales-modal__qty-price-row--gp-single {
+      grid-template-columns: 1fr;
+    }
+
+    .sales-modal__section--top {
+      gap: var(--space-2);
+    }
+
+    .sales-modal__cart-panel,
+    .sales-modal__line-card,
+    .sales-modal__inventory-ref,
+    .sales-modal__summary-card {
+      width: 100%;
+      min-width: 0;
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
+    }
+
+    .sales-modal__line-card {
+      overflow: visible;
+      background: var(--card);
+    }
+
+    .sales-modal__cart-layout,
+    .sales-modal__cart-panel,
+    .sales-modal__line-editor {
+      min-height: 0;
+      height: auto;
+    }
+
+    .sales-modal__cart-list,
+    .sales-modal__batch-cards,
+    .sales-modal__inventory-ref-scroll {
+      max-height: none;
+      overflow: visible;
+    }
+
+    .sales-modal__line-actions,
+    .sales-modal__line-head {
+      align-items: stretch;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .sales-modal__add-line,
+    .sales-modal__delete-btn,
+    .sales-modal__remove-line {
+      width: 100%;
+      min-height: 44px;
+      justify-content: center;
+      margin-top: 0;
+    }
+
+    .sales-modal__delete-btn {
+      margin-top: var(--space-2);
+      border-color: var(--danger-muted);
+      color: var(--danger);
+    }
+
+    .sales-modal__type-tabs {
+      grid-template-columns: 1fr 1fr;
+      min-width: 0;
+    }
+
+    .sales-modal__type-tab {
+      min-width: 0;
+      min-height: 40px;
+      white-space: normal;
+      line-height: 1.2;
+    }
+
+    @media (max-width: 390px) {
+      .sales-modal__type-tabs {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .sales-modal__batch-card,
+    .sales-modal__batch-card--gp {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .sales-modal__batch-card__name,
+    .sales-modal__batch-card__sub,
+    .sales-modal__batch-card__inline-name {
+      max-width: 100%;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    .sales-modal__batch-card__stock,
+    .sales-modal__batch-card__stock--gp {
+      align-items: flex-start;
+      text-align: left;
+      white-space: normal;
+    }
+
+    label.sales-modal__label {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: var(--font-caption);
+      font-weight: var(--weight-medium);
+    }
+
+    input,
+    .dias-select,
+    .searchable-select,
+    .sales-modal__date-input,
+    .sales-modal__readonly,
+    .sales-modal__payment-display,
+    .sales-modal__batch-filter-input {
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+      min-height: 44px;
+      box-sizing: border-box;
+    }
+
+    .sales-modal__footer.modal__actions {
+      display: flex !important;
+      flex-direction: column;
+      gap: var(--space-3);
+      min-height: 0;
+      width: 100%;
+      padding: 0 var(--space-3) var(--space-3) !important;
+      border-top: none;
+      background: transparent;
+      overflow: visible;
+    }
+
+    .sales-modal__footer-left,
+    .sales-modal__footer-right,
+    .sales-modal__summary-card {
+      width: 100%;
+      margin-left: 0;
+    }
+
+    .sales-modal__footer-title {
+      font-size: var(--font-body);
+    }
+
+    .sales-modal__payment-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-2);
+    }
+
+    .sales-modal__payment-grid > div {
+      min-width: 0;
+    }
+
+    .sales-modal__buttons-row {
+      display: flex;
+      flex-direction: column-reverse;
+      gap: var(--space-2);
+      width: 100%;
+    }
+
+    .sales-modal__buttons-row .btn {
+      width: 100%;
+      min-height: 44px;
+      height: 44px;
+      justify-content: center;
+      border-radius: var(--radius-md);
+    }
+  }
+
+  .sales-detail-modal {
+    display: flex;
+    flex-direction: column;
+
+    .modal__head {
+      flex-shrink: 0;
+      padding: var(--space-3);
+    }
+
+    .modal__head h3 {
+      min-width: 0;
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .sales-detail-modal__body {
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: 0 var(--space-3) var(--space-3);
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    .sales-detail__block {
+      margin-bottom: var(--space-4);
+    }
+
+    .sales-detail__dl {
+      gap: var(--space-3);
+    }
+
+    .sales-detail__dl-row {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 3px;
+      padding: 0;
+      border-bottom: none;
+    }
+
+    .sales-detail__dl-row dt {
+      color: var(--text-secondary);
+      font-size: var(--font-caption);
+      font-weight: var(--weight-medium);
+    }
+
+    .sales-detail__dl-row dd {
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      text-align: left;
+    }
+
+    .commercial-table-wrap {
+      overflow: visible;
+      border: none;
+      border-radius: 0;
+    }
+
+    .data-table--order-detail-lines {
+      display: block;
+      min-width: 0;
+      width: 100%;
+    }
+
+    .data-table--order-detail-lines thead {
+      display: none;
+    }
+
+    .data-table--order-detail-lines tbody {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .data-table--order-detail-lines tr {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-2);
+      padding: var(--space-3);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background: var(--card);
+    }
+
+    .data-table--order-detail-lines td {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 0;
+      border: none;
+      text-align: left;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    .data-table--order-detail-lines td::before {
+      color: var(--text-secondary);
+      font-size: var(--font-caption);
+      font-weight: var(--weight-medium);
+    }
+
+    .data-table--order-detail-lines td:nth-child(1)::before {
+      content: 'Партия';
+    }
+
+    .data-table--order-detail-lines td:nth-child(2)::before {
+      content: 'Количество';
+    }
+
+    .data-table--order-detail-lines td:nth-child(3)::before {
+      content: 'Цена';
+    }
+
+    .data-table--order-detail-lines td:nth-child(4)::before {
+      content: 'Сумма';
+    }
+
+    .modal__actions {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: var(--space-2);
+      width: 100%;
+      padding: var(--space-3);
+      border-top: 1px solid var(--border-subtle);
+      background: var(--card);
+    }
+
+    .modal__actions .btn {
+      width: 100%;
+      min-height: 44px;
+      justify-content: center;
+    }
+  }
+}
+
 

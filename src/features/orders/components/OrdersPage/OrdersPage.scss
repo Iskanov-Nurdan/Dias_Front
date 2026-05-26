@@ -591,3 +591,305 @@
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 768px) {
+  .orders-rq-page {
+    padding-inline: var(--space-3);
+    overflow-x: hidden;
+
+    .commercial-toolbar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-2);
+      margin-bottom: var(--space-3);
+    }
+
+    .commercial-toolbar__filters,
+    .ds-toolbar__start,
+    .ds-toolbar__end {
+      width: 100%;
+      min-width: 0;
+      margin-left: 0;
+    }
+
+    .commercial-toolbar__filters {
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-2);
+    }
+
+    .dias-select,
+    .searchable-select,
+    .commercial-date-filter,
+    .commercial-date-filter input[type='date'],
+    .ds-toolbar__end .btn {
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+    }
+
+    .commercial-date-filter {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-1);
+    }
+
+    .commercial-date-filter input[type='date'],
+    .ds-toolbar__end .btn {
+      min-height: 44px;
+      height: 44px;
+      box-sizing: border-box;
+    }
+
+    .commercial-table-wrap {
+      max-width: 100%;
+      overflow: visible;
+      border: none;
+      border-radius: 0;
+    }
+  }
+
+  .data-table--orders-rq {
+    display: block;
+    min-width: 0;
+    width: 100%;
+
+    thead {
+      display: none;
+    }
+
+    tbody {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+
+    tr {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-2);
+      height: auto;
+      min-height: 0;
+      padding: var(--space-3);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      background: var(--card);
+      overflow: visible;
+    }
+
+    td {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start !important;
+      justify-content: flex-start !important;
+      gap: 3px;
+      width: 100%;
+      min-width: 0;
+      padding: 0;
+      border: none;
+      color: var(--text);
+      font-size: var(--font-sm);
+      font-weight: var(--weight-medium);
+      line-height: var(--leading-tight);
+      overflow: visible;
+      overflow-wrap: anywhere;
+      text-align: left !important;
+      white-space: normal;
+
+      &::before {
+        content: '';
+        color: var(--text-secondary);
+        font-size: var(--font-caption);
+        font-weight: var(--weight-medium);
+        line-height: 1.2;
+      }
+    }
+
+    td:nth-child(1)::before {
+      content: 'Клиент';
+    }
+
+    td:nth-child(2)::before {
+      content: 'Товар';
+    }
+
+    td:nth-child(3)::before {
+      content: 'Количество';
+    }
+
+    td:nth-child(4)::before {
+      content: 'Статус';
+    }
+
+    .orders-rq__status-cell {
+      align-items: flex-start !important;
+      gap: var(--space-2);
+      padding-top: 0;
+      border-top: none;
+
+      .badge {
+        align-self: flex-start;
+        max-width: max-content;
+      }
+
+      .orders-rq__row-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--space-2);
+        width: 100%;
+        margin-top: var(--space-1);
+        padding-top: var(--space-1);
+        border-top: 1px solid var(--border-subtle);
+      }
+
+      .orders-rq__row-actions .btn {
+        width: 100%;
+        min-height: 44px;
+        justify-content: center;
+      }
+    }
+
+    .orders-rq__multi {
+      gap: 3px;
+    }
+
+    .orders-rq__multi-item {
+      font-size: var(--font-sm);
+    }
+  }
+
+  .orders-rq-page .modal.modal--wide {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    .modal__head {
+      flex-shrink: 0;
+      padding: var(--space-3);
+    }
+
+    .modal__head h3 {
+      min-width: 0;
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    > form {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .orders-rq-create {
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: 0 var(--space-3) var(--space-3);
+      gap: var(--space-3);
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    label {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: var(--font-caption);
+      font-weight: var(--weight-medium);
+    }
+
+    input,
+    .dias-select,
+    .searchable-select,
+    .orders-rq-create__readonly-sum {
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+      min-height: 44px;
+      box-sizing: border-box;
+    }
+
+    .orders-rq-create__cart-layout {
+      grid-template-columns: 1fr;
+      gap: var(--space-3);
+    }
+
+    .orders-rq-create__cart-panel,
+    .orders-rq-create__line-card {
+      padding: var(--space-3);
+      gap: var(--space-2);
+      background: var(--card);
+    }
+
+    .orders-rq-create__cart-head,
+    .orders-rq-create__line-card-head {
+      align-items: stretch;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .orders-rq-create__cart-head .btn,
+    .orders-rq-create__line-remove {
+      width: 100%;
+      min-height: 44px;
+      justify-content: center;
+    }
+
+    .orders-rq-create__cart-list {
+      max-height: none;
+      overflow: visible;
+    }
+
+    .orders-rq-create__cart-item {
+      align-items: flex-start;
+      flex-direction: column;
+      min-height: 0;
+      padding: var(--space-3);
+      text-align: left;
+
+      span:last-child {
+        display: inline-flex;
+        align-items: center;
+        min-height: 24px;
+        padding: 2px 8px;
+        border-radius: var(--radius-full);
+        background: var(--bg-hover);
+        color: var(--text-secondary);
+        font-size: var(--font-caption);
+      }
+    }
+
+    .orders-rq-create__line-grid {
+      grid-template-columns: 1fr;
+      gap: var(--space-2);
+
+      > div {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+      }
+    }
+
+    .modal__actions {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: var(--space-2);
+      width: 100%;
+      margin: 0;
+      padding: var(--space-3);
+      border-top: 1px solid var(--border-subtle);
+      background: var(--card);
+    }
+
+    .modal__actions .btn {
+      width: 100%;
+      min-height: 44px;
+      justify-content: center;
+    }
+  }
+}

@@ -626,3 +626,480 @@
   justify-content: space-between;
   gap: var(--space-2);
 }
+
+@media (max-width: 768px) {
+  .page--clients {
+    padding-inline: var(--space-3);
+    overflow-x: hidden;
+
+    .ds-toolbar,
+    .commercial-toolbar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-2);
+      margin-bottom: var(--space-3);
+    }
+
+    .clients-toolbar__start {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-2);
+      width: 100%;
+    }
+
+    .ds-toolbar__search,
+    .ds-toolbar__search--full,
+    .clients-toolbar__activity-select,
+    .clients-toolbar__filter,
+    .dias-select,
+    .searchable-select {
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+    }
+
+    .ds-toolbar__search,
+    input.ds-toolbar__search {
+      display: block;
+      flex: 0 0 auto !important;
+      width: 100% !important;
+      max-width: none !important;
+      min-width: 0 !important;
+      height: 44px;
+      min-height: 44px;
+      max-height: 48px;
+      box-sizing: border-box;
+      padding-block: 0;
+      padding-inline: var(--space-3);
+      line-height: 1.2;
+      resize: none;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .ds-toolbar__end {
+      width: 100%;
+      margin-left: 0;
+
+      .btn {
+        width: 100%;
+        min-height: 44px;
+        justify-content: center;
+      }
+    }
+
+    .commercial-table-wrap {
+      max-width: 100%;
+      overflow: visible;
+      border: none;
+      border-radius: 0;
+    }
+  }
+
+  .data-table--clients {
+    display: block;
+    min-width: 0;
+    width: 100%;
+
+    thead {
+      display: none;
+    }
+
+    tbody {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+
+    tr {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-2);
+      height: auto;
+      min-height: 0;
+      padding: var(--space-3);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      background: var(--card);
+      overflow: visible;
+    }
+
+    td {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start !important;
+      justify-content: flex-start !important;
+      gap: 3px;
+      width: 100%;
+      min-width: 0;
+      padding: 0;
+      border: none;
+      color: var(--text);
+      font-size: var(--font-sm);
+      font-weight: var(--weight-medium);
+      line-height: var(--leading-tight);
+      overflow: visible;
+      overflow-wrap: anywhere;
+      text-align: left !important;
+      white-space: normal;
+
+      &::before {
+        content: '';
+        color: var(--text-secondary);
+        font-size: var(--font-caption);
+        font-weight: var(--weight-medium);
+        line-height: 1.2;
+      }
+    }
+
+    td:nth-child(1)::before {
+      content: 'Имя';
+    }
+
+    td:nth-child(2)::before {
+      content: 'Телефон';
+    }
+
+    td:nth-child(3)::before {
+      content: 'Статус';
+    }
+
+    td:nth-child(1),
+    td:nth-child(2),
+    td:nth-child(3),
+    .data-table__cell--lead,
+    .data-table__cell--muted {
+      width: 100%;
+      color: var(--text);
+      font-size: var(--font-sm);
+      font-weight: var(--weight-medium);
+      margin: 0;
+      padding: 0;
+      border-bottom: none;
+      white-space: normal;
+    }
+
+    .badge {
+      align-self: flex-start;
+      max-width: max-content;
+    }
+
+    td.data-table__cell--actions,
+    .clients-table__actions {
+      display: grid;
+      grid-template-columns: 1fr;
+      align-items: stretch;
+      gap: var(--space-2);
+      width: 100%;
+      padding-top: var(--space-1);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    td.data-table__cell--actions::before,
+    .clients-table__actions::before {
+      display: none;
+    }
+
+    .clients-table__actions > .btn {
+      width: 100%;
+      min-height: 44px;
+      justify-content: center;
+    }
+  }
+
+  .page--clients .record-details-modal {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .page--clients .record-details-modal .modal__head,
+  .page--clients .record-details-modal__body,
+  .page--clients .record-details-modal__footer {
+    padding-inline: var(--space-3);
+  }
+
+  .page--clients .record-details-modal__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .page--clients .record-details-modal .detail-fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .page--clients .record-details-modal .detail-fields__row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    padding: 0;
+    border-bottom: none;
+  }
+
+  .page--clients .record-details-modal .detail-fields__label {
+    color: var(--text-secondary);
+    font-size: var(--font-caption);
+    font-weight: var(--weight-medium);
+  }
+
+  .page--clients .record-details-modal .detail-fields__value {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    text-align: left;
+  }
+
+  .page--clients .record-details-modal__footer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    flex-shrink: 0;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .page--clients .record-details-modal__footer .btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .modal.clients-modal {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    overflow: hidden;
+
+    .modal__head {
+      flex-shrink: 0;
+      padding: var(--space-3);
+    }
+
+    .modal__head h3 {
+      min-width: 0;
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    > form.clients-modal__form {
+      min-height: 0;
+    }
+
+    .clients-modal__scroll {
+      padding: 0 var(--space-3) var(--space-3);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      overflow-x: hidden;
+    }
+
+    label {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: var(--font-caption);
+      font-weight: var(--weight-medium);
+    }
+
+    input,
+    textarea,
+    .dias-select,
+    .searchable-select {
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+
+    input,
+    .dias-select,
+    .searchable-select {
+      min-height: 44px;
+    }
+
+    textarea {
+      min-height: 96px;
+    }
+
+    .clients-modal__type-switch {
+      gap: var(--space-1);
+      margin-bottom: var(--space-2);
+      padding: 3px;
+    }
+
+    .clients-modal__type-btn {
+      min-height: 40px;
+      padding-inline: var(--space-2);
+      white-space: nowrap;
+    }
+
+    .clients-modal__grid {
+      grid-template-columns: 1fr;
+      gap: var(--space-2);
+
+      > div {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+        min-width: 0;
+      }
+    }
+
+    .clients-modal__footer.modal__actions {
+      display: flex;
+      flex-direction: column-reverse;
+      gap: var(--space-2);
+      width: 100%;
+      padding: var(--space-3);
+      border-top: 1px solid var(--border-subtle);
+      background: var(--card);
+    }
+
+    .clients-modal__footer .btn {
+      width: 100%;
+      min-height: 44px;
+      justify-content: center;
+    }
+  }
+
+  .clients-profile-modal {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    overflow: hidden;
+
+    .modal__head {
+      flex-shrink: 0;
+      padding: var(--space-3);
+    }
+
+    .clients-profile-modal__body {
+      padding: 0 var(--space-3) var(--space-3);
+      gap: var(--space-3);
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    .clients-profile__block {
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
+    }
+
+    .clients-profile__title {
+      margin-bottom: var(--space-2);
+      padding-bottom: 0;
+      border-bottom: none;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .clients-profile__dl {
+      gap: var(--space-3);
+    }
+
+    .clients-profile__row {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 3px;
+      padding: 0;
+      border-bottom: none;
+    }
+
+    .clients-profile__row dd {
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      text-align: left;
+    }
+
+    .clients-profile__head-row {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .clients-profile__head-row .btn,
+    > .modal__actions .btn {
+      width: 100%;
+      min-height: 44px;
+      justify-content: center;
+    }
+
+    > .modal__actions {
+      flex-shrink: 0;
+      padding: var(--space-3);
+      border-top: 1px solid var(--border-subtle);
+      background: var(--card);
+    }
+  }
+
+  .clients-profile-modal + .modal-overlay .modal,
+  .clients-profile-modal ~ .modal-overlay .modal {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .clients-profile-modal + .modal-overlay form.clients-profile__pay-form,
+  .clients-profile-modal ~ .modal-overlay form.clients-profile__pay-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-height: 0;
+    padding: 0 var(--space-3) var(--space-3);
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .clients-profile__pay-form label {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--font-caption);
+    font-weight: var(--weight-medium);
+  }
+
+  .clients-profile__pay-form input,
+  .clients-profile__pay-form textarea,
+  .clients-profile__pay-form .dias-select,
+  .clients-profile__pay-form .searchable-select {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .clients-profile__pay-form input,
+  .clients-profile__pay-form .dias-select,
+  .clients-profile__pay-form .searchable-select {
+    min-height: 44px;
+  }
+
+  .clients-profile__pay-form textarea {
+    min-height: 96px;
+    max-height: 140px;
+  }
+
+  .clients-profile__pay-form .modal__actions {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: var(--space-2);
+    width: 100%;
+    margin: 0;
+    padding: var(--space-3) 0 0;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .clients-profile__pay-form .modal__actions .btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+}

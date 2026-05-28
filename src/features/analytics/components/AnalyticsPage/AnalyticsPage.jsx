@@ -11,6 +11,9 @@ import {
   ComposedChart,
   Area,
   Line,
+  PieChart,
+  Pie,
+  Cell,
 } from 'recharts';
 import './AnalyticsPage.scss';
 import {
@@ -118,9 +121,6 @@ const AnalyticsChartLegend = ({ payload }) => {
   );
 };
 
-const pieSeriesHasValues = (rows) =>
-  Array.isArray(rows) && rows.some((r) => (Number(r.value) || 0) > 0);
-
 const moneyGtZero = (v) => {
   const n = Number(v);
   return Number.isFinite(n) && n > 0;
@@ -156,6 +156,46 @@ const formatPiecesInt = (v) => {
 };
 
 const formatMoney = (num) => `${formatNumber(num)} сом`;
+
+const CHART_COLORS = [
+  'var(--success)',
+  'var(--info)',
+  'var(--accent-2)',
+  'var(--danger)',
+  '#8b5cf6',
+  '#14b8a6',
+  '#f59e0b',
+  '#64748b',
+];
+
+const chartTooltipStyle = {
+  background: 'var(--card)',
+  border: '1px solid var(--card-border)',
+  borderRadius: '10px',
+  fontSize: '12px',
+  boxShadow: 'var(--shadow-md)',
+};
+
+const compactMoneyTick = (v) => {
+  const n = Number(v) || 0;
+  if (Math.abs(n) >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+  if (Math.abs(n) >= 1000) return `${Math.round(n / 1000)}k`;
+  return `${n}`;
+};
+
+const sumSeries = (rows) =>
+  (Array.isArray(rows) ? rows : []).reduce((sum, row) => sum + (Number(row.value) || 0), 0);
+
+const topSeriesWithOther = (rows, limit = 5) => {
+  const clean = (Array.isArray(rows) ? rows : [])
+    .map((row) => ({ ...row, value: Number(row.value) || 0 }))
+    .filter((row) => row.value > 0)
+    .sort((a, b) => b.value - a.value);
+  const head = clean.slice(0, limit);
+  const tail = clean.slice(limit);
+  const other = tail.reduce((sum, row) => sum + row.value, 0);
+  return other > 0 ? [...head, { name: 'Остальные', value: other }] : head;
+};
 
 const toMoneyNum = (v) => {
   const n = Number(v);
@@ -322,12 +362,16 @@ const AnalyticsPage = () => {
     { value: 7, label: 'Июль' }, { value: 8, label: 'Август' }, { value: 9, label: 'Сентябрь' },
     { value: 10, label: 'Октябрь' }, { value: 11, label: 'Ноябрь' }, { value: 12, label: 'Декабрь' },
   ];
+  const selectedMonth = months.find((m) => String(m.value) === String(month));
+  const periodTitle = day
+    ? `${day} ${selectedMonth?.label?.toLowerCase() || ''} ${year}`
+    : `${selectedMonth?.label || 'Весь год'} ${year}`;
 
   const salesByProfile = Array.isArray(data?.sales_by_profile) ? data.sales_by_profile : [];
   const productChartData = salesByProfile.map((p) => ({
     name: profileDisplayName(p),
     value: Number(p.sold_units) || 0,
-    revenue: p.revenue,
+    revenue: Number(p.revenue) || 0,
   }));
 
   const trendsList = Array.isArray(data?.trends) ? data.trends : [];
@@ -343,12 +387,15 @@ const AnalyticsPage = () => {
   });
 
   const showTrendChart = trendsList.length > 0 && trendsMoneyHasValues(trendsData);
-  const showProfilesChart = pieSeriesHasValues(productChartData);
   const salesCount = Number(cards.sales_count) || 0;
   const salesQty = Number(cards.sold_units_total) || 0;
   const revenueVal = toMoneyNum(cards.revenue_total);
+  const purchaseVal = purchaseTotalFromCards(cards);
+  const otherExpensesVal = otherExpensesFromCards(cards);
   const expenseTotalSum = periodExpensesFromCards(cards);
   const netMargin = revenueVal - expenseTotalSum;
+  const marginPct = revenueVal > 0 ? (netMargin / revenueVal) * 100 : null;
+  const avgCheck = salesCount > 0 ? revenueVal / salesCount : 0;
   const packagingSummary = data?.packaging_summary && typeof data.packaging_summary === 'object' ? data.packaging_summary : null;
   const packagingPieces = Number(packagingSummary?.pieces_total ?? packagingSummary?.pieces ?? 0) || 0;
   const packagingPackages = Number(packagingSummary?.packages_count ?? packagingSummary?.packages ?? 0) || 0;
@@ -356,7 +403,44 @@ const AnalyticsPage = () => {
   const showPackagingCard =
     packagingSummary &&
     (packagingPieces > 0 || packagingPackages > 0 || (packagingKg != null && Number(packagingKg) > 0));
-  const showDebtBlock = STAGE2_TABS_ENABLED;
+  const showDebtBlock = STAGE2_TABS_ENABLED && debtTotal > 0;
+  const acceptedQty = Number(otkSummary.accepted ?? otkSummary.accepted_total ?? 0) || 0;
+  const defectQty = Number(otkSummary.defect ?? otkSummary.defect_total ?? otkSummary.rejected ?? 0) || 0;
+  const reservedQty = Number(warehouseSummary.reserved ?? 0) || 0;
+  const availableQty = Number(warehouseSummary.available ?? 0) || 0;
+  const expensePieData = [
+    { name: 'Приход сырья', value: purchaseVal, color: 'var(--accent-2)' },
+    { name: 'Прочие расходы', value: otherExpensesVal, color: 'var(--danger)' },
+  ].filter((item) => item.value > 0);
+  const revenuePieData = topSeriesWithOther(
+    productChartData.map((item) => ({
+      name: item.name,
+      value: item.revenue,
+    })),
+    6,
+  );
+  const qualityPieData = [
+    { name: 'Годные', value: acceptedQty, color: 'var(--success)' },
+    { name: 'Брак', value: defectQty, color: 'var(--danger)' },
+  ].filter((item) => item.value > 0);
+  const stockBarData = [
+    { name: 'Доступно', value: availableQty, color: '#8b5cf6' },
+    { name: 'Резерв', value: reservedQty, color: 'var(--warning)' },
+  ].filter((item) => item.value > 0);
+  const salesRevenueChartData = productChartData
+    .filter((item) => item.value > 0 || item.revenue > 0)
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 8);
+  const marginTrendData = trendsData.map((item) => ({
+    ...item,
+    margin: item.revenue - item.expenses,
+  }));
+  const showExpensePie = sumSeries(expensePieData) > 0;
+  const showRevenuePie = sumSeries(revenuePieData) > 0;
+  const showQualityPie = sumSeries(qualityPieData) > 0;
+  const showStockBar = stockBarData.length > 1 && sumSeries(stockBarData) > 0;
+  const showSalesRevenueCombo = salesRevenueChartData.length > 0;
+  const showMarginTrend = marginTrendData.some((item) => item.revenue > 0 || item.expenses > 0 || item.margin !== 0);
 
   return (
     <div className="page page--analytics">
@@ -421,9 +505,9 @@ const AnalyticsPage = () => {
       <section className="analytics-finance-shell analytics-pnl" aria-label="Финансы за период">
         <header className="analytics-finance-shell__head">
           <div>
-            <h2 className="analytics-finance-shell__title">Финансы</h2>
+            <h2 className="analytics-finance-shell__title">Сводка</h2>
             <p className="analytics-finance-shell__hint">
-              Выручка — продажи · расходы — приход сырья и принятые прочие
+              {periodTitle}
             </p>
           </div>
           <div className="analytics-finance-shell__actions">
@@ -485,6 +569,73 @@ const AnalyticsPage = () => {
             <p className="analytics-pnl__card-figure analytics-pnl__card-figure--net">{formatMoney(netMargin)}</p>
           </div>
         </div>
+        <div className="analytics-fact-rail" aria-label="Короткая сводка">
+          <div className="analytics-fact">
+            <span>Продаж</span>
+            <strong>{formatNumber(salesCount)}</strong>
+          </div>
+          <div className="analytics-fact">
+            <span>Средний чек</span>
+            <strong>{formatMoney(avgCheck)}</strong>
+          </div>
+          <div className="analytics-fact">
+            <span>Продано</span>
+            <strong>{formatNumber(salesQty)} шт</strong>
+          </div>
+          <div className="analytics-fact">
+            <span>ОТК</span>
+            <strong>{formatDefectPct(defectPct)}</strong>
+          </div>
+          <div className="analytics-fact">
+            <span>Склад</span>
+            <strong>{formatNumber(availableQty)} шт</strong>
+          </div>
+          {showPackagingCard ? (
+            <div className="analytics-fact">
+              <span>Упаковка</span>
+              <strong>{formatNumber(packagingPackages)}</strong>
+            </div>
+          ) : null}
+          {showDebtBlock ? (
+            <button
+              type="button"
+              className="analytics-fact analytics-fact--button"
+              onClick={() => setDetailModal({ type: 'debt' })}
+            >
+              <span>Долг</span>
+              <strong>{formatMoney(debtTotal)}</strong>
+            </button>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="analytics-command-grid" aria-label="Ключевые цифры аналитики">
+        <article className="analytics-command-card analytics-command-card--primary">
+          <span className="analytics-command-card__label">Чистый результат</span>
+          <strong className={netMargin >= 0 ? 'analytics-command-card__value analytics-command-card__value--good' : 'analytics-command-card__value analytics-command-card__value--bad'}>
+            {formatMoney(netMargin)}
+          </strong>
+          <span className="analytics-command-card__hint">
+            {marginPct == null ? 'Маржа не рассчитана без выручки' : `Маржинальность ${formatDefectPct(marginPct)}`}
+          </span>
+        </article>
+        <article className="analytics-command-card">
+          <span className="analytics-command-card__label">Средний чек</span>
+          <strong className="analytics-command-card__value">{formatMoney(avgCheck)}</strong>
+          <span className="analytics-command-card__hint">{formatNumber(salesCount)} продаж за период</span>
+        </article>
+        <article className="analytics-command-card">
+          <span className="analytics-command-card__label">Продано единиц</span>
+          <strong className="analytics-command-card__value">{formatNumber(salesQty)}</strong>
+          <span className="analytics-command-card__hint">по всем профилям</span>
+        </article>
+        <article className="analytics-command-card">
+          <span className="analytics-command-card__label">Качество ОТК</span>
+          <strong className="analytics-command-card__value">{formatDefectPct(defectPct)}</strong>
+          <span className="analytics-command-card__hint">
+            {formatPiecesInt(acceptedQty)} годных · {formatPiecesInt(defectQty)} брак
+          </span>
+        </article>
       </section>
 
       {showTrendChart && (
@@ -561,6 +712,138 @@ const AnalyticsPage = () => {
           Динамика скрыта: за период нет выручки и расходов по дням/месяцам (все нули).
         </p>
       ) : null}
+
+      <section className="analytics-insight-grid analytics-insight-grid--top" aria-label="Финансовые графики">
+        <article className="analytics-panel analytics-panel--subchart">
+          <header className="analytics-panel__header analytics-panel__header--compact">
+            <h2 className="analytics-panel__title">Структура расходов</h2>
+            <p className="analytics-panel__lede">Приход сырья и прочие расходы</p>
+          </header>
+          {showExpensePie ? (
+            <div className="analytics-donut-layout">
+              <div className="analytics-chart-surface analytics-chart-surface--compact">
+                <ResponsiveContainer width="100%" height={238}>
+                  <PieChart>
+                    <Tooltip contentStyle={chartTooltipStyle} formatter={(value) => formatMoney(value)} />
+                    <Pie
+                      data={expensePieData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius="58%"
+                      outerRadius="82%"
+                      paddingAngle={4}
+                      stroke="var(--card)"
+                      strokeWidth={3}
+                    >
+                      {expensePieData.map((entry, index) => (
+                        <Cell key={entry.name} fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <dl className="analytics-legend-list">
+                {expensePieData.map((item, index) => (
+                  <div key={item.name} className="analytics-legend-list__item">
+                    <dt>
+                      <span
+                        className="analytics-legend-list__dot"
+                        style={{ background: item.color || CHART_COLORS[index % CHART_COLORS.length] }}
+                      />
+                      {item.name}
+                    </dt>
+                    <dd>{formatMoney(item.value)}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          ) : (
+            <p className="analytics-empty analytics-empty--inline">Нет расходов за выбранный период.</p>
+          )}
+        </article>
+
+        <article className="analytics-panel analytics-panel--subchart">
+          <header className="analytics-panel__header analytics-panel__header--compact">
+            <h2 className="analytics-panel__title">Выручка по профилям</h2>
+            <p className="analytics-panel__lede">Доля товаров в деньгах</p>
+          </header>
+          {showRevenuePie ? (
+            <div className="analytics-donut-layout">
+              <div className="analytics-chart-surface analytics-chart-surface--compact">
+                <ResponsiveContainer width="100%" height={238}>
+                  <PieChart>
+                    <Tooltip contentStyle={chartTooltipStyle} formatter={(value) => formatMoney(value)} />
+                    <Pie
+                      data={revenuePieData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius="52%"
+                      outerRadius="82%"
+                      paddingAngle={3}
+                      stroke="var(--card)"
+                      strokeWidth={3}
+                    >
+                      {revenuePieData.map((entry, index) => (
+                        <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <dl className="analytics-legend-list">
+                {revenuePieData.map((item, index) => (
+                  <div key={item.name} className="analytics-legend-list__item">
+                    <dt>
+                      <span className="analytics-legend-list__dot" style={{ background: CHART_COLORS[index % CHART_COLORS.length] }} />
+                      {item.name}
+                    </dt>
+                    <dd>{formatMoney(item.value)}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          ) : (
+            <p className="analytics-empty analytics-empty--inline">Нет выручки по профилям за выбранный период.</p>
+          )}
+        </article>
+
+        <article className="analytics-panel analytics-panel--subchart analytics-panel--wide">
+          <header className="analytics-panel__header analytics-panel__header--compact">
+            <h2 className="analytics-panel__title">Маржа в динамике</h2>
+            <p className="analytics-panel__lede">Выручка, расходы и результат</p>
+          </header>
+          {showMarginTrend ? (
+            <div className="analytics-chart-surface analytics-chart-surface--compact">
+              <ResponsiveContainer width="100%" height={278}>
+                <ComposedChart data={marginTrendData} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="4 10" stroke="var(--border)" strokeOpacity={0.42} vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={10}
+                    tick={{ fontSize: 11, fill: 'var(--text-muted)', fontWeight: 500 }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    width={48}
+                    tick={{ fontSize: 11, fill: 'var(--text-muted)', fontWeight: 500 }}
+                    tickFormatter={compactMoneyTick}
+                  />
+                  <Tooltip contentStyle={chartTooltipStyle} formatter={(value) => formatMoney(value)} />
+                  <Legend verticalAlign="top" align="center" content={<AnalyticsChartLegend />} />
+                  <Bar dataKey="revenue" name="Выручка" fill="var(--success)" fillOpacity={0.65} radius={[4, 4, 0, 0]} maxBarSize={24} />
+                  <Bar dataKey="expenses" name="Расходы" fill="var(--danger)" fillOpacity={0.55} radius={[4, 4, 0, 0]} maxBarSize={24} />
+                  <Line type="monotone" dataKey="margin" name="Маржа" stroke="var(--info)" strokeWidth={2.4} dot={false} activeDot={{ r: 4 }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <p className="analytics-empty analytics-empty--inline">Нет динамики для расчёта маржи.</p>
+          )}
+        </article>
+      </section>
 
       <section className="analytics-kpi-grid" aria-label="Операционные показатели">
         <article className="analytics-kpi analytics-kpi--sales">
@@ -650,54 +933,141 @@ const AnalyticsPage = () => {
         )}
       </section>
 
-      <section className="analytics-panel analytics-panel--subchart">
-        <header className="analytics-panel__header analytics-panel__header--compact">
-          <h2 className="analytics-panel__title">Объём по профилям</h2>
-          <p className="analytics-panel__lede">Продано, шт.</p>
-        </header>
-        {showProfilesChart ? (
-          <div className="analytics-chart-surface analytics-chart-surface--compact">
-            <ResponsiveContainer width="100%" height={236}>
-              <BarChart data={productChartData} margin={{ top: 8, right: 12, left: 0, bottom: 32 }}>
-                <CartesianGrid strokeDasharray="4 10" stroke="var(--border)" strokeOpacity={0.4} vertical={false} />
-                <XAxis
-                  dataKey="name"
-                  tickLine={false}
-                  axisLine={{ stroke: 'var(--border)', strokeOpacity: 0.5 }}
-                  interval={0}
-                  angle={0}
-                  textAnchor="middle"
-                  tickMargin={8}
-                  height={40}
-                  tick={{ fontSize: 10, fill: 'var(--text-muted)', fontWeight: 500 }}
-                  tickFormatter={(v) => truncateAxisLabel(v, 18)}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  width={40}
-                  tick={{ fontSize: 10, fill: 'var(--text-muted)', fontWeight: 500 }}
-                />
-                <Tooltip
-                  cursor={{ fill: 'var(--bg-hover)' }}
-                  contentStyle={{
-                    background: 'var(--card)',
-                    border: '1px solid var(--card-border)',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                  }}
-                  formatter={(value) => [formatNumber(value), 'Продано, шт']}
-                  labelFormatter={(label) => String(label)}
-                />
-                <Bar dataKey="value" fill="var(--success)" fillOpacity={0.85} radius={[4, 4, 0, 0]} maxBarSize={36} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <p className="analytics-empty analytics-empty--inline">
-            Нет продаж за период — график по профилям строится только по проданным штукам. Упаковку смотрите в «Склад».
-          </p>
-        )}
+      <section className="analytics-insight-grid analytics-insight-grid--bottom" aria-label="Операционные графики">
+        <article className="analytics-panel analytics-panel--subchart analytics-panel--wide">
+          <header className="analytics-panel__header analytics-panel__header--compact">
+            <h2 className="analytics-panel__title">Продажи и выручка</h2>
+            <p className="analytics-panel__lede">Топ профилей: штуки и деньги</p>
+          </header>
+          {showSalesRevenueCombo ? (
+            <div className="analytics-chart-surface analytics-chart-surface--compact">
+              <ResponsiveContainer width="100%" height={292}>
+                <ComposedChart data={salesRevenueChartData} margin={{ top: 8, right: 12, left: 0, bottom: 34 }}>
+                  <CartesianGrid strokeDasharray="4 10" stroke="var(--border)" strokeOpacity={0.42} vertical={false} />
+                  <XAxis
+                    dataKey="name"
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                    tickMargin={10}
+                    height={46}
+                    tick={{ fontSize: 10, fill: 'var(--text-muted)', fontWeight: 500 }}
+                    tickFormatter={(v) => truncateAxisLabel(v, 16)}
+                  />
+                  <YAxis
+                    yAxisId="units"
+                    tickLine={false}
+                    axisLine={false}
+                    width={42}
+                    tick={{ fontSize: 10, fill: 'var(--text-muted)', fontWeight: 500 }}
+                  />
+                  <YAxis
+                    yAxisId="money"
+                    orientation="right"
+                    tickLine={false}
+                    axisLine={false}
+                    width={50}
+                    tick={{ fontSize: 10, fill: 'var(--text-muted)', fontWeight: 500 }}
+                    tickFormatter={compactMoneyTick}
+                  />
+                  <Tooltip
+                    contentStyle={chartTooltipStyle}
+                    formatter={(value, name) => (name === 'Выручка' ? formatMoney(value) : [formatNumber(value), name])}
+                  />
+                  <Legend verticalAlign="top" align="center" content={<AnalyticsChartLegend />} />
+                  <Bar yAxisId="units" dataKey="value" name="Шт" fill="var(--info)" fillOpacity={0.72} radius={[4, 4, 0, 0]} maxBarSize={34} />
+                  <Line yAxisId="money" type="monotone" dataKey="revenue" name="Выручка" stroke="var(--success)" strokeWidth={2.4} dot={false} activeDot={{ r: 4 }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <p className="analytics-empty analytics-empty--inline">Нет продаж и выручки по профилям.</p>
+          )}
+        </article>
+
+        <article className="analytics-panel analytics-panel--subchart">
+          <header className="analytics-panel__header analytics-panel__header--compact">
+            <h2 className="analytics-panel__title">Качество</h2>
+            <p className="analytics-panel__lede">Годные и брак ОТК</p>
+          </header>
+          {showQualityPie ? (
+            <div className="analytics-donut-layout analytics-donut-layout--compact">
+              <div className="analytics-chart-surface analytics-chart-surface--compact">
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Tooltip contentStyle={chartTooltipStyle} formatter={(value) => `${formatPiecesInt(value)} шт`} />
+                    <Pie
+                      data={qualityPieData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius="58%"
+                      outerRadius="82%"
+                      paddingAngle={4}
+                      stroke="var(--card)"
+                      strokeWidth={3}
+                    >
+                      {qualityPieData.map((entry, index) => (
+                        <Cell key={entry.name} fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <dl className="analytics-legend-list">
+                {qualityPieData.map((item, index) => (
+                  <div key={item.name} className="analytics-legend-list__item">
+                    <dt>
+                      <span
+                        className="analytics-legend-list__dot"
+                        style={{ background: item.color || CHART_COLORS[index % CHART_COLORS.length] }}
+                      />
+                      {item.name}
+                    </dt>
+                    <dd>{formatPiecesInt(item.value)} шт</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          ) : (
+            <p className="analytics-empty analytics-empty--inline">Нет данных ОТК за период.</p>
+          )}
+        </article>
+
+        {showStockBar ? (
+          <article className="analytics-panel analytics-panel--subchart">
+            <header className="analytics-panel__header analytics-panel__header--compact">
+              <h2 className="analytics-panel__title">Склад</h2>
+              <p className="analytics-panel__lede">Доступно и в резерве</p>
+            </header>
+            <div className="analytics-chart-surface analytics-chart-surface--compact">
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={stockBarData} layout="vertical" margin={{ top: 8, right: 18, left: 12, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="4 10" stroke="var(--border)" strokeOpacity={0.35} horizontal={false} />
+                  <XAxis
+                    type="number"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 10, fill: 'var(--text-muted)', fontWeight: 500 }}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    tickLine={false}
+                    axisLine={false}
+                    width={70}
+                    tick={{ fontSize: 11, fill: 'var(--text-muted)', fontWeight: 500 }}
+                  />
+                  <Tooltip contentStyle={chartTooltipStyle} formatter={(value) => `${formatNumber(value)} шт`} />
+                  <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={30}>
+                    {stockBarData.map((entry, index) => (
+                      <Cell key={entry.name} fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </article>
+        ) : null}
       </section>
       <OtherExpensesModal
         open={otherExpensesOpen}

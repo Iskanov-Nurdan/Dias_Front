@@ -20,12 +20,11 @@ const BlankRecipeRowsEditor = ({ recipeRows, setRecipeRows, errorText, materialO
   const summaryLine = compositionTotalSummaryText(previewSum);
 
   return (
-    <>
-      <label className="chemistry-blank-stock__composition-label">Состав *</label>
+    <div className="chemistry-recipe-editor" role="group" aria-label="Состав">
       <div className="chemistry-recipe-grid chemistry-recipe-grid--head">
-        <span>Сырьё *</span>
-        <span>Вес, кг *</span>
-        <span aria-hidden />
+        <span className="chemistry-recipe-grid__head-cell">Сырьё *</span>
+        <span className="chemistry-recipe-grid__head-cell">Вес, кг *</span>
+        <span className="chemistry-recipe-grid__head-cell chemistry-recipe-grid__head-cell--action" aria-hidden />
       </div>
       {recipeRows.map((row) => (
         <div key={row.key} className="chemistry-recipe-grid chemistry-recipe-grid--row">
@@ -63,7 +62,7 @@ const BlankRecipeRowsEditor = ({ recipeRows, setRecipeRows, errorText, materialO
         <p className="chemistry-blank-stock__total-preview">{summaryLine}</p>
       ) : null}
       {errorText ? <p className="modal__error">{errorText}</p> : null}
-    </>
+    </div>
   );
 };
 

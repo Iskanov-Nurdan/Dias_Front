@@ -15,9 +15,6 @@ import {
   newLineKey,
   normalizeRecipeRowsState,
   validateRecipeRows,
-  sumCompositionKg,
-  compositionTotalSummaryText,
-  buildCompositionFromRows,
 } from '../../lib/blankRecipeShared';
 import BlankRecipeRowsEditor from '../BlankRecipeRowsEditor/BlankRecipeRowsEditor';
 import {
@@ -236,8 +233,6 @@ const CompositionEditModal = ({ blankId, initialName, initialComposition, materi
     }
   };
 
-  const sumKg = sumCompositionKg(buildCompositionFromRows(recipeRows));
-
   return (
     <div className="modal-overlay" role="presentation" onClick={onClose}>
       <div className="modal modal--wide" onClick={(ev) => ev.stopPropagation()}>
@@ -254,9 +249,6 @@ const CompositionEditModal = ({ blankId, initialName, initialComposition, materi
             errorText={recipeError}
             materialOptions={materialOptions}
           />
-          {sumKg != null && Number.isFinite(sumKg) ? (
-            <p className="chemistry-blank-stock__total-preview">{compositionTotalSummaryText(sumKg)}</p>
-          ) : null}
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose} disabled={busy}>
               Отмена

@@ -67,6 +67,9 @@ export const compositionTotalSummaryText = (sumKg) => {
   if (!Number.isFinite(sumKg) || sumKg <= 0) return '';
   const dec = formatNumberForInput(sumKg);
   const human = formatKgGramsHuman(sumKg);
+  if (!human || human === `${dec} кг`) {
+    return `Общий итог: ${dec} кг`;
+  }
   return `Общий итог: ${dec} кг (${human})`;
 };
 

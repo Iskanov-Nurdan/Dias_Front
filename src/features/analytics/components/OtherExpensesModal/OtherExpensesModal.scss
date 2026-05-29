@@ -14,41 +14,51 @@
   margin: 0;
 }
 
-/* Подписи в одной строке, контролы во второй — ровная линия */
 .analytics-other-expenses-modal__bar {
-  display: grid;
-  grid-template-columns: 92px 128px 128px max-content;
-  grid-template-rows: 13px var(--input-height);
-  column-gap: 8px;
-  row-gap: 4px;
-  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
   padding: var(--space-2) var(--space-3) var(--space-3);
   border-bottom: 1px solid var(--card-border);
 }
 
-.analytics-other-expenses-modal__bar-label {
-  font-size: 11px;
-  line-height: 13px;
-  color: var(--text-secondary);
-  align-self: end;
-  margin: 0;
+.analytics-other-expenses-modal__filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
 
-  &--spacer {
-    visibility: hidden;
+  label {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.25;
+    color: var(--text-secondary);
+  }
+
+  &--year {
+    flex: 0 0 5.75rem;
+    width: 5.75rem;
+  }
+
+  &--month,
+  &--day {
+    flex: 0 0 8rem;
+    width: 8rem;
   }
 }
 
 .analytics-other-expenses-modal__control {
   min-width: 0;
-  align-self: center;
 
   &--year {
     width: 100%;
     box-sizing: border-box;
     height: var(--input-height);
     min-height: var(--input-height);
-    margin: 0;
-    padding: 0 10px;
+    max-height: var(--input-height);
+    margin: 0 !important;
+    padding: 0 var(--space-2);
     border: 1px solid var(--select-border, var(--card-border));
     border-radius: var(--select-radius, var(--radius-sm));
     font-size: var(--font-body);
@@ -60,19 +70,23 @@
   &--select {
     .dias-select {
       width: 100%;
-      min-height: var(--input-height);
       height: var(--input-height);
+      min-height: var(--input-height);
+      max-height: var(--input-height);
+      margin: 0 !important;
+      box-sizing: border-box;
     }
   }
 }
 
 .analytics-other-expenses-modal__add-btn {
-  grid-row: 2;
-  grid-column: 4;
+  flex: 0 0 auto;
+  align-self: flex-end;
   white-space: nowrap;
   height: var(--input-height);
   min-height: var(--input-height);
-  margin: 0;
+  max-height: var(--input-height);
+  margin: 0 !important;
   padding: 0 var(--space-3);
   display: inline-flex;
   align-items: center;

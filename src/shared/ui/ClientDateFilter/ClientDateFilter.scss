@@ -1,0 +1,96 @@
+@use '../../styles/mixins' as *;
+
+.commercial-date-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 auto;
+  box-sizing: border-box;
+
+  @include mobile {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    flex: 1 1 100%;
+  }
+}
+
+.commercial-date-filter__label {
+  font-size: var(--font-caption);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  @include mobile {
+    white-space: normal;
+  }
+}
+
+.commercial-date-filter__input {
+  width: 100%;
+  min-width: 0;
+  max-width: 12rem;
+  min-height: var(--input-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: max(16px, var(--font-body));
+  line-height: var(--input-height);
+  box-sizing: border-box;
+  color-scheme: dark;
+  -webkit-appearance: none;
+  appearance: none;
+
+  &::-webkit-date-and-time-value {
+    min-height: 1.2em;
+    color: var(--text);
+    text-align: left;
+  }
+
+  &::-webkit-datetime-edit,
+  &::-webkit-datetime-edit-fields-wrapper,
+  &::-webkit-datetime-edit-text,
+  &::-webkit-datetime-edit-month-field,
+  &::-webkit-datetime-edit-day-field,
+  &::-webkit-datetime-edit-year-field {
+    color: var(--text);
+    padding: 0;
+  }
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 3px var(--input-focus-ring);
+  }
+
+  @include mobile {
+    width: 100%;
+    max-width: none;
+    min-height: 44px;
+    height: 44px;
+    line-height: normal;
+    padding-block: 10px;
+  }
+}
+
+[data-theme='light'] .commercial-date-filter__input {
+  color-scheme: light;
+}
+
+.commercial-date-filter__clear {
+  flex-shrink: 0;
+
+  @include mobile {
+    align-self: flex-start;
+  }
+}

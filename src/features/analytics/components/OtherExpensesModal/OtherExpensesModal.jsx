@@ -253,28 +253,39 @@ const OtherExpensesModal = ({ open, onClose, onChanged, initialYear, initialMont
           </div>
 
           <div className="analytics-other-expenses-modal__bar">
-            <label className="analytics-other-expenses-modal__bar-label" htmlFor="other-exp-filter-year">
-              Год
-            </label>
-            <label className="analytics-other-expenses-modal__bar-label">Месяц</label>
-            <label className="analytics-other-expenses-modal__bar-label">День</label>
-            <span className="analytics-other-expenses-modal__bar-label analytics-other-expenses-modal__bar-label--spacer" aria-hidden="true">
-              &nbsp;
-            </span>
-            <input
-              id="other-exp-filter-year"
-              className="analytics-other-expenses-modal__control analytics-other-expenses-modal__control--year"
-              type="number"
-              min="2020"
-              max="2035"
-              value={year}
-              onChange={(e) => setYear(Number(e.target.value))}
-            />
-            <div className="analytics-other-expenses-modal__control analytics-other-expenses-modal__control--select">
-              <Select value={String(month)} onChange={setMonth} options={MONTH_OPTIONS} />
+            <div className="analytics-other-expenses-modal__filter-field analytics-other-expenses-modal__filter-field--year">
+              <label htmlFor="other-exp-filter-year">Год</label>
+              <input
+                id="other-exp-filter-year"
+                className="analytics-other-expenses-modal__control analytics-other-expenses-modal__control--year"
+                type="number"
+                min="2020"
+                max="2035"
+                value={year}
+                onChange={(e) => setYear(Number(e.target.value))}
+              />
             </div>
-            <div className="analytics-other-expenses-modal__control analytics-other-expenses-modal__control--select">
-              <Select value={day === '' ? '' : String(day)} onChange={setDay} options={dayOptions} />
+            <div className="analytics-other-expenses-modal__filter-field analytics-other-expenses-modal__filter-field--month">
+              <label htmlFor="other-exp-filter-month">Месяц</label>
+              <div className="analytics-other-expenses-modal__control analytics-other-expenses-modal__control--select">
+                <Select
+                  id="other-exp-filter-month"
+                  value={String(month)}
+                  onChange={setMonth}
+                  options={MONTH_OPTIONS}
+                />
+              </div>
+            </div>
+            <div className="analytics-other-expenses-modal__filter-field analytics-other-expenses-modal__filter-field--day">
+              <label htmlFor="other-exp-filter-day">День</label>
+              <div className="analytics-other-expenses-modal__control analytics-other-expenses-modal__control--select">
+                <Select
+                  id="other-exp-filter-day"
+                  value={day === '' ? '' : String(day)}
+                  onChange={setDay}
+                  options={dayOptions}
+                />
+              </div>
             </div>
             <button
               type="button"

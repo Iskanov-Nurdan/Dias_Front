@@ -677,9 +677,14 @@
 
   &--chart {
     padding-bottom: var(--space-3);
+    overflow: hidden;
     background:
       linear-gradient(180deg, color-mix(in srgb, var(--info) 7%, transparent), transparent 46%),
       var(--card);
+
+    .analytics-chart-legend {
+      margin-bottom: var(--space-2);
+    }
   }
 
   &--subchart {
@@ -735,17 +740,20 @@
   margin: 0 calc(-1 * var(--space-1));
   padding: var(--space-1) 0 0;
 
+  &--trend {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    position: relative;
+    isolation: isolate;
+  }
+
   &--compact {
     padding-top: 0;
     margin: 0;
     flex: 1;
     min-height: 0;
-  }
-
-  @include mobile {
-    .recharts-responsive-container {
-      height: 260px !important;
-    }
+    overflow: hidden;
   }
 
   .recharts-text,
@@ -1872,6 +1880,48 @@
 
 .detail-section--subtotals {
   margin-bottom: var(--space-2);
+}
+
+.detail-accordion {
+  margin-bottom: var(--space-1);
+
+  &__trigger {
+    width: 100%;
+    margin-bottom: 0;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    transition: background var(--transition-fast);
+
+    &:hover,
+    &--open {
+      background: var(--bg-hover);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: -2px;
+    }
+  }
+
+  &__label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  &__chevron {
+    flex-shrink: 0;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    width: 1em;
+  }
+
+  &__panel {
+    padding: 0 0 var(--space-3);
+  }
 }
 
 .detail-section__title {

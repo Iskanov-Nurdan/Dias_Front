@@ -77,55 +77,75 @@
   margin-top: var(--space-2);
 }
 
+.chemistry-recipe-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
 .chemistry-recipe-grid {
   display: grid;
   row-gap: var(--space-2);
   column-gap: var(--space-3);
   align-items: center;
   margin-bottom: var(--space-2);
+  grid-template-columns: minmax(0, 1fr) 8.5rem var(--input-height);
 
   &--head {
+    align-items: center;
+    margin-bottom: var(--space-2);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  &__head-cell {
+    display: block;
     font-size: var(--font-caption);
     font-weight: var(--weight-medium);
+    line-height: 1.25;
     color: var(--text-secondary);
-    grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 11rem) var(--input-height);
-    align-items: end;
-    padding-bottom: 2px;
 
-    span:nth-child(2) {
-      text-align: right;
-    }
-
-    span:nth-child(3) {
-      justify-self: end;
+    &--action {
+      padding: 0;
     }
   }
 
   &--row {
-    grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 11rem) var(--input-height);
     align-items: center;
 
-    .dias-select {
-      height: var(--input-height);
-      min-height: var(--input-height);
-      box-sizing: border-box;
-    }
-
+    .dias-select,
     .chemistry-recipe-grid__kg-input {
+      align-self: center;
       width: 100%;
       height: var(--input-height);
       min-height: var(--input-height);
+      max-height: var(--input-height);
+      margin: 0 !important;
       box-sizing: border-box;
-      margin: 0;
+    }
+
+    .dias-select {
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+
+    .chemistry-recipe-grid__kg-input {
+      display: block;
+      padding: 0 var(--space-3);
+      line-height: calc(var(--input-height) - 2px);
     }
 
     > .btn.btn--sm {
+      align-self: center;
       flex-shrink: 0;
       justify-self: end;
       width: var(--input-height);
       min-width: var(--input-height);
+      max-height: var(--input-height);
       height: var(--input-height);
       min-height: var(--input-height);
+      margin: 0 !important;
       padding: 0;
       display: inline-flex;
       align-items: center;
@@ -136,18 +156,19 @@
   }
 }
 
+/* Модалка: у input сбрасываем margin-bottom из _modal.scss — иначе колонка «кг» уезжает вверх */
+.page--chemistry .modal .chemistry-recipe-editor .chemistry-recipe-grid--row .chemistry-recipe-grid__kg-input {
+  margin-bottom: 0 !important;
+}
+
 .chemistry-recipe-grid__mobile-label {
   display: none;
 }
 
 /* ── Mobile: tighter recipe grid columns ── */
 @include mobile {
-  .chemistry-recipe-grid--head {
-    grid-template-columns: minmax(0, 1fr) min(6.5rem, 30%) var(--input-height);
-  }
-
-  .chemistry-recipe-grid--row {
-    grid-template-columns: minmax(0, 1fr) min(6.5rem, 30%) var(--input-height);
+  .chemistry-recipe-grid {
+    grid-template-columns: minmax(0, 1fr) min(6.5rem, 32%) var(--input-height);
   }
 }
 
@@ -1046,10 +1067,14 @@
 .chemistry-table--prep-list .chemistry-table__row {
   grid-template-columns:
     minmax(120px, 1fr)
-    minmax(5.5rem, 9rem)
-    minmax(0, auto);
+    6.5rem
+    minmax(13rem, auto);
   column-gap: var(--space-3);
   align-items: center;
+}
+
+.chemistry-table--prep-list .chemistry-table__header {
+  padding: 0.5rem var(--space-3);
 }
 
 .chemistry-table--prep-list .chemistry-table__th--num,
@@ -1685,14 +1710,22 @@
     }
 
     .modal.modal--wide .chemistry-element-form > input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']),
-    .modal.modal--wide .chemistry-element-form .dias-select,
-    .modal.modal--wide .chemistry-element-form .chemistry-recipe-grid__kg-input,
+    .modal.modal--wide .chemistry-element-form > .dias-select,
     .modal.modal--wide .chemistry-element-form .chemistry-plastic-profiles__grams {
       width: 100%;
       max-width: none;
       height: 44px;
       min-height: 44px;
       margin-bottom: 14px;
+    }
+
+    .modal.modal--wide .chemistry-element-form .chemistry-recipe-editor .dias-select,
+    .modal.modal--wide .chemistry-element-form .chemistry-recipe-editor .chemistry-recipe-grid__kg-input {
+      width: 100%;
+      max-width: none;
+      height: 44px;
+      min-height: 44px;
+      margin-bottom: 0;
     }
 
     .chemistry-recipe-grid--head {
@@ -1723,7 +1756,12 @@
         grid-column: 1 !important;
         grid-row: auto !important;
         width: 100% !important;
-        margin-bottom: var(--space-3) !important;
+        margin-bottom: var(--space-2) !important;
+      }
+
+      .chemistry-recipe-grid__mobile-label + .dias-select,
+      .chemistry-recipe-grid__mobile-label + .chemistry-recipe-grid__kg-input {
+        margin-bottom: 0 !important;
       }
 
       > .btn.btn--sm {

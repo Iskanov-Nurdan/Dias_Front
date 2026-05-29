@@ -1,4 +1,5 @@
 import React from 'react';
+import './ClientDateFilter.scss';
 
 /**
  * Локальный фильтр по дате (value YYYY-MM-DD или '').
@@ -10,13 +11,18 @@ const ClientDateFilter = ({ value, onChange, id = 'client-date-filter', classNam
     </span>
     <input
       id={id}
+      className="commercial-date-filter__input"
       type="date"
       aria-labelledby={`${id}-label`}
       value={value || ''}
       onChange={(e) => onChange(e.target.value)}
     />
     {value ? (
-      <button type="button" className="btn btn--ghost btn--sm" onClick={() => onChange('')}>
+      <button
+        type="button"
+        className="btn btn--ghost btn--sm commercial-date-filter__clear"
+        onClick={() => onChange('')}
+      >
         Все даты
       </button>
     ) : null}

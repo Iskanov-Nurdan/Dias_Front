@@ -30,6 +30,7 @@ import {
 import { STAGE2_TABS_ENABLED } from '../../../../shared/config/constants';
 import { Loading, ErrorState, Select } from '../../../../shared/ui';
 import { useOperationalRefetch } from '../../../../shared/realtime';
+import { useIsMobile } from '../../../../shared/hooks';
 import OtherExpensesModal from '../OtherExpensesModal';
 
 const formatNumber = (num) => Number(num || 0).toLocaleString('ru-RU');
@@ -107,11 +108,18 @@ const debtAsOfHint = (debtAsOf) => {
   return '';
 };
 
+const TREND_CHART_LEGEND = [
+  { value: 'Выручка', color: 'var(--success)' },
+  { value: 'Расходы', color: 'var(--danger)' },
+];
+
+const TREND_CHART_HEIGHT = { desktop: 360, mobile: 312 };
+
 const AnalyticsChartLegend = ({ payload }) => {
-  if (!payload?.length) return null;
+  const items = payload?.length ? payload : TREND_CHART_LEGEND;
   return (
     <ul className="analytics-chart-legend">
-      {payload.map((entry, i) => (
+      {items.map((entry, i) => (
         <li key={String(entry.dataKey ?? entry.value ?? i)} className="analytics-chart-legend__item">
           <span className="analytics-chart-legend__swatch" style={{ background: entry.color }} aria-hidden />
           <span className="analytics-chart-legend__label">{entry.value}</span>
@@ -291,6 +299,7 @@ const normalizeProductCostCatalog = (data) => {
 };
 
 const AnalyticsPage = () => {
+  const isMobile = useIsMobile();
   const now = new Date();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -330,6 +339,17 @@ const AnalyticsPage = () => {
     () => buildAnalyticsQueryParams({ year, month, day }),
     [year, month, day],
   );
+
+  const trendChartMargin = useMemo(
+    () => ({
+      top: isMobile ? 8 : 12,
+      right: isMobile ? 4 : 12,
+      left: isMobile ? -4 : 0,
+      bottom: isMobile ? 36 : 16,
+    }),
+    [isMobile],
+  );
+  const trendChartHeight = isMobile ? TREND_CHART_HEIGHT.mobile : TREND_CHART_HEIGHT.desktop;
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -644,9 +664,12 @@ const AnalyticsPage = () => {
             <h2 className="analytics-panel__title">Динамика</h2>
             <p className="analytics-panel__lede">Выручка и расходы по периоду</p>
           </header>
-          <div className="analytics-chart-surface">
-            <ResponsiveContainer width="100%" height={360}>
-              <ComposedChart data={trendsData} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
+          {isMobile ? (
+            <AnalyticsChartLegend payload={TREND_CHART_LEGEND} />
+          ) : null}
+          <div className="analytics-chart-surface analytics-chart-surface--trend">
+            <ResponsiveContainer width="100%" height={trendChartHeight}>
+              <ComposedChart data={trendsData} margin={trendChartMargin}>
                 <defs>
                   <linearGradient id="analyticsFillRevenue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="var(--success)" stopOpacity={0.22} />
@@ -658,15 +681,20 @@ const AnalyticsPage = () => {
                   dataKey="date"
                   tickLine={false}
                   axisLine={false}
-                  tickMargin={10}
-                  tick={{ fontSize: 11, fill: 'var(--text-muted)', fontWeight: 500 }}
+                  tickMargin={isMobile ? 6 : 10}
+                  height={isMobile ? 52 : 32}
+                  minTickGap={isMobile ? 24 : 12}
+                  interval={isMobile ? 'preserveStartEnd' : 0}
+                  angle={isMobile ? -42 : 0}
+                  textAnchor={isMobile ? 'end' : 'middle'}
+                  tick={{ fontSize: isMobile ? 10 : 11, fill: 'var(--text-muted)', fontWeight: 500 }}
                   stroke="transparent"
                 />
                 <YAxis
                   tickLine={false}
                   axisLine={false}
-                  width={48}
-                  tick={{ fontSize: 11, fill: 'var(--text-muted)', fontWeight: 500 }}
+                  width={isMobile ? 40 : 48}
+                  tick={{ fontSize: 10, fill: 'var(--text-muted)', fontWeight: 500 }}
                   stroke="transparent"
                   tickFormatter={(v) => (Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`)}
                 />
@@ -681,7 +709,9 @@ const AnalyticsPage = () => {
                   }}
                   formatter={(value) => formatMoney(value)}
                 />
-                <Legend verticalAlign="top" align="center" content={<AnalyticsChartLegend />} />
+                {!isMobile ? (
+                  <Legend verticalAlign="top" align="center" content={<AnalyticsChartLegend />} />
+                ) : null}
                 <Area
                   type="monotone"
                   dataKey="revenue"
@@ -1105,6 +1135,7 @@ const DetailModal = ({ type, queryParams, summaryCards, debtAsOfHint: debtHintTe
   const [details, setDetails] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [expenseSectionsOpen, setExpenseSectionsOpen] = useState({ purchase: false, other: false });
 
   useEffect(() => {
     if (!DETAIL_MODAL_TYPES.has(type)) return undefined;
@@ -1175,6 +1206,16 @@ const DetailModal = ({ type, queryParams, summaryCards, debtAsOfHint: debtHintTe
 
     return () => ctrl.abort();
   }, [type, queryParams]);
+
+  useEffect(() => {
+    if (type === 'purchase') {
+      setExpenseSectionsOpen({ purchase: false, other: false });
+    }
+  }, [type, details]);
+
+  const toggleExpenseSection = (key) => {
+    setExpenseSectionsOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const profitTotals = details?.totals;
   const summary = summaryCards || {};
@@ -1422,86 +1463,112 @@ const DetailModal = ({ type, queryParams, summaryCards, debtAsOfHint: debtHintTe
                 <span className="detail-row__label">Итого расходов</span>
                 <span className="detail-row__value">{formatMoney(details.period_total ?? 0)}</span>
               </div>
-              <div className="detail-section detail-section--tight detail-section--subtotals">
-                <div className="detail-row detail-row--compact">
-                  <span className="detail-row__label">Приход сырья</span>
+              <div className="detail-accordion">
+                <button
+                  type="button"
+                  className={`detail-row detail-row--compact detail-accordion__trigger${expenseSectionsOpen.purchase ? ' detail-accordion__trigger--open' : ''}`}
+                  aria-expanded={expenseSectionsOpen.purchase}
+                  onClick={() => toggleExpenseSection('purchase')}
+                >
+                  <span className="detail-accordion__label">
+                    <span className="detail-accordion__chevron" aria-hidden>
+                      {expenseSectionsOpen.purchase ? '▾' : '▸'}
+                    </span>
+                    <span className="detail-row__label">Приход сырья</span>
+                  </span>
                   <span className="detail-row__value">{formatMoney(details.purchase_total ?? 0)}</span>
-                </div>
-                <div className="detail-row detail-row--compact">
-                  <span className="detail-row__label">Прочие расходы</span>
-                  <span className="detail-row__value">{formatMoney(details.other_total ?? 0)}</span>
-                </div>
+                </button>
+                {expenseSectionsOpen.purchase && (
+                  <div className="detail-accordion__panel">
+                    {details.purchase_items?.length > 0 ? (
+                      <>
+                        <div className="detail-table-header detail-table-header--6">
+                          <div className="detail-table-cell">Дата</div>
+                          <div className="detail-table-cell">Материал</div>
+                          <div className="detail-table-cell">Поставщик</div>
+                          <div className="detail-table-cell detail-table-cell--num">Кол-во</div>
+                          <div className="detail-table-cell detail-table-cell--num">Цена</div>
+                          <div className="detail-table-cell detail-table-cell--num">Сумма</div>
+                        </div>
+                        <div className="detail-table">
+                          {details.purchase_items.map((item, i) => {
+                            const rawD = item.date || item.created_at;
+                            const d = sliceIsoDate(rawD);
+                            const mat = String(item.material_name ?? '').trim() || '—';
+                            const sup = String(item.supplier_name ?? '').trim() || '—';
+                            const q = item.quantity;
+                            const sum = Number(item.total_amount ?? 0) || 0;
+                            const up = item.unit_price;
+                            return (
+                              <div key={`${d}-${mat}-${i}`} className="detail-table-row detail-table-row--6">
+                                <div className="detail-table-cell">{d}</div>
+                                <div className="detail-table-cell detail-table-cell--object">{mat}</div>
+                                <div className="detail-table-cell detail-table-cell--object">{sup}</div>
+                                <div className="detail-table-cell detail-table-cell--num">
+                                  {q != null && q !== '' ? formatNumber(q) : '—'}
+                                </div>
+                                <div className="detail-table-cell detail-table-cell--num">{formatMoney(up)}</div>
+                                <div className="detail-table-cell detail-table-cell--strong detail-table-cell--num">
+                                  {formatMoney(sum)}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    ) : (
+                      <EmptyHint />
+                    )}
+                  </div>
+                )}
               </div>
-              {itemsLen === 0 ? (
-                <EmptyHint />
-              ) : (
-                <>
-                  {details.purchase_items?.length > 0 ? (
-                    <div className="detail-section detail-section--tight">
-                      <h4 className="detail-section__title">Приход сырья</h4>
-                      <div className="detail-table-header detail-table-header--6">
-                        <div className="detail-table-cell">Дата</div>
-                        <div className="detail-table-cell">Материал</div>
-                        <div className="detail-table-cell">Поставщик</div>
-                        <div className="detail-table-cell detail-table-cell--num">Кол-во</div>
-                        <div className="detail-table-cell detail-table-cell--num">Цена</div>
-                        <div className="detail-table-cell detail-table-cell--num">Сумма</div>
-                      </div>
-                      <div className="detail-table">
-                        {details.purchase_items.map((item, i) => {
-                          const rawD = item.date || item.created_at;
-                          const d = sliceIsoDate(rawD);
-                          const mat = String(item.material_name ?? '').trim() || '—';
-                          const sup = String(item.supplier_name ?? '').trim() || '—';
-                          const q = item.quantity;
-                          const sum = Number(item.total_amount ?? 0) || 0;
-                          const up = item.unit_price;
-                          return (
-                            <div key={`${d}-${mat}-${i}`} className="detail-table-row detail-table-row--6">
-                              <div className="detail-table-cell">{d}</div>
-                              <div className="detail-table-cell detail-table-cell--object">{mat}</div>
-                              <div className="detail-table-cell detail-table-cell--object">{sup}</div>
-                              <div className="detail-table-cell detail-table-cell--num">
-                                {q != null && q !== '' ? formatNumber(q) : '—'}
+              <div className="detail-accordion">
+                <button
+                  type="button"
+                  className={`detail-row detail-row--compact detail-accordion__trigger${expenseSectionsOpen.other ? ' detail-accordion__trigger--open' : ''}`}
+                  aria-expanded={expenseSectionsOpen.other}
+                  onClick={() => toggleExpenseSection('other')}
+                >
+                  <span className="detail-accordion__label">
+                    <span className="detail-accordion__chevron" aria-hidden>
+                      {expenseSectionsOpen.other ? '▾' : '▸'}
+                    </span>
+                    <span className="detail-row__label">Прочие расходы</span>
+                  </span>
+                  <span className="detail-row__value">{formatMoney(details.other_total ?? 0)}</span>
+                </button>
+                {expenseSectionsOpen.other && (
+                  <div className="detail-accordion__panel">
+                    {details.other_items?.length > 0 ? (
+                      <>
+                        <div className="detail-table-header detail-table-header--3">
+                          <div className="detail-table-cell">Дата</div>
+                          <div className="detail-table-cell">Название</div>
+                          <div className="detail-table-cell detail-table-cell--num">Сумма</div>
+                        </div>
+                        <div className="detail-table">
+                          {details.other_items.map((item, i) => (
+                            <div
+                              key={item.id ?? `${item.date}-${item.name}-${i}`}
+                              className="detail-table-row detail-table-row--3"
+                            >
+                              <div className="detail-table-cell">{sliceIsoDate(item.date)}</div>
+                              <div className="detail-table-cell detail-table-cell--object">
+                                {String(item.name ?? '').trim() || '—'}
                               </div>
-                              <div className="detail-table-cell detail-table-cell--num">{formatMoney(up)}</div>
                               <div className="detail-table-cell detail-table-cell--strong detail-table-cell--num">
-                                {formatMoney(sum)}
+                                {formatMoney(item.amount)}
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : null}
-                  {details.other_items?.length > 0 ? (
-                    <div className="detail-section detail-section--tight">
-                      <h4 className="detail-section__title">Прочие расходы</h4>
-                      <div className="detail-table-header detail-table-header--3">
-                        <div className="detail-table-cell">Дата</div>
-                        <div className="detail-table-cell">Название</div>
-                        <div className="detail-table-cell detail-table-cell--num">Сумма</div>
-                      </div>
-                      <div className="detail-table">
-                        {details.other_items.map((item, i) => (
-                          <div
-                            key={item.id ?? `${item.date}-${item.name}-${i}`}
-                            className="detail-table-row detail-table-row--3"
-                          >
-                            <div className="detail-table-cell">{sliceIsoDate(item.date)}</div>
-                            <div className="detail-table-cell detail-table-cell--object">
-                              {String(item.name ?? '').trim() || '—'}
-                            </div>
-                            <div className="detail-table-cell detail-table-cell--strong detail-table-cell--num">
-                              {formatMoney(item.amount)}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </>
-              )}
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <EmptyHint />
+                    )}
+                  </div>
+                )}
+              </div>
             </>
           )}
 

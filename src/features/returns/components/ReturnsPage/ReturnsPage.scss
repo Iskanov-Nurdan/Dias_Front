@@ -34,9 +34,9 @@
     gap: 6px;
   }
 
-  .commercial-date-filter input {
-    width: 200px;
-    min-width: min(160px, 100%);
+  .commercial-date-filter__input {
+    width: min(200px, 100%);
+    max-width: 100%;
   }
 }
 

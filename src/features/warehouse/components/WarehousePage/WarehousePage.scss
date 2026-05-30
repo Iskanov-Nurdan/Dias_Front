@@ -728,26 +728,42 @@
   &__toolbar {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
+    align-items: flex-end;
+    gap: var(--space-3);
     margin-bottom: var(--space-2);
   }
 
   &__date-filter {
     flex: 0 1 auto;
     min-width: 0;
+
+    &.commercial-date-filter {
+      flex-direction: row;
+      align-items: center;
+      flex-wrap: nowrap;
+      gap: var(--space-2);
+      min-height: var(--input-height);
+    }
+
+    .commercial-date-filter__input {
+      width: 10.5rem;
+      max-width: 10.5rem;
+    }
   }
 
   &__search-input {
-    flex: 1 1 200px;
+    flex: 1 1 240px;
     min-width: 0;
     max-width: 420px;
-    padding: 0.5rem 0.75rem;
+    height: var(--input-height);
+    min-height: var(--input-height);
+    padding: 0 var(--space-3);
     border: 1px solid var(--input-border);
     border-radius: var(--radius-md);
     font: inherit;
     background: var(--input-bg);
     color: var(--text);
+    box-sizing: border-box;
   }
 
   &__toolbar-end {
@@ -756,6 +772,7 @@
     align-items: center;
     gap: var(--space-2);
     margin-left: auto;
+    min-height: var(--input-height);
   }
 
   &__toolbar-count {
@@ -815,7 +832,61 @@
 
   .data-table--warehouse-gp-compact {
     width: 100%;
-    min-width: min(100%, 640px);
+    min-width: 0;
+  }
+
+  @media (min-width: 769px) {
+    .data-table--warehouse-gp-compact {
+      th,
+      td {
+        padding: var(--space-2) var(--space-3);
+        vertical-align: middle;
+      }
+
+      th.data-table__cell--num,
+      td.data-table__cell--num {
+        width: 6.5rem;
+        white-space: nowrap;
+      }
+
+      td.warehouse-gp__actions {
+        display: table-cell;
+        width: 11.5rem;
+        min-width: 11.5rem;
+        max-width: 13rem;
+        text-align: right;
+        vertical-align: middle;
+        white-space: nowrap;
+
+        .btn {
+          display: inline-flex;
+          vertical-align: middle;
+        }
+
+        .btn + .btn {
+          margin-left: var(--space-2);
+        }
+      }
+
+      .warehouse-gp__th-actions {
+        width: 11.5rem;
+        min-width: 11.5rem;
+      }
+
+      &:not(:has(thead th:nth-child(4))) {
+        table-layout: fixed;
+
+        th:first-child,
+        td:first-child {
+          width: 44%;
+        }
+
+        th:nth-child(2),
+        td:nth-child(2) {
+          width: 36%;
+        }
+      }
+    }
   }
 
   &__product {
@@ -1209,9 +1280,13 @@
       justify-content: flex-start;
       width: 100%;
       max-width: 100%;
+      margin-inline: calc(-1 * var(--space-3));
+      padding-inline: var(--space-3);
+      padding-bottom: 2px;
       overflow-x: auto;
       overflow-y: hidden;
       scroll-padding-inline: var(--space-3);
+      -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
       -ms-overflow-style: none;
     }
@@ -1278,6 +1353,7 @@
       flex: 0 0 auto;
       width: 100%;
       margin-left: 0;
+      min-height: 0;
       justify-content: flex-start;
       gap: var(--space-2);
     }
@@ -1312,7 +1388,7 @@
 
     .commercial-table-wrap {
       max-width: 100%;
-      overflow: visible;
+      overflow-x: hidden;
     }
 
     .data-table--warehouse-gp-compact {
@@ -1328,46 +1404,77 @@
       tbody {
         display: flex;
         flex-direction: column;
-        gap: var(--space-3);
+        gap: var(--space-2);
       }
 
       tr {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: var(--space-3);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
         height: auto;
         min-height: 0;
-        padding: var(--space-3);
+        min-width: 0;
+        padding: var(--space-2) var(--space-3);
         border: 1px solid var(--card-border);
         border-radius: var(--radius-lg);
         background: var(--card);
-        overflow: visible;
+        overflow: hidden;
+        box-sizing: border-box;
       }
 
       td {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 3px;
+        display: grid;
+        grid-template-columns: minmax(4.75rem, 36%) minmax(0, 1fr);
+        column-gap: var(--space-2);
+        row-gap: 2px;
+        align-items: baseline;
         width: 100%;
+        min-width: 0;
         padding: 0;
         border: none;
-        min-width: 0;
         text-align: left;
         white-space: normal;
-        overflow-wrap: anywhere;
+        overflow-wrap: break-word;
+        word-break: break-word;
         color: var(--text);
         font-size: var(--font-sm);
         font-weight: var(--weight-medium);
         line-height: var(--leading-tight);
-        overflow: visible;
 
         &::before {
           content: '';
           color: var(--text-secondary);
           font-size: var(--font-caption);
           font-weight: var(--weight-medium);
-          line-height: 1.2;
+          line-height: 1.25;
+          white-space: nowrap;
+        }
+      }
+
+      td.warehouse-gp__actions {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        margin-top: var(--space-1);
+        padding-top: var(--space-2) !important;
+        border-top: 1px solid var(--border-subtle);
+        white-space: normal !important;
+        text-align: inherit !important;
+
+        &::before {
+          display: none !important;
+        }
+
+        .btn {
+          width: 100%;
+          min-width: 0;
+          max-width: 100%;
+          min-height: 44px;
+          margin: 0 !important;
+          justify-content: center;
+          box-sizing: border-box;
         }
       }
 
@@ -1458,31 +1565,14 @@
       content: 'Вес';
     }
 
-    &__actions {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: var(--space-2);
-      width: 100%;
-      padding-top: var(--space-1);
-      border-top: 1px solid var(--border-subtle);
-      white-space: normal;
-    }
-
     &__actions::before {
       display: none;
     }
 
-    &__actions .btn {
+    .data-table--warehouse-gp-compact td.warehouse-gp__actions .btn {
       width: 100%;
       min-height: 44px;
       justify-content: center;
-    }
-
-    &--pending .warehouse-gp__actions,
-    &--unpacked .warehouse-gp__actions {
-      @media (min-width: 390px) {
-        grid-template-columns: 1fr 1fr;
-      }
     }
   }
 
@@ -1640,41 +1730,47 @@
     tbody {
       display: flex;
       flex-direction: column;
-      gap: var(--space-3);
+      gap: var(--space-2);
     }
 
     tr {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: var(--space-3);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
       height: auto;
       min-height: 0;
-      padding: var(--space-3);
+      min-width: 0;
+      padding: var(--space-2) var(--space-3);
       border: 1px solid var(--card-border);
       border-radius: var(--radius-lg);
       background: var(--card);
-      overflow: visible;
+      overflow: hidden;
+      box-sizing: border-box;
     }
 
     td {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 3px;
+      display: grid;
+      grid-template-columns: minmax(4.75rem, 36%) minmax(0, 1fr);
+      column-gap: var(--space-2);
+      row-gap: 2px;
+      align-items: baseline;
+      width: 100%;
+      min-width: 0;
       padding: 0;
       border: none;
       text-align: left;
       white-space: normal;
-      overflow-wrap: anywhere;
+      overflow-wrap: break-word;
+      word-break: break-word;
       color: var(--text);
       font-weight: var(--weight-medium);
-      overflow: visible;
 
       &::before {
         color: var(--text-secondary);
         font-size: var(--font-caption);
         font-weight: var(--weight-medium);
-        line-height: 1.2;
+        line-height: 1.25;
+        white-space: nowrap;
       }
     }
 
@@ -1758,22 +1854,38 @@
   }
 
   .warehouse-gp-group-modal__table .warehouse-gp__actions {
-    display: grid;
-    grid-template-columns: 1fr;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
     gap: var(--space-2);
     width: 100%;
-    padding-top: var(--space-1);
+    min-width: 0;
+    margin-top: var(--space-1);
+    padding-top: var(--space-2);
     border-top: 1px solid var(--border-subtle);
   }
 
   .warehouse-gp-group-modal__table .warehouse-gp__actions::before {
-    display: none;
+    display: none !important;
   }
 
   .warehouse-gp-group-modal__table .warehouse-gp__actions .btn {
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
     min-height: 44px;
     justify-content: center;
+    box-sizing: border-box;
+  }
+
+  .warehouse-gp-detail-modal__row {
+    grid-template-columns: minmax(5.5rem, 38%) minmax(0, 1fr);
+    gap: var(--space-1) var(--space-2);
+    align-items: baseline;
+    padding: var(--space-2) 0;
+  }
+
+  .warehouse-gp-detail-modal__v {
+    text-align: left;
   }
 
   .warehouse-gp-pack-modal .chemistry-element-form {

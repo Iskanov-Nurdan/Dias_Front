@@ -71,8 +71,7 @@
 }
 
 .main-layout--collapsed .main-layout__logo {
-  justify-content: center;
-  flex: 1;
+  display: none;
 }
 
 .main-layout__drawer-close {
@@ -131,6 +130,41 @@
   &:focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: 2px;
+  }
+}
+
+/* ── Свернутый сайдбар (только иконки) ── */
+.main-layout--collapsed {
+  .main-layout__logo-row {
+    justify-content: center;
+    padding: 0 var(--space-2);
+  }
+
+  .main-layout__collapse-btn {
+    margin-left: 0;
+  }
+
+  .main-layout__nav-wrap {
+    padding: var(--space-1) var(--space-1);
+  }
+
+  .main-layout__link {
+    justify-content: center;
+    gap: 0;
+    padding: 8px var(--space-1);
+  }
+
+  .main-layout__user-card {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-1);
+  }
+
+  .main-layout__logout-btn {
+    width: 28px;
+    height: 28px;
   }
 }
 

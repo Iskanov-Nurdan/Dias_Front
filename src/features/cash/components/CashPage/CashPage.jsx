@@ -4,9 +4,9 @@ import { useAuth } from '../../../auth';
 import './CashPage.scss';
 
 const CASH_TABS = [
-  { key: 'clients', label: 'Клиенты', path: '/cash/clients' },
-  { key: 'client_orders', label: 'Заявки', path: '/cash/orders' },
-  { key: 'sales', label: 'Продажи', path: '/cash/sales' },
+  { key: 'clients', label: 'Клиенты', path: '/cash/clients', accessKey: 'clients' },
+  { key: 'client_orders', label: 'Заявки', path: '/cash/orders', accessKey: 'client_orders' },
+  { key: 'sales', label: 'Продажи', path: '/cash/sales', accessKey: 'sales' },
 ];
 
 const CASH_SHELL_ACCESS_KEYS = ['clients', 'client_orders', 'sales'];
@@ -30,20 +30,16 @@ const CashPage = () => {
   );
 
   const tabs = useMemo(
-    () => CASH_TABS.filter((tab) => accesses.includes(tab.key)),
+    () => CASH_TABS.filter((tab) => accesses.includes(tab.accessKey)),
     [accesses],
   );
 
   if (!hasCashShellAccess) return <Navigate to="/forbidden" replace />;
 
   const activeKey = matchTabByPath(location.pathname);
+  const activeTab = tabs.find((t) => t.key === activeKey);
 
-  if (!activeKey) {
-    if (tabs.length > 0) return <Navigate to={tabs[0].path} replace />;
-    return <Navigate to="/forbidden" replace />;
-  }
-
-  if (!accesses.includes(activeKey)) {
+  if (!activeTab) {
     if (tabs.length > 0) return <Navigate to={tabs[0].path} replace />;
     return <Navigate to="/forbidden" replace />;
   }
@@ -51,7 +47,7 @@ const CashPage = () => {
   return (
     <div className="cash-page">
       {tabs.length > 0 ? (
-        <div className="materials-tabs" role="tablist" aria-label="Касса">
+        <div className="materials-tabs cash-page__tabs" role="tablist" aria-label="Касса">
           {tabs.map((tab) => (
             <button
               key={tab.key}

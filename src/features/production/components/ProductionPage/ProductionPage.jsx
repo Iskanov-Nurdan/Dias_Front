@@ -19,7 +19,7 @@ import {
   RecordDetailsModal,
   DetailFields,
 } from '../../../../shared/ui';
-import { useOperationalRefetch } from '../../../../shared/realtime';
+import { useOperationalRefetch, WS_PRODUCTION } from '../../../../shared/realtime';
 import ProduceBlankModal from '../ProduceBlankModal/ProduceBlankModal';
 import { getOrder, getOrderSelectSources } from '../../../orders/api/ordersApi';
 import { orderLineKey, orderLineApiId } from '../../lib/orderLineKeys';
@@ -131,8 +131,10 @@ const ProductionClientRequestsPanel = ({ queryEnabled, clientDateFilter }) => {
     enabled: queryEnabled,
   });
 
-  useOperationalRefetch(['order', 'production_batch', 'orders'], refetch, queryEnabled);
-  useOperationalRefetch(['workshop_blank'], refetchBlanks, queryEnabled);
+  useOperationalRefetch(WS_PRODUCTION, () => {
+    refetch();
+    refetchBlanks();
+  }, queryEnabled);
 
   const orderDateFields = useMemo(
     () => ['created_at', 'updated_at', 'date', 'order_date', 'requested_at'],
@@ -270,7 +272,7 @@ const ProductionClientRequestsPanel = ({ queryEnabled, clientDateFilter }) => {
     if (orderId == null || !row.line) return;
     const blankRaw = blankId ?? blankByLineKey[row.stateKey];
     if (!blankRaw) {
-      toast.show('Выберите заготовку');
+      toast.warning('Выберите заготовку');
       return;
     }
     setStartBusy(orderId);
@@ -278,7 +280,7 @@ const ProductionClientRequestsPanel = ({ queryEnabled, clientDateFilter }) => {
       const shiftRes = await getMyShift();
       const shift = parseMyShiftFromResponse(shiftRes.data);
       if (!isPersonalShiftOpen(shift)) {
-        toast.show('Откройте смену в «Моя смена»');
+        toast.warning('Откройте смену в «Моя смена»');
         return;
       }
     } catch {
@@ -299,9 +301,9 @@ const ProductionClientRequestsPanel = ({ queryEnabled, clientDateFilter }) => {
         return next;
       });
       setLineModal(null);
-      toast.show('Запущено в ОТК');
+      toast.success('Запущено в ОТК');
     } catch (e) {
-      toast.show(getProductionStartErrorMessage(e, 'Ошибка'));
+      toast.error(getProductionStartErrorMessage(e, 'Ошибка'));
     } finally {
       setStartBusy(null);
     }
@@ -552,7 +554,7 @@ const ProductionPage = () => {
         <ProduceBlankModal
           onClose={() => setProduceBlankOpen(false)}
           onSaved={() => {
-            toast.show('Сохранено');
+            toast.success('Сохранено');
             refetchBlankRuns();
           }}
         />

@@ -20,7 +20,7 @@ import {
   useToast,
   ClientDateFilter,
 } from '../../../../shared/ui';
-import { useOperationalRefetch } from '../../../../shared/realtime';
+import { useOperationalRefetch, WS_CASH } from '../../../../shared/realtime';
 import {
   createSale,
   getSale,
@@ -715,7 +715,7 @@ const SalesPage = () => {
   }, [queryState]);
 
   const { items, meta, loading, error, refetch } = useServerQuery('sales/', apiQuery, { enabled: true });
-  useOperationalRefetch(['sale', 'payment', 'return', 'order'], refetch, true);
+  useOperationalRefetch(WS_CASH, refetch, true);
 
   const saleDateFields = useMemo(() => ['date', 'created_at', 'updated_at', 'sold_at'], []);
   const visibleSales = useMemo(() => {
@@ -1315,7 +1315,7 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
     setSaving(true);
     try {
       await createSale(payload);
-      toast.show('Продажа создана');
+      toast.success('Продажа создана');
       setInventoryRefreshNonce((n) => n + 1);
       onSaved();
     } catch (err) {

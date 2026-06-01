@@ -97,7 +97,7 @@ const ProductionBatchDetailModal = ({ batchId, onClose, onSaved }) => {
       setBatch(data);
       setEdit(false);
       onSaved?.();
-      toast.show('Сохранено');
+      toast.success('Сохранено');
     } catch (e) {
       setErr(getApiErrorMessage(e, 'Ошибка сохранения'));
     } finally {
@@ -111,7 +111,7 @@ const ProductionBatchDetailModal = ({ batchId, onClose, onSaved }) => {
     setOtkSending(true);
     try {
       await submitProductionBatchForOtk(batch.id);
-      toast.show('Партия передана в ОТК');
+      toast.success('Партия передана в ОТК');
       onSaved?.();
       onClose();
     } catch (e) {

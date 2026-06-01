@@ -219,7 +219,7 @@ const RecipesPage = () => {
       setMetaModal(null);
       setLockedProfileForCreate(null);
       refetchRecipes();
-      toast.show('Сохранено');
+      toast.success('Сохранено');
     } catch (err) {
       setSubmitError(err.response?.data?.error || err.response?.data?.details || 'Ошибка');
     }
@@ -228,7 +228,7 @@ const RecipesPage = () => {
   const handleCompositionSaved = () => {
     setCompositionModal(null);
     refetchRecipes();
-    toast.show('Состав сохранён');
+    toast.success('Состав сохранён');
   };
 
   const handleDelete = async () => {
@@ -238,11 +238,11 @@ const RecipesPage = () => {
       await deleteRecipe(deleteTarget.id);
       setDeleteTarget(null);
       refetchRecipes();
-      toast.show('Удалено');
+      toast.success('Удалено');
     } catch (err) {
       const msg = getApiErrorMessage(err, 'Ошибка удаления');
       setDeleteError(msg);
-      toast.show(msg, 'error');
+      toast.error(msg);
     }
   };
 
@@ -253,11 +253,11 @@ const RecipesPage = () => {
       await updateRecipe(deactivateTarget.id, { is_active: false });
       setDeactivateTarget(null);
       refetchRecipes();
-      toast.show('Деактивировано');
+      toast.success('Деактивировано');
     } catch (err) {
       const msg = err.response?.data?.error || getApiErrorMessage(err, 'Ошибка');
       setDeactivateError(msg);
-      toast.show(msg, 'error');
+      toast.error(msg);
     }
   };
 

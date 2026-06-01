@@ -93,10 +93,10 @@ const PlasticProfilesPage = () => {
     try {
       if (metaModal?.id) {
         await updatePlasticProfile(metaModal.id, payload);
-        toast.show('Сохранено');
+        toast.success('Сохранено');
       } else {
         await createPlasticProfile(payload);
-        toast.show('Профиль создан');
+        toast.success('Профиль создан');
       }
       setMetaModal(null);
       refetchAll();
@@ -112,7 +112,7 @@ const PlasticProfilesPage = () => {
       await updatePlasticProfile(deactivateTarget.id, { is_active: false });
       setDeactivateTarget(null);
       refetchAll();
-      toast.show('Деактивировано');
+      toast.success('Деактивировано');
     } catch (err) {
       setDeactivateError(getApiErrorMessage(err, 'Ошибка'));
     }
@@ -125,7 +125,7 @@ const PlasticProfilesPage = () => {
       await deletePlasticProfile(deleteTarget.id);
       setDeleteTarget(null);
       refetchAll();
-      toast.show('Удалено');
+      toast.success('Удалено');
     } catch (err) {
       setDeleteError(getApiErrorMessage(err, 'Ошибка удаления'));
     }

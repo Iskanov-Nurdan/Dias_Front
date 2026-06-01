@@ -14,7 +14,7 @@ import { fetchShiftActivityList } from '../../lib/fetchShiftActivityList';
 import { shiftLineLabel } from '../../lib/shiftDisplayUtils';
 import ComplaintModal from '../ComplaintModal/ComplaintModal';
 import ComplaintsInbox from '../ComplaintsInbox/ComplaintsInbox';
-import { useOperationalRefetch } from '../../../../shared/realtime';
+import { useOperationalRefetch, WS_SHIFT } from '../../../../shared/realtime';
 import './MyShiftPage.scss';
 
 const formatDuration = (seconds) => {
@@ -225,7 +225,7 @@ const MyShiftPage = () => {
     if (historyLoaded) loadHistory();
   }, [loadShift, loadNotes, historyLoaded, loadHistory]);
 
-  useOperationalRefetch(['shift', 'shift_note', 'shift_complaint', 'activity'], refreshMyShiftOperational, true);
+  useOperationalRefetch(WS_SHIFT, refreshMyShiftOperational, true);
 
   // ── Open per-shift activity modal ──────────────────────────
   const openShiftActivity = async (s) => {
@@ -234,7 +234,7 @@ const MyShiftPage = () => {
       const { items, banner } = await fetchShiftActivityList((params) => getMyActivity(params), s);
       setShiftActivityModal({ shift: s, items, loading: false, banner });
     } catch (err) {
-      toast.show(getApiErrorMessage(err, 'Не удалось загрузить журнал действий'), 'error');
+      toast.apiError(err, 'Не удалось загрузить журнал действий');
       setShiftActivityModal({ shift: s, items: [], loading: false, banner: null });
     }
   };
@@ -277,9 +277,9 @@ const MyShiftPage = () => {
       const opened = Object.prototype.hasOwnProperty.call(data, 'shift') ? data.shift : (data || null);
       setShift(opened);
       await loadNotes();
-      toast.show('Смена открыта');
+      toast.success('Смена открыта');
     } catch (err) {
-      toast.show(getApiErrorMessage(err, 'Ошибка открытия смены'), 'error');
+      toast.apiError(err, 'Ошибка открытия смены');
     } finally {
       setActionLoading(false);
     }
@@ -301,11 +301,11 @@ const MyShiftPage = () => {
       setCloseNote('');
       setHistoryLoaded(false);
       setHistory([]);
-      toast.show('Смена закрыта');
+      toast.success('Смена закрыта');
       // Sync from server in background
       loadShift().catch(() => {});
     } catch (err) {
-      toast.show(getApiErrorMessage(err, 'Ошибка закрытия смены'), 'error');
+      toast.apiError(err, 'Ошибка закрытия смены');
     } finally {
       setActionLoading(false);
     }
@@ -320,9 +320,9 @@ const MyShiftPage = () => {
       await addShiftNote(text);
       setNoteText('');
       await loadNotes();
-      toast.show('Заметка добавлена');
+      toast.success('Заметка добавлена');
     } catch (err) {
-      toast.show(getApiErrorMessage(err, 'Ошибка добавления заметки'), 'error');
+      toast.apiError(err, 'Ошибка добавления заметки');
     } finally {
       setNoteLoading(false);
     }
@@ -657,7 +657,7 @@ const MyShiftPage = () => {
         shiftId={isOpen ? shift?.id : undefined}
         onSuccess={() => {
           setComplaintsReloadToken((t) => t + 1);
-          toast.show('Жалоба отправлена');
+          toast.success('Жалоба отправлена');
         }}
       />
 

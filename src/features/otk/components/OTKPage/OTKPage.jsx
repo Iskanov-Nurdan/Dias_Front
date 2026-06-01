@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useOperationalRefetch, WS_OTK } from '../../../../shared/realtime';
 import {
   EmptyState,
   useToast,
@@ -111,25 +112,25 @@ const BlankRunOtkDetailModal = ({ run, onClose, onSaved }) => {
     e.preventDefault();
     if (!run?.id) return;
     if (!defectInputOk || !Number.isFinite(defectNum) || defectNum < 0) {
-      toast.show('Укажите брак в кг (можно 0)');
+      toast.warning('Укажите брак в кг (можно 0)');
       return;
     }
     if (noMass && defectNum > 0) {
-      toast.show('Нет массы заготовки — оформите выпуск в производстве');
+      toast.warning('Нет массы заготовки — оформите выпуск в производстве');
       return;
     }
     if (overUsed) {
-      toast.show(`Брак не больше ${formatNumberForInput(usedKg)} кг`);
+      toast.warning(`Брак не больше ${formatNumberForInput(usedKg)} кг`);
       return;
     }
     setSaving(true);
     try {
       await postWorkshopRunOtkDefect(run.id, { defect_kg: defectNum });
-      toast.show('Сохранено');
+      toast.success('Сохранено');
       onSaved?.();
       onClose();
     } catch (err) {
-      toast.show(getApiErrorMessage(err, 'Не удалось сохранить'));
+      toast.apiError(err, 'Не удалось сохранить');
     } finally {
       setSaving(false);
     }
@@ -237,6 +238,8 @@ const BlankProductionOtkPanel = () => {
   const handleSaved = useCallback(() => {
     refetch();
   }, [refetch]);
+
+  useOperationalRefetch(WS_OTK, refetch, true);
 
   const openDetails = (run) => {
     if (!isBlankRunOtkRecorded(run)) {

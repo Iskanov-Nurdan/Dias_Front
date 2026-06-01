@@ -16,7 +16,7 @@ import {
   updateRawMaterial,
 } from '../../api/materialsApi';
 import { apiClient } from '../../../../shared/api';
-import { useOperationalRefetch } from '../../../../shared/realtime';
+import { useOperationalRefetch, WS_MATERIALS } from '../../../../shared/realtime';
 import './MaterialsPage.scss';
 
 /** Значения для API: kg / g (канон бэкенда). */
@@ -208,11 +208,7 @@ const MaterialsPage = () => {
     refetchMovements();
   }, [refetchBalances, refetchIncoming, refetchMovements]);
 
-  useOperationalRefetch(
-    ['raw_material', 'incoming', 'material_balance', 'material_writeoff', 'material_movement'],
-    refetchAll,
-    true,
-  );
+  useOperationalRefetch(WS_MATERIALS, refetchAll, true);
 
   const balancesFiltered = useMemo(() => {
     let list = balances;
@@ -234,7 +230,7 @@ const MaterialsPage = () => {
       await createRawMaterial(data);
       setCatalogModal(null);
       refetchAll();
-      toast.show('Сырьё добавлено в справочник');
+      toast.success('Сырьё добавлено в справочник');
     } catch (err) {
       setSubmitError(err.response?.data?.error || 'Ошибка');
     }
@@ -246,7 +242,7 @@ const MaterialsPage = () => {
       await updateRawMaterial(id, data);
       setEditModal(null);
       refetchAll();
-      toast.show('Сохранено');
+      toast.success('Сохранено');
     } catch (err) {
       setSubmitError(err.response?.data?.error || 'Ошибка');
     }
@@ -258,7 +254,7 @@ const MaterialsPage = () => {
       await createIncoming(data);
       setReplenishModal(null);
       refetchAll();
-      toast.show('Приход оформлен');
+      toast.success('Приход оформлен');
     } catch (err) {
       setSubmitError(err.response?.data?.error || 'Ошибка');
     }
@@ -270,7 +266,7 @@ const MaterialsPage = () => {
     const { id, name } = deleteTarget;
     try {
       await deleteRawMaterial(id);
-      toast.show(`Сырьё «${name}» удалено`);
+      toast.success(`Сырьё «${name}» удалено`);
       setDeleteTarget(null);
       refetchAll();
     } catch (err) {

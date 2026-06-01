@@ -14,7 +14,6 @@ export const ACCESS_ROUTE_MAP = {
   clients: '/cash',
   sales: '/cash',
   client_orders: '/cash',
-  payments: '/payments',
 };
 
 /** Первый экран после входа. */
@@ -29,13 +28,12 @@ export const HOME_ACCESS_PRIORITY = [
   'shifts',
   'client_orders',
   'sales',
-  'payments',
   'clients',
   'users',
 ];
 
 export function isCommerceAccess(accessKey) {
-  return ['clients', 'sales', 'client_orders', 'payments'].includes(accessKey);
+  return ['clients', 'sales', 'client_orders'].includes(accessKey);
 }
 
 export function isAccessRoutable(accessKey) {
@@ -60,10 +58,10 @@ export function getDefaultHomePath(accesses) {
 export function getNavSections() {
   const sections = [
     {
-      links: [{ path: '/analytics', accessKey: 'analytics' }],
+      links: [{ path: '/my-shift', accessKey: 'my_shift' }],
     },
     {
-      links: [{ path: '/my-shift', accessKey: 'my_shift' }],
+      links: [{ path: '/analytics', accessKey: 'analytics' }],
     },
     {
       links: [

@@ -1,9 +1,9 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import { useOperationalRefetch, WS_WORKSHOP } from '../../../../shared/realtime';
 import {
   useServerQuery,
   formatNumberForInput,
   parseLocaleNumber,
-  getApiErrorMessage,
 } from '../../../../shared/lib';
 import { Loading, ErrorState, EmptyState, useToast, DecimalInput } from '../../../../shared/ui';
 import {
@@ -58,12 +58,12 @@ const AddProfileModal = ({ onClose, onCreated }) => {
     e.preventDefault();
     const n = name.trim();
     if (!n) {
-      toast.show('Введите имя.');
+      toast.warning('Введите имя.');
       return;
     }
     const pieceKg = calcPieceKg(kgStr, gramsStr);
     if (!Number.isFinite(pieceKg) || pieceKg <= 0) {
-      toast.show('Укажите вес одной штуки (кг и/или граммы).');
+      toast.warning('Укажите вес одной штуки (кг и/или граммы).');
       return;
     }
     setBusy(true);
@@ -75,11 +75,11 @@ const AddProfileModal = ({ onClose, onCreated }) => {
         comment: '',
         weight_kg_per_piece: pieceKg,
       });
-      toast.show('Товар создан');
+      toast.success('Товар создан');
       onCreated?.();
       onClose();
     } catch (err) {
-      toast.show(getApiErrorMessage(err, 'Не удалось создать'));
+      toast.apiError(err, 'Не удалось создать');
     } finally {
       setBusy(false);
     }
@@ -151,12 +151,12 @@ const ProfileRow = ({ profile, onSaved }) => {
   const handleSave = async () => {
     const n = name.trim();
     if (!n) {
-      toast.show('Введите имя.');
+      toast.warning('Введите имя.');
       return;
     }
     const pieceKg = calcPieceKg(kgStr, gramsStr);
     if (!Number.isFinite(pieceKg) || pieceKg <= 0) {
-      toast.show('Укажите вес одной штуки (кг и/или граммы).');
+      toast.warning('Укажите вес одной штуки (кг и/или граммы).');
       return;
     }
     setBusy(true);
@@ -165,11 +165,11 @@ const ProfileRow = ({ profile, onSaved }) => {
         name: n,
         weight_kg_per_piece: pieceKg,
       });
-      toast.show('Сохранено');
+      toast.success('Сохранено');
       setEditing(false);
       onSaved?.();
     } catch (err) {
-      toast.show(getApiErrorMessage(err, 'Не удалось сохранить'));
+      toast.apiError(err, 'Не удалось сохранить');
     } finally {
       setBusy(false);
     }
@@ -249,6 +249,8 @@ const ChemistryPlasticProfilesTab = () => {
   const refetchAll = useCallback(() => {
     refetch();
   }, [refetch]);
+
+  useOperationalRefetch(WS_WORKSHOP, refetchAll, true);
 
   return (
     <div className="chemistry-card">

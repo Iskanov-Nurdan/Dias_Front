@@ -131,7 +131,7 @@ const UsersPage = () => {
       setUserModal(null);
       refetch();
       refetchRoles();
-      toast.show('Успешно сохранено');
+      toast.success('Успешно сохранено');
     } catch (err) {
       setSubmitError(getApiErrorMessage(err) ?? 'Ошибка');
     }
@@ -150,7 +150,7 @@ const UsersPage = () => {
       setRoleModal(null);
       refetch();
       refetchRoles();
-      toast.show('Успешно сохранено');
+      toast.success('Успешно сохранено');
     } catch (err) {
       setSubmitError(getApiErrorMessage(err) ?? 'Ошибка');
     }
@@ -164,7 +164,7 @@ const UsersPage = () => {
       refetch();
       refetchRoles();
       refetchAuth();
-      toast.show('Успешно сохранено');
+      toast.success('Успешно сохранено');
     } catch (err) {
       setSubmitError(getApiErrorMessage(err) ?? 'Ошибка сохранения доступов');
     }
@@ -186,7 +186,7 @@ const UsersPage = () => {
       setDeleteTarget(null);
       refetch();
       refetchRoles();
-      toast.show('Успешно удалено');
+      toast.success('Успешно удалено');
     } catch (err) {
       setSubmitError(getApiErrorMessage(err) ?? 'Ошибка удаления');
     }
@@ -194,7 +194,7 @@ const UsersPage = () => {
 
   return (
     <div className="page page--users">
-      <div className="users-page__top ds-toolbar ds-toolbar--page-head">
+      <div className="users-page__head">
         <div className="users-page__tabs-wrap">
           <div className="page__tabs" role="tablist">
             <button
@@ -216,18 +216,6 @@ const UsersPage = () => {
               Роли
             </button>
           </div>
-        </div>
-        <div className="ds-toolbar__end users-page__top-actions ds-hide-mobile">
-          {activeTab === 'roles' && (
-            <button type="button" className="btn btn--primary" onClick={() => setRoleModal({})}>
-              Создать роль
-            </button>
-          )}
-          {activeTab === 'users' && (
-            <button type="button" className="btn btn--primary" onClick={() => setUserModal({})}>
-              Добавить
-            </button>
-          )}
         </div>
       </div>
 
@@ -251,6 +239,16 @@ const UsersPage = () => {
           items={sortedRoles}
           meta={{ page: 1, total_pages: 1 }}
           onRetry={refetchRoles}
+          renderFilters={() => (
+            <div className="users-page__filters users-page__filters--row users-page__filters--action-only">
+              <div className="users-page__filters-action ds-hide-mobile">
+                <button type="button" className="btn btn--primary" onClick={() => setRoleModal({})}>
+                  Создать роль
+                </button>
+              </div>
+            </div>
+          )}
+          filtersClassName="server-list__filters--tight"
           renderTable={(listItems) => (
             <table className="data-table data-table--fixed data-table--roles data-table--row-actions data-table--clickable">
               <thead>
@@ -307,12 +305,19 @@ const UsersPage = () => {
           onRetry={refetch}
           renderFilters={() => (
             <div className={`users-page__filters users-page__filters--row${isMobile ? ' users-page__filters--mobile' : ''}`}>
-              <FilterBar
-                variant="row"
-                filters={USERS_FILTERS_ALL(roleOptions)}
-                queryState={cleanQuery(queryState)}
-                onChange={handleFilterChange}
-              />
+              <div className="users-page__filters-fields">
+                <FilterBar
+                  variant="row"
+                  filters={USERS_FILTERS_ALL(roleOptions)}
+                  queryState={cleanQuery(queryState)}
+                  onChange={handleFilterChange}
+                />
+              </div>
+              <div className="users-page__filters-action ds-hide-mobile">
+                <button type="button" className="btn btn--primary" onClick={() => setUserModal({})}>
+                  Добавить
+                </button>
+              </div>
             </div>
           )}
           filtersClassName="server-list__filters--tight"
@@ -894,7 +899,7 @@ const UserReportModal = ({ user, onClose }) => {
       );
       setShiftActivityModal({ shift: s, items, loading: false, banner });
     } catch {
-      toast.show('Не удалось загрузить журнал действий', 'error');
+      toast.error('Не удалось загрузить журнал действий');
       setShiftActivityModal({ shift: s, items: [], loading: false, banner: null });
     }
   };

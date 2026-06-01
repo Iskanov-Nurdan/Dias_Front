@@ -1,0 +1,10 @@
+.network-offline-banner {
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-4);
+  background: var(--warning-muted);
+  color: var(--text);
+  font-size: var(--font-sm);
+  font-weight: var(--weight-medium);
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}

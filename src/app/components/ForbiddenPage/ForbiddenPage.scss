@@ -1,0 +1,28 @@
+.forbidden-page {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: min(60vh, 480px);
+  max-width: 28rem;
+}
+
+.forbidden-page__title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-h1);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+}
+
+.forbidden-page__text {
+  margin: 0 0 var(--space-6);
+  font-size: var(--font-body);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
+}
+
+.forbidden-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}

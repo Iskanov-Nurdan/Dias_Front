@@ -6,6 +6,7 @@ import { ACCESS_LABELS } from '../../../shared/config/constants';
 import { NavIcons as Icons, ACCESS_NAV_ICONS as PAGE_ICONS } from '../../../shared/config/navPageIcons';
 import { getNavSections } from '../../../shared/config/navigation';
 import { getPageTitle } from '../../../shared/config/pageTitles';
+import NetworkOfflineBanner from '../../../shared/ui/NetworkOfflineBanner/NetworkOfflineBanner';
 import { getStoredTheme, toggleStoredTheme, Theme } from '../../../shared/lib/theme';
 import { DiasLogo } from '../../../shared/ui';
 import './MainLayout.scss';
@@ -235,6 +236,7 @@ const MainLayout = () => {
           </button>
           <span className="main-layout__header-spacer" aria-hidden="true" />
         </header>
+        <NetworkOfflineBanner />
         <main className="main-layout__main" ref={mainRef}>
           <div className="main-layout__viewport">
             <Outlet />

@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   useServerQuery,
   formatNumberForInput,
@@ -10,12 +11,9 @@ import {
   mapPreparedBlankRowFromApi,
   postWorkshopAddBarrel,
 } from '../../api/blankWorkshopApi';
-import EmployeeBlankDetailContent from './EmployeeBlankDetailContent';
 import '../ChemistryPage/ChemistryPage.scss';
 import './EmployeePrepareBlanksPage.scss';
-
-const prepareBlankDetailPageUrl = (blankId) =>
-  `${window.location.origin}/prepare-blanks/view/${blankId}`;
+import { useOperationalRefetch, WS_WORKSHOP } from '../../../../shared/realtime';
 
 const formatWorkshopNumber = (value) => {
   const n = Number(value);
@@ -24,53 +22,11 @@ const formatWorkshopNumber = (value) => {
   return formatNumberForInput(rounded);
 };
 
-const EmployeeBlankDetailModal = ({ blank, preparedRow, materialNameById, onClose }) => {
-  if (!blank) return null;
-
-  const openFullPage = () => {
-    window.open(prepareBlankDetailPageUrl(blank.id), '_blank', 'noopener,noreferrer');
-  };
-
-  return (
-    <div className="modal-overlay" role="presentation" onClick={onClose}>
-      <div
-        className="modal modal--wide employee-prepare-detail-modal"
-        onClick={(ev) => ev.stopPropagation()}
-        role="dialog"
-        aria-labelledby="employee-prepare-detail-title"
-      >
-        <div className="modal__head">
-          <h3 id="employee-prepare-detail-title">Подробности: {blank.name || 'Заготовка'}</h3>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
-            ×
-          </button>
-        </div>
-        <div className="modal__body employee-prepare-detail-modal__body">
-          <EmployeeBlankDetailContent
-            blank={blank}
-            preparedRow={preparedRow}
-            materialNameById={materialNameById}
-            variant="modal"
-          />
-        </div>
-        <div className="modal__actions">
-          <button type="button" className="btn btn--secondary" onClick={openFullPage}>
-            Страница
-          </button>
-          <button type="button" className="btn btn--secondary" onClick={onClose}>
-            Закрыть
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const listQuery = { page: 1, page_size: 500, ordering: 'name' };
 
 const EmployeePrepareBlanksPage = () => {
+  const navigate = useNavigate();
   const toast = useToast();
-  const [detail, setDetail] = useState(null);
 
   const blanksQ = useMemo(() => listQuery, []);
   const preparedQ = useMemo(() => listQuery, []);
@@ -145,17 +101,17 @@ const EmployeePrepareBlanksPage = () => {
     refetchPrepared();
   }, [refetchBlanks, refetchPrepared]);
 
+  useOperationalRefetch(WS_WORKSHOP, refetchAll, true);
+
   const onAddBarrel = async (blankId) => {
     try {
       await postWorkshopAddBarrel(Number(blankId));
-      toast.show('Добавлена 1 бочка');
+      toast.success('Добавлена 1 бочка');
       refetchPrepared();
     } catch (err) {
-      toast.show(getApiErrorMessage(err, 'Не удалось добавить бочку'));
+      toast.apiError(err, 'Не удалось добавить бочку');
     }
   };
-
-  const detailPrepared = detail ? preparedByBlankId.get(String(detail.id)) : null;
 
   return (
     <div className="page page--chemistry chemistry-blank-stock">
@@ -199,7 +155,7 @@ const EmployeePrepareBlanksPage = () => {
                     <button
                       type="button"
                       className="btn btn--secondary btn--sm"
-                      onClick={() => setDetail(blank)}
+                      onClick={() => navigate(`/prepare-blanks/${blank.id}`)}
                     >
                       Подробности
                     </button>
@@ -218,14 +174,6 @@ const EmployeePrepareBlanksPage = () => {
           </div>
         )}
       </div>
-      {detail ? (
-        <EmployeeBlankDetailModal
-          blank={detail}
-          preparedRow={detailPrepared}
-          materialNameById={materialNameById}
-          onClose={() => setDetail(null)}
-        />
-      ) : null}
     </div>
   );
 };

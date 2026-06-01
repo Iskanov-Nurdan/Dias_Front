@@ -12,8 +12,8 @@ import {
   DetailFields,
 } from '../../../../shared/ui';
 import { createClient, updateClient, getClientProfile } from '../../api/clientsApi';
-import { createPayment, getPaymentSelectSources } from '../../../payments/api/paymentsApi';
-import { useOperationalRefetch } from '../../../../shared/realtime';
+import { createPayment, getPaymentSelectSources } from '../../api/paymentsApi';
+import { useOperationalRefetch, WS_CASH } from '../../../../shared/realtime';
 import './ClientsPage.scss';
 
 const textOrDash = (v) => (v == null || v === '' ? '—' : String(v));
@@ -156,7 +156,7 @@ const ClientsPage = () => {
   }, [queryState, activityFilter]);
 
   const { items, meta, raw, loading, error, refetch } = useServerQuery('clients/', queryForApi, { enabled: true });
-  useOperationalRefetch(['sale', 'payment', 'order'], refetch, true);
+  useOperationalRefetch(WS_CASH, refetch, true);
 
   const listMeta = useMemo(() => {
     if (meta) return meta;
@@ -177,7 +177,7 @@ const ClientsPage = () => {
       }
       setModalClient(null);
       refetch();
-      toast.show('Сохранено');
+      toast.success('Сохранено');
     } catch (err) {
       setSubmitError(getClientErrorText(err, 'Ошибка сохранения клиента'));
     }
@@ -187,14 +187,14 @@ const ClientsPage = () => {
     try {
       await updateClient(client.id, { status: 'inactive' });
       refetch();
-      toast.show('Клиент деактивирован');
+      toast.success('Клиент деактивирован');
     } catch (err) {
       try {
         await updateClient(client.id, { is_active: false });
         refetch();
-        toast.show('Клиент деактивирован');
+        toast.success('Клиент деактивирован');
       } catch (e2) {
-        toast.show(getClientErrorText(e2, 'Не удалось деактивировать'));
+        toast.error(getClientErrorText(e2, 'Не удалось деактивировать'));
       }
     }
   };
@@ -632,7 +632,7 @@ const ClientProfileModal = ({ clientId, onClose, onPaymentSaved }) => {
       setPaymentComment('');
       setSelectedDebtSale('');
       setPayModalOpen(false);
-      toast.show('Оплата долга сохранена');
+      toast.success('Оплата долга сохранена');
       await loadProfile();
       onPaymentSaved?.();
     } catch (err) {

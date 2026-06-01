@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { useOperationalRefetch } from '../../../../shared/realtime';
+import { useOperationalRefetch, WS_CASH } from '../../../../shared/realtime';
 import {
   useServerQuery,
   parseLocaleNumber,
@@ -266,7 +266,7 @@ const OrdersPage = () => {
       });
   }, []);
 
-  useOperationalRefetch(['order', 'orders', 'sale', 'payment', 'return', 'production_batch'], refetch, true);
+  useOperationalRefetch([...WS_CASH, 'production_batch', 'orders'], refetch, true);
 
   const orderDateFields = useMemo(
     () => ['created_at', 'updated_at', 'date', 'order_date', 'requested_at'],
@@ -326,10 +326,10 @@ const OrdersPage = () => {
       try {
         await approveOrder(id);
         await refetch();
-        toast.show('Принято');
+        toast.success('Принято');
       } catch (e) {
         setActionError(getErr(e, 'Ошибка'));
-        toast.show(getErr(e, 'Ошибка'));
+        toast.error(getErr(e, 'Ошибка'));
       } finally {
         setActionBusy(false);
       }
@@ -344,10 +344,10 @@ const OrdersPage = () => {
       try {
         await rejectOrder(id);
         await refetch();
-        toast.show('Отклонено');
+        toast.success('Отклонено');
       } catch (e) {
         setActionError(getErr(e, 'Ошибка'));
-        toast.show(getErr(e, 'Ошибка'));
+        toast.error(getErr(e, 'Ошибка'));
       } finally {
         setActionBusy(false);
       }
@@ -362,10 +362,10 @@ const OrdersPage = () => {
       try {
         await recheckOrder(id);
         await refetch();
-        toast.show('Проверка выполнена');
+        toast.success('Проверка выполнена');
       } catch (e) {
         setActionError(getErr(e, 'Ошибка'));
-        toast.show(getErr(e, 'Ошибка'));
+        toast.error(getErr(e, 'Ошибка'));
       } finally {
         setActionBusy(false);
       }
@@ -467,7 +467,7 @@ const OrdersPage = () => {
             setCreateOpen(false);
             setOrderDetailById({});
             await refetch();
-            toast.show('Заявка создана');
+            toast.success('Заявка создана');
           }}
         />
       )}

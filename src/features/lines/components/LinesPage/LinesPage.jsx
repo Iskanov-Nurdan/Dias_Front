@@ -613,7 +613,7 @@ const LinesPage = () => {
       setLineModal(null);
       refetch();
       refetchHistoryFeed();
-      toast.show('Успешно сохранено');
+      toast.success('Успешно сохранено');
     } catch (err) {
       setSubmitError(err.response?.data?.error || 'Ошибка');
     }
@@ -627,7 +627,7 @@ const LinesPage = () => {
       setDeleteTarget(null);
       refetch();
       refetchHistoryFeed();
-      toast.show('Успешно удалено');
+      toast.success('Успешно удалено');
     } catch (err) {
       setSubmitError(err.response?.data?.error || 'Ошибка удаления');
     }
@@ -654,7 +654,7 @@ const LinesPage = () => {
         await loadOpeningLines();
         refetch();
         refetchHistoryFeed();
-        toast.show('Смена открыта');
+        toast.success('Смена открыта');
       } catch (err) {
         const msg = getApiErrorMessage(err, 'Ошибка открытия смены на линии');
         const st = err.response?.status;
@@ -681,7 +681,7 @@ const LinesPage = () => {
         await loadOpeningLines();
         refetch();
         refetchHistoryFeed();
-        toast.show('Смена закрыта');
+        toast.success('Смена закрыта');
       } catch (err) {
         setSubmitError(getApiErrorMessage(err, 'Ошибка закрытия смены на линии'));
       }
@@ -700,7 +700,7 @@ const LinesPage = () => {
         await loadOpeningLines({ lineId: line.id, payload });
         refetch();
         refetchHistoryFeed();
-        toast.show('Параметры обновлены');
+        toast.success('Параметры обновлены');
       } catch (err) {
         setSubmitError(getApiErrorMessage(err, 'Ошибка обновления параметров'));
       }
@@ -719,7 +719,7 @@ const LinesPage = () => {
         await loadOpeningLines();
         refetch();
         refetchHistoryFeed();
-        toast.show('Смена остановлена');
+        toast.success('Смена остановлена');
       } catch (err) {
         setSubmitError(getApiErrorMessage(err, 'Ошибка паузы смены'));
       }
@@ -733,7 +733,7 @@ const LinesPage = () => {
         await loadOpeningLines();
         refetch();
         refetchHistoryFeed();
-        toast.show('Смена возобновлена');
+        toast.success('Смена возобновлена');
       } catch (err) {
         setSubmitError(getApiErrorMessage(err, 'Ошибка возобновления смены'));
       }
@@ -1202,7 +1202,7 @@ const LinesPage = () => {
           lineName={productionBatchLine.name}
           onClose={() => setProductionBatchLine(null)}
           onSuccess={() => {
-            toast.show('Партия создана');
+            toast.success('Партия создана');
             loadOpeningLines();
             refetch();
           }}

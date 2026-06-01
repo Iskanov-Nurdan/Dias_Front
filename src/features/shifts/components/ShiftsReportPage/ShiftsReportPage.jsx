@@ -5,7 +5,7 @@ import ShiftActivityListModal from '../ActivityAudit/ShiftActivityListModal';
 import { fetchShiftActivityList } from '../../lib/fetchShiftActivityList';
 import ComplaintModal from '../ComplaintModal/ComplaintModal';
 import ComplaintsInbox from '../ComplaintsInbox/ComplaintsInbox';
-import { useOperationalRefetch } from '../../../../shared/realtime';
+import { useOperationalRefetch, WS_SHIFTS_REPORT } from '../../../../shared/realtime';
 import './ShiftsReportPage.scss';
 
 const formatDateTime = (dt) => {
@@ -95,7 +95,7 @@ const ShiftsReportPage = () => {
       setShifts(Array.isArray(data) ? data : (data.items || []));
     } catch (err) {
       if (err.response?.status !== 404) {
-        toast.show('Ошибка загрузки смен', 'error');
+        toast.error('Ошибка загрузки смен');
       }
       setShifts([]);
     } finally {
@@ -108,7 +108,7 @@ const ShiftsReportPage = () => {
     setComplaintsReloadToken((t) => t + 1);
   }, [loadShifts]);
 
-  useOperationalRefetch(['shift', 'shift_complaint', 'activity'], refreshShiftsReportOperational, true);
+  useOperationalRefetch(WS_SHIFTS_REPORT, refreshShiftsReportOperational, true);
 
   useEffect(() => {
     loadShifts();
@@ -133,7 +133,7 @@ const ShiftsReportPage = () => {
       );
       setShiftActivityModal({ shift, items, loading: false, banner });
     } catch {
-      toast.show('Не удалось загрузить журнал действий', 'error');
+      toast.error('Не удалось загрузить журнал действий');
       setShiftActivityModal({ shift, items: [], loading: false, banner: null });
     }
   };
@@ -369,7 +369,7 @@ const ShiftsReportPage = () => {
         employees={users}
         onSuccess={() => {
           setComplaintsReloadToken((t) => t + 1);
-          toast.show('Жалоба отправлена');
+          toast.success('Жалоба отправлена');
         }}
       />
 

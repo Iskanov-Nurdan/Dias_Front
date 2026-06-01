@@ -24,7 +24,7 @@ import {
   getGpPackages,
   getWarehouseOperations,
 } from '../../api/warehouseApi';
-import { useOperationalRefetch } from '../../../../shared/realtime';
+import { useOperationalRefetch, WS_WAREHOUSE } from '../../../../shared/realtime';
 import './WarehousePage.scss';
 
 const gpFmtIso = (iso) => {
@@ -72,23 +72,23 @@ const WarehouseGpAcceptModal = ({ run, onClose, onAccepted }) => {
     e.preventDefault();
     if (!run?.id) return;
     if (!bounds.ok) {
-      toast.show('Нет данных для приёмки: вес штуки и годный объём по строке');
+      toast.warning('Нет данных для приёмки: вес штуки и годный объём по строке');
       return;
     }
     const trimmed = String(piecesDraft ?? '').trim();
     if (trimmed === '') {
-      toast.show('Укажите количество принятых штук');
+      toast.warning('Укажите количество принятых штук');
       return;
     }
     const n = Math.floor(Number(trimmed));
     if (!Number.isFinite(n) || n < 0 || n > bounds.maxPieces) {
-      toast.show(`От 0 до ${bounds.maxPieces} шт (по расчёту ОТК)`);
+      toast.warning(`От 0 до ${bounds.maxPieces} шт (по расчёту ОТК)`);
       return;
     }
     setSubmitting(true);
     try {
       await postWorkshopRunAcceptGp(run.id, { accepted_pieces: n });
-      toast.show(
+      toast.success(
         n < bounds.maxPieces
           ? 'Принято. Остаток в «Заготовка (цех)»'
           : 'Принято на склад ГП',
@@ -96,7 +96,7 @@ const WarehouseGpAcceptModal = ({ run, onClose, onAccepted }) => {
       onAccepted?.();
       onClose();
     } catch (err) {
-      toast.show(getApiErrorMessage(err, 'Не удалось сохранить приёмку'));
+      toast.apiError(err, 'Не удалось сохранить приёмку');
     } finally {
       setSubmitting(false);
     }
@@ -928,33 +928,33 @@ const WarehouseGpPackModal = ({ group, onClose, onPacked }) => {
     const productId = Number(group.productId);
     const blankId = Number(group.blankId);
     if (!Number.isFinite(productId) || productId <= 0 || !Number.isFinite(blankId) || blankId <= 0) {
-      toast.show('В группе нет product_id / blank_id — упаковка только для строк с ID из API');
+      toast.warning('В группе нет product_id / blank_id — упаковка только для строк с ID из API');
       return;
     }
     if ((kind === 'box' || kind === 'pallet') && !String(label || '').trim()) {
-      toast.show('Для короба и паллеты укажите метку');
+      toast.warning('Для короба и паллеты укажите метку');
       return;
     }
     if (plannedPieces <= 0) {
-      toast.show('Укажите, сколько штук уходит в упаковку (итог должен быть больше 0)');
+      toast.warning('Укажите, сколько штук уходит в упаковку (итог должен быть больше 0)');
       return;
     }
     if (plannedPieces > maxPieces) {
-      toast.show(`По плану ${plannedPieces} шт — больше доступных ${maxPieces} шт`);
+      toast.warning(`По плану ${plannedPieces} шт — больше доступных ${maxPieces} шт`);
       return;
     }
     if (splitMode === 'uniform') {
       const n = parsePackInt(uniformNumPacks);
       const m = parsePackInt(uniformPerPack);
       if (n < 1 || m < 1) {
-        toast.show('Укажите число упаковок ≥ 1 и шт в каждой ≥ 1');
+        toast.warning('Укажите число упаковок ≥ 1 и шт в каждой ≥ 1');
         return;
       }
     }
     if (splitMode === 'custom') {
       const bad = customLines.some((row) => parsePackInt(row.numPacks) < 1 || parsePackInt(row.perPack) < 1);
       if (bad) {
-        toast.show('В каждой строке: упаковок ≥ 1 и шт в упаковке ≥ 1');
+        toast.warning('В каждой строке: упаковок ≥ 1 и шт в упаковке ≥ 1');
         return;
       }
     }
@@ -979,11 +979,11 @@ const WarehouseGpPackModal = ({ group, onClose, onPacked }) => {
     setSubmitting(true);
     try {
       await postGpPackage(body);
-      toast.show(`Упаковано: ${describePlanForToast()}`);
+      toast.success(`Упаковано: ${describePlanForToast()}`);
       onPacked?.();
       onClose();
     } catch (err) {
-      toast.show(mapGpPackApiError(err));
+      toast.error(mapGpPackApiError(err));
     } finally {
       setSubmitting(false);
     }
@@ -1620,11 +1620,7 @@ const WarehouseGpAcceptPanel = () => {
     refetchOperations();
   }, [refetch, refetchBalance, refetchPackages, refetchOperations]);
 
-  useOperationalRefetch(
-    ['warehouse_package', 'warehouse_batch', 'sale', 'return', 'defect_record', 'rework_request'],
-    refetchAllGp,
-    true,
-  );
+  useOperationalRefetch(WS_WAREHOUSE, refetchAllGp, true);
 
   const openPendingDetail = useCallback((r) => {
     setGroupModal(null);

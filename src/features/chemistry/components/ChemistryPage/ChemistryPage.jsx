@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   useServerQuery,
   formatNumberForInput,
-  getApiErrorMessage,
 } from '../../../../shared/lib';
 import {
   ConfirmModal,
@@ -27,6 +26,7 @@ import {
 } from '../../api/blankWorkshopApi';
 import '../ChemistryPage/ChemistryPage.scss';
 import ChemistryPlasticProfilesTab from '../ChemistryPlasticProfilesTab/ChemistryPlasticProfilesTab';
+import { useOperationalRefetch, WS_WORKSHOP } from '../../../../shared/realtime';
 
 const rawMatQuery = { page: 1, page_size: 500, ordering: 'name' };
 const blankQuery = { page: 1, page_size: 500, ordering: 'name' };
@@ -69,11 +69,11 @@ const AddBlankModal = ({ materialOptions, onClose, onCreated }) => {
     setBusy(true);
     try {
       await postWorkshopBlank(payload);
-      toast.show('Заготовка создана');
+      toast.success('Заготовка создана');
       onCreated?.();
       onClose();
     } catch (err) {
-      toast.show(getApiErrorMessage(err, 'Не удалось сохранить'));
+      toast.apiError(err, 'Не удалось сохранить');
     } finally {
       setBusy(false);
     }
@@ -123,11 +123,11 @@ const EditBlankModal = ({ initial, onClose, onSaved }) => {
     setBusy(true);
     try {
       await patchWorkshopBlank(initial.id, { name: n });
-      toast.show('Сохранено');
+      toast.success('Сохранено');
       onSaved?.();
       onClose();
     } catch (err) {
-      toast.show(getApiErrorMessage(err, 'Не удалось сохранить'));
+      toast.apiError(err, 'Не удалось сохранить');
     } finally {
       setBusy(false);
     }
@@ -223,11 +223,11 @@ const CompositionEditModal = ({ blankId, initialName, initialComposition, materi
     setBusy(true);
     try {
       await patchWorkshopBlank(blankId, payload);
-      toast.show('Состав сохранён');
+      toast.success('Состав сохранён');
       onSaved?.();
       onClose();
     } catch (err) {
-      toast.show(getApiErrorMessage(err, 'Не удалось сохранить состав'));
+      toast.apiError(err, 'Не удалось сохранить состав');
     } finally {
       setBusy(false);
     }
@@ -294,6 +294,8 @@ const ChemistryPage = () => {
   const refetchAll = useCallback(() => {
     refetch();
   }, [refetch]);
+
+  useOperationalRefetch(WS_WORKSHOP, refetchAll, true);
 
   return (
     <div className="page page--chemistry chemistry-blank-stock">
@@ -429,11 +431,11 @@ const ChemistryPage = () => {
           setDeleteBusy(true);
           try {
             await deleteWorkshopBlank(deleteTarget.id);
-            toast.show('Удалено');
+            toast.success('Удалено');
             refetchAll();
             setDeleteTarget(null);
           } catch (e) {
-            toast.show(getApiErrorMessage(e, 'Не удалось удалить'));
+            toast.apiError(e, 'Не удалось удалить');
           } finally {
             setDeleteBusy(false);
           }

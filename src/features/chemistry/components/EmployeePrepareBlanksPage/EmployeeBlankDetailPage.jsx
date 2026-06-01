@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useOperationalRefetch, WS_WORKSHOP } from '../../../../shared/realtime';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiClient } from '../../../../shared/api';
 import { getApiErrorMessage } from '../../../../shared/lib';
 import { useToast, Loading, ErrorState } from '../../../../shared/ui';
@@ -16,6 +17,7 @@ import './EmployeePrepareBlanksPage.scss';
 
 const EmployeeBlankDetailPage = () => {
   const { blankId } = useParams();
+  const navigate = useNavigate();
   const toast = useToast();
   const [blank, setBlank] = useState(null);
   const [preparedRow, setPreparedRow] = useState(null);
@@ -60,6 +62,8 @@ const EmployeeBlankDetailPage = () => {
     load();
   }, [load]);
 
+  useOperationalRefetch(WS_WORKSHOP, load, Boolean(blankId));
+
   const canAddBarrel = useMemo(() => {
     const rkg = Number(blank?.recipeKgPerBarrel) || 0;
     return rkg > 0;
@@ -70,10 +74,10 @@ const EmployeeBlankDetailPage = () => {
     setAddingBarrel(true);
     try {
       await postWorkshopAddBarrel(Number(blank.id));
-      toast.show('Добавлена 1 бочка');
+      toast.success('Добавлена 1 бочка');
       await load();
     } catch (err) {
-      toast.show(getApiErrorMessage(err, 'Не удалось добавить бочку'));
+      toast.apiError(err, 'Не удалось добавить бочку');
     } finally {
       setAddingBarrel(false);
     }
@@ -86,13 +90,13 @@ const EmployeeBlankDetailPage = () => {
           <button
             type="button"
             className="employee-prepare-detail-view__back"
-            onClick={() => window.close()}
+            onClick={() => navigate('/prepare-blanks')}
           >
-            ← Закрыть вкладку
+            ← К списку
           </button>
-          <a href="/prepare-blanks" className="employee-prepare-detail-view__list-link">
-            Список заготовок
-          </a>
+          <Link to="/prepare-blanks" className="employee-prepare-detail-view__list-link">
+            Цех
+          </Link>
           <h1 className="employee-prepare-detail-view__title">
             {blank?.name || 'Заготовка'}
           </h1>

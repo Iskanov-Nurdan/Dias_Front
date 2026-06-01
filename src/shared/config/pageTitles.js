@@ -2,7 +2,6 @@ import { ACCESS_LABELS } from './constants';
 
 /** Заголовок шапки для путей без пункта в сайдбаре. */
 const ROUTE_TITLES = {
-  '/payments': 'Оплаты',
   '/prepare-blanks': 'Цех',
   '/prepare-blanks/view': 'Заготовка',
   '/otk': 'ОТК',

@@ -24,7 +24,7 @@ export const PAGE_ROUTES = {
   [PAGE_IDS.CLIENTS]: '/cash/clients',
   [PAGE_IDS.SALES]: '/cash/sales',
   [PAGE_IDS.ORDERS]: '/cash/orders',
-  [PAGE_IDS.PAYMENTS]: '/payments',
+  [PAGE_IDS.PAYMENTS]: '/cash/sales',
   [PAGE_IDS.PRODUCTION]: '/production',
   [PAGE_IDS.SHIFTS]: '/shifts',
   [PAGE_IDS.MY_SHIFT]: '/my-shift',

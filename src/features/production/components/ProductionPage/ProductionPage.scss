@@ -75,10 +75,9 @@
   }
 
   .production-table-wrap {
-    overflow-x: auto;
+    @include horizontal-scroll;
     margin: 0 -0.25rem;
     padding-bottom: 0.25rem;
-    @include scrollbar;
   }
 
   .production-table {

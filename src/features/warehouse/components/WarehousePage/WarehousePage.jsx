@@ -603,7 +603,9 @@ const WarehouseGpAcceptedGroupModal = ({ group, listVariant = 'accepted', onClos
             </div>
             <div className="warehouse-gp-group-modal__summary-item">
               <span className="warehouse-gp-group-modal__summary-label">Статус</span>
-              <span className="warehouse-gp-group-modal__summary-value">
+              <span className={`warehouse-gp-group-modal__summary-value warehouse-gp-group-modal__status warehouse-gp-group-modal__status--${
+                isUnpacked ? 'pending' : isPacked ? 'done' : 'new'
+              }`}>
                 {isUnpacked ? 'Не упаковано' : isPacked ? 'Упаковано' : 'К приёмке'}
               </span>
             </div>
@@ -764,10 +766,10 @@ const WarehouseGpAcceptedGroupModal = ({ group, listVariant = 'accepted', onClos
                     <td className="warehouse-gp__actions">
                       <button
                         type="button"
-                        className="btn btn--secondary btn--sm"
+                        className="btn btn--ghost btn--sm warehouse-gp-group-modal__detail-btn"
                         onClick={() => onOpenRunDetail(r)}
                       >
-                        Детали строки
+                        Подробнее
                       </button>
                     </td>
                   </tr>
@@ -1003,8 +1005,9 @@ const WarehouseGpPackModal = ({ group, onClose, onPacked }) => {
             ×
           </button>
         </div>
-        <form className="modal__body chemistry-element-form" onSubmit={submit}>
-          <div className="warehouse-gp-pack-modal__lede">
+        <form className="warehouse-gp-pack-modal__form chemistry-element-form" onSubmit={submit}>
+          <div className="warehouse-gp-pack-modal__scroll">
+          <div className="warehouse-gp-pack-modal__lede" aria-label="Сводка">
             <span className="warehouse-gp-pack-modal__lede-item">
               <span className="warehouse-gp-pack-modal__lede-label">Товар</span>
               <strong className="warehouse-gp-pack-modal__lede-value">{group.productName || '—'}</strong>
@@ -1023,6 +1026,7 @@ const WarehouseGpPackModal = ({ group, onClose, onPacked }) => {
             </span>
           </div>
 
+          <div className="warehouse-gp-pack-modal__section">
           <label>Тип</label>
           <SearchableSelect
             value={kind}
@@ -1042,11 +1046,12 @@ const WarehouseGpPackModal = ({ group, onClose, onPacked }) => {
             placeholder={kind === 'box' || kind === 'pallet' ? 'Обязательно для короба / паллеты' : '№ / код'}
             autoComplete="off"
           />
+          </div>
 
           <fieldset className="warehouse-gp-pack-modal__fieldset">
             <legend className="warehouse-gp-pack-modal__legend">Распределение</legend>
-            <div className="warehouse-gp-pack-modal__modes">
-              <label className="warehouse-gp-pack-modal__mode">
+            <div className="warehouse-gp-pack-modal__modes" role="radiogroup" aria-label="Распределение">
+              <label className={`warehouse-gp-pack-modal__mode${splitMode === 'single' ? ' warehouse-gp-pack-modal__mode--active' : ''}`}>
                 <input
                   type="radio"
                   name="gp-pack-split"
@@ -1055,7 +1060,7 @@ const WarehouseGpPackModal = ({ group, onClose, onPacked }) => {
                 />
                 <span>Одна упаковка</span>
               </label>
-              <label className="warehouse-gp-pack-modal__mode">
+              <label className={`warehouse-gp-pack-modal__mode${splitMode === 'uniform' ? ' warehouse-gp-pack-modal__mode--active' : ''}`}>
                 <input
                   type="radio"
                   name="gp-pack-split"
@@ -1064,7 +1069,7 @@ const WarehouseGpPackModal = ({ group, onClose, onPacked }) => {
                 />
                 <span>Несколько одинаковых</span>
               </label>
-              <label className="warehouse-gp-pack-modal__mode">
+              <label className={`warehouse-gp-pack-modal__mode${splitMode === 'custom' ? ' warehouse-gp-pack-modal__mode--active' : ''}`}>
                 <input
                   type="radio"
                   name="gp-pack-split"
@@ -1170,15 +1175,18 @@ const WarehouseGpPackModal = ({ group, onClose, onPacked }) => {
                 : 'warehouse-gp-pack-modal__summary'
             }
           >
-            <span>
-              План: <strong>{formatNumberForInput(plannedPieces)} шт</strong>
-            </span>
-            <span>
-              Остаток: <strong>{formatNumberForInput(Math.max(0, remainder))} шт</strong>
-            </span>
+            <div className="warehouse-gp-pack-modal__summary-stat">
+              <span className="warehouse-gp-pack-modal__summary-k">План</span>
+              <strong className="warehouse-gp-pack-modal__summary-v">{formatNumberForInput(plannedPieces)} шт</strong>
+            </div>
+            <div className="warehouse-gp-pack-modal__summary-stat">
+              <span className="warehouse-gp-pack-modal__summary-k">Остаток</span>
+              <strong className="warehouse-gp-pack-modal__summary-v">{formatNumberForInput(Math.max(0, remainder))} шт</strong>
+            </div>
+          </div>
           </div>
 
-          <div className="modal__actions">
+          <div className="modal__actions warehouse-gp-pack-modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose} disabled={submitting}>
               Отмена
             </button>

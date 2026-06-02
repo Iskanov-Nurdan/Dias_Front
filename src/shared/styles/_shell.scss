@@ -22,10 +22,5 @@
 
 /* Горизонтальный скролл только там, где нужен; не рвёт viewport */
 .ds-table-scroll {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  @include scrollbar;
+  @include horizontal-scroll;
 }

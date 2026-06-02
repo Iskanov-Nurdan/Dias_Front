@@ -453,8 +453,7 @@
 }
 
 .commercial-table-wrap {
-  width: 100%;
-  overflow-x: auto;
+  @include horizontal-scroll;
 }
 
 .data-table--row-actions {

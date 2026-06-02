@@ -55,8 +55,7 @@
 .users-page__filters-fields {
   flex: 1 1 auto;
   min-width: 0;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  @include horizontal-scroll;
 
   @media (min-width: 1024px) {
     flex: 1 1 0;

@@ -5,10 +5,11 @@ import {
   formatNumberForInput,
   parseLocaleNumber,
 } from '../../../../shared/lib';
-import { Loading, ErrorState, EmptyState, useToast, DecimalInput } from '../../../../shared/ui';
+import { Loading, ErrorState, EmptyState, useToast, DecimalInput, ConfirmModal } from '../../../../shared/ui';
 import {
   createPlasticProfile,
   updatePlasticProfile,
+  deletePlasticProfile,
 } from '../../../production/api/productionApi';
 import { readPlasticProfileWeightKg } from '../../../production/lib/readPlasticProfilePieceWeight';
 import '../ChemistryPage/ChemistryPage.scss';
@@ -47,12 +48,26 @@ const buildAutoPlasticCode = () => {
   return `GP${t}${r}`.slice(0, 20);
 };
 
-const AddProfileModal = ({ onClose, onCreated }) => {
+const normProfileName = (s) => String(s ?? '').trim().toLowerCase();
+
+const findProfileByName = (items, name, excludeId = null) => {
+  const key = normProfileName(name);
+  if (!key) return null;
+  return items.find((p) => {
+    if (excludeId != null && String(p.id) === String(excludeId)) return false;
+    return normProfileName(p.name) === key;
+  }) ?? null;
+};
+
+const profileDisplayName = (p) => p?.name || '—';
+
+const AddProfileModal = ({ onClose, onCreated, existingProfiles = [] }) => {
   const toast = useToast();
   const [name, setName] = useState('');
   const [kgStr, setKgStr] = useState('');
   const [gramsStr, setGramsStr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [validationError, setValidationError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -61,6 +76,12 @@ const AddProfileModal = ({ onClose, onCreated }) => {
       toast.warning('Введите имя.');
       return;
     }
+    const duplicate = findProfileByName(existingProfiles, n);
+    if (duplicate) {
+      setValidationError(`Товар «${profileDisplayName(duplicate)}» уже есть в списке.`);
+      return;
+    }
+    setValidationError('');
     const pieceKg = calcPieceKg(kgStr, gramsStr);
     if (!Number.isFinite(pieceKg) || pieceKg <= 0) {
       toast.warning('Укажите вес одной штуки (кг и/или граммы).');
@@ -96,7 +117,15 @@ const AddProfileModal = ({ onClose, onCreated }) => {
         </div>
         <form className="modal__body chemistry-element-form" onSubmit={handleSubmit}>
           <label>Имя *</label>
-          <input value={name} onChange={(ev) => setName(ev.target.value)} autoComplete="off" required />
+          <input
+            value={name}
+            onChange={(ev) => {
+              setName(ev.target.value);
+              if (validationError) setValidationError('');
+            }}
+            autoComplete="off"
+            required
+          />
           <label>Кг</label>
           <DecimalInput min={0} value={kgStr} onChange={setKgStr} placeholder="0" />
           <label>Граммы (0–999)</label>
@@ -107,6 +136,7 @@ const AddProfileModal = ({ onClose, onCreated }) => {
             onChange={(ev) => setGramsStr(clampGramsInput(ev.target.value))}
             placeholder="0–999"
           />
+          {validationError && <p className="modal__error">{validationError}</p>}
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose} disabled={busy}>
               Отмена
@@ -121,13 +151,14 @@ const AddProfileModal = ({ onClose, onCreated }) => {
   );
 };
 
-const ProfileRow = ({ profile, onSaved }) => {
+const ProfileRow = ({ profile, existingProfiles = [], onSaved, onDeleteRequest }) => {
   const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
   const [kgStr, setKgStr] = useState('');
   const [gramsStr, setGramsStr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [validationError, setValidationError] = useState('');
 
   const serverWeight = readPlasticProfileWeightKg(profile);
 
@@ -154,6 +185,12 @@ const ProfileRow = ({ profile, onSaved }) => {
       toast.warning('Введите имя.');
       return;
     }
+    const duplicate = findProfileByName(existingProfiles, n, profile.id);
+    if (duplicate) {
+      setValidationError(`Товар «${profileDisplayName(duplicate)}» уже есть в списке.`);
+      return;
+    }
+    setValidationError('');
     const pieceKg = calcPieceKg(kgStr, gramsStr);
     if (!Number.isFinite(pieceKg) || pieceKg <= 0) {
       toast.warning('Укажите вес одной штуки (кг и/или граммы).');
@@ -177,6 +214,7 @@ const ProfileRow = ({ profile, onSaved }) => {
 
   const handleCancelEdit = () => {
     applyServerToFields();
+    setValidationError('');
     setEditing(false);
   };
 
@@ -190,6 +228,13 @@ const ProfileRow = ({ profile, onSaved }) => {
           <button type="button" className="btn btn--secondary btn--sm" onClick={() => setEditing(true)}>
             Редактировать
           </button>
+          <button
+            type="button"
+            className="btn btn--danger btn--sm"
+            onClick={() => onDeleteRequest?.(profile)}
+          >
+            Удалить
+          </button>
         </div>
       </div>
     );
@@ -201,7 +246,10 @@ const ProfileRow = ({ profile, onSaved }) => {
       <input
         className="chemistry-plastic-profiles__name"
         value={name}
-        onChange={(ev) => setName(ev.target.value)}
+        onChange={(ev) => {
+          setName(ev.target.value);
+          if (validationError) setValidationError('');
+        }}
         autoComplete="off"
         aria-label="Имя товара"
       />
@@ -220,11 +268,22 @@ const ProfileRow = ({ profile, onSaved }) => {
         />
       </div>
       <div className="chemistry-table__actions chemistry-table__actions--wrap">
+        {validationError && (
+          <p className="modal__error chemistry-plastic-profiles__row-error">{validationError}</p>
+        )}
         <button type="button" className="btn btn--primary btn--sm" onClick={handleSave} disabled={busy}>
           {busy ? '…' : 'Сохранить'}
         </button>
         <button type="button" className="btn btn--secondary btn--sm" onClick={handleCancelEdit} disabled={busy}>
           Отмена
+        </button>
+        <button
+          type="button"
+          className="btn btn--danger btn--sm"
+          onClick={() => onDeleteRequest?.(profile)}
+          disabled={busy}
+        >
+          Удалить
         </button>
       </div>
     </div>
@@ -232,7 +291,11 @@ const ProfileRow = ({ profile, onSaved }) => {
 };
 
 const ChemistryPlasticProfilesTab = () => {
+  const toast = useToast();
   const [addOpen, setAddOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteError, setDeleteError] = useState('');
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const {
     items: profiles,
     loading,
@@ -251,6 +314,22 @@ const ChemistryPlasticProfilesTab = () => {
   }, [refetch]);
 
   useOperationalRefetch(WS_WORKSHOP, refetchAll, true);
+
+  const handleDelete = async () => {
+    if (!deleteTarget?.id) return;
+    setDeleteError('');
+    setDeleteBusy(true);
+    try {
+      await deletePlasticProfile(deleteTarget.id);
+      toast.success(`Товар «${deleteTarget.name || ''}» удалён`);
+      setDeleteTarget(null);
+      refetchAll();
+    } catch (err) {
+      setDeleteError(err.response?.data?.error || err.response?.data?.detail || 'Не удалось удалить. Возможно, товар используется в рецептах или производстве.');
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
 
   return (
     <div className="chemistry-card">
@@ -278,15 +357,48 @@ const ChemistryPlasticProfilesTab = () => {
               <span className="chemistry-table__th chemistry-table__th--actions"> </span>
             </div>
             {sorted.map((p) => (
-              <ProfileRow key={p.id} profile={p} onSaved={refetchAll} />
+              <ProfileRow
+                key={p.id}
+                profile={p}
+                existingProfiles={sorted}
+                onSaved={refetchAll}
+                onDeleteRequest={(item) => {
+                  setDeleteError('');
+                  setDeleteTarget({ id: item.id, name: item.name });
+                }}
+              />
             ))}
           </div>
         </div>
       )}
 
       {addOpen ? (
-        <AddProfileModal onClose={() => setAddOpen(false)} onCreated={refetchAll} />
+        <AddProfileModal
+          existingProfiles={sorted}
+          onClose={() => setAddOpen(false)}
+          onCreated={refetchAll}
+        />
       ) : null}
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Удалить товар?"
+        message={
+          deleteTarget
+            ? `Удалить «${deleteTarget.name || ''}»? Доступно только если нет рецептов и производства.`
+            : ''
+        }
+        confirmText="Удалить"
+        confirmBusy={deleteBusy}
+        onConfirm={handleDelete}
+        onCancel={() => {
+          if (!deleteBusy) {
+            setDeleteTarget(null);
+            setDeleteError('');
+          }
+        }}
+        error={deleteError}
+      />
     </div>
   );
 };

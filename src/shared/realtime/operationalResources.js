@@ -1,4 +1,40 @@
-/** Имена resource для WS — должны совпадать с бэком (docs/WEBSOCKET_BACKEND_PROMPT.md). */
+/** Имена resource для WS — должны совпадать с бэком (docs/WEBSOCKET_API.md). */
+
+/** Фактический каталог с бэка (apps/realtime). `chemistry*` — префикс. */
+export const OPERATIONAL_RESOURCES_ALL = [
+  'shift',
+  'shift_note',
+  'shift_complaint',
+  'activity',
+  'raw_material',
+  'incoming',
+  'material_balance',
+  'material_writeoff',
+  'material_movement',
+  'workshop_blank',
+  'prepared_blank',
+  'blank_production_run',
+  'workshop_run',
+  'plastic_profile',
+  'order',
+  'orders',
+  'production_batch',
+  'batch',
+  'recipe_run',
+  'warehouse_batch',
+  'warehouse_package',
+  'sale',
+  'payment',
+  'return',
+  'client',
+  'recipe',
+  'recipes',
+  'line',
+  'line_history',
+  'defect_record',
+  'rework_request',
+  'chemistry*',
+];
 
 export const WS_SHIFT = ['shift', 'shift_note', 'shift_complaint', 'activity'];
 
@@ -17,9 +53,17 @@ export const WS_WORKSHOP = [
   'workshop_run',
   'plastic_profile',
   'raw_material',
+  'recipe_run',
+  'chemistry*',
 ];
 
-export const WS_PRODUCTION = ['order', 'production_batch', 'orders', 'workshop_blank', ...WS_WORKSHOP];
+export const WS_PRODUCTION = [
+  'order',
+  'orders',
+  'production_batch',
+  'batch',
+  ...WS_WORKSHOP,
+];
 
 export const WS_OTK = ['blank_production_run', 'workshop_run', 'workshop_blank'];
 

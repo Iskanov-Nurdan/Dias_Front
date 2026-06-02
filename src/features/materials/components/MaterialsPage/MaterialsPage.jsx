@@ -72,6 +72,18 @@ const MOVEMENT_TYPE_LABEL = {
   'return': 'Возврат',
 };
 
+const getMovementUnitPrice = (m, incomingPriceById) => {
+  const direct = m.unit_price ?? m.price_per_unit;
+  if (direct != null && direct !== '') return direct;
+  const refs = [m.incoming_id, m.incoming, m.batch_id, m.receipt_id];
+  for (const ref of refs) {
+    if (ref == null || ref === '') continue;
+    const price = incomingPriceById?.get(String(ref));
+    if (price != null && price !== '') return price;
+  }
+  return null;
+};
+
 const movementTypeLabel = (raw) => {
   if (raw == null || raw === '') return '—';
   const k = normMovementKey(raw);
@@ -94,6 +106,18 @@ const BALANCE_FILTER = {
 };
 
 const normName = (s) => String(s ?? '').trim().toLowerCase();
+
+const materialDisplayName = (b) => b?.name || b?.material_name || '—';
+
+const findMaterialByName = (items, name, excludeId = null) => {
+  const key = normName(name);
+  if (!key) return null;
+  return items.find((b) => {
+    const id = getMaterialId(b);
+    if (excludeId != null && id != null && String(id) === String(excludeId)) return false;
+    return normName(materialDisplayName(b)) === key;
+  }) ?? null;
+};
 
 /** ID сырья в справочнике (остатки: material_id; старый API: id). */
 const getMaterialId = (b) => b?.material_id ?? b?.id ?? b?.raw_material_id;
@@ -169,7 +193,18 @@ const MaterialsPage = () => {
     loading: incomingLoading,
     error: incomingError,
     refetch: refetchIncoming,
-  } = useServerQuery('incoming/', incomingQuery, { enabled: mainTab === MAIN_TAB.BATCHES });
+  } = useServerQuery('incoming/', incomingQuery, {
+    enabled: mainTab === MAIN_TAB.BATCHES || mainTab === MAIN_TAB.MOVEMENTS,
+  });
+
+  const incomingPriceById = useMemo(() => {
+    const map = new Map();
+    incomingList.forEach((i) => {
+      const price = i.unit_price ?? i.price_per_unit;
+      if (i.id != null) map.set(String(i.id), price);
+    });
+    return map;
+  }, [incomingList]);
 
   const movementsFetcher = useCallback(async (q, signal) => {
     const params = { ...q };
@@ -226,6 +261,11 @@ const MaterialsPage = () => {
 
   const handleCreateCatalogSubmit = async (data) => {
     setSubmitError('');
+    const duplicate = findMaterialByName(balances, data.name);
+    if (duplicate) {
+      setSubmitError(`Сырьё «${materialDisplayName(duplicate)}» уже есть в справочнике.`);
+      return;
+    }
     try {
       await createRawMaterial(data);
       setCatalogModal(null);
@@ -597,10 +637,12 @@ const MaterialsPage = () => {
                       <span className="materials-table__th">Сырьё</span>
                       <span className="materials-table__th">Тип</span>
                       <span className="materials-table__th">Количество</span>
+                      <span className="materials-table__th">Цена за единицу</span>
                     </div>
                     {movementList.map((m) => {
                       const at = m.occurred_at ?? m.created_at ?? m.date;
                       const qCell = qtyNumWithUnitTitle(m.quantity, m.unit);
+                      const unitPrice = getMovementUnitPrice(m, incomingPriceById);
                       return (
                         <div key={m.id} className="materials-table__row">
                           <span className="materials-table__date">
@@ -609,6 +651,11 @@ const MaterialsPage = () => {
                           <span>{m.material_name ?? m.name ?? '—'}</span>
                           <span>{movementTypeLabel(m.movement_type ?? m.type)}</span>
                           <span title={qCell.title}>{qCell.display}</span>
+                          <span className="materials-table__price">
+                            {unitPrice != null && unitPrice !== ''
+                              ? `${formatQuantityDisplay(unitPrice)} сом`
+                              : '—'}
+                          </span>
                         </div>
                       );
                     })}
@@ -622,6 +669,7 @@ const MaterialsPage = () => {
 
       {catalogModal && (
         <AddCatalogMaterialModal
+          existingMaterials={balances}
           onSubmit={handleCreateCatalogSubmit}
           onClose={() => { setCatalogModal(null); setSubmitError(''); }}
           error={submitError}
@@ -675,10 +723,11 @@ const MaterialsPage = () => {
   );
 };
 
-const AddCatalogMaterialModal = ({ onSubmit, onClose, error }) => {
+const AddCatalogMaterialModal = ({ onSubmit, onClose, error, existingMaterials = [] }) => {
   const [name, setName] = useState('');
   const [minBalance, setMinBalance] = useState('');
   const [comment, setComment] = useState('');
+  const [validationError, setValidationError] = useState('');
 
   const isDirty = useDirtyFromBaseline('add-catalog-material', false, {
     name: name.trim(),
@@ -710,10 +759,17 @@ const AddCatalogMaterialModal = ({ onSubmit, onClose, error }) => {
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            const trimmedName = name.trim();
+            const duplicate = findMaterialByName(existingMaterials, trimmedName);
+            if (duplicate) {
+              setValidationError(`Сырьё «${materialDisplayName(duplicate)}» уже есть в справочнике.`);
+              return;
+            }
+            setValidationError('');
             const minB = minBalance === '' ? undefined : parseLocaleNumber(minBalance);
             if (minBalance !== '' && (!Number.isFinite(minB) || minB < 0)) return;
             onSubmit({
-              name: name.trim(),
+              name: trimmedName,
               unit: 'kg',
               is_active: true,
               ...(minB !== undefined ? { min_balance: minB } : {}),
@@ -722,12 +778,22 @@ const AddCatalogMaterialModal = ({ onSubmit, onClose, error }) => {
           }}
         >
           <label>Название *</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Название сырья" />
+          <input
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (validationError) setValidationError('');
+            }}
+            required
+            placeholder="Название сырья"
+          />
           <label>Минимальный остаток</label>
           <DecimalInput min={0} value={minBalance} onChange={setMinBalance} placeholder="Порог «мало»" />
           <label>Комментарий</label>
           <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Опционально" />
-          {error && <p className="modal__error">{error}</p>}
+          {(validationError || error) && (
+            <p className="modal__error">{validationError || error}</p>
+          )}
           <div className="modal__actions">
             <button type="submit" className="btn btn--primary">Сохранить</button>
             <button type="button" className="btn btn--secondary" onClick={requestClose}>Отмена</button>

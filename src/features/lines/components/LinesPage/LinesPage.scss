@@ -606,12 +606,8 @@
 }
 
 .lines-table-scroll {
-  overflow-x: auto;
-  width: 100%;
-  max-width: 100%;
+  @include horizontal-scroll;
   margin-top: 0.25rem;
-  min-width: 0;
-  -webkit-overflow-scrolling: touch;
 }
 
 /* Широкий стол: min-width только от 1201px (ниже — карточки в responsive-tables). */

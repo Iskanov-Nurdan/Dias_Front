@@ -1038,8 +1038,7 @@
 }
 
 .chemistry-table-wrap {
-  overflow-x: auto;
-  width: 100%;
+  @include horizontal-scroll;
   margin-top: 0.5rem;
 }
 

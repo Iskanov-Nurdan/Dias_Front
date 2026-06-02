@@ -51,7 +51,7 @@
 }
 
 .plastic-profiles-table-wrap {
-  overflow-x: auto;
+  @include horizontal-scroll;
   margin-top: 0.25rem;
 }
 

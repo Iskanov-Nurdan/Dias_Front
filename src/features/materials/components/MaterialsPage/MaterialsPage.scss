@@ -138,10 +138,8 @@
 }
 
 .materials-table-wrap {
-  overflow-x: auto;
-  width: 100%;
+  @include horizontal-scroll;
   margin-top: 0.25rem;
-  -webkit-overflow-scrolling: touch;
 }
 
 .materials-table {
@@ -264,7 +262,7 @@
   }
 
   &--movements {
-    min-width: 640px;
+    min-width: 760px;
   }
 
   &--movements &__header,
@@ -273,7 +271,8 @@
       100px
       minmax(100px, 1fr)
       minmax(8rem, 1.1fr)
-      minmax(5rem, auto);
+      minmax(5rem, auto)
+      minmax(6.5rem, auto);
     align-items: center;
   }
 
@@ -571,6 +570,10 @@
     .materials-table--movements .materials-table__row > *:nth-child(4)::before {
       content: 'Количество';
     }
+
+    .materials-table--movements .materials-table__row > *:nth-child(5)::before {
+      content: 'Цена за единицу';
+    }
   }
 }
 
@@ -581,14 +584,6 @@
     .materials-tabs {
       flex-wrap: nowrap;
       gap: 0;
-      overflow-x: auto;
-      overflow-y: hidden;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
-
-      &::-webkit-scrollbar {
-        display: none;
-      }
     }
 
     .materials-tabs__tab {

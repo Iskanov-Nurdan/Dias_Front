@@ -35,6 +35,25 @@
   }
 }
 
+/** Горизонтальный скролл таблиц/широких блоков — не рвёт viewport. */
+@mixin horizontal-scroll {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  @include scrollbar;
+}
+
+/** Вертикальный скролл длинных списков в модалках и панелях. */
+@mixin vertical-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  @include scrollbar;
+}
+
 @mixin card-soft {
   background: var(--card);
   border: none;

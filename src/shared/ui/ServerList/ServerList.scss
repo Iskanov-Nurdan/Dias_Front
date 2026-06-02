@@ -18,6 +18,10 @@
     min-width: 0;
   }
 
+  &__table-scroll {
+    @include horizontal-scroll;
+  }
+
   &__pagination {
     margin-top: var(--space-4);
     padding-top: var(--space-2);

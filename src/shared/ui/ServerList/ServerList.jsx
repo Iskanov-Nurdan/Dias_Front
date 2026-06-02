@@ -23,7 +23,9 @@ const ServerList = ({
   const content = items.length === 0 ? (
     <EmptyState title={emptyTitle} description={emptyDesc} />
   ) : renderTable ? (
-    renderTable(items)
+    <div className="server-list__table-scroll ds-table-scroll">
+      {renderTable(items)}
+    </div>
   ) : (
     <ul className="server-list__items">
       {items.map((item) => (

@@ -165,7 +165,7 @@
 }
 
 .activity-audit-detail__table-wrap {
-  overflow-x: auto;
+  @include horizontal-scroll;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
 }

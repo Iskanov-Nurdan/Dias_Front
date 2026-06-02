@@ -30,7 +30,6 @@ import {
 } from '../../api/salesApi';
 import { getOrder } from '../../../orders/api/ordersApi';
 import { getClients } from '../../../clients/api/clientsApi';
-import { getGpPackages } from '../../../warehouse/api/warehouseApi';
 import './SalesPage.scss';
 import './WaybillPreviewModal.scss';
 import { WAYBILL_DEFAULT_UNIT } from '../../config/waybillConfig';
@@ -334,6 +333,7 @@ const gpPackagePiecesInside = (gp) => toNumber(
 const normalizeGpPackagesPayload = (data) => {
   if (!data) return [];
   if (Array.isArray(data)) return data;
+  if (Array.isArray(data.available_gp_packages)) return data.available_gp_packages;
   if (Array.isArray(data.items)) return data.items;
   if (Array.isArray(data.results)) return data.results;
   return [];
@@ -851,6 +851,8 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
   const [clients, setClients] = useState([]);
   const [orders, setOrders] = useState([]);
   const [batches, setBatches] = useState([]);
+  /** Legacy FIFO: партии без GpPackUnit (unit_type=packages в select-sources). */
+  const [legacyPackageBatches, setLegacyPackageBatches] = useState([]);
   const [client, setClient] = useState('');
   const [order, setOrder] = useState('');
   const [paymentType, setPaymentType] = useState('full');
@@ -906,42 +908,41 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
   useEffect(() => {
     let alive = true;
     setLoadingSelect(true);
+    setGpPackagesLoading(true);
     const params = {};
     if (client) params.client = client;
     if (order) params.order = order;
-    getSaleSelectSources(params)
-      .then((res) => {
+    Promise.all([
+      getSaleSelectSources(params),
+      getSaleSelectSources({ ...params, unit_type: 'packages' }),
+    ])
+      .then(([mainRes, packagesRes]) => {
         if (!alive) return;
-        const data = res.data || {};
-        const ord = data.available_orders ?? data.orders;
-        const bat = data.available_warehouse_batches ?? data.warehouse_batches;
+        const mainData = mainRes.data || {};
+        const pkgData = packagesRes.data || {};
+        const ord = mainData.available_orders ?? mainData.orders;
+        const bat = mainData.available_warehouse_batches ?? mainData.warehouse_batches;
+        const legacyBat = pkgData.available_warehouse_batches ?? pkgData.warehouse_batches;
         setOrders(Array.isArray(ord) ? ord : []);
         setBatches(Array.isArray(bat) ? bat : []);
+        setLegacyPackageBatches(Array.isArray(legacyBat) ? legacyBat : []);
+        setGpSalePackages(normalizeGpPackagesPayload(pkgData));
       })
       .catch(() => {
         if (!alive) return;
         setOrders([]);
         setBatches([]);
+        setLegacyPackageBatches([]);
+        setGpSalePackages([]);
       })
       .finally(() => {
-        if (alive) setLoadingSelect(false);
+        if (alive) {
+          setLoadingSelect(false);
+          setGpPackagesLoading(false);
+        }
       });
     return () => { alive = false; };
   }, [client, order, inventoryRefreshNonce]);
-
-
-  useEffect(() => {
-    let alive = true;
-    setGpPackagesLoading(true);
-    getGpPackages({ page: 1, page_size: 500, ordering: '-created_at' })
-      .then((res) => {
-        if (!alive) return;
-        setGpSalePackages(normalizeGpPackagesPayload(res.data));
-      })
-      .catch(() => { if (alive) setGpSalePackages([]); })
-      .finally(() => { if (alive) setGpPackagesLoading(false); });
-    return () => { alive = false; };
-  }, [inventoryRefreshNonce]);
 
   useEffect(() => {
     if (paymentType === 'debt') setPaidAmount('0');
@@ -959,9 +960,11 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
         const qty = parseLocaleNumber(ln.quantity);
         const price = parseLocaleNumber(ln.unit_price);
         if (!wb || !(qty > 0) || !Number.isFinite(price)) return null;
+        const gpId = ln.gp_package_id ? Number(ln.gp_package_id) : null;
         cleanLines.push({
           warehouse_batch: wb,
-          quantity: String(qty),
+          ...(gpId ? { gp_package_id: gpId } : {}),
+          quantity: String(gpId ? 1 : qty),
           unit_price: String(price),
           unit_type: ln.unit_type === 'packages' ? 'packages' : 'pieces',
           ...(ln.order_line_id ? { order_line: Number(ln.order_line_id) } : {}),
@@ -1057,19 +1060,21 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
   const saleAvailableBatches = useMemo(() => {
     const source = batches.filter(isGoodBatchForSale);
     return source
-      .filter((b) => resolveUnpackedPiecesForSale(b) > 0 || resolveBatchAvailPackages(b) > 0)
-      .sort((a, b) => {
-        const ap = resolveUnpackedPiecesForSale(a) + resolveBatchAvailPackages(a);
-        const bp = resolveUnpackedPiecesForSale(b) + resolveBatchAvailPackages(b);
-        return bp - ap;
-      });
+      .filter((b) => resolveUnpackedPiecesForSale(b) > 0)
+      .sort((a, b) => resolveUnpackedPiecesForSale(b) - resolveUnpackedPiecesForSale(a));
   }, [batches]);
+  const saleAvailableLegacyPackageBatches = useMemo(() => {
+    const source = legacyPackageBatches.filter(isGoodBatchForSale);
+    return source
+      .filter((b) => resolveBatchAvailPackages(b) > 0)
+      .sort((a, b) => resolveBatchAvailPackages(b) - resolveBatchAvailPackages(a));
+  }, [legacyPackageBatches]);
   const filteredBatchesByUnitType = useCallback((lineUnitType) => {
     if (lineUnitType === 'packages') {
-      return saleAvailableBatches.filter((b) => resolveBatchAvailPackages(b) > 0);
+      return saleAvailableLegacyPackageBatches;
     }
-    return saleAvailableBatches.filter((b) => resolveUnpackedPiecesForSale(b) > 0);
-  }, [saleAvailableBatches]);
+    return saleAvailableBatches;
+  }, [saleAvailableBatches, saleAvailableLegacyPackageBatches]);
   const pickBatchForOrderLine = useCallback((orderLine, lineUnitType) => {
     const list = filteredBatchesByUnitType(lineUnitType || 'pieces');
     if (!list.length) return '';
@@ -1247,7 +1252,10 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
       const wb = ln.warehouse_batch ? Number(ln.warehouse_batch) : null;
       const qty = parseLocaleNumber(ln.quantity);
       const price = parseLocaleNumber(ln.unit_price);
-      const batch = saleAvailableBatches.find((b) => String(b.id) === String(ln.warehouse_batch));
+      const batchPool = ln.unit_type === 'packages'
+        ? saleAvailableLegacyPackageBatches
+        : saleAvailableBatches;
+      const batch = batchPool.find((b) => String(b.id) === String(ln.warehouse_batch));
       const gpPkg = ln.gp_package_id
         ? gpSalePackages.find((r) => String(r.id) === String(ln.gp_package_id))
         : null;
@@ -1269,10 +1277,11 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
         };
         continue;
       }
+      const gpId = ln.gp_package_id ? Number(ln.gp_package_id) : null;
       cleanLines.push({
         warehouse_batch: wb,
-        ...(ln.gp_package_id ? { gp_package_id: Number(ln.gp_package_id) } : {}),
-        quantity: String(qty),
+        ...(gpId ? { gp_package_id: gpId } : {}),
+        quantity: String(gpId ? 1 : qty),
         unit_price: String(price),
         unit_type: ln.unit_type === 'packages' ? 'packages' : 'pieces',
         ...(ln.order_line_id ? { order_line: Number(ln.order_line_id) } : {}),
@@ -1351,9 +1360,12 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
   const saleDate = new Date().toISOString().slice(0, 10);
   const selectedLine = saleLines[activeLineIdx] || null;
   const selectedBatchMeta = useMemo(() => {
-    if (!selectedLine?.warehouse_batch) return null;
-    return saleAvailableBatches.find((b) => String(b.id) === String(selectedLine.warehouse_batch)) || null;
-  }, [selectedLine, saleAvailableBatches]);
+    if (!selectedLine?.warehouse_batch || selectedLine.gp_package_id) return null;
+    const pool = selectedLine.unit_type === 'packages'
+      ? saleAvailableLegacyPackageBatches
+      : saleAvailableBatches;
+    return pool.find((b) => String(b.id) === String(selectedLine.warehouse_batch)) || null;
+  }, [selectedLine, saleAvailableBatches, saleAvailableLegacyPackageBatches]);
   const batchesFilteredForDetail = useMemo(() => {
     if (!selectedLine) return [];
     const base = filteredBatchesByUnitType(selectedLine.unit_type || 'pieces');
@@ -1407,7 +1419,10 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
         && parseLocaleNumber(ln.unit_price) > 0
       )) return false;
       if (ln.gp_package_id) return true;
-      const b = saleAvailableBatches.find((x) => String(x.id) === String(ln.warehouse_batch));
+      const batchPool = ln.unit_type === 'packages'
+        ? saleAvailableLegacyPackageBatches
+        : saleAvailableBatches;
+      const b = batchPool.find((x) => String(x.id) === String(ln.warehouse_batch));
       const maxQ = maxSaleQtyForBatch(ln, b);
       if (maxQ > 0 && parseLocaleNumber(ln.quantity) > maxQ) return false;
       return true;
@@ -1519,9 +1534,8 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
                   )}
                   <div className="sales-modal__cart-list">
                     {saleLines.map((line, idx) => {
-                      const selectedBatch = saleAvailableBatches.find((b) => String(b.id) === String(line.warehouse_batch))
-                        || filteredBatchesByUnitType(line.unit_type || 'pieces')
-                          .find((b) => String(b.id) === String(line.warehouse_batch));
+                      const selectedBatch = filteredBatchesByUnitType(line.unit_type || 'pieces')
+                        .find((b) => String(b.id) === String(line.warehouse_batch));
                       const selectedGpPkg = line.gp_package_id
                         ? gpSalePackages.find((r) => String(r.id) === String(line.gp_package_id))
                         : null;
@@ -1624,8 +1638,8 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
                         placeholder="Поиск по товару, заготовке, партии…"
                       />
                       <div className="sales-modal__batch-cards">
-                        {/* Regular warehouse batches */}
-                        {batchesFilteredForDetail.map((b) => {
+                        {/* Legacy FIFO: анонимные упаковки по партии (без GpPackUnit) */}
+                        {(selectedLine.unit_type !== 'packages' || batchesFilteredForDetail.length > 0) && batchesFilteredForDetail.map((b) => {
                           const isSelected = String(b.id) === String(selectedLine.warehouse_batch)
                             && !selectedLine.gp_package_id;
                           const avPieces = resolveBatchAvailPieces(b);
@@ -1674,7 +1688,7 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
                           );
                         })}
 
-                        {/* GP packages (for "Упакованные" tab) */}
+                        {/* GP: available_gp_packages из select-sources */}
                         {selectedLine.unit_type === 'packages' && gpPackagesForDetail.map((r) => {
                           const gpId = String(r.id ?? '');
                           const isSelected = selectedLine.gp_package_id

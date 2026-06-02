@@ -471,12 +471,14 @@ const aggregatePackedGroupsFromPackages = (mappedRows) => {
         blankId: bid || row.blankId,
         runs: [],
         packages: [],
+        packagesCount: 0,
         totalPieces: 0,
         totalKg: 0,
       };
       map.set(key, g);
     }
     g.packages.push(row);
+    g.packagesCount += 1;
     g.totalPieces += pc;
     const kg = row.kg != null && Number.isFinite(Number(row.kg)) ? Number(row.kg) : 0;
     g.totalKg += kg;
@@ -572,10 +574,13 @@ const WarehouseGpAcceptedGroupModal = ({ group, listVariant = 'accepted', onClos
   const showDetailFilter =
     isPackedFromPackages ? allPackages.length > 0 : displayRuns.length > 0;
   const detailRowsCount = isPackedFromPackages
-    ? allPackages.length
+    ? (group.rowsCount ?? allPackages.length)
     : isUnpacked || isPacked
       ? displayRuns.length
       : group.runs.length;
+  const packedPackagesCount = isPackedFromPackages
+    ? (group.packagesCount ?? allPackages.length)
+    : null;
 
   return (
     <div className="modal-overlay" onClick={onClose} role="presentation">
@@ -612,7 +617,7 @@ const WarehouseGpAcceptedGroupModal = ({ group, listVariant = 'accepted', onClos
             <div className="warehouse-gp-group-modal__summary-item">
               <span className="warehouse-gp-group-modal__summary-label">{isPacked ? 'Упаковок' : 'Шт'}</span>
               <span className="warehouse-gp-group-modal__summary-value">
-                {formatNumberForInput(group.totalPieces)}
+                {formatNumberForInput(isPackedFromPackages ? packedPackagesCount : group.totalPieces)}
               </span>
             </div>
             <div className="warehouse-gp-group-modal__summary-item">
@@ -1285,11 +1290,12 @@ const isGpPackageSold = (row) => {
 };
 
 const normalizePackagesListPayload = (data) => {
-  if (!data || typeof data !== 'object') return { items: [] };
-  if (Array.isArray(data)) return { items: data };
-  if (Array.isArray(data.items)) return { items: data.items };
-  if (Array.isArray(data.results)) return { items: data.results };
-  return { items: [] };
+  if (!data || typeof data !== 'object') return { items: [], summary: null };
+  const summary = data.meta?.summary ?? data.summary ?? null;
+  if (Array.isArray(data)) return { items: data, summary };
+  if (Array.isArray(data.items)) return { items: data.items, summary };
+  if (Array.isArray(data.results)) return { items: data.results, summary };
+  return { items: [], summary };
 };
 
 const mapGpPackageHistoryRow = (row, idx) => {
@@ -1908,7 +1914,9 @@ const WarehouseGpAcceptPanel = () => {
                       <td className="data-table__cell--num">{formatNumberForInput(g.totalPieces)}</td>
                       <td className="data-table__cell--num">{formatNumberForInput(g.totalKg)} кг</td>
                       <td className="data-table__cell--num">
-                        {g.source === 'packages' ? g.packages.length : (g.runs || []).length}
+                        {g.source === 'packages'
+                          ? formatNumberForInput(g.packagesCount ?? (g.packages || []).length)
+                          : (g.runs || []).length}
                       </td>
                       <td className="warehouse-gp__actions">
                         <button

@@ -14,9 +14,10 @@ export const getGpUnpackedBalance = (params = {}, config = {}) =>
  * GET warehouse/gp-packages/ — журнал упаковок ГП.
  *
  * Доп. фильтры (ожидаемые от бэка):
- *   - status=available  — только доступные упаковки (warehouse_batch.status=available, не проданы)
+ *   - status=available  — только доступные упаковки (по умолчанию, если параметр не передан)
  *   - status=sold       — только проданные/списанные
  *   - status=all        — без фильтра (для вкладки «История»)
+ *   meta.summary: { rows_count, packages_count, pieces_total }
  * Поля ответа (ожидаемые от бэка по каждой упаковке):
  *   - status: 'available' | 'sold' | 'shipped'
  *   - is_sold: boolean

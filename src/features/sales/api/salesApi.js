@@ -13,6 +13,7 @@ export const getSaleWaybillUrl = (id) => `${apiClient.defaults.baseURL}sales/${i
 export const getSaleWaybillData = (id) => apiClient.get(`sales/${id}/waybill/`, { params: { format: 'json' } });
 export const getSaleReceiptUrl = (id) => `${apiClient.defaults.baseURL}sales/${id}/receipt/`;
 
+/** @param {{ client?: string|number, order?: string|number, unit_type?: 'packages' }} params */
 export const getSaleSelectSources = (params = {}) =>
   apiClient.get('sales/select-sources/', {
     params,

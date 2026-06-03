@@ -58,9 +58,11 @@ export const getWorkshopBlankProductionRun = (id) =>
 export const postWorkshopBlankProductionRun = (body) =>
   apiClient.post('workshop/blank-production-runs/', body);
 
+/** @deprecated 410 Gone — учёт через POST workshop/otk-blanks/{blank_id}/account/ */
 export const postWorkshopRunOtkDefect = (id, body) =>
   apiClient.post(`workshop/blank-production-runs/${id}/otk-defect/`, body);
 
+/** @deprecated 410 Gone — приёмка в ОТК account */
 export const postWorkshopRunAcceptGp = (id, body) =>
   apiClient.post(`workshop/blank-production-runs/${id}/accept-gp/`, body);
 
@@ -151,23 +153,22 @@ export function mapBlankProductionRunFromApi(r) {
     unpackedPieces:
       r.unpacked_pieces != null && Number.isFinite(Number(r.unpacked_pieces)) ? Number(r.unpacked_pieces) : null,
     unpackedKg: r.unpacked_kg != null && Number.isFinite(Number(r.unpacked_kg)) ? Number(r.unpacked_kg) : null,
+    remainingKgInPool: r.remaining_kg_in_pool != null ? Number(r.remaining_kg_in_pool) : null,
+    otkFullyAccounted: Boolean(r.otk_fully_accounted),
+    otkConsumedKg: r.otk_consumed_kg != null ? Number(r.otk_consumed_kg) : null,
   };
 }
 
 export function buildCreateBlankRunPayload({
   blankId,
-  productId,
   blankTotalKg,
   blankUsedInProductionKg,
   vatMaxKgDemo,
-  weightKgPerPiece,
 }) {
   return {
     blank_id: Number(blankId),
-    product_id: Number(productId),
     blank_total_kg: blankTotalKg,
     blank_used_in_production_kg: blankUsedInProductionKg,
     vat_max_kg_demo: vatMaxKgDemo,
-    weight_kg_per_piece: weightKgPerPiece,
   };
 }

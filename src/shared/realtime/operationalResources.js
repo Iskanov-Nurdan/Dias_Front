@@ -65,17 +65,16 @@ export const WS_PRODUCTION = [
   ...WS_WORKSHOP,
 ];
 
-export const WS_OTK = ['blank_production_run', 'workshop_run', 'workshop_blank'];
+export const WS_OTK = ['otk', 'workshop', 'blank_production_run', 'workshop_run', 'workshop_blank', 'prepared_blank'];
 
 export const WS_WAREHOUSE = [
-  'warehouse_package',
   'warehouse_batch',
   'blank_production_run',
   'workshop_run',
+  'otk',
   'sale',
   'return',
   'defect_record',
-  'rework_request',
 ];
 
 export const WS_CASH = ['sale', 'payment', 'return', 'order', 'client'];

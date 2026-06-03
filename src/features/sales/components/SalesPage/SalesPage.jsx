@@ -1,14 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   useServerQuery,
   parseLocaleNumber,
   formatQuantityDisplay,
+  formatNumberForInput,
   getApiErrorMessage,
   pickFirstIsoDate,
   matchesClientDateFilter,
   extractOrderLines,
   orderLineApiId,
 } from '../../../../shared/lib';
+import { resolveBatchUnitSalePrice } from '../../../production/lib/plasticProfilePricing';
 import {
   EmptyState,
   ErrorState,
@@ -28,7 +31,6 @@ import {
   getSaleWaybillData,
   previewSale,
 } from '../../api/salesApi';
-import { getOrder } from '../../../orders/api/ordersApi';
 import { getClients } from '../../../clients/api/clientsApi';
 import './SalesPage.scss';
 import './WaybillPreviewModal.scss';
@@ -155,6 +157,91 @@ const resolveSaleDebtRemaining = ({ paymentType, paidAmount, saleTotal, orderPre
   const supplemental = resolveSaleSupplementalPaid({ paymentType, paidAmount, saleTotal, orderPrepaid });
   return Math.max(0, total - applied - supplemental);
 };
+
+const parsePayAmount = (raw) => {
+  const n = parseLocaleNumber(raw);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const appendPayAmountStr = (current, delta) => {
+  const next = Math.max(0, parseLocaleNumber(current) + delta);
+  return next > 0 ? formatNumberForInput(next) : '';
+};
+
+const padPayDigit = (current, key) => {
+  const s = String(current ?? '');
+  if (key === 'back') return s.length <= 1 ? '' : s.slice(0, -1);
+  if (key === 'clear') return '';
+  if (key === '.') {
+    if (!s) return '0.';
+    if (s.includes('.')) return s;
+    return `${s}.`;
+  }
+  if (s === '0') return key;
+  return s + key;
+};
+
+const HELD_SALES_STORAGE_KEY = 'dias-sale-held-drafts';
+
+const loadHeldSales = () => {
+  try {
+    const raw = sessionStorage.getItem(HELD_SALES_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const persistHeldSales = (list) => {
+  try {
+    sessionStorage.setItem(HELD_SALES_STORAGE_KEY, JSON.stringify(list));
+  } catch {
+    /* ignore quota */
+  }
+};
+
+const computeSaleChange = ({ payTab, amountDue, cashReceived, cardReceived }) => {
+  const due = toNumber(amountDue);
+  const cash = parsePayAmount(cashReceived);
+  const card = parsePayAmount(cardReceived);
+  if (payTab === 'debt' || due <= 0) return 0;
+  if (payTab === 'cash') return Math.max(0, cash - due);
+  if (payTab === 'cashless') return 0;
+  const cardApplied = Math.min(card, due);
+  const cashNeeded = Math.max(0, due - cardApplied);
+  return Math.max(0, cash - cashNeeded);
+};
+
+const deriveSalePaymentFromCheckout = ({
+  payTab,
+  cashReceived,
+  cardReceived,
+  amountDue,
+}) => {
+  const due = toNumber(amountDue);
+  const cash = parsePayAmount(cashReceived);
+  const card = parsePayAmount(cardReceived);
+  if (payTab === 'debt') {
+    return { paymentType: 'debt', paymentMethod: 'cash', paidAmount: 0, received: 0 };
+  }
+  let received = 0;
+  if (payTab === 'cash') received = cash;
+  else if (payTab === 'cashless') received = card;
+  else received = cash + card;
+
+  let paymentMethod = 'cash';
+  if (payTab === 'cashless') paymentMethod = 'card';
+  else if (payTab === 'mixed') {
+    if (card > 0 && cash <= 0) paymentMethod = 'card';
+    else if (cash > 0 && card <= 0) paymentMethod = 'cash';
+    else paymentMethod = 'card';
+  }
+
+  const paidAmount = due > 0 ? Math.min(received, due) : 0;
+  const paymentType = received >= due && due > 0 ? 'full' : 'partial';
+  return { paymentType, paymentMethod, paidAmount, received };
+};
 const isClosedOrder = (o) => {
   const raw = String(o?.request_status || o?.status || o?.status_label || '').toLowerCase();
   return raw.includes('closed')
@@ -227,16 +314,35 @@ const formatBatchOptionLabel = (b) => {
   if (pk > 0) bits.push(`${formatQuantityDisplay(pk)} уп`);
   return bits.length ? `${base} · ${bits.join(' · ')}` : base;
 };
-const cartLineTitle = (line, batch, idx) => {
-  if (batch) {
-    const pn = String(batch.product_name ?? batch.productName ?? '').trim();
-    const bn = String(batch.blank_name ?? batch.blankName ?? '').trim();
-    if (pn || bn) return [pn, bn].filter(Boolean).join(' · ');
-    return formatBatchOptionLabel(batch);
-  }
-  const profile = String(line?.profile_name ?? '').trim();
-  if (profile) return profile;
+const cartLineTitle = (line, stockRow, idx) => {
+  const pn = String(
+    stockRow?.product_name ?? stockRow?.productName ?? line?.profile_name ?? '',
+  ).trim();
+  if (pn) return pn;
   return `Товар ${idx + 1}`;
+};
+
+const mapProfileStockToSaleRow = (row) => {
+  if (!row || typeof row !== 'object') return null;
+  const batchId = row.warehouse_batch_id ?? row.warehouse_batch ?? row.batch_id;
+  if (batchId == null || batchId === '') return null;
+  const pieces = Number(row.available_pieces ?? row.pieces) || 0;
+  if (pieces <= 0) return null;
+  return {
+    id: String(batchId),
+    profile_id: row.profile_id ?? row.profileId,
+    product_name: row.product_name ?? row.profile_name ?? row.name,
+    productName: row.product_name ?? row.profile_name ?? row.name,
+    available_pieces: pieces,
+    unit_sale_price: row.unit_sale_price ?? row.unitSalePrice,
+    sale_unit_price: row.unit_sale_price ?? row.unitSalePrice,
+  };
+};
+
+const normalizeProfileStock = (data) => {
+  const raw = data?.profile_stock ?? data?.profileStock;
+  if (!Array.isArray(raw)) return [];
+  return raw.map(mapProfileStockToSaleRow).filter(Boolean);
 };
 const resolveBatchAvailPieces = (b) =>
   toNumber(b?.available_pieces ?? b?.unpacked_pieces ?? b?.pieces_available ?? b?.pieces_count ?? b?.qty_pieces);
@@ -295,8 +401,26 @@ const resolveUnpackedPiecesForSale = (b) => {
 
 const maxSaleQtyForBatch = (line, batch) => {
   if (!batch) return 0;
-  if (line?.unit_type === 'packages') return resolveBatchAvailPackages(batch);
   return resolveUnpackedPiecesForSale(batch);
+};
+
+const formatLineUnitPrice = (price) => {
+  const n = Number(price);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return formatNumberForInput(n);
+};
+
+const applyAutoUnitPrice = (line, batch, profilesById) => {
+  const fromBatch = batch?.unit_sale_price ?? batch?.sale_unit_price;
+  if (fromBatch != null && fromBatch !== '') {
+    const n = parseLocaleNumber(fromBatch);
+    if (Number.isFinite(n) && n > 0) return { ...line, unit_price: String(n) };
+  }
+  const computed = resolveBatchUnitSalePrice(batch, profilesById);
+  if (computed != null && computed > 0) {
+    return { ...line, unit_price: formatLineUnitPrice(computed) };
+  }
+  return { ...line, unit_price: '' };
 };
 
 /** Кол-во из заявки, не больше остатка на складе. */
@@ -311,18 +435,20 @@ const capQuantityForOrderLine = (line, batch) => {
   return String(Math.floor(orderQty));
 };
 
-const enrichCartLinesFromOrder = (lines, batches) =>
+const enrichCartLinesFromOrder = (lines, batches, profilesById) =>
   (lines || []).map((ln) => {
     const batch =
       ln.warehouse_batch && batches?.length
         ? batches.find((b) => String(b.id) === String(ln.warehouse_batch))
         : null;
     const orderQty = ln.quantity != null && ln.quantity !== '' ? String(ln.quantity) : '';
-    return {
+    let next = {
       ...ln,
+      unit_type: 'pieces',
       order_quantity: orderQty,
-      quantity: capQuantityForOrderLine({ ...ln, order_quantity: orderQty }, batch),
+      quantity: capQuantityForOrderLine({ ...ln, order_quantity: orderQty, unit_type: 'pieces' }, batch),
     };
+    return applyAutoUnitPrice(next, batch, profilesById);
   });
 
 /** Штуки внутри одной GP-упаковки (для подписи в UI). */
@@ -763,7 +889,6 @@ const SalesPage = () => {
               <tr>
                 <th>Клиент</th>
                 <th>Дата</th>
-                <th>Заявка</th>
                 <th>Тип продажи</th>
                 <th className="data-table__cell--num">Сумма</th>
                 <th className="data-table__cell--num">Оплачено</th>
@@ -775,16 +900,11 @@ const SalesPage = () => {
             <tbody>
               {visibleSales.map((s) => {
                 const clientText = s.client_name || clientLabel(s.client) || s.display;
-                const orderText = s.order_display
-                  || s.order_name
-                  || (typeof s.order === 'object' ? orderLabel(s.order) : '')
-                  || '—';
-                const saleTypeText = s.unit_type === 'packages' ? 'Упаковки' : 'Штуки';
+                const saleTypeText = 'Штуки';
                 return (
                   <tr key={s.id}>
                     <td>{clientText || '—'}</td>
                     <td>{formatDate(s.date || s.created_at)}</td>
-                    <td>{orderText}</td>
                     <td>{saleTypeText}</td>
                     <td className="data-table__cell--num">{toMoney(s.total_amount ?? s.revenue)}</td>
                     <td className="data-table__cell--num">{toMoney(s.paid_amount)}</td>
@@ -840,8 +960,7 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
   const [loadingSelect, setLoadingSelect] = useState(false);
   const [inventoryRefreshNonce, setInventoryRefreshNonce] = useState(0);
   const [batchStockSearch, setBatchStockSearch] = useState('');
-  const [gpSalePackages, setGpSalePackages] = useState([]);
-  const [gpPackagesLoading, setGpPackagesLoading] = useState(false);
+  const [saleDate, setSaleDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
   const [lineErrors, setLineErrors] = useState({});
   const [clientError, setClientError] = useState('');
@@ -851,13 +970,26 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
   const [clients, setClients] = useState([]);
   const [orders, setOrders] = useState([]);
   const [batches, setBatches] = useState([]);
-  /** Legacy FIFO: партии без GpPackUnit (unit_type=packages в select-sources). */
-  const [legacyPackageBatches, setLegacyPackageBatches] = useState([]);
+  const [profileStock, setProfileStock] = useState([]);
+
+  const { items: profileItems } = useServerQuery(
+    'plastic-profiles/',
+    { page: 1, page_size: 500, ordering: 'name' },
+    { enabled: true },
+  );
+  const profilesById = useMemo(() => {
+    const m = new Map();
+    (profileItems || []).forEach((p) => m.set(String(p.id), p));
+    return m;
+  }, [profileItems]);
   const [client, setClient] = useState('');
   const [order, setOrder] = useState('');
-  const [paymentType, setPaymentType] = useState('full');
-  const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [paidAmount, setPaidAmount] = useState('');
+  const [saleStep, setSaleStep] = useState('goods');
+  const [heldSales, setHeldSales] = useState(loadHeldSales);
+  const [payTab, setPayTab] = useState('cash');
+  const [cashReceived, setCashReceived] = useState('');
+  const [cardReceived, setCardReceived] = useState('');
+  const [cardRef, setCardRef] = useState('');
   const [orderPrepaid, setOrderPrepaid] = useState(0);
   const [orderPaymentSnap, setOrderPaymentSnap] = useState(null);
   const [saleLines, setSaleLines] = useState([newEmptySaleLine()]);
@@ -869,8 +1001,8 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
   const [, setPreviewError] = useState('');
   const [previewLoading, setPreviewLoading] = useState(false);
   const moneySafe = useCallback((v) => {
-    const n = parseLocaleNumber(v);
-    return `${Number.isFinite(n) && n > 0 ? formatQuantityDisplay(n) : '0'} сом`;
+    const n = typeof v === 'number' ? v : parsePayAmount(v);
+    return `${n > 0 ? formatQuantityDisplay(n) : '0'} сом`;
   }, []);
   const isLineEmpty = useCallback((ln) => {
     if (!ln) return true;
@@ -908,46 +1040,119 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
   useEffect(() => {
     let alive = true;
     setLoadingSelect(true);
-    setGpPackagesLoading(true);
     const params = {};
     if (client) params.client = client;
-    if (order) params.order = order;
-    Promise.all([
-      getSaleSelectSources(params),
-      getSaleSelectSources({ ...params, unit_type: 'packages' }),
-    ])
-      .then(([mainRes, packagesRes]) => {
+    getSaleSelectSources(params)
+      .then((mainRes) => {
         if (!alive) return;
         const mainData = mainRes.data || {};
-        const pkgData = packagesRes.data || {};
         const ord = mainData.available_orders ?? mainData.orders;
         const bat = mainData.available_warehouse_batches ?? mainData.warehouse_batches;
-        const legacyBat = pkgData.available_warehouse_batches ?? pkgData.warehouse_batches;
         setOrders(Array.isArray(ord) ? ord : []);
         setBatches(Array.isArray(bat) ? bat : []);
-        setLegacyPackageBatches(Array.isArray(legacyBat) ? legacyBat : []);
-        setGpSalePackages(normalizeGpPackagesPayload(pkgData));
+        setProfileStock(normalizeProfileStock(mainData));
       })
       .catch(() => {
         if (!alive) return;
         setOrders([]);
         setBatches([]);
-        setLegacyPackageBatches([]);
-        setGpSalePackages([]);
+        setProfileStock([]);
       })
       .finally(() => {
-        if (alive) {
-          setLoadingSelect(false);
-          setGpPackagesLoading(false);
-        }
+        if (alive) setLoadingSelect(false);
       });
     return () => { alive = false; };
-  }, [client, order, inventoryRefreshNonce]);
+  }, [client, inventoryRefreshNonce]);
 
   useEffect(() => {
-    if (paymentType === 'debt') setPaidAmount('0');
-    if (paymentType === 'full') setPaidAmount('');
-  }, [paymentType]);
+    if (payTab === 'debt') {
+      setCashReceived('');
+      setCardReceived('');
+    }
+  }, [payTab]);
+
+  const reloadClients = useCallback(async () => {
+    try {
+      const res = await getClients({ page: 1, page_size: 500 });
+      const data = res.data || {};
+      setClients(Array.isArray(data.items) ? data.items : []);
+    } catch {
+      setClients([]);
+    }
+  }, []);
+
+  const resetSaleForm = useCallback(() => {
+    setSaleLines([newEmptySaleLine()]);
+    setActiveLineIdx(0);
+    setBatchStockSearch('');
+    setPayTab('cash');
+    setCashReceived('');
+    setCardReceived('');
+    setCardRef('');
+    setClient('');
+    setOrder('');
+    setOrderPrepaid(0);
+    setOrderPaymentSnap(null);
+    setSaleStep('goods');
+    setLineErrors({});
+    setPaidAmountError('');
+    setSubmitError('');
+  }, []);
+
+  const snapshotSaleDraft = useCallback(() => ({
+    saleDate,
+    saleStep,
+    client,
+    order,
+    saleLines,
+    activeLineIdx,
+    payTab,
+    cashReceived,
+    cardReceived,
+    cardRef,
+    orderPrepaid,
+    batchStockSearch,
+  }), [
+    saleDate,
+    saleStep,
+    client,
+    order,
+    saleLines,
+    activeLineIdx,
+    payTab,
+    cashReceived,
+    cardReceived,
+    cardRef,
+    orderPrepaid,
+    batchStockSearch,
+  ]);
+
+  const applySaleDraft = useCallback((draft) => {
+    if (!draft) return;
+    setSaleDate(draft.saleDate || new Date().toISOString().slice(0, 10));
+    setClient(draft.client != null ? String(draft.client) : '');
+    setOrder(draft.order != null ? String(draft.order) : '');
+    setSaleLines(Array.isArray(draft.saleLines) && draft.saleLines.length
+      ? draft.saleLines
+      : [newEmptySaleLine()]);
+    setActiveLineIdx(Number.isFinite(draft.activeLineIdx) ? draft.activeLineIdx : 0);
+    setPayTab(draft.payTab || 'cash');
+    setCashReceived(draft.cashReceived || '');
+    setCardReceived(draft.cardReceived || draft.nonCashReceived || '');
+    setCardRef(draft.cardRef || '');
+    setOrderPrepaid(toNumber(draft.orderPrepaid));
+    setBatchStockSearch(draft.batchStockSearch || '');
+    setSaleStep(draft.saleStep === 'pay' ? 'pay' : 'goods');
+  }, []);
+
+  const hasValidSaleLines = useMemo(
+    () => saleLines.some((ln) => (
+      ln.warehouse_batch
+      && parseLocaleNumber(ln.quantity) > 0
+      && parseLocaleNumber(ln.unit_price) > 0
+    )),
+    [saleLines],
+  );
 
   useEffect(() => {
     const buildPayloadForPreview = () => {
@@ -959,44 +1164,38 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
         const wb = ln.warehouse_batch ? Number(ln.warehouse_batch) : null;
         const qty = parseLocaleNumber(ln.quantity);
         const price = parseLocaleNumber(ln.unit_price);
-        if (!wb || !(qty > 0) || !Number.isFinite(price)) return null;
-        const gpId = ln.gp_package_id ? Number(ln.gp_package_id) : null;
-        cleanLines.push({
+        if (!wb || !(qty > 0)) return null;
+        const linePayload = {
           warehouse_batch: wb,
-          ...(gpId ? { gp_package_id: gpId } : {}),
-          quantity: String(gpId ? 1 : qty),
-          unit_price: String(price),
-          unit_type: ln.unit_type === 'packages' ? 'packages' : 'pieces',
+          quantity: String(qty),
+          unit_type: 'pieces',
           ...(ln.order_line_id ? { order_line: Number(ln.order_line_id) } : {}),
-        });
+        };
+        if (Number.isFinite(price) && price > 0) linePayload.unit_price = String(price);
+        cleanLines.push(linePayload);
       }
-      const payload = {
-        client: Number(client),
-        sale_lines: cleanLines,
-        payment_type: paymentType,
-        payment_method: paymentMethod,
-      };
-      if (order) payload.order = Number(order);
       const lineTotal = cleanLines.reduce(
         (acc, ln) => acc + parseLocaleNumber(ln.quantity) * parseLocaleNumber(ln.unit_price),
         0,
       );
-      const applied = order ? resolveOrderAppliedAmount(orderPrepaid, lineTotal) : 0;
-      if (applied > 0) payload.order_paid_amount_applied = String(applied);
-      if (paymentType === 'partial') {
-        const p = parseLocaleNumber(paidAmount);
-        if (!(p > 0)) return null;
-        payload.paid_amount = String(p);
-      } else if (paymentType === 'debt') {
-        payload.paid_amount = '0';
-      } else {
-        payload.paid_amount = String(resolveSaleSupplementalPaid({
-          paymentType,
-          paidAmount,
-          saleTotal: lineTotal,
-          orderPrepaid,
-        }));
-      }
+      const amountDue = Math.max(0, lineTotal - resolveOrderAppliedAmount(orderPrepaid, lineTotal));
+      const pay = deriveSalePaymentFromCheckout({
+        payTab,
+        cashReceived,
+        cardReceived,
+        amountDue,
+      });
+      if (payTab !== 'debt' && !(pay.received > 0) && amountDue > 0) return null;
+
+      const payload = {
+        client: Number(client),
+        sale_date: saleDate,
+        unit_type: 'pieces',
+        sale_lines: cleanLines,
+        payment_type: pay.paymentType,
+        payment_method: pay.paymentMethod,
+        paid_amount: String(pay.paidAmount),
+      };
       return payload;
     };
 
@@ -1030,7 +1229,7 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
       alive = false;
       clearTimeout(t);
     };
-  }, [client, order, saleLines, paymentType, paymentMethod, paidAmount, orderPrepaid]);
+  }, [client, order, saleLines, payTab, cashReceived, cardReceived, orderPrepaid, saleDate]);
 
   const filteredOrders = useMemo(() => {
     if (!client) return [];
@@ -1063,20 +1262,18 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
       .filter((b) => resolveUnpackedPiecesForSale(b) > 0)
       .sort((a, b) => resolveUnpackedPiecesForSale(b) - resolveUnpackedPiecesForSale(a));
   }, [batches]);
-  const saleAvailableLegacyPackageBatches = useMemo(() => {
-    const source = legacyPackageBatches.filter(isGoodBatchForSale);
-    return source
-      .filter((b) => resolveBatchAvailPackages(b) > 0)
-      .sort((a, b) => resolveBatchAvailPackages(b) - resolveBatchAvailPackages(a));
-  }, [legacyPackageBatches]);
-  const filteredBatchesByUnitType = useCallback((lineUnitType) => {
-    if (lineUnitType === 'packages') {
-      return saleAvailableLegacyPackageBatches;
-    }
+
+  const saleStockRows = useMemo(() => {
+    if (profileStock.length) return profileStock;
     return saleAvailableBatches;
-  }, [saleAvailableBatches, saleAvailableLegacyPackageBatches]);
-  const pickBatchForOrderLine = useCallback((orderLine, lineUnitType) => {
-    const list = filteredBatchesByUnitType(lineUnitType || 'pieces');
+  }, [profileStock, saleAvailableBatches]);
+
+  const filteredBatchesByUnitType = useCallback(
+    () => saleStockRows,
+    [saleStockRows],
+  );
+  const pickBatchForOrderLine = useCallback((orderLine) => {
+    const list = filteredBatchesByUnitType();
     if (!list.length) return '';
     const targetProfileId = orderLine?.profile_id != null ? String(orderLine.profile_id) : '';
     const targetProfileName = String(orderLine?.profile_name || '').toLowerCase();
@@ -1095,42 +1292,46 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
     if (!orderLines.length) return null;
     return orderLines.map((ln) => {
       const lineId = orderLineApiId(ln);
-      return {
-        warehouse_batch: pickBatchForOrderLine(ln, ln.unit_type),
+      const wb = pickBatchForOrderLine(ln);
+      const batch = wb
+        ? saleStockRows.find((b) => String(b.id) === String(wb))
+        : null;
+      let line = {
+        warehouse_batch: wb,
         quantity: ln.quantity,
-        unit_price: ln.unit_price,
-        unit_type: ln.unit_type || 'pieces',
+        unit_price: '',
+        unit_type: 'pieces',
         profile_id: ln.profile_id,
         profile_name: ln.profile_name,
         ...(lineId != null ? { order_line_id: lineId } : {}),
         from_order: true,
       };
+      return applyAutoUnitPrice(line, batch, profilesById);
     });
-  }, [pickBatchForOrderLine]);
+  }, [pickBatchForOrderLine, saleStockRows, profilesById]);
 
   const applyOrderPaymentDefaults = useCallback((snap, saleTotal) => {
     if (!snap) return;
-    setPaymentMethod(snap.method);
     setOrderPrepaid(snap.paid);
     const total = toNumber(saleTotal);
     const dueAtSale = total > 0 ? Math.max(0, total - snap.paid) : 0;
+    const dueStr = dueAtSale > 0 ? formatNumberForInput(dueAtSale) : '';
+
     if (snap.type === 'debt' && snap.paid <= 0) {
-      setPaymentType(total > 0 ? 'partial' : 'debt');
-      setPaidAmount(total > 0 ? String(total) : '');
+      setPayTab('debt');
+      setCashReceived('');
+      setCardReceived('');
       return;
     }
-    if (total > 0 && snap.paid >= total) {
-      setPaymentType('full');
-      setPaidAmount('');
+    if (snap.method === 'card') {
+      setPayTab('cashless');
+      setCardReceived(dueStr);
+      setCashReceived('');
       return;
     }
-    if (snap.paid > 0 || snap.type === 'partial' || snap.remainingAtOrder > 0) {
-      setPaymentType(dueAtSale > 0 ? 'partial' : 'full');
-      setPaidAmount(dueAtSale > 0 ? String(dueAtSale) : '');
-      return;
-    }
-    setPaymentType('full');
-    setPaidAmount('');
+    setPayTab('cash');
+    setCashReceived(dueStr);
+    setCardReceived('');
   }, []);
 
   const applyCartFromOrder = useCallback((orderDetail) => {
@@ -1140,19 +1341,21 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
       setAutoFilledFromOrder(false);
       return false;
     }
-    setSaleLines(enrichCartLinesFromOrder(autoCart, saleAvailableBatches));
+    setSaleLines(enrichCartLinesFromOrder(autoCart, saleStockRows, profilesById));
     setActiveLineIdx(0);
     setAutoFilledFromOrder(true);
     setOrderCartError('');
     return true;
-  }, [buildCartFromOrder, saleAvailableBatches]);
+  }, [buildCartFromOrder, saleStockRows, profilesById]);
 
   useEffect(() => {
-    if (!order || !orderPaymentSnap || !autoFilledFromOrder || !preview) return;
-    const total = toNumber(preview.total_amount);
-    if (!(total > 0)) return;
-    applyOrderPaymentDefaults(orderPaymentSnap, total);
-  }, [order, orderPaymentSnap, autoFilledFromOrder, preview?.total_amount, applyOrderPaymentDefaults]);
+    if (!profilesById.size || !saleStockRows.length) return;
+    setSaleLines((prev) => prev.map((ln) => {
+      if (!ln.warehouse_batch) return ln;
+      const batch = saleStockRows.find((b) => String(b.id) === String(ln.warehouse_batch));
+      return applyAutoUnitPrice(ln, batch, profilesById);
+    }));
+  }, [profileItems, saleStockRows, profilesById]);
 
   useEffect(() => {
     setActiveLineIdx((prev) => {
@@ -1163,49 +1366,9 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
     });
   }, [saleLines]);
   useEffect(() => {
-    if (!order) {
-      setOrderPrepaid(0);
-      setOrderPaymentSnap(null);
-      setOrderCartLoading(false);
-      setOrderCartError('');
-      setAutoFilledFromOrder(false);
-      return undefined;
-    }
-    const selected = filteredOrders.find((o) => String(o.id) === String(order));
-    const snapFromList = orderPaymentSnapshot(selected);
-    setOrderPaymentSnap(snapFromList);
-    if (snapFromList) applyOrderPaymentDefaults(snapFromList, 0);
-    if (selected) {
-      applyCartFromOrder(mergeOrderDetailForCart(selected, {}));
-    }
-    let cancelled = false;
-    setOrderCartLoading(true);
-    setOrderCartError('');
-    getOrder(order)
-      .then((res) => {
-        if (cancelled) return;
-        const merged = mergeOrderDetailForCart(selected, res?.data || {});
-        const snap = orderPaymentSnapshot(merged);
-        setOrderPaymentSnap(snap);
-        applyCartFromOrder(merged);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        if (!applyCartFromOrder(mergeOrderDetailForCart(selected, {}))) {
-          setOrderCartError(getApiErrorMessage(err, 'Не удалось загрузить товары из заявки'));
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setOrderCartLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [order, filteredOrders, applyCartFromOrder, applyOrderPaymentDefaults]);
-  useEffect(() => {
     setSaleLines((prev) =>
       prev.map((line) => {
-        const lineBatches = filteredBatchesByUnitType(line.unit_type || 'pieces');
+        const lineBatches = filteredBatchesByUnitType();
         const allowedBatchIds = new Set(lineBatches.map((b) => String(b.id)));
         let next = line;
         if (line.warehouse_batch && !allowedBatchIds.has(String(line.warehouse_batch))) {
@@ -1226,7 +1389,7 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
   }, [activeLineIdx]);
 
   const submit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
     setLineErrors({});
     setClientError('');
     setPaymentMethodError('');
@@ -1240,11 +1403,6 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
       setSubmitError('Добавьте хотя бы один товар');
       return;
     }
-    if (!paymentMethod) {
-      setPaymentMethodError('Выберите способ оплаты');
-      return;
-    }
-
     const cleanLines = [];
     const nextLineErrors = {};
     for (let i = 0; i < saleLines.length; i += 1) {
@@ -1252,21 +1410,13 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
       const wb = ln.warehouse_batch ? Number(ln.warehouse_batch) : null;
       const qty = parseLocaleNumber(ln.quantity);
       const price = parseLocaleNumber(ln.unit_price);
-      const batchPool = ln.unit_type === 'packages'
-        ? saleAvailableLegacyPackageBatches
-        : saleAvailableBatches;
-      const batch = batchPool.find((b) => String(b.id) === String(ln.warehouse_batch));
-      const gpPkg = ln.gp_package_id
-        ? gpSalePackages.find((r) => String(r.id) === String(ln.gp_package_id))
-        : null;
-      const maxQ = (ln.gp_package_id && gpPkg && ln.unit_type === 'packages')
-        ? 1
-        : maxSaleQtyForBatch(ln, batch);
-      if (!wb || !(qty > 0) || !Number.isFinite(price)) {
+      const batch = saleStockRows.find((b) => String(b.id) === String(ln.warehouse_batch));
+      const maxQ = maxSaleQtyForBatch(ln, batch);
+      if (!wb || !(qty > 0) || !Number.isFinite(price) || !(price > 0)) {
         nextLineErrors[i] = {
-          warehouse_batch: !wb ? 'Выберите партию' : '',
+          warehouse_batch: !wb ? 'Выберите товар' : '',
           quantity: !(qty > 0) ? 'Введите количество' : '',
-          unit_price: !Number.isFinite(price) ? 'Введите цену' : '',
+          unit_price: !(price > 0) ? 'Нет цены — задайте наценку у профиля' : '',
         };
         continue;
       }
@@ -1277,48 +1427,62 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
         };
         continue;
       }
-      const gpId = ln.gp_package_id ? Number(ln.gp_package_id) : null;
-      cleanLines.push({
+      const linePayload = {
         warehouse_batch: wb,
-        ...(gpId ? { gp_package_id: gpId } : {}),
-        quantity: String(gpId ? 1 : qty),
-        unit_price: String(price),
-        unit_type: ln.unit_type === 'packages' ? 'packages' : 'pieces',
+        quantity: String(qty),
+        unit_type: 'pieces',
         ...(ln.order_line_id ? { order_line: Number(ln.order_line_id) } : {}),
-      });
+      };
+      if (Number.isFinite(price) && price > 0) linePayload.unit_price = String(price);
+      cleanLines.push(linePayload);
     }
     if (Object.keys(nextLineErrors).length > 0) {
       setLineErrors(nextLineErrors);
       return;
     }
 
-    const topLevelUnitType = cleanLines.length > 0
-      ? (cleanLines[0].unit_type === 'packages' ? 'packages' : 'pieces')
-      : 'pieces';
     const saleTotal = toNumber(preview?.total_amount) > 0
       ? toNumber(preview.total_amount)
       : cleanLines.reduce((acc, ln) => acc + parseLocaleNumber(ln.quantity) * parseLocaleNumber(ln.unit_price), 0);
+    const amountDue = Math.max(0, saleTotal - resolveOrderAppliedAmount(orderPrepaid, saleTotal));
+    const pay = deriveSalePaymentFromCheckout({
+      payTab,
+      cashReceived,
+      cardReceived,
+      amountDue,
+    });
+    if (payTab !== 'debt' && amountDue > 0 && !(pay.received > 0)) {
+      setPaidAmountError('Укажите полученную сумму');
+      return;
+    }
+    if ((payTab === 'cashless' || payTab === 'mixed') && !cardRef.trim()) {
+      setPaidAmountError('Укажите номер карты или телефон');
+      return;
+    }
     const payload = {
       client: Number(client),
-      unit_type: topLevelUnitType,
+      sale_date: saleDate,
+      unit_type: 'pieces',
       sale_lines: cleanLines,
-      payment_type: paymentType,
-      payment_method: paymentMethod,
-      paid_amount: String(resolveSaleSupplementalPaid({
-        paymentType,
-        paidAmount,
-        saleTotal,
-        orderPrepaid,
-      })),
+      payment_type: pay.paymentType,
+      payment_method: pay.paymentMethod,
+      paid_amount: String(pay.paidAmount),
     };
+    if (payTab === 'mixed' && (parsePayAmount(cashReceived) > 0 || parsePayAmount(cardReceived) > 0)) {
+      const splits = [];
+      if (parsePayAmount(cashReceived) > 0) {
+        splits.push({ payment_method: 'cash', amount: String(parsePayAmount(cashReceived)) });
+      }
+      if (parsePayAmount(cardReceived) > 0) {
+        splits.push({ payment_method: 'card', amount: String(parsePayAmount(cardReceived)) });
+      }
+      if (splits.length) payload.payment_splits = splits;
+    }
+    if (cardRef.trim()) payload.payment_reference = cardRef.trim();
     if (order) payload.order = Number(order);
     const appliedFromOrder = resolveOrderAppliedAmount(orderPrepaid, saleTotal);
     if (order && appliedFromOrder > 0) {
       payload.order_paid_amount_applied = String(appliedFromOrder);
-    }
-    if (paymentType === 'partial' && !(parseLocaleNumber(paidAmount) > 0)) {
-      setPaidAmountError('Укажите сумму оплаты');
-      return;
     }
 
     setSaving(true);
@@ -1345,72 +1509,131 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
     [saleLines],
   );
   const totalAmount = toNumber(preview?.total_amount) > 0 ? toNumber(preview.total_amount) : totalFromLines;
-  const paidAmountValue = resolveSaleSupplementalPaid({
-    paymentType,
-    paidAmount,
-    saleTotal: totalAmount,
-    orderPrepaid,
+  const amountDue = Math.max(0, totalAmount - resolveOrderAppliedAmount(orderPrepaid, totalAmount));
+  const checkoutPay = useMemo(
+    () => deriveSalePaymentFromCheckout({
+      payTab,
+      cashReceived,
+      cardReceived,
+      amountDue,
+    }),
+    [payTab, cashReceived, cardReceived, amountDue],
+  );
+  const totalReceived = checkoutPay.received;
+  const remainingPay = Math.max(0, amountDue - totalReceived);
+  const changeAmount = computeSaleChange({
+    payTab,
+    amountDue,
+    cashReceived,
+    cardReceived,
   });
-  const debtAmountValue = resolveSaleDebtRemaining({
-    paymentType,
-    paidAmount,
-    saleTotal: totalAmount,
-    orderPrepaid,
-  });
-  const saleDate = new Date().toISOString().slice(0, 10);
   const selectedLine = saleLines[activeLineIdx] || null;
+
+  const holdCurrentSale = useCallback(() => {
+    if (!hasValidSaleLines) {
+      toast.error('Добавьте хотя бы один товар с количеством');
+      return;
+    }
+    const linesCount = saleLines.filter((ln) => ln.warehouse_batch).length;
+    const c = clients.find((x) => String(x.id) === String(client));
+    const label = `${linesCount} поз. · ${moneySafe(totalAmount)}${c ? ` · ${clientLabel(c)}` : ''}`;
+    const entry = { id: Date.now(), label, draft: snapshotSaleDraft() };
+    setHeldSales((prev) => {
+      const next = [...prev, entry];
+      persistHeldSales(next);
+      return next;
+    });
+    toast.success('Продажа отложена');
+    resetSaleForm();
+  }, [
+    hasValidSaleLines,
+    saleLines,
+    clients,
+    client,
+    moneySafe,
+    totalAmount,
+    snapshotSaleDraft,
+    resetSaleForm,
+    toast,
+  ]);
+
+  const restoreHeldSale = useCallback((heldId) => {
+    const entry = heldSales.find((h) => h.id === heldId);
+    if (!entry) return;
+    applySaleDraft(entry.draft);
+    setHeldSales((prev) => {
+      const next = prev.filter((h) => h.id !== heldId);
+      persistHeldSales(next);
+      return next;
+    });
+    toast.success('Отложка восстановлена');
+  }, [heldSales, applySaleDraft, toast]);
+
+  const discardHeldSale = useCallback((heldId, e) => {
+    e?.stopPropagation();
+    setHeldSales((prev) => {
+      const next = prev.filter((h) => h.id !== heldId);
+      persistHeldSales(next);
+      return next;
+    });
+  }, []);
+  const activeLineTitle = selectedLine
+    ? cartLineTitle(
+      selectedLine,
+      saleStockRows.find((b) => String(b.id) === String(selectedLine.warehouse_batch)),
+      activeLineIdx,
+    )
+    : '';
   const selectedBatchMeta = useMemo(() => {
-    if (!selectedLine?.warehouse_batch || selectedLine.gp_package_id) return null;
-    const pool = selectedLine.unit_type === 'packages'
-      ? saleAvailableLegacyPackageBatches
-      : saleAvailableBatches;
-    return pool.find((b) => String(b.id) === String(selectedLine.warehouse_batch)) || null;
-  }, [selectedLine, saleAvailableBatches, saleAvailableLegacyPackageBatches]);
+    if (!selectedLine?.warehouse_batch) return null;
+    return saleStockRows.find((b) => String(b.id) === String(selectedLine.warehouse_batch)) || null;
+  }, [selectedLine, saleStockRows]);
   const batchesFilteredForDetail = useMemo(() => {
     if (!selectedLine) return [];
-    const base = filteredBatchesByUnitType(selectedLine.unit_type || 'pieces');
-    return base.filter((b) => batchMatchesStockFilter(batchStockSearch, b));
+    return filteredBatchesByUnitType().filter((b) => batchMatchesStockFilter(batchStockSearch, b));
   }, [selectedLine, batchStockSearch, filteredBatchesByUnitType]);
 
-  const gpPackagesForDetail = useMemo(() => {
-    if (!selectedLine || selectedLine.unit_type !== 'packages') return [];
-    const q = batchStockSearch.trim().toLowerCase();
-    return gpSalePackages.filter((r) => {
-      if (q) {
-        const hay = [
-          r.product_name, r.productName,
-          r.blank_name, r.blankName,
-          r.kind, r.package_kind,
-          r.label, r.code,
-          r.id,
-        ].map((x) => (x == null ? '' : String(x))).join(' ').toLowerCase();
-        return q.split(/\s+/).every((t) => hay.includes(t));
+  const stockPickerRows = useMemo(() => {
+    const map = new Map();
+    batchesFilteredForDetail.forEach((b) => {
+      const profileKey = String(b.profile_id ?? b.product_id ?? b.id);
+      const pcs = resolveUnpackedPiecesForSale(b);
+      if (pcs <= 0) return;
+      const name = String(b.product_name ?? b.productName ?? '').trim() || '—';
+      const prev = map.get(profileKey);
+      if (!prev) {
+        map.set(profileKey, { profileKey, name, totalPieces: pcs, pickBatch: b });
+        return;
       }
-      return true;
+      prev.totalPieces += pcs;
+      const prevPcs = resolveUnpackedPiecesForSale(prev.pickBatch);
+      if (pcs > prevPcs) prev.pickBatch = b;
     });
-  }, [selectedLine, batchStockSearch, gpSalePackages]);
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+  }, [batchesFilteredForDetail]);
 
-  const selectedGpPackageMeta = useMemo(() => {
-    if (!selectedLine?.gp_package_id) return null;
-    return gpSalePackages.find((r) => String(r.id) === String(selectedLine.gp_package_id)) || null;
-  }, [selectedLine, gpSalePackages]);
+  const adjustActiveLineQty = useCallback((delta) => {
+    setSaleLines((prev) => prev.map((x, i) => {
+      if (i !== activeLineIdx) return x;
+      const batch = saleStockRows.find((b) => String(b.id) === String(x.warehouse_batch));
+      const maxQ = maxSaleQtyForBatch(x, batch);
+      const cur = Math.floor(parseLocaleNumber(x.quantity)) || 0;
+      let next = (cur || 0) + delta;
+      if (next < 1) next = 1;
+      if (maxQ > 0 && next > maxQ) next = maxQ;
+      return { ...x, quantity: String(next) };
+    }));
+  }, [activeLineIdx, saleStockRows]);
 
-  const selectedLineMaxQty = useMemo(() => {
-    if (selectedLine?.gp_package_id && selectedGpPackageMeta && selectedLine.unit_type === 'packages') {
-      return 1;
-    }
-    return maxSaleQtyForBatch(selectedLine, selectedBatchMeta);
-  }, [selectedLine, selectedBatchMeta, selectedGpPackageMeta]);
+  const selectedLineQty = Math.floor(parseLocaleNumber(selectedLine?.quantity)) || 0;
 
-  const selectedGpPiecesInside = useMemo(
-    () => (selectedGpPackageMeta ? gpPackagePiecesInside(selectedGpPackageMeta) : 0),
-    [selectedGpPackageMeta],
+  const selectedLineMaxQty = useMemo(
+    () => maxSaleQtyForBatch(selectedLine, selectedBatchMeta),
+    [selectedLine, selectedBatchMeta],
   );
 
-  const isGpSinglePackageLine = Boolean(
-    selectedLine?.gp_package_id && selectedLine?.unit_type === 'packages',
-  );
   const isFormSubmittable = client
+    && saleDate
     && saleLines.length > 0
     && saleLines.every((ln) => {
       if (!(
@@ -1418,537 +1641,503 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
         && parseLocaleNumber(ln.quantity) > 0
         && parseLocaleNumber(ln.unit_price) > 0
       )) return false;
-      if (ln.gp_package_id) return true;
-      const batchPool = ln.unit_type === 'packages'
-        ? saleAvailableLegacyPackageBatches
-        : saleAvailableBatches;
-      const b = batchPool.find((x) => String(x.id) === String(ln.warehouse_batch));
+      const b = saleStockRows.find((x) => String(x.id) === String(ln.warehouse_batch));
       const maxQ = maxSaleQtyForBatch(ln, b);
       if (maxQ > 0 && parseLocaleNumber(ln.quantity) > maxQ) return false;
       return true;
     })
-    && !!paymentMethod
-    && (paymentType !== 'partial' || parseLocaleNumber(paidAmount) > 0);
+    && (payTab === 'debt' || amountDue === 0 || totalReceived > 0)
+    && (payTab === 'cash' || payTab === 'debt' || cardRef.trim());
 
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal sales-modal" onClick={(ev) => ev.stopPropagation()}>
-        <div className="modal__head">
-          <h3>Новая продажа</h3>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть" disabled={saving}>×</button>
-        </div>
-        <form className="sales-modal__form" onSubmit={submit}>
-          <div className="sales-modal__scroll">
+  const modalContent = (
+    <div className="sales-screen-overlay" onClick={onClose}>
+      <div className="sales-screen" onClick={(ev) => ev.stopPropagation()}>
+        <header className="sales-screen__head sales-screen__head--slim">
+          <h1 className="sales-screen__title">Новая продажа</h1>
+          <nav className="sale-wizard__steps" aria-label="Этапы">
+            <button
+              type="button"
+              className={`sale-wizard__step${saleStep === 'goods' ? ' is-active' : ''}${hasValidSaleLines ? ' is-done' : ''}`}
+              onClick={() => setSaleStep('goods')}
+            >
+              1. Товары
+            </button>
+            <button
+              type="button"
+              className={`sale-wizard__step${saleStep === 'pay' ? ' is-active' : ''}`}
+              disabled={!hasValidSaleLines}
+              onClick={() => hasValidSaleLines && setSaleStep('pay')}
+            >
+              2. Оплата
+            </button>
+            {heldSales.length > 0 && (
+              <span className="sale-wizard__held-badge">{heldSales.length} отлож.</span>
+            )}
+          </nav>
+          <label className="sales-screen__date-wrap" htmlFor="sale-date-input">
+            <span className="sales-screen__date-label">Дата</span>
+            <input
+              id="sale-date-input"
+              type="date"
+              className="sales-modal__date-input"
+              value={saleDate}
+              onChange={(e) => setSaleDate(e.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            className="sales-screen__close"
+            onClick={onClose}
+            aria-label="Закрыть"
+            disabled={saving}
+          >
+            ×
+          </button>
+        </header>
+
+        <div className="sales-screen__form sales-modal__form">
+          {saleStep === 'goods' && (
+          <div className="sales-workspace">
             {(loadingClients || loadingSelect) && <Loading />}
-            <section className="sales-modal__section sales-modal__section--top">
-              <div>
-                <label className="sales-modal__label">Клиент *</label>
-                <SearchableSelect
-                  value={client}
-                  onChange={(v) => {
-                    setClient(v != null ? String(v) : '');
-                    setOrder('');
-                    setSaleLines([newEmptySaleLine()]);
-                    setActiveLineIdx(0);
-                    setOrderCartError('');
-                    setAutoFilledFromOrder(false);
-                  }}
-                  options={clientOptions}
-                  placeholder="Выберите клиента"
-                />
-                {clientError && <p className="sales-modal__field-error">{clientError}</p>}
+            <aside className="sales-cart">
+              <div className="sales-cart__head">
+                <span className="sales-cart__title">Товары</span>
+                <button
+                  type="button"
+                  className="btn btn--secondary btn--sm"
+                  onClick={addLine}
+                  disabled={saving}
+                >
+                  +
+                </button>
               </div>
-              <div>
-                <label className="sales-modal__label">Заявка</label>
-                <SearchableSelect
-                  value={order}
-                  onChange={(v) => {
-                    const nextOrder = v != null ? String(v) : '';
-                    setOrder(nextOrder);
-                    if (!nextOrder) {
-                      setSaleLines((prev) => prev.filter((x) => !x.from_order));
-                      setActiveLineIdx(0);
-                      setOrderCartError('');
-                      setAutoFilledFromOrder(false);
-                      setOrderPaymentSnap(null);
-                      setOrderPrepaid(0);
-                    }
-                  }}
-                  options={orderOptions}
-                  disabled={!client}
-                  placeholder={client ? 'Выберите заявку' : 'Сначала выберите клиента'}
-                />
-                {orderCartLoading && (
-                  <p className="sales-modal__hint-line">Загрузка товаров из заявки…</p>
-                )}
-                {orderCartError && (
-                  <p className="sales-modal__field-error">{orderCartError}</p>
-                )}
-                {autoFilledFromOrder && !orderCartError && (
-                  <p className="sales-modal__hint-line">
-                    Товары и кол-во из заявки — при необходимости смените партию на складе.
-                  </p>
-                )}
-                {orderPaymentSnap && (
-                  <div className="sales-modal__order-pay-banner">
-                    <span>
-                      Оплата заявки: {orderPaymentTypeLabel(orderPaymentSnap.type)}
-                      {orderPaymentSnap.total > 0 ? ` · ${moneySafe(orderPaymentSnap.total)}` : ''}
-                    </span>
-                    {orderPaymentSnap.paid > 0 && (
-                      <span>Уже оплачено: {moneySafe(orderPaymentSnap.paid)}</span>
-                    )}
-                    {orderPaymentSnap.remainingAtOrder > 0 && (
-                      <span>Остаток по заявке: {moneySafe(orderPaymentSnap.remainingAtOrder)}</span>
-                    )}
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="sales-modal__label">Дата</label>
-                <input className="sales-modal__readonly" value={saleDate} readOnly />
-              </div>
-            </section>
-
-            <section className="sales-modal__section sales-modal__section--cart">
-              <div className="sales-modal__cart-layout">
-                <div className="sales-modal__cart-panel">
-                  <div className="sales-modal__line-actions">
-                    <h4 className="sales-modal__section-title">Товары</h4>
-                    <button
-                      type="button"
-                      className="btn btn--secondary sales-modal__add-line"
-                      onClick={addLine}
-                      disabled={saving}
-                    >
-                      + Добавить
-                    </button>
-                  </div>
-                  {saleLines.length === 0 && (
-                    <div className="sales-modal__empty">
-                      <p>Добавьте первый товар</p>
-                      <button type="button" className="btn btn--secondary" onClick={addLine} disabled={saving}>
-                        + Добавить товар
+              {saleLines.length === 0 ? (
+                <p className="sales-cart__empty">+ добавить товар</p>
+              ) : (
+                <div className="sales-cart__list">
+                  {saleLines.map((line, idx) => {
+                    const selectedBatch = filteredBatchesByUnitType()
+                      .find((b) => String(b.id) === String(line.warehouse_batch));
+                    const title = cartLineTitle(line, selectedBatch, idx);
+                    const lineTotal = parseLocaleNumber(line.quantity) * parseLocaleNumber(line.unit_price);
+                    const unitP = parseLocaleNumber(line.unit_price);
+                    return (
+                      <button
+                        key={`line-row-${idx}`}
+                        type="button"
+                        className={`sales-cart__item${idx === activeLineIdx ? ' is-active' : ''}${lineErrors[idx] ? ' is-error' : ''}`}
+                        onClick={() => setActiveLineIdx(idx)}
+                      >
+                        <span className="sales-cart__item-name">
+                          {line.from_order ? '● ' : ''}{title}
+                        </span>
+                        <span className="sales-cart__item-meta">
+                          {line.quantity || '0'} шт · {moneySafe(lineTotal)}
+                          {unitP > 0 ? ` · ${formatNumberForInput(unitP)}` : ''}
+                        </span>
                       </button>
-                    </div>
-                  )}
-                  <div className="sales-modal__cart-list">
-                    {saleLines.map((line, idx) => {
-                      const selectedBatch = filteredBatchesByUnitType(line.unit_type || 'pieces')
-                        .find((b) => String(b.id) === String(line.warehouse_batch));
-                      const selectedGpPkg = line.gp_package_id
-                        ? gpSalePackages.find((r) => String(r.id) === String(line.gp_package_id))
-                        : null;
-                      const gpPn = String(selectedGpPkg?.product_name ?? selectedGpPkg?.productName ?? '').trim();
-                      const gpLbl = String(selectedGpPkg?.label ?? selectedGpPkg?.code ?? '').trim();
-                      const gpKind = selectedGpPkg
-                        ? gpPackageKindLabel(selectedGpPkg.kind ?? selectedGpPkg.package_kind ?? '')
-                        : '';
-                      const gpPkgTitle = selectedGpPkg
-                        ? (() => {
-                          const parts = [gpPn || null, gpKind || null, (gpLbl && gpLbl !== gpPn) ? gpLbl : null]
-                            .filter(Boolean);
-                          return parts.length ? parts.join(' · ') : `Упаковка #${selectedGpPkg.id ?? ''}`;
-                        })()
-                        : null;
-                      const title = gpPkgTitle || cartLineTitle(line, selectedBatch, idx);
-                      const lineTotal = parseLocaleNumber(line.quantity) * parseLocaleNumber(line.unit_price);
-                      const maxL = (line.gp_package_id && selectedGpPkg && line.unit_type === 'packages')
-                        ? 1
-                        : maxSaleQtyForBatch(line, selectedBatch);
-                      const stockHint = (!line.gp_package_id && selectedBatch && maxL > 0)
-                        ? `Доступно: ${formatQuantityDisplay(maxL)} ${qtyUnitLabel(line.unit_type || 'pieces')}`
-                        : '';
-                      const qtyPiecesInside = (line.gp_package_id && selectedGpPkg && line.unit_type === 'packages')
-                        ? gpPackagePiecesInside(selectedGpPkg)
-                        : 0;
+                    );
+                  })}
+                </div>
+              )}
+            </aside>
+
+            <section className="sales-editor">
+              <div className="sales-editor__toolbar">
+                <div className="sales-editor__toolbar-main">
+                  <span className="sales-editor__toolbar-label">Позиция</span>
+                  <strong className="sales-editor__toolbar-title">
+                    {activeLineTitle || '—'}
+                  </strong>
+                  {selectedLine?.from_order && <span className="sales-modal__tag">Заявка</span>}
+                </div>
+                {selectedLine && (
+                  <button
+                    type="button"
+                    className="sales-editor__remove"
+                    onClick={() => {
+                      setSaleLines((prev) => {
+                        const next = prev.filter((_, i) => i !== activeLineIdx);
+                        return next.length ? next : [newEmptySaleLine()];
+                      });
+                    }}
+                    disabled={saving}
+                  >
+                    Удалить
+                  </button>
+                )}
+              </div>
+
+              {!selectedLine ? (
+                <p className="sales-editor__placeholder">Выберите позицию слева</p>
+              ) : (
+                <>
+                  <input
+                    type="search"
+                    className="sales-editor__search"
+                    value={batchStockSearch}
+                    onChange={(e) => setBatchStockSearch(e.target.value)}
+                    placeholder="Поиск по товару…"
+                  />
+                  <div className="sales-editor__stock">
+                    {stockPickerRows.map((row) => {
+                      const b = row.pickBatch;
+                      const isSelected = String(b.id) === String(selectedLine.warehouse_batch);
+                      const displayPcs = isSelected
+                        ? resolveUnpackedPiecesForSale(b)
+                        : row.totalPieces;
                       return (
                         <button
-                          key={`line-row-${idx}`}
+                          key={row.profileKey}
                           type="button"
-                          className={`sales-modal__cart-item ${idx === activeLineIdx ? 'is-active' : ''} ${lineErrors[idx] ? 'is-error' : ''}`}
-                          onClick={() => setActiveLineIdx(idx)}
+                          className={`sales-stock-card${isSelected ? ' is-selected' : ''}`}
+                          onClick={() => setSaleLines((prev) => prev.map((x, i) => {
+                            if (i !== activeLineIdx) return x;
+                            let next = {
+                              ...x,
+                              unit_type: 'pieces',
+                              warehouse_batch: String(b.id),
+                              gp_package_id: undefined,
+                            };
+                            next = applyAutoUnitPrice(next, b, profilesById);
+                            return {
+                              ...next,
+                              quantity: capQuantityForOrderLine(next, b),
+                            };
+                          }))}
                         >
-                          <div className="sales-modal__cart-item-title">
-                            {line.from_order ? '● ' : ''}{title}
-                          </div>
-                          <div className="sales-modal__cart-item-meta">
-                            <div className="sales-modal__cart-item-sub">
-                              <span>
-                                Кол-во: {(line.gp_package_id && line.unit_type === 'packages')
-                                  ? (qtyPiecesInside > 0
-                                    ? `1 ${qtyUnitLabel('packages')} (${formatQuantityDisplay(qtyPiecesInside)} шт.)`
-                                    : `1 ${qtyUnitLabel('packages')}`)
-                                  : `${line.quantity || '0'} ${qtyUnitLabel(line.unit_type || 'pieces')}`}
-                              </span>
-                              <span>Цена: {moneySafe(line.unit_price)}</span>
-                              {stockHint ? (
-                                <span className="sales-modal__cart-item-avail">{stockHint}</span>
-                              ) : null}
-                            </div>
-                            <div className="sales-modal__cart-item-total">Итого: {moneySafe(lineTotal)}</div>
-                          </div>
+                          <span className="sales-stock-card__name">{row.name}</span>
+                          <span className="sales-stock-card__qty">{formatQuantityDisplay(displayPcs)} шт</span>
                         </button>
                       );
                     })}
-                  </div>
-                </div>
-                <div className="sales-modal__line-card">
-                  <div className="sales-modal__line-head">
-                    <h4 className="sales-modal__section-title">Детали товара</h4>
-                  </div>
-                  {!selectedLine ? (
-                    <p className="sales-modal__hint-line">Выберите позицию из списка слева</p>
-                  ) : (
-                    <div className="sales-modal__line-editor">
-                      {selectedLine.from_order && <span className="sales-modal__tag">Из заявки</span>}
-
-                      {/* Step 1: type toggle */}
-                      <div className="sales-modal__type-tabs">
-                        <button
-                          type="button"
-                          className={`sales-modal__type-tab ${(selectedLine.unit_type || 'pieces') === 'pieces' ? 'is-active' : ''}`}
-                          onClick={() => setSaleLines((prev) => prev.map((x, i) => (
-                            i === activeLineIdx
-                              ? { ...x, unit_type: 'pieces', warehouse_batch: '', gp_package_id: undefined, quantity: '' }
-                              : x
-                          )))}
-                        >
-                          Неупакованные (штуки)
-                        </button>
-                        <button
-                          type="button"
-                          className={`sales-modal__type-tab ${(selectedLine.unit_type || 'pieces') === 'packages' ? 'is-active' : ''}`}
-                          onClick={() => setSaleLines((prev) => prev.map((x, i) => (
-                            i === activeLineIdx
-                              ? { ...x, unit_type: 'packages', warehouse_batch: '', gp_package_id: undefined, quantity: '' }
-                              : x
-                          )))}
-                        >
-                          Упакованные (упаковки)
-                        </button>
-                      </div>
-
-                      {/* Step 2: batch picker */}
-                      <input
-                        type="search"
-                        className="sales-modal__batch-filter-input"
-                        value={batchStockSearch}
-                        onChange={(e) => setBatchStockSearch(e.target.value)}
-                        placeholder="Поиск по товару, заготовке, партии…"
-                      />
-                      <div className="sales-modal__batch-cards">
-                        {/* Legacy FIFO: анонимные упаковки по партии (без GpPackUnit) */}
-                        {(selectedLine.unit_type !== 'packages' || batchesFilteredForDetail.length > 0) && batchesFilteredForDetail.map((b) => {
-                          const isSelected = String(b.id) === String(selectedLine.warehouse_batch)
-                            && !selectedLine.gp_package_id;
-                          const avPieces = resolveBatchAvailPieces(b);
-                          const avPacks = resolveBatchAvailPackages(b);
-                          const kindLabel = batchPackageKindLabel(b?.kind ?? b?.package_kind ?? '');
-                          const packCode = b.label ?? b.code ?? '';
-                          const pn = String(b.product_name ?? b.productName ?? '').trim();
-                          const bn = String(b.blank_name ?? b.blankName ?? b.profile_name ?? '').trim();
-                          const displayName = pn || batchLabel(b);
-                          return (
-                            <button
-                              key={String(b.id)}
-                              type="button"
-                              className={`sales-modal__batch-card${isSelected ? ' is-selected' : ''}`}
-                              onClick={() => setSaleLines((prev) => prev.map((x, i) => {
-                                if (i !== activeLineIdx) return x;
-                                const next = {
-                                  ...x,
-                                  warehouse_batch: String(b.id),
-                                  gp_package_id: undefined,
-                                };
-                                return {
-                                  ...next,
-                                  quantity: capQuantityForOrderLine(next, b),
-                                };
-                              }))}
-                            >
-                              <div className="sales-modal__batch-card__body">
-                                <div className="sales-modal__batch-card__name">{displayName}</div>
-                                {bn && <div className="sales-modal__batch-card__sub">{bn}</div>}
-                                <div className="sales-modal__batch-card__badges">
-                                  {kindLabel && (
-                                    <span className="sales-modal__batch-card__badge sales-modal__batch-card__badge--kind">{kindLabel}</span>
-                                  )}
-                                  {packCode && (
-                                    <span className="sales-modal__batch-card__badge">{packCode}</span>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="sales-modal__batch-card__stock">
-                                {selectedLine.unit_type === 'packages'
-                                  ? <><strong>{formatQuantityDisplay(avPacks)}</strong> уп.</>
-                                  : <><strong>{formatQuantityDisplay(avPieces)}</strong> шт.</>}
-                              </div>
-                            </button>
-                          );
-                        })}
-
-                        {/* GP: available_gp_packages из select-sources */}
-                        {selectedLine.unit_type === 'packages' && gpPackagesForDetail.map((r) => {
-                          const gpId = String(r.id ?? '');
-                          const isSelected = selectedLine.gp_package_id
-                            ? String(selectedLine.gp_package_id) === gpId
-                            : false;
-                          const wbId = r.warehouse_batch_id ?? r.warehouse_batch ?? r.batch_id ?? r.id;
-                          const pcs = toNumber(r.total_pieces ?? r.pieces ?? r.piece_count ?? r.pieces_count);
-                          const kind = gpPackageKindLabel(r.kind ?? r.package_kind ?? '');
-                          const label = r.label ?? r.code ?? '';
-                          const productName = String(
-                            r.product_name ?? r.productName ?? r.product?.name ?? r.blank_name ?? r.blankName ?? '',
-                          ).trim();
-                          return (
-                            <button
-                              key={`gp-${gpId}`}
-                              type="button"
-                              className={`sales-modal__batch-card sales-modal__batch-card--gp${isSelected ? ' is-selected' : ''}`}
-                              onClick={() => setSaleLines((prev) => prev.map((x, i) => (
-                                i === activeLineIdx
-                                  ? { ...x, warehouse_batch: String(wbId), gp_package_id: gpId, quantity: '1' }
-                                  : x
-                              )))}
-                            >
-                              <div className="sales-modal__batch-card__body sales-modal__batch-card__body--row">
-                                {kind && (
-                                  <span className="sales-modal__batch-card__badge sales-modal__batch-card__badge--kind">{kind}</span>
-                                )}
-                                {label && (
-                                  <span className="sales-modal__batch-card__badge sales-modal__batch-card__badge--label">{label}</span>
-                                )}
-                                <span className="sales-modal__batch-card__inline-name">{productName || '—'}</span>
-                              </div>
-                              <div className="sales-modal__batch-card__stock sales-modal__batch-card__stock--gp">
-                                <span><strong>1</strong> уп.</span>
-                                {pcs > 0 && (
-                                  <span className="sales-modal__batch-card__stock-note">{formatQuantityDisplay(pcs)} шт.</span>
-                                )}
-                              </div>
-                            </button>
-                          );
-                        })}
-
-                        {/* Empty state */}
-                        {batchesFilteredForDetail.length === 0
-                          && (selectedLine.unit_type !== 'packages' || (gpPackagesForDetail.length === 0 && !gpPackagesLoading)) && (
-                          <p className="sales-modal__hint-line">
-                            {batchStockSearch.trim()
-                              ? 'Нет совпадений — очистите поиск'
-                              : selectedLine.unit_type === 'packages'
-                                ? 'Нет доступных упаковок'
-                                : 'Нет доступных партий'}
-                          </p>
-                        )}
-                        {selectedLine.unit_type === 'packages' && gpPackagesLoading && (
-                          <p className="sales-modal__hint-line">Загрузка упаковок…</p>
-                        )}
-                      </div>
-                      {lineErrors[activeLineIdx]?.warehouse_batch && (
-                        <p className="sales-modal__field-error">{lineErrors[activeLineIdx].warehouse_batch}</p>
-                      )}
-
-                      {/* Step 3: qty + price (shown after batch selected) */}
-                      {selectedLine.warehouse_batch && (
-                        <div className="sales-modal__qty-price-block">
-                          <div className={`sales-modal__qty-price-row${isGpSinglePackageLine ? ' sales-modal__qty-price-row--gp-single' : ''}`}>
-                            {isGpSinglePackageLine ? (
-                              <div className="sales-modal__qty-price-field">
-                                <label className="sales-modal__label">Количество</label>
-                                <div className="sales-modal__readonly sales-modal__readonly--qty-fixed">1 уп.</div>
-                                {lineErrors[activeLineIdx]?.quantity && (
-                                  <p className="sales-modal__field-error">{lineErrors[activeLineIdx].quantity}</p>
-                                )}
-                              </div>
-                            ) : (
-                            <div className="sales-modal__qty-price-field">
-                              <label className="sales-modal__label">
-                                Количество ({qtyUnitLabel(selectedLine.unit_type || 'pieces')})
-                              </label>
-                              <IntegerInput
-                                min={1}
-                                max={selectedLineMaxQty > 0 ? selectedLineMaxQty : undefined}
-                                value={selectedLine.quantity}
-                                onChange={(v) => setSaleLines((prev) => prev.map((x, i) => (
-                                  i === activeLineIdx ? { ...x, quantity: v } : x
-                                )))}
-                              />
-                              {selectedLineMaxQty > 0 && (
-                                <p className="sales-modal__hint-line sales-modal__hint-line--tight">
-                                  Макс: {formatQuantityDisplay(selectedLineMaxQty)} {qtyUnitLabel(selectedLine.unit_type || 'pieces')}
-                                </p>
-                              )}
-                              {lineErrors[activeLineIdx]?.quantity && (
-                                <p className="sales-modal__field-error">{lineErrors[activeLineIdx].quantity}</p>
-                              )}
-                            </div>
-                          )}
-                          <div className="sales-modal__qty-price-field">
-                            <label className="sales-modal__label">Цена за единицу (сом)</label>
-                            <input
-                              inputMode="decimal"
-                              value={selectedLine.unit_price}
-                              placeholder="0"
-                              onChange={(e) => setSaleLines((prev) => prev.map((x, i) => (
-                                i === activeLineIdx ? { ...x, unit_price: e.target.value } : x
-                              )))}
-                            />
-                            {lineErrors[activeLineIdx]?.unit_price && (
-                              <p className="sales-modal__field-error">{lineErrors[activeLineIdx].unit_price}</p>
-                            )}
-                          </div>
-                          <div className="sales-modal__qty-price-total">
-                            <label className="sales-modal__label">Сумма</label>
-                            <span className="sales-modal__qty-price-total__value">
-                              {moneySafe(parseLocaleNumber(selectedLine.quantity) * parseLocaleNumber(selectedLine.unit_price))}
-                            </span>
-                          </div>
-                          </div>
-                          {isGpSinglePackageLine && selectedGpPiecesInside > 0 && (
-                            <p className="sales-modal__hint-line sales-modal__hint-line--below-qty-row">
-                              В упаковке: {formatQuantityDisplay(selectedGpPiecesInside)} шт.
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {selectedLine && (
-                    <button
-                      type="button"
-                      className="btn btn--secondary btn--sm sales-modal__delete-btn"
-                      onClick={() => {
-                        setSaleLines((prev) => prev.filter((_, i) => i !== activeLineIdx));
-                      }}
-                      disabled={saving}
-                    >
-                      Удалить
-                    </button>
-                  )}
-                </div>
-              </div>
-            </section>
-            {submitError && <p className="modal__error">{submitError}</p>}
-          </div>
-          <div className="modal__actions sales-modal__footer">
-            <div className="sales-modal__footer-left">
-              <h4 className="sales-modal__footer-title">Оплата</h4>
-              <div className="sales-modal__payment-grid">
-
-                {/* Тип + способ — всегда */}
-                <div>
-                  <label className="sales-modal__label">Тип оплаты</label>
-                  <SearchableSelect
-                    value={paymentType}
-                    onChange={(v) => setPaymentType(v != null ? String(v) : 'full')}
-                    options={[
-                      { value: 'full', label: 'Полная' },
-                      { value: 'partial', label: 'Частичная' },
-                      { value: 'debt', label: 'В долг' },
-                    ]}
-                  />
-                </div>
-                <div>
-                  <label className="sales-modal__label">Способ оплаты</label>
-                  <SearchableSelect
-                    value={paymentMethod}
-                    onChange={(v) => setPaymentMethod(v != null ? String(v) : 'cash')}
-                    options={[
-                      { value: 'cash', label: 'Наличные' },
-                      { value: 'card', label: 'Карта' },
-                      { value: 'transfer', label: 'Перевод' },
-                    ]}
-                  />
-                  {paymentMethodError && <p className="sales-modal__field-error">{paymentMethodError}</p>}
-                </div>
-
-                {/* Полная: авто, только показываем */}
-                {paymentType === 'full' && (
-                  <div>
-                    <label className="sales-modal__label">Итого к оплате</label>
-                    <div className="sales-modal__payment-display">{moneySafe(totalAmount)}</div>
-                    <p className="sales-modal__hint-line sales-modal__hint-line--tight">Вся сумма оплачивается сразу</p>
-                  </div>
-                )}
-
-                {/* Частичная: итого (авто) + оплачено сейчас + остаток */}
-                {paymentType === 'partial' && (
-                  <>
-                    <div>
-                      <label className="sales-modal__label">Итого (сумма)</label>
-                      <div className="sales-modal__payment-display">{moneySafe(totalAmount)}</div>
-                    </div>
-                    {orderPaymentSnap && orderPaymentSnap.paid > 0 && (
-                      <div>
-                        <label className="sales-modal__label">Уже по заявке</label>
-                        <div className="sales-modal__payment-display">{moneySafe(orderPaymentSnap.paid)}</div>
-                        <p className="sales-modal__hint-line sales-modal__hint-line--tight">
-                          К доплате при продаже: {moneySafe(Math.max(0, totalAmount - orderPaymentSnap.paid))}
-                        </p>
-                      </div>
+                    {stockPickerRows.length === 0 && (
+                      <p className="sales-editor__placeholder">
+                        {batchStockSearch.trim() ? 'Нет совпадений' : 'Нет товара на складе'}
+                      </p>
                     )}
-                    <div>
-                      <label className="sales-modal__label">Оплачено сейчас</label>
-                      <input
-                        inputMode="decimal"
-                        value={paidAmount}
-                        placeholder="0"
-                        onChange={(e) => setPaidAmount(e.target.value)}
-                      />
-                      {paidAmountError && <p className="sales-modal__field-error">{paidAmountError}</p>}
-                    </div>
-                    <div>
-                      <label className="sales-modal__label">Остаток к оплате</label>
-                      <div className={`sales-modal__payment-display${debtAmountValue > 0 ? ' is-debt' : ''}`}>
-                        {moneySafe(debtAmountValue)}
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* В долг: показываем итого как долг */}
-                {paymentType === 'debt' && (
-                  <div>
-                    <label className="sales-modal__label">Сумма долга</label>
-                    <div className="sales-modal__payment-display is-debt">{moneySafe(totalAmount)}</div>
-                    <p className="sales-modal__hint-line sales-modal__hint-line--tight">Оплата не поступает</p>
                   </div>
-                )}
-              </div>
-            </div>
-            <div className="sales-modal__footer-right">
-              <div className="sales-modal__summary-card">
-                <div className="sales-modal__totals">
-                  <div className="sales-modal__totals-count">Товаров: {saleLines.length}</div>
-                  <div className="sales-modal__totals-main">{moneySafe(totalAmount)}</div>
-                  {paymentType !== 'full' && (
-                    <div className="sales-modal__totals-breakdown">
-                      <div>
-                        <span>Оплачено</span>
-                        <span>{moneySafe(paidAmountValue)}</span>
+                  {lineErrors[activeLineIdx]?.warehouse_batch && (
+                    <p className="sales-modal__field-error">{lineErrors[activeLineIdx].warehouse_batch}</p>
+                  )}
+
+                  {selectedLine.warehouse_batch && (
+                    <div className="sales-editor__qtybar">
+                      <div className="sales-editor__qtybar-field">
+                        <span className="sales-editor__qtybar-label">Кол-во</span>
+                        <div className="sales-qty-stepper sales-qty-stepper--touch">
+                          <button
+                            type="button"
+                            className="sales-qty-stepper__btn"
+                            aria-label="Уменьшить"
+                            onClick={() => adjustActiveLineQty(-1)}
+                            disabled={saving || selectedLineQty <= 1}
+                          >
+                            −
+                          </button>
+                          <IntegerInput
+                            className="sales-qty-stepper__input"
+                            min={1}
+                            max={selectedLineMaxQty > 0 ? selectedLineMaxQty : undefined}
+                            value={selectedLine.quantity}
+                            onChange={(v) => setSaleLines((prev) => prev.map((x, i) => (
+                              i === activeLineIdx ? { ...x, quantity: v } : x
+                            )))}
+                          />
+                          <button
+                            type="button"
+                            className="sales-qty-stepper__btn"
+                            aria-label="Увеличить"
+                            onClick={() => adjustActiveLineQty(1)}
+                            disabled={
+                              saving
+                              || (selectedLineMaxQty > 0 && selectedLineQty >= selectedLineMaxQty)
+                            }
+                          >
+                            +
+                          </button>
+                        </div>
+                        {selectedLineMaxQty > 0 && (
+                          <span className="sales-editor__qtybar-max">
+                            макс {formatQuantityDisplay(selectedLineMaxQty)}
+                          </span>
+                        )}
                       </div>
-                      <div className={debtAmountValue > 0 ? 'is-debt' : ''}>
-                        <span>Долг</span>
-                        <span>{moneySafe(debtAmountValue)}</span>
+                      <div className="sales-editor__qtybar-sum">
+                        <span className="sales-editor__qtybar-label">Сумма</span>
+                        <strong>
+                          {moneySafe(parseLocaleNumber(selectedLine.quantity) * parseLocaleNumber(selectedLine.unit_price))}
+                        </strong>
                       </div>
                     </div>
                   )}
+                </>
+              )}
+            </section>
+          </div>
+          )}
+
+          {saleStep === 'goods' && (
+            <div className="sale-wizard__bar">
+              {heldSales.length > 0 && (
+                <div className="sale-wizard__held-list">
+                  {heldSales.map((h) => (
+                    <div key={h.id} className="sale-wizard__held-chip">
+                      <button type="button" onClick={() => restoreHeldSale(h.id)}>
+                        {h.label}
+                      </button>
+                      <button
+                        type="button"
+                        className="sale-wizard__held-discard"
+                        aria-label="Удалить отложку"
+                        onClick={(e) => discardHeldSale(h.id, e)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              </div>
-              <div className="sales-modal__buttons-row">
-                <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>Отмена</button>
-                <button type="submit" className="btn btn--primary" disabled={saving || !isFormSubmittable}>
-                  {saving ? 'Сохранение…' : 'Создать продажу'}
+              )}
+              <div className="sale-wizard__bar-actions">
+                <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--secondary"
+                  onClick={holdCurrentSale}
+                  disabled={saving || !hasValidSaleLines}
+                >
+                  Отложить
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--primary"
+                  disabled={saving || !hasValidSaleLines}
+                  onClick={() => setSaleStep('pay')}
+                >
+                  К оплате →
                 </button>
               </div>
             </div>
-          </div>
-        </form>
+          )}
+
+          {saleStep === 'pay' && (
+          <section className="sale-pay">
+            <div className="sale-pay__body">
+            <div className="sale-pay__meter">
+              <div className="sale-pay__meter-item">
+                <span>К оплате</span>
+                <strong>{moneySafe(amountDue)}</strong>
+              </div>
+              <div className="sale-pay__meter-item">
+                <span>Получено</span>
+                <strong>{moneySafe(totalReceived)}</strong>
+              </div>
+              <div className="sale-pay__meter-item">
+                <span>Осталось</span>
+                <strong className={remainingPay > 0 ? 'is-warn' : ''}>{moneySafe(remainingPay)}</strong>
+              </div>
+              <div className="sale-pay__meter-item">
+                <span>Сдача</span>
+                <strong className={changeAmount > 0 ? 'is-ok' : ''}>{moneySafe(changeAmount)}</strong>
+              </div>
+            </div>
+
+            <div className="sale-pay__client-block">
+              <label className="sale-pay__input-label">Клиент *</label>
+              <SearchableSelect
+                value={client}
+                onChange={(v) => setClient(v != null ? String(v) : '')}
+                options={clientOptions.filter((o) => o.value !== '')}
+                placeholder="Выберите клиента"
+              />
+              {clientError && <p className="sales-modal__field-error">{clientError}</p>}
+            </div>
+
+            <div className="sale-pay__tabs" role="tablist">
+              {[
+                { id: 'cash', label: 'Наличная' },
+                { id: 'cashless', label: 'Безналичная' },
+                { id: 'mixed', label: 'Смешанная' },
+                { id: 'debt', label: 'В долг' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={payTab === tab.id}
+                  className={`sale-pay__tab${payTab === tab.id ? ' is-active' : ''}`}
+                  onClick={() => setPayTab(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {payTab === 'cash' && (
+              <div className="sale-pay__panel sale-pay__panel--cash">
+                <div className="sale-pay__col">
+                  <label className="sale-pay__input-label">Наличные</label>
+                  <input
+                    inputMode="decimal"
+                    value={cashReceived}
+                    onChange={(e) => setCashReceived(e.target.value)}
+                    placeholder="0"
+                  />
+                  <div className="sale-pay__numpad">
+                    {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'back'].map((k) => (
+                      <button
+                        key={k}
+                        type="button"
+                        className="sale-pay__numpad-key"
+                        onClick={() => setCashReceived((v) => padPayDigit(v, k === 'back' ? 'back' : k))}
+                      >
+                        {k === 'back' ? '⌫' : k}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {payTab === 'cashless' && (
+              <div className="sale-pay__panel sale-pay__panel--card">
+                <div className="sale-pay__col">
+                  <label className="sale-pay__input-label">Сумма по карте</label>
+                  <input
+                    inputMode="decimal"
+                    value={cardReceived}
+                    onChange={(e) => setCardReceived(e.target.value)}
+                    placeholder="0"
+                  />
+                  <label className="sale-pay__input-label">Карта или телефон *</label>
+                  <input
+                    value={cardRef}
+                    onChange={(e) => setCardRef(e.target.value)}
+                    placeholder="Номер карты или +996 …"
+                  />
+                </div>
+              </div>
+            )}
+
+            {payTab === 'mixed' && (
+              <div className="sale-pay__panel sale-pay__panel--mixed">
+                <div className="sale-pay__col">
+                  <label className="sale-pay__input-label">Наличные</label>
+                  <input
+                    inputMode="decimal"
+                    value={cashReceived}
+                    onChange={(e) => setCashReceived(e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="sale-pay__col">
+                  <label className="sale-pay__input-label">По карте</label>
+                  <input
+                    inputMode="decimal"
+                    value={cardReceived}
+                    onChange={(e) => setCardReceived(e.target.value)}
+                    placeholder="0"
+                  />
+                  <label className="sale-pay__input-label">Карта или телефон *</label>
+                  <input
+                    value={cardRef}
+                    onChange={(e) => setCardRef(e.target.value)}
+                    placeholder="Номер карты или +996 …"
+                  />
+                </div>
+              </div>
+            )}
+
+            {payTab === 'debt' && (
+              <p className="sale-pay__debt-hint">
+                Вся сумма {moneySafe(amountDue)} уйдёт в долг клиента. Оплата сейчас не принимается.
+              </p>
+            )}
+
+            {paidAmountError && <p className="sales-modal__field-error">{paidAmountError}</p>}
+            {submitError && <p className="modal__error">{submitError}</p>}
+            </div>
+
+            <div className="sale-pay__foot">
+              {heldSales.length > 0 && (
+                <div className="sale-wizard__held-list sale-pay__held-list">
+                  {heldSales.map((h) => (
+                    <div key={h.id} className="sale-wizard__held-chip">
+                      <button type="button" onClick={() => restoreHeldSale(h.id)}>
+                        {h.label}
+                      </button>
+                      <button
+                        type="button"
+                        className="sale-wizard__held-discard"
+                        aria-label="Удалить отложку"
+                        onClick={(e) => discardHeldSale(h.id, e)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="sale-pay__actions">
+                <button type="button" className="btn btn--secondary" onClick={() => setSaleStep('goods')} disabled={saving}>
+                  ← Товары
+                </button>
+                <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--secondary"
+                  onClick={holdCurrentSale}
+                  disabled={saving || !hasValidSaleLines}
+                >
+                  Отложить
+                </button>
+                {payTab !== 'debt' && (
+                  <button
+                    type="button"
+                    className="btn btn--secondary"
+                    disabled={saving || amountDue <= 0}
+                    onClick={() => {
+                      const exact = formatNumberForInput(amountDue);
+                      if (payTab === 'cash') {
+                        setCashReceived(exact);
+                      } else if (payTab === 'cashless') {
+                        setCardReceived(exact);
+                      } else {
+                        const cardPart = parsePayAmount(cardReceived);
+                        const cashPart = Math.max(0, amountDue - cardPart);
+                        setCashReceived(cashPart > 0 ? formatNumberForInput(cashPart) : '');
+                        if (cardPart <= 0) setCardReceived(exact);
+                      }
+                    }}
+                  >
+                    Без сдачи
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn sale-pay__submit"
+                  disabled={saving || !isFormSubmittable || previewLoading}
+                  onClick={submit}
+                >
+                  {saving ? 'Сохранение…' : 'Оплата'}
+                </button>
+              </div>
+            </div>
+          </section>
+          )}
+        </div>
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalContent, document.body);
+  }
+  return modalContent;
 };
 
 const SaleDetailsModal = ({ saleId, onClose }) => {

@@ -5,14 +5,12 @@ import './CashPage.scss';
 
 const CASH_TABS = [
   { key: 'clients', label: 'Клиенты', path: '/cash/clients', accessKey: 'clients' },
-  { key: 'client_orders', label: 'Заявки', path: '/cash/orders', accessKey: 'client_orders' },
   { key: 'sales', label: 'Продажи', path: '/cash/sales', accessKey: 'sales' },
 ];
 
-const CASH_SHELL_ACCESS_KEYS = ['clients', 'client_orders', 'sales'];
+const CASH_SHELL_ACCESS_KEYS = ['clients', 'sales'];
 
 const matchTabByPath = (pathname) => {
-  if (pathname.startsWith('/cash/orders')) return 'client_orders';
   if (pathname.startsWith('/cash/sales')) return 'sales';
   if (pathname.startsWith('/cash/clients')) return 'clients';
   return '';

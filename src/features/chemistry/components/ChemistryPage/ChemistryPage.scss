@@ -1105,12 +1105,68 @@
 .chemistry-table--plastic-profiles .chemistry-table__header,
 .chemistry-table--plastic-profiles .chemistry-table__row {
   grid-template-columns:
-    minmax(100px, 1.4fr)
-    minmax(4.5rem, 6rem)
-    minmax(4.5rem, 6rem)
+    minmax(100px, 1.2fr)
+    minmax(3.5rem, 4.5rem)
+    minmax(3.5rem, 4.5rem)
+    minmax(4rem, 5rem)
+    minmax(4rem, 5rem)
+    minmax(3rem, 4rem)
     minmax(6rem, auto);
   column-gap: var(--space-2);
   align-items: center;
+}
+
+.chemistry-table--plastic-profiles-compact .chemistry-table__header,
+.chemistry-table--plastic-profiles-compact .chemistry-table__row--plastic-profile-compact {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+}
+
+.chemistry-plastic-profiles__text--name {
+  font-size: var(--font-body);
+  font-weight: var(--weight-medium);
+}
+
+.chemistry-plastic-profiles__markup-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.chemistry-plastic-profiles__markup-pct {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.chemistry-plastic-profiles__cell-markup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.chemistry-plastic-profiles__markup-pct--inline {
+  font-size: 0.75rem;
+}
+
+.chemistry-plastic-profiles__readonly-cost {
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text);
+}
+
+.chemistry-plastic-profiles__hint {
+  margin: -0.35rem 0 0.5rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 
 .chemistry-plastic-profiles__name {

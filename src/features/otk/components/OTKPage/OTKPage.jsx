@@ -1,31 +1,23 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useOperationalRefetch, WS_OTK } from '../../../../shared/realtime';
 import {
   EmptyState,
-  useToast,
-  DecimalInput,
   Loading,
   ErrorState,
   ClientDateFilter,
   CompactList,
+  Badge,
   RecordDetailsModal,
   DetailFields,
-  Badge,
 } from '../../../../shared/ui';
 import {
-  parseLocaleNumber,
   formatNumberForInput,
-  useServerQuery,
-  getApiErrorMessage,
   pickFirstIsoDate,
   matchesClientDateFilter,
 } from '../../../../shared/lib';
-import { DEMO_PRODUCTION_VAT_MAX_KG } from '../../../chemistry/lib/blankRecipeShared';
-import {
-  mapBlankProductionRunFromApi,
-  postWorkshopRunOtkDefect,
-} from '../../../chemistry/api/blankWorkshopApi';
-import { isBlankRunOtkRecorded } from '../../../chemistry/lib/workshopRunUtils';
+import { getOtkBlankPool, getOtkAccountHistory } from '../../api/otkWorkshopApi';
+import OtkAccountModal from '../OtkAccountModal/OtkAccountModal';
+import '../OtkAccountModal/OtkAccountModal.scss';
 import './OTKPage.scss';
 
 const formatDateShort = (d) => {
@@ -35,287 +27,188 @@ const formatDateShort = (d) => {
   return s.slice(0, 10);
 };
 
-const resolveRunTotals = (run) => {
-  if (!run) {
-    return { recipeKg: null, usedKg: 0, vatKg: DEMO_PRODUCTION_VAT_MAX_KG };
-  }
-  let recipe = run.blankTotalKg != null ? Number(run.blankTotalKg) : NaN;
-  let used = run.blankUsedInProductionKg != null ? Number(run.blankUsedInProductionKg) : NaN;
-  if (!Number.isFinite(used)) used = Number.isFinite(recipe) ? recipe : 0;
-  if (!Number.isFinite(recipe)) recipe = Number.isFinite(used) ? used : null;
-  const vat = Number(run.vatMaxKgDemo);
-  const vatKg = Number.isFinite(vat) && vat > 0 ? vat : DEMO_PRODUCTION_VAT_MAX_KG;
-  return {
-    recipeKg: Number.isFinite(recipe) ? recipe : null,
-    usedKg: Number.isFinite(used) ? used : 0,
-    vatKg,
-  };
-};
-
-const legacyDefectSumKg = (run) => {
-  const m = run.defectsKgByProduct;
-  if (!m || typeof m !== 'object') return null;
-  let s = 0;
-  for (const v of Object.values(m)) {
-    const x = Number(v);
-    if (Number.isFinite(x)) s += x;
-  }
-  return s > 0 ? s : null;
-};
-
-const defectKgDisplay = (run) => {
-  if (run.defectKg != null && Number.isFinite(Number(run.defectKg))) {
-    return `${formatNumberForInput(run.defectKg)} кг`;
-  }
-  const leg = legacyDefectSumKg(run);
-  if (leg != null) return `${formatNumberForInput(leg)} кг`;
-  return '0 кг';
-};
-
-const gpFlowStatus = (run) => {
-  if (run.gpAcceptedAt) return 'На складе';
-  if (isBlankRunOtkRecorded(run)) return 'Ждёт склад';
-  return 'Нужен учёт';
-};
-
-const OTK_COLUMNS = [
-  { key: 'product', label: 'Изделие', width: '1.4fr' },
-  { key: 'defect', label: 'Брак', width: '0.7fr', className: 'compact-list__cell--num' },
+const POOL_COLUMNS = [
+  { key: 'blank', label: 'Заготовка', width: '1.4fr' },
+  { key: 'kg', label: 'Кг в ОТК', width: '0.8fr', className: 'compact-list__cell--num' },
   { key: 'status', label: 'Статус', width: '0.9fr' },
 ];
 
-const BlankRunOtkDetailModal = ({ run, onClose, onSaved }) => {
-  const toast = useToast();
-  const { recipeKg, usedKg, vatKg } = useMemo(() => resolveRunTotals(run), [run]);
-  const [defectDraft, setDefectDraft] = useState('');
-  const [saving, setSaving] = useState(false);
-  const needsOtk = run && !isBlankRunOtkRecorded(run);
+const ACCOUNT_HISTORY_COLUMNS = [
+  { key: 'date', label: 'Дата', width: '0.9fr' },
+  { key: 'blank', label: 'Заготовка', width: '1.2fr' },
+  { key: 'kg', label: 'Списано', width: '0.7fr', className: 'compact-list__cell--num' },
+];
+
+const OTKPage = () => {
+  const [mainTab, setMainTab] = useState('pool');
+  const [dateFilterIso, setDateFilterIso] = useState('');
+  const [pool, setPool] = useState([]);
+  const [accountHistory, setAccountHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [accountTarget, setAccountTarget] = useState(null);
+  const [historyDetail, setHistoryDetail] = useState(null);
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [poolRows, historyRows] = await Promise.all([
+        getOtkBlankPool(),
+        getOtkAccountHistory({ page: 1, page_size: 200, ordering: '-created_at' }),
+      ]);
+      setPool(poolRows);
+      setAccountHistory(historyRows);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    if (!run) return;
-    if (run.defectKg != null && Number.isFinite(Number(run.defectKg))) {
-      setDefectDraft(formatNumberForInput(Number(run.defectKg)));
-    } else {
-      const leg = legacyDefectSumKg(run);
-      setDefectDraft(leg != null ? formatNumberForInput(leg) : '');
-    }
-  }, [run?.id, run?.defectKg]);
+    loadAll();
+  }, [loadAll]);
 
-  const trimmed = String(defectDraft ?? '').trim();
-  const defectNum = trimmed === '' ? 0 : parseLocaleNumber(defectDraft);
-  const defectInputOk = trimmed === '' || Number.isFinite(defectNum);
-  const overUsed =
-    defectInputOk && Number.isFinite(defectNum) && usedKg > 0 && defectNum > usedKg;
-  const noMass = usedKg <= 0;
+  useOperationalRefetch(WS_OTK, loadAll, true);
 
-  const handleSave = async (e) => {
-    e.preventDefault();
-    if (!run?.id) return;
-    if (!defectInputOk || !Number.isFinite(defectNum) || defectNum < 0) {
-      toast.warning('Укажите брак в кг (можно 0)');
-      return;
-    }
-    if (noMass && defectNum > 0) {
-      toast.warning('Нет массы заготовки — оформите выпуск в производстве');
-      return;
-    }
-    if (overUsed) {
-      toast.warning(`Брак не больше ${formatNumberForInput(usedKg)} кг`);
-      return;
-    }
-    setSaving(true);
-    try {
-      await postWorkshopRunOtkDefect(run.id, { defect_kg: defectNum });
-      toast.success('Сохранено');
-      onSaved?.();
-      onClose();
-    } catch (err) {
-      toast.apiError(err, 'Не удалось сохранить');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (!run) return null;
-
-  const footer = needsOtk ? (
-    <>
-      <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>
-        Закрыть
-      </button>
-      <button
-        type="submit"
-        form="otk-defect-form"
-        className="btn btn--primary"
-        disabled={overUsed || saving}
-      >
-        {saving ? '…' : 'Сохранить'}
-      </button>
-    </>
-  ) : (
-    <button type="button" className="btn btn--secondary" onClick={onClose}>
-      Закрыть
-    </button>
+  const poolWithKg = useMemo(
+    () => pool.filter((p) => p.remainingKg >= 0.001),
+    [pool],
   );
 
-  return (
-    <RecordDetailsModal
-      open
-      onClose={onClose}
-      title={run.productName || 'Изделие'}
-      lead={needsOtk ? 'Укажите брак в кг. Если брака нет — 0.' : null}
-      footer={footer}
-      wide
-    >
-      <DetailFields
-        rows={[
-          { label: 'Заготовка', value: run.blankName || '—' },
-          { label: 'Дата', value: formatDateShort(run.createdAt) },
-          { label: 'Статус', value: gpFlowStatus(run) },
-          { label: 'По рецепту', value: recipeKg != null ? `${formatNumberForInput(recipeKg)} кг` : '—' },
-          { label: 'В производстве', value: usedKg > 0 ? `${formatNumberForInput(usedKg)} кг` : '—' },
-          { label: 'Ёмкость (макс.)', value: `до ${formatNumberForInput(vatKg)} кг` },
-        ]}
-      />
-      {needsOtk ? (
-        <form id="otk-defect-form" className="otk-defect-form" onSubmit={handleSave}>
-          <label htmlFor="otk-defect-kg" className="otk-defect-form__label">
-            Брак, кг
-          </label>
-          <DecimalInput
-            id="otk-defect-kg"
-            min={0}
-            value={defectDraft}
-            onChange={setDefectDraft}
-            placeholder="0"
-          />
-          {noMass ? (
-            <p className="otk-defect-form__hint">Сначала оформите выпуск в разделе «Производство».</p>
-          ) : null}
-          {overUsed ? (
-            <p className="modal__error">Брак не больше массы в производстве.</p>
-          ) : null}
-        </form>
-      ) : null}
-    </RecordDetailsModal>
-  );
-};
-
-const runsQuery = { page: 1, page_size: 200, ordering: '-created_at' };
-
-const BlankProductionOtkPanel = () => {
-  const [detailRun, setDetailRun] = useState(null);
-  const [viewRun, setViewRun] = useState(null);
-  const [dateFilterIso, setDateFilterIso] = useState('');
-  const { items, loading, error, refetch } = useServerQuery(
-    'workshop/blank-production-runs/',
-    runsQuery,
-    { enabled: true },
-  );
-  const runs = useMemo(
-    () => (items || []).map(mapBlankProductionRunFromApi).filter(Boolean),
-    [items],
-  );
-
-  const visibleRuns = useMemo(() => {
-    if (!dateFilterIso) return runs;
-    return runs.filter((run) =>
-      matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(run, ['createdAt'])),
+  const visibleAccountHistory = useMemo(() => {
+    if (!dateFilterIso) return accountHistory;
+    return accountHistory.filter((row) =>
+      matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(row, ['createdAt'])),
     );
-  }, [runs, dateFilterIso]);
+  }, [accountHistory, dateFilterIso]);
 
-  const sortedRuns = useMemo(() => {
-    return [...visibleRuns].sort((a, b) => {
-      const pendingA = !isBlankRunOtkRecorded(a) ? 0 : 1;
-      const pendingB = !isBlankRunOtkRecorded(b) ? 0 : 1;
-      if (pendingA !== pendingB) return pendingA - pendingB;
-      const da = pickFirstIsoDate(a, ['createdAt']) || '';
-      const db = pickFirstIsoDate(b, ['createdAt']) || '';
-      return db.localeCompare(da);
-    });
-  }, [visibleRuns]);
-
-  const handleSaved = useCallback(() => {
-    refetch();
-  }, [refetch]);
-
-  useOperationalRefetch(WS_OTK, refetch, true);
-
-  const openDetails = (run) => {
-    if (!isBlankRunOtkRecorded(run)) {
-      setDetailRun(run);
-      setViewRun(null);
-    } else {
-      setViewRun(run);
-      setDetailRun(null);
-    }
+  const openAccount = (entry) => {
+    if (!entry?.canAccount) return;
+    setAccountTarget(entry);
   };
 
   return (
-    <div className="otk-card">
-      <div className="otk-card__toolbar">
-        <h2 className="otk-card__title">Проверки</h2>
-        <ClientDateFilter value={dateFilterIso} onChange={setDateFilterIso} id="otk-date-filter" />
+    <div className="page page--otk">
+      <div className="otk-page__tabs production-main-tabs" role="tablist" aria-label="Разделы ОТК">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mainTab === 'pool'}
+          className={`production-main-tabs__btn${mainTab === 'pool' ? ' production-main-tabs__btn--active' : ''}`}
+          onClick={() => setMainTab('pool')}
+        >
+          Проверки
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mainTab === 'history'}
+          className={`production-main-tabs__btn${mainTab === 'history' ? ' production-main-tabs__btn--active' : ''}`}
+          onClick={() => setMainTab('history')}
+        >
+          История
+        </button>
       </div>
-      {loading && <Loading />}
-      {error && <ErrorState error={error} onRetry={refetch} />}
-      {!loading && !error && runs.length === 0 && (
-        <EmptyState title="Пока нет выпусков" description="Оформите выпуск в «Производство»." />
-      )}
-      {!loading && !error && runs.length > 0 && visibleRuns.length === 0 && (
-        <EmptyState title="На эту дату записей нет" />
-      )}
-      {!loading && !error && visibleRuns.length > 0 && (
-        <CompactList
-          columns={OTK_COLUMNS}
-          items={sortedRuns}
-          getRowKey={(r) => r.id}
-          rowClassName={(run) =>
-            (!isBlankRunOtkRecorded(run) ? 'compact-list__row--attention' : '')
-          }
-          renderCell={(run, key) => {
-            if (key === 'product') return run.productName || '—';
-            if (key === 'defect') return defectKgDisplay(run);
-            if (key === 'status') {
-              const label = gpFlowStatus(run);
-              if (!isBlankRunOtkRecorded(run)) {
-                return <Badge variant="warning">{label}</Badge>;
-              }
-              if (run.gpAcceptedAt) {
-                return <Badge variant="success">{label}</Badge>;
-              }
-              return <span className="compact-list__status-muted">{label}</span>;
-            }
-            return '—';
-          }}
-          detailsLabel={(run) => (!isBlankRunOtkRecorded(run) ? 'Учесть' : 'Подробнее')}
-          onDetails={openDetails}
-        />
-      )}
-      {detailRun ? (
-        <BlankRunOtkDetailModal
-          run={detailRun}
-          onClose={() => setDetailRun(null)}
-          onSaved={handleSaved}
+
+      <div className="otk-card">
+        <div className="otk-card__toolbar">
+          <h2 className="otk-card__title">{mainTab === 'pool' ? 'Заготовки в ОТК' : 'Учёты ОТК'}</h2>
+          {mainTab === 'history' ? (
+            <ClientDateFilter value={dateFilterIso} onChange={setDateFilterIso} id="otk-date-filter" />
+          ) : null}
+        </div>
+
+        {loading && <Loading />}
+        {error && <ErrorState error={error} onRetry={loadAll} />}
+
+        {!loading && !error && mainTab === 'pool' && (
+          poolWithKg.length === 0 ? (
+            <EmptyState
+              title="Нет заготовок в ОТК"
+              description="Оформите выпуск в «Производство». Кнопка «Учесть» появится при остатке от 1 кг."
+            />
+          ) : (
+            <CompactList
+              columns={POOL_COLUMNS}
+              items={poolWithKg}
+              getRowKey={(p) => p.blankId}
+              rowClassName={(p) => (p.canAccount ? 'compact-list__row--attention' : '')}
+              renderCell={(p, key) => {
+                if (key === 'blank') return p.blankName || '—';
+                if (key === 'kg') return `${formatNumberForInput(p.remainingKg)} кг`;
+                if (key === 'status') {
+                  return p.canAccount ? (
+                    <Badge variant="warning">Нужен учёт</Badge>
+                  ) : (
+                    <span className="compact-list__status-muted">Использовано</span>
+                  );
+                }
+                return '—';
+              }}
+              detailsLabel={(p) => (p.canAccount ? 'Учесть' : null)}
+              showDetails={(p) => Boolean(p.canAccount)}
+              onDetails={(p) => openAccount(p)}
+            />
+          )
+        )}
+
+        {!loading && !error && mainTab === 'history' && (
+          visibleAccountHistory.length === 0 ? (
+            <EmptyState title="Учётов пока нет" />
+          ) : (
+            <CompactList
+              columns={ACCOUNT_HISTORY_COLUMNS}
+              items={visibleAccountHistory}
+              getRowKey={(s) => s.id}
+              renderCell={(s, key) => {
+                if (key === 'date') return formatDateShort(s.createdAt);
+                if (key === 'blank') return s.blankName || '—';
+                if (key === 'kg') return `${formatNumberForInput(s.consumedKg)} кг`;
+                return '—';
+              }}
+              detailsLabel="Подробнее"
+              onDetails={(s) => setHistoryDetail(s)}
+            />
+          )
+        )}
+      </div>
+
+      {accountTarget ? (
+        <OtkAccountModal
+          poolEntry={accountTarget}
+          onClose={() => setAccountTarget(null)}
+          onSaved={loadAll}
         />
       ) : null}
-      {viewRun ? (
+
+      {historyDetail ? (
         <RecordDetailsModal
           open
-          onClose={() => setViewRun(null)}
-          title={viewRun.productName || 'Изделие'}
+          onClose={() => setHistoryDetail(null)}
+          title={`Учёт: ${historyDetail.blankName || ''}`}
           footer={(
-            <button type="button" className="btn btn--secondary" onClick={() => setViewRun(null)}>
+            <button type="button" className="btn btn--secondary" onClick={() => setHistoryDetail(null)}>
               Закрыть
             </button>
           )}
         >
           <DetailFields
             rows={[
-              { label: 'Заготовка', value: viewRun.blankName || '—' },
-              { label: 'Дата', value: formatDateShort(viewRun.createdAt) },
-              { label: 'Брак', value: defectKgDisplay(viewRun) },
-              { label: 'Статус', value: gpFlowStatus(viewRun) },
+              { label: 'Дата', value: formatDateShort(historyDetail.createdAt) },
+              { label: 'Заготовка', value: historyDetail.blankName || '—' },
+              { label: 'Списано', value: `${formatNumberForInput(historyDetail.consumedKg)} кг` },
+              { label: 'Брак', value: `${formatNumberForInput(historyDetail.defectKg)} кг` },
+              { label: 'Оператор', value: historyDetail.operatorName || '—' },
+              { label: 'Химик', value: historyDetail.chemistName || '—' },
+              { label: 'Упаковщик', value: historyDetail.packerName || '—' },
+              {
+                label: 'Профили',
+                value: (historyDetail.lines || [])
+                  .map((ln) => `${ln.profileName}: ${ln.pieces} шт`)
+                  .join('; ') || '—',
+              },
             ]}
           />
         </RecordDetailsModal>
@@ -323,11 +216,5 @@ const BlankProductionOtkPanel = () => {
     </div>
   );
 };
-
-const OTKPage = () => (
-  <div className="page page--otk">
-    <BlankProductionOtkPanel />
-  </div>
-);
 
 export default OTKPage;

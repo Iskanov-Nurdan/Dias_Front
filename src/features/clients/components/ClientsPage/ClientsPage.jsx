@@ -12,6 +12,7 @@ import {
   DetailFields,
 } from '../../../../shared/ui';
 import { createClient, updateClient, getClientProfile } from '../../api/clientsApi';
+import { ClientFormModal } from '../ClientFormModal';
 import { createPayment, getPaymentSelectSources } from '../../api/paymentsApi';
 import { useOperationalRefetch, WS_CASH } from '../../../../shared/realtime';
 import './ClientsPage.scss';
@@ -350,7 +351,7 @@ const ClientsPage = () => {
       ) : null}
 
       {modalClient != null && (
-        <ClientModal
+        <ClientFormModal
           client={modalClient?._new ? null : modalClient}
           onClose={() => {
             setModalClient(null);
@@ -370,136 +371,6 @@ const ClientsPage = () => {
           }}
         />
       )}
-    </div>
-  );
-};
-
-const ClientModal = ({ client, onClose, onSubmit, error }) => {
-  const [clientType, setClientType] = useState('individual');
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [phoneExtraVal, setPhoneExtraVal] = useState('');
-  const [settlementAccount, setSettlementAccount] = useState('');
-  const [inn, setInn] = useState('');
-  const [address, setAddress] = useState('');
-  const [status, setStatus] = useState('active');
-
-  useEffect(() => {
-    if (!client) {
-      setClientType('individual');
-      setName('');
-      setPhone('');
-      setPhoneExtraVal('');
-      setSettlementAccount('');
-      setInn('');
-      setAddress('');
-      setStatus('active');
-      return;
-    }
-    setClientType(clientTypeValue(client));
-    setName(client.name || client.title || '');
-    setPhone(client.phone || client.phone_number || '');
-    setPhoneExtraVal(String(getPhoneExtra(client) || ''));
-    setSettlementAccount(String(companyAccountField(client) || ''));
-    setInn(String(innField(client) || ''));
-    setAddress(String(addressField(client) || ''));
-    setStatus(clientIsActive(client) ? 'active' : 'inactive');
-  }, [client]);
-
-  const statusOptions = useMemo(
-    () => [
-      { value: 'active', label: 'Активен' },
-      { value: 'inactive', label: 'Неактивен' },
-    ],
-    [],
-  );
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal clients-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal__head">
-          <h3>{client ? 'Редактировать клиента' : 'Создать клиента'}</h3>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
-            ×
-          </button>
-        </div>
-        <form
-          className="clients-modal__form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const payload = {
-              client_type: clientType,
-              name: name.trim(),
-              phone: phone.trim() || undefined,
-              phone_extra: phoneExtraVal.trim() || undefined,
-              status,
-            };
-            if (clientType === 'company') {
-              payload.settlement_account = settlementAccount.trim() || undefined;
-              payload.inn = inn.trim() || undefined;
-              payload.address = address.trim() || undefined;
-            }
-            onSubmit(payload);
-          }}
-        >
-          <div className="clients-modal__scroll">
-            <div className="clients-modal__type-switch" role="tablist" aria-label="Тип клиента">
-              <button
-                type="button"
-                className={`clients-modal__type-btn${clientType === 'individual' ? ' is-active' : ''}`}
-                onClick={() => setClientType('individual')}
-              >
-                Физ лицо
-              </button>
-              <button
-                type="button"
-                className={`clients-modal__type-btn${clientType === 'company' ? ' is-active' : ''}`}
-                onClick={() => setClientType('company')}
-              >
-                Компания
-              </button>
-            </div>
-
-            <label>{clientType === 'company' ? 'Название компании *' : 'ФИО *'}</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} required />
-            {clientType === 'company' ? (
-              <>
-                <label>Расчётный счёт</label>
-                <input value={settlementAccount} onChange={(e) => setSettlementAccount(e.target.value)} placeholder="Номер расчётного счёта" />
-              </>
-            ) : null}
-            <div className="clients-modal__grid">
-              <div>
-                <label>Телефон</label>
-                <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+996 …" />
-              </div>
-              <div>
-                <label>{clientType === 'company' ? 'Доп. телефоны' : 'Доп. телефон'}</label>
-                <input value={phoneExtraVal} onChange={(e) => setPhoneExtraVal(e.target.value)} placeholder={clientType === 'company' ? 'Через запятую' : ''} />
-              </div>
-            </div>
-            {clientType === 'company' ? (
-              <>
-                <label>ИНН</label>
-                <input value={inn} onChange={(e) => setInn(e.target.value)} />
-                <label>Адрес</label>
-                <textarea rows={3} value={address} onChange={(e) => setAddress(e.target.value)} />
-              </>
-            ) : null}
-            <label>Статус</label>
-            <SearchableSelect value={status} onChange={setStatus} options={statusOptions} placeholder="Статус" />
-            {error && <p className="modal__error">{error}</p>}
-          </div>
-          <div className="modal__actions clients-modal__footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>
-              Отмена
-            </button>
-            <button type="submit" className="btn btn--primary" disabled={!name.trim()}>
-              Сохранить
-            </button>
-          </div>
-        </form>
-      </div>
     </div>
   );
 };

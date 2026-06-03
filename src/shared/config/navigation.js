@@ -26,14 +26,13 @@ export const HOME_ACCESS_PRIORITY = [
   'warehouse',
   'analytics',
   'shifts',
-  'client_orders',
   'sales',
   'clients',
   'users',
 ];
 
 export function isCommerceAccess(accessKey) {
-  return ['clients', 'sales', 'client_orders'].includes(accessKey);
+  return ['clients', 'sales'].includes(accessKey);
 }
 
 export function isAccessRoutable(accessKey) {
@@ -92,7 +91,7 @@ export function getNavSections() {
         {
           path: '/cash',
           accessKey: 'clients',
-          accessAnyKeys: ['clients', 'client_orders', 'sales'],
+          accessAnyKeys: ['clients', 'sales'],
           label: 'Касса',
           iconKey: 'clients',
         },

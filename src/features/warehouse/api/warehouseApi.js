@@ -1,37 +1,21 @@
 import { apiClient } from '../../../shared/api';
 
-/**
- * Упаковка: POST warehouse/batches/package/
- * Тело: warehouse_batch_id, pieces_per_package, packages_count; опционально comment.
- */
+/** GET warehouse/gp-stock/ — остатки ГП по profile_id + blank_id (шт и кг). */
+export const getGpStock = (params = {}, config = {}) =>
+  apiClient.get('warehouse/gp-stock/', { params, ...config });
+
+/** @deprecated упаковка снята с фронта (410 на gp-packages) */
 export const packFromOtk = (body) => apiClient.post('warehouse/batches/package/', body);
 
-/** GET warehouse/gp-unpacked-balance/ — группы неупакованного ГП после приёмки. */
+/** @deprecated 410 — остатки через gp-stock */
 export const getGpUnpackedBalance = (params = {}, config = {}) =>
   apiClient.get('warehouse/gp-unpacked-balance/', { params, ...config });
 
-/**
- * GET warehouse/gp-packages/ — журнал упаковок ГП.
- *
- * Доп. фильтры (ожидаемые от бэка):
- *   - status=available  — только доступные упаковки (по умолчанию, если параметр не передан)
- *   - status=sold       — только проданные/списанные
- *   - status=all        — без фильтра (для вкладки «История»)
- *   meta.summary: { rows_count, packages_count, pieces_total }
- * Поля ответа (ожидаемые от бэка по каждой упаковке):
- *   - status: 'available' | 'sold' | 'shipped'
- *   - is_sold: boolean
- *   - sold_at: ISO datetime | null
- *   - sold_sale_id: number | null
- *   - warehouse_batch_status: 'available' | 'shipped' | …
- */
+/** @deprecated 410 — упаковка снята */
 export const getGpPackages = (params = {}, config = {}) =>
   apiClient.get('warehouse/gp-packages/', { params, ...config });
 
-/**
- * POST warehouse/gp-packages/ — фиксация упаковки по BlankProductionRun (FIFO на бэке).
- * @param {object} body — product_id, blank_id, kind, label, split_mode, lines[], total_pieces, client_request_id
- */
+/** @deprecated 410 */
 export const postGpPackage = (body) => apiClient.post('warehouse/gp-packages/', body);
 
 /**

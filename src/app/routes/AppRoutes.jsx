@@ -14,7 +14,6 @@ import { OTKPage } from '../../features/otk';
 import { WarehousePage } from '../../features/warehouse';
 import { SalesPage } from '../../features/sales';
 import { ClientsPage } from '../../features/clients';
-import { OrdersPage } from '../../features/orders';
 import { MyShiftPage, ShiftsReportPage } from '../../features/shifts';
 import CashPage from '../../features/cash/components/CashPage/CashPage';
 import { getDefaultHomePath } from '../../shared/config/navigation';
@@ -65,7 +64,7 @@ const AppRoutes = () => (
         <>
           <Route path="cash" element={<CashPage />}>
             <Route path="clients" element={<ProtectedRoute requiredAccess="clients"><ClientsPage /></ProtectedRoute>} />
-            <Route path="orders" element={<ProtectedRoute requiredAccess="client_orders"><OrdersPage /></ProtectedRoute>} />
+            <Route path="orders" element={<Navigate to="/cash/sales" replace />} />
             <Route path="sales" element={<ProtectedRoute requiredAccess="sales"><SalesPage /></ProtectedRoute>} />
           </Route>
           <Route path="clients" element={<Navigate to="/cash/clients" replace />} />

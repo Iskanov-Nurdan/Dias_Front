@@ -11,7 +11,6 @@ const ROUTE_TITLES = {
   '/warehouse': 'Склад',
   '/cash': 'Касса',
   '/cash/clients': 'Клиенты',
-  '/cash/orders': 'Заявки',
   '/cash/sales': 'Продажи',
 };
 

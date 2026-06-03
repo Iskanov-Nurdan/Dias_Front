@@ -1,17 +1,32 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { useOperationalRefetch, WS_WORKSHOP } from '../../../../shared/realtime';
 import {
   useServerQuery,
   formatNumberForInput,
   parseLocaleNumber,
 } from '../../../../shared/lib';
-import { Loading, ErrorState, EmptyState, useToast, DecimalInput, ConfirmModal } from '../../../../shared/ui';
+import {
+  Loading,
+  ErrorState,
+  EmptyState,
+  useToast,
+  DecimalInput,
+  ConfirmModal,
+  RecordDetailsModal,
+  DetailFields,
+} from '../../../../shared/ui';
 import {
   createPlasticProfile,
   updatePlasticProfile,
   deletePlasticProfile,
 } from '../../../production/api/productionApi';
 import { readPlasticProfileWeightKg } from '../../../production/lib/readPlasticProfilePieceWeight';
+import {
+  readProfileCostPrice,
+  readProfileMarkupAmount,
+  formatMarkupPercentDisplay,
+  formatProfileCostDisplay,
+} from '../../../production/lib/plasticProfilePricing';
 import '../ChemistryPage/ChemistryPage.scss';
 
 const listQ = { page: 1, page_size: 500, ordering: 'name' };
@@ -61,13 +76,30 @@ const findProfileByName = (items, name, excludeId = null) => {
 
 const profileDisplayName = (p) => p?.name || '—';
 
-const AddProfileModal = ({ onClose, onCreated, existingProfiles = [] }) => {
+const ProfileFormModal = ({ mode, profile, onClose, onSaved, existingProfiles = [] }) => {
   const toast = useToast();
-  const [name, setName] = useState('');
-  const [kgStr, setKgStr] = useState('');
-  const [gramsStr, setGramsStr] = useState('');
+  const isEdit = mode === 'edit';
+  const serverWeight = isEdit ? readPlasticProfileWeightKg(profile) : null;
+  const serverCost = isEdit ? readProfileCostPrice(profile) : null;
+  const serverMarkup = isEdit ? readProfileMarkupAmount(profile) : null;
+
+  const [name, setName] = useState(isEdit ? profile?.name || '' : '');
+  const [kgStr, setKgStr] = useState(() => {
+    if (!isEdit || serverWeight == null) return '';
+    return splitTotalKgToFields(serverWeight).kgStr;
+  });
+  const [gramsStr, setGramsStr] = useState(() => {
+    if (!isEdit || serverWeight == null) return '';
+    return splitTotalKgToFields(serverWeight).gramsStr;
+  });
+  const [markupStr, setMarkupStr] = useState(
+    isEdit && serverMarkup != null ? formatNumberForInput(serverMarkup) : '',
+  );
   const [busy, setBusy] = useState(false);
   const [validationError, setValidationError] = useState('');
+
+  const markupNum = parseLocaleNumber(markupStr);
+  const markupPctDisplay = formatMarkupPercentDisplay(serverCost, markupNum);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -76,7 +108,7 @@ const AddProfileModal = ({ onClose, onCreated, existingProfiles = [] }) => {
       toast.warning('Введите имя.');
       return;
     }
-    const duplicate = findProfileByName(existingProfiles, n);
+    const duplicate = findProfileByName(existingProfiles, n, isEdit ? profile?.id : null);
     if (duplicate) {
       setValidationError(`Товар «${profileDisplayName(duplicate)}» уже есть в списке.`);
       return;
@@ -89,29 +121,38 @@ const AddProfileModal = ({ onClose, onCreated, existingProfiles = [] }) => {
     }
     setBusy(true);
     try {
-      await createPlasticProfile({
+      const payload = {
         name: n,
-        code: buildAutoPlasticCode(),
-        is_active: true,
-        comment: '',
         weight_kg_per_piece: pieceKg,
-      });
-      toast.success('Товар создан');
-      onCreated?.();
+        markup_amount: Number.isFinite(markupNum) && markupNum >= 0 ? markupNum : 0,
+      };
+      if (isEdit) {
+        await updatePlasticProfile(profile.id, payload);
+        toast.success('Сохранено');
+      } else {
+        await createPlasticProfile({
+          ...payload,
+          code: buildAutoPlasticCode(),
+          is_active: true,
+          comment: '',
+        });
+        toast.success('Товар создан');
+      }
+      onSaved?.();
       onClose();
     } catch (err) {
-      toast.apiError(err, 'Не удалось создать');
+      toast.apiError(err, isEdit ? 'Не удалось сохранить' : 'Не удалось создать');
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <div className="modal-overlay" role="presentation" onClick={onClose}>
+    <div className="modal-overlay" role="presentation" onClick={busy ? undefined : onClose}>
       <div className="modal modal--wide" onClick={(ev) => ev.stopPropagation()}>
         <div className="modal__head">
-          <h3>Новый товар</h3>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
+          <h3>{isEdit ? 'Редактировать товар' : 'Новый товар'}</h3>
+          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть" disabled={busy}>
             ×
           </button>
         </div>
@@ -136,6 +177,29 @@ const AddProfileModal = ({ onClose, onCreated, existingProfiles = [] }) => {
             onChange={(ev) => setGramsStr(clampGramsInput(ev.target.value))}
             placeholder="0–999"
           />
+          {isEdit ? (
+            <>
+              <label>Себестоимость, сом</label>
+              <p className="chemistry-plastic-profiles__readonly-cost">
+                {serverCost != null ? `${formatNumberForInput(serverCost)} сом` : '—'}
+              </p>
+              <p className="chemistry-plastic-profiles__hint">
+                Считается системой автоматически. Изменить вручную нельзя.
+              </p>
+            </>
+          ) : null}
+          <label>Наценка, сом</label>
+          <div className="chemistry-plastic-profiles__markup-row">
+            <DecimalInput min={0} value={markupStr} onChange={setMarkupStr} placeholder="0" />
+            <span className="chemistry-plastic-profiles__markup-pct" title="% от себестоимости">
+              {markupPctDisplay}
+            </span>
+          </div>
+          {!isEdit && serverCost == null ? (
+            <p className="chemistry-plastic-profiles__hint">
+              % наценки появится после расчёта себестоимости системой.
+            </p>
+          ) : null}
           {validationError && <p className="modal__error">{validationError}</p>}
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose} disabled={busy}>
@@ -151,148 +215,51 @@ const AddProfileModal = ({ onClose, onCreated, existingProfiles = [] }) => {
   );
 };
 
-const ProfileRow = ({ profile, existingProfiles = [], onSaved, onDeleteRequest }) => {
-  const toast = useToast();
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState('');
-  const [kgStr, setKgStr] = useState('');
-  const [gramsStr, setGramsStr] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [validationError, setValidationError] = useState('');
-
+const profileDetailRows = (profile) => {
   const serverWeight = readPlasticProfileWeightKg(profile);
-
-  const applyServerToFields = useCallback(() => {
-    setName(profile.name || '');
-    const { kgStr: k, gramsStr: g } = splitTotalKgToFields(serverWeight);
-    setKgStr(k);
-    setGramsStr(g);
-  }, [profile.name, serverWeight]);
-
-  useEffect(() => {
-    if (!editing) {
-      applyServerToFields();
-    }
-  }, [profile.id, applyServerToFields, editing]);
-
-  const viewKgGrams = useMemo(() => splitTotalKgToFields(serverWeight), [serverWeight]);
+  const viewKgGrams = splitTotalKgToFields(serverWeight);
   const viewKgDisplay = viewKgGrams.kgStr === '' && viewKgGrams.gramsStr === '' ? '—' : (viewKgGrams.kgStr || '0');
   const viewGramsDisplay = viewKgGrams.gramsStr === '' ? '—' : viewKgGrams.gramsStr;
-
-  const handleSave = async () => {
-    const n = name.trim();
-    if (!n) {
-      toast.warning('Введите имя.');
-      return;
-    }
-    const duplicate = findProfileByName(existingProfiles, n, profile.id);
-    if (duplicate) {
-      setValidationError(`Товар «${profileDisplayName(duplicate)}» уже есть в списке.`);
-      return;
-    }
-    setValidationError('');
-    const pieceKg = calcPieceKg(kgStr, gramsStr);
-    if (!Number.isFinite(pieceKg) || pieceKg <= 0) {
-      toast.warning('Укажите вес одной штуки (кг и/или граммы).');
-      return;
-    }
-    setBusy(true);
-    try {
-      await updatePlasticProfile(profile.id, {
-        name: n,
-        weight_kg_per_piece: pieceKg,
-      });
-      toast.success('Сохранено');
-      setEditing(false);
-      onSaved?.();
-    } catch (err) {
-      toast.apiError(err, 'Не удалось сохранить');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    applyServerToFields();
-    setValidationError('');
-    setEditing(false);
-  };
-
-  if (!editing) {
-    return (
-      <div className="chemistry-table__row chemistry-table__row--plastic-profile-view">
-        <span className="chemistry-plastic-profiles__text">{profile.name || '—'}</span>
-        <span className="chemistry-plastic-profiles__text chemistry-plastic-profiles__text--num">{viewKgDisplay}</span>
-        <span className="chemistry-plastic-profiles__text chemistry-plastic-profiles__text--num">{viewGramsDisplay}</span>
-        <div className="chemistry-table__actions chemistry-table__actions--wrap">
-          <button type="button" className="btn btn--secondary btn--sm" onClick={() => setEditing(true)}>
-            Редактировать
-          </button>
-          <button
-            type="button"
-            className="btn btn--danger btn--sm"
-            onClick={() => onDeleteRequest?.(profile)}
-          >
-            Удалить
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="chemistry-table__row chemistry-table__row--plastic-profile-edit">
-      <div className="chemistry-plastic-profiles__cell-name">
-      <input
-        className="chemistry-plastic-profiles__name"
-        value={name}
-        onChange={(ev) => {
-          setName(ev.target.value);
-          if (validationError) setValidationError('');
-        }}
-        autoComplete="off"
-        aria-label="Имя товара"
-      />
-      </div>
-      <div className="chemistry-plastic-profiles__cell-num">
-        <DecimalInput min={0} value={kgStr} onChange={setKgStr} placeholder="0" />
-      </div>
-      <div className="chemistry-plastic-profiles__cell-num">
-        <input
-          inputMode="numeric"
-          className="chemistry-plastic-profiles__grams chemistry-plastic-profiles__grams--in-row"
-          value={gramsStr}
-          onChange={(ev) => setGramsStr(clampGramsInput(ev.target.value))}
-          placeholder="0–999"
-          aria-label="Граммы"
-        />
-      </div>
-      <div className="chemistry-table__actions chemistry-table__actions--wrap">
-        {validationError && (
-          <p className="modal__error chemistry-plastic-profiles__row-error">{validationError}</p>
-        )}
-        <button type="button" className="btn btn--primary btn--sm" onClick={handleSave} disabled={busy}>
-          {busy ? '…' : 'Сохранить'}
-        </button>
-        <button type="button" className="btn btn--secondary btn--sm" onClick={handleCancelEdit} disabled={busy}>
-          Отмена
-        </button>
-        <button
-          type="button"
-          className="btn btn--danger btn--sm"
-          onClick={() => onDeleteRequest?.(profile)}
-          disabled={busy}
-        >
-          Удалить
-        </button>
-      </div>
-    </div>
-  );
+  return [
+    { label: 'Кг', value: viewKgDisplay },
+    { label: 'Граммы', value: viewGramsDisplay },
+    { label: 'Себестоимость', value: formatProfileCostDisplay(profile) },
+    {
+      label: 'Наценка',
+      value: readProfileMarkupAmount(profile) != null
+        ? `${formatNumberForInput(readProfileMarkupAmount(profile))} сом`
+        : '—',
+    },
+    {
+      label: 'Наценка, %',
+      value: formatMarkupPercentDisplay(readProfileCostPrice(profile), readProfileMarkupAmount(profile)),
+    },
+  ];
 };
+
+const ProfileRow = ({ profile, onDetails, onEdit, onDeleteRequest }) => (
+  <div className="chemistry-table__row chemistry-table__row--plastic-profile-compact">
+    <span className="chemistry-plastic-profiles__text chemistry-plastic-profiles__text--name">
+      {profile.name || '—'}
+    </span>
+    <div className="chemistry-table__actions chemistry-table__actions--wrap">
+      <button type="button" className="btn btn--ghost btn--sm" onClick={() => onDetails?.(profile)}>
+        Подробнее
+      </button>
+      <button type="button" className="btn btn--secondary btn--sm" onClick={() => onEdit?.(profile)}>
+        Редактировать
+      </button>
+      <button type="button" className="btn btn--danger btn--sm" onClick={() => onDeleteRequest?.(profile)}>
+        Удалить
+      </button>
+    </div>
+  </div>
+);
 
 const ChemistryPlasticProfilesTab = () => {
   const toast = useToast();
-  const [addOpen, setAddOpen] = useState(false);
+  const [formModal, setFormModal] = useState(null);
+  const [detailProfile, setDetailProfile] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -325,7 +292,7 @@ const ChemistryPlasticProfilesTab = () => {
       setDeleteTarget(null);
       refetchAll();
     } catch (err) {
-      setDeleteError(err.response?.data?.error || err.response?.data?.detail || 'Не удалось удалить. Возможно, товар используется в рецептах или производстве.');
+      setDeleteError(err.response?.data?.error || err.response?.data?.detail || 'Не удалось удалить.');
     } finally {
       setDeleteBusy(false);
     }
@@ -336,7 +303,7 @@ const ChemistryPlasticProfilesTab = () => {
       <div className="chemistry-card__head ds-toolbar ds-toolbar--in-card">
         <div className="ds-toolbar__start" />
         <div className="ds-toolbar__end chemistry-card__toolbar-actions">
-          <button type="button" className="btn btn--primary" onClick={() => setAddOpen(true)}>
+          <button type="button" className="btn btn--primary" onClick={() => setFormModal({ mode: 'add' })}>
             Добавить товар
           </button>
         </div>
@@ -349,19 +316,17 @@ const ChemistryPlasticProfilesTab = () => {
       )}
       {!loading && !error && sorted.length > 0 && (
         <div className="chemistry-table-wrap">
-          <div className="chemistry-table chemistry-table--plastic-profiles">
+          <div className="chemistry-table chemistry-table--plastic-profiles chemistry-table--plastic-profiles-compact">
             <div className="chemistry-table__header">
-              <span className="chemistry-table__th">Имя</span>
-              <span className="chemistry-table__th chemistry-table__th--num">Кг</span>
-              <span className="chemistry-table__th chemistry-table__th--num">Граммы</span>
+              <span className="chemistry-table__th">Товар</span>
               <span className="chemistry-table__th chemistry-table__th--actions"> </span>
             </div>
             {sorted.map((p) => (
               <ProfileRow
                 key={p.id}
                 profile={p}
-                existingProfiles={sorted}
-                onSaved={refetchAll}
+                onDetails={(item) => setDetailProfile(item)}
+                onEdit={(item) => setFormModal({ mode: 'edit', profile: item })}
                 onDeleteRequest={(item) => {
                   setDeleteError('');
                   setDeleteTarget({ id: item.id, name: item.name });
@@ -372,22 +337,47 @@ const ChemistryPlasticProfilesTab = () => {
         </div>
       )}
 
-      {addOpen ? (
-        <AddProfileModal
+      {detailProfile ? (
+        <RecordDetailsModal
+          open
+          onClose={() => setDetailProfile(null)}
+          title={detailProfile.name || 'Товар'}
+          footer={(
+            <>
+              <button type="button" className="btn btn--secondary" onClick={() => setDetailProfile(null)}>
+                Закрыть
+              </button>
+              <button
+                type="button"
+                className="btn btn--primary"
+                onClick={() => {
+                  setDetailProfile(null);
+                  setFormModal({ mode: 'edit', profile: detailProfile });
+                }}
+              >
+                Редактировать
+              </button>
+            </>
+          )}
+        >
+          <DetailFields rows={profileDetailRows(detailProfile)} />
+        </RecordDetailsModal>
+      ) : null}
+
+      {formModal ? (
+        <ProfileFormModal
+          mode={formModal.mode}
+          profile={formModal.profile}
           existingProfiles={sorted}
-          onClose={() => setAddOpen(false)}
-          onCreated={refetchAll}
+          onClose={() => setFormModal(null)}
+          onSaved={refetchAll}
         />
       ) : null}
 
       <ConfirmModal
         open={!!deleteTarget}
         title="Удалить товар?"
-        message={
-          deleteTarget
-            ? `Удалить «${deleteTarget.name || ''}»? Доступно только если нет рецептов и производства.`
-            : ''
-        }
+        message={deleteTarget ? `Удалить «${deleteTarget.name || ''}»?` : ''}
         confirmText="Удалить"
         confirmBusy={deleteBusy}
         onConfirm={handleDelete}

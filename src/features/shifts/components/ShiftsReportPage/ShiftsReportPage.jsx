@@ -5,6 +5,7 @@ import ShiftActivityListModal from '../ActivityAudit/ShiftActivityListModal';
 import { fetchShiftActivityList } from '../../lib/fetchShiftActivityList';
 import ComplaintModal from '../ComplaintModal/ComplaintModal';
 import ComplaintsInbox from '../ComplaintsInbox/ComplaintsInbox';
+import OtkStaffReportTab from '../OtkStaffReportTab/OtkStaffReportTab';
 import { useOperationalRefetch, WS_SHIFTS_REPORT } from '../../../../shared/realtime';
 import './ShiftsReportPage.scss';
 
@@ -180,6 +181,15 @@ const ShiftsReportPage = () => {
         >
           Жалобы
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mainTab === 'otk-staff'}
+          className={`shifts-report__main-tab${mainTab === 'otk-staff' ? ' shifts-report__main-tab--active' : ''}`}
+          onClick={() => setMainTab('otk-staff')}
+        >
+          Работа в ОТК
+        </button>
       </div>
 
       {mainTab === 'shifts' && (
@@ -208,6 +218,8 @@ const ShiftsReportPage = () => {
           onAddComplaint={() => setComplaintModalOpen(true)}
         />
       )}
+
+      {mainTab === 'otk-staff' && <OtkStaffReportTab users={users} />}
 
       {mainTab === 'shifts' && (
         <>

@@ -14,7 +14,8 @@ POST workshop/blank-production-runs/  — только blank_id (без product_
     ↓
 Пул ОТК по заготовке (кг суммируются)
     ↓
-POST workshop/otk-blanks/{blank_id}/account/  — профили × шт, брак, сотрудники
+POST workshop/otk-account/  — учёт v2 (см. BACKEND_OTK_ACCOUNT_V2.md)
+POST workshop/otk-blanks/{blank_id}/account/  — deprecated
     ↓
 Склад ГП (шт/кг) — сразу, без accept-gp и без упаковки
 ```
@@ -184,6 +185,7 @@ POST workshop/otk-blanks/{blank_id}/account/  — профили × шт, бра
 consumed_kg = Σ(lines.pieces × weight_kg_per_piece) + defect_kg
 consumed_kg <= pool.remaining_kg  (+ epsilon)
 lines.pieces > 0, profile активен
+profile.blank_id == blank_id пула (см. BACKEND_PLASTIC_PROFILE_BLANK_EXPENSES.md)
 ```
 
 **Транзакция (атомарно):**

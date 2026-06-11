@@ -8,22 +8,32 @@ import {
   useServerQuery,
 } from '../../../../shared/lib';
 import { readPlasticProfileWeightKg } from '../../../production/lib/readPlasticProfilePieceWeight';
+import { readProfileBlankId, readProfileBlankName } from '../../../production/lib/plasticProfilePricing';
 import { getAllUsers } from '../../../shifts/api/shiftsApi';
-import { buildOtkAccountPayload, postOtkAccount } from '../../api/otkWorkshopApi';
-import { calcOtkAccountConsumptionKg } from '../../lib/otkBlankPoolUtils';
+import {
+  buildOtkAccountPayload,
+  OTK_SHIFT_PERIODS,
+  postOtkAccountSession,
+} from '../../api/otkWorkshopApi';
+import {
+  calcOtkAccountConsumptionByBlank,
+  calcOtkAccountConsumptionKg,
+  findOtkBlankOverages,
+} from '../../lib/otkBlankPoolUtils';
 import './OtkAccountModal.scss';
 
 const emptyProfileLine = () => ({ profileId: '', pieces: '' });
 
-const OtkAccountModal = ({ poolEntry, onClose, onSaved }) => {
+const OtkAccountModal = ({ pool = [], onClose, onSaved }) => {
   const toast = useToast();
   const [profileLines, setProfileLines] = useState([emptyProfileLine()]);
-  const [defectUnit, setDefectUnit] = useState('kg');
-  const [defectValue, setDefectValue] = useState('');
-  const [defectProfileId, setDefectProfileId] = useState('');
+  const [defectKgStr, setDefectKgStr] = useState('');
+  const [defectBlankId, setDefectBlankId] = useState('');
+  const [shiftPeriod, setShiftPeriod] = useState('day');
   const [operatorId, setOperatorId] = useState('');
   const [chemistId, setChemistId] = useState('');
-  const [packerId, setPackerId] = useState('');
+  const [packerIds, setPackerIds] = useState([]);
+  const [packerPick, setPackerPick] = useState('');
   const [employees, setEmployees] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -45,26 +55,40 @@ const OtkAccountModal = ({ poolEntry, onClose, onSaved }) => {
     return () => { alive = false; };
   }, []);
 
+  const poolByBlankId = useMemo(() => {
+    const m = new Map();
+    (pool || []).forEach((p) => {
+      if (p?.blankId) m.set(String(p.blankId), p);
+    });
+    return m;
+  }, [pool]);
+
   const profilesById = useMemo(() => {
     const m = new Map();
     (profileItems || []).forEach((p) => {
+      const blankId = readProfileBlankId(p);
+      if (!blankId) return;
+      const poolRow = poolByBlankId.get(blankId);
       const w = readPlasticProfileWeightKg(p);
       m.set(String(p.id), {
         id: String(p.id),
         name: p.name || p.code || `#${p.id}`,
         weightKg: w,
+        blankId,
+        blankName: poolRow?.blankName || readProfileBlankName(p) || 'Заготовка',
+        remainingKg: poolRow?.remainingKg ?? 0,
       });
     });
     return m;
-  }, [profileItems]);
+  }, [profileItems, poolByBlankId]);
 
   const profileOptions = useMemo(
     () =>
-      (profileItems || []).map((p) => ({
-        value: String(p.id),
-        label: p.name || p.code || `#${p.id}`,
+      Array.from(profilesById.values()).map((p) => ({
+        value: p.id,
+        label: `${p.name} — ${p.blankName}`,
       })),
-    [profileItems],
+    [profilesById],
   );
 
   const employeeOptions = useMemo(
@@ -76,44 +100,93 @@ const OtkAccountModal = ({ poolEntry, onClose, onSaved }) => {
     [employees],
   );
 
-  const remainingKg = poolEntry?.remainingKg ?? 0;
-
-  const defectParsed = useMemo(() => {
-    const trimmed = String(defectValue ?? '').trim();
-    if (!trimmed) return { unit: defectUnit, value: 0, profileId: defectProfileId };
-    const n = defectUnit === 'pieces' ? Math.floor(Number(trimmed)) : parseLocaleNumber(trimmed);
-    return {
-      unit: defectUnit,
-      value: Number.isFinite(n) && n >= 0 ? n : NaN,
-      profileId: defectProfileId,
-    };
-  }, [defectUnit, defectValue, defectProfileId]);
-
-  const consumedKg = useMemo(
-    () =>
-      calcOtkAccountConsumptionKg({
-        profileLines: profileLines.map((ln) => ({
-          profileId: ln.profileId,
-          pieces: ln.pieces,
-        })),
-        profilesById,
-        defect: defectParsed.value > 0 || (Number.isFinite(defectParsed.value) && defectParsed.value === 0)
-          ? defectParsed
-          : null,
-      }),
-    [profileLines, profilesById, defectParsed],
+  const packerAddOptions = useMemo(
+    () => employeeOptions.filter((o) => !packerIds.includes(o.value)),
+    [employeeOptions, packerIds],
   );
 
-  const remainingAfter = Math.max(0, remainingKg - consumedKg);
+  const defectKg = useMemo(() => {
+    const trimmed = String(defectKgStr ?? '').trim();
+    if (!trimmed) return 0;
+    const n = parseLocaleNumber(trimmed);
+    return Number.isFinite(n) && n >= 0 ? n : NaN;
+  }, [defectKgStr]);
+
+  const firstLineBlankId = useMemo(() => {
+    for (const ln of profileLines) {
+      if (!ln.profileId) continue;
+      const prof = profilesById.get(String(ln.profileId));
+      if (prof?.blankId) return String(prof.blankId);
+    }
+    return '';
+  }, [profileLines, profilesById]);
+
+  const effectiveDefectBlankId = defectBlankId || firstLineBlankId;
+
+  const consumptionByBlank = useMemo(
+    () =>
+      calcOtkAccountConsumptionByBlank({
+        profileLines,
+        profilesById,
+        defectKg: Number.isFinite(defectKg) ? defectKg : 0,
+        defectBlankId: effectiveDefectBlankId,
+      }),
+    [profileLines, profilesById, defectKg, effectiveDefectBlankId],
+  );
+
+  const consumedKg = useMemo(
+    () => calcOtkAccountConsumptionKg({
+      profileLines,
+      profilesById,
+      defectKg: Number.isFinite(defectKg) ? defectKg : 0,
+      defectBlankId: effectiveDefectBlankId,
+    }),
+    [profileLines, profilesById, defectKg, effectiveDefectBlankId],
+  );
+
+  const overages = useMemo(
+    () => findOtkBlankOverages(consumptionByBlank, poolByBlankId),
+    [consumptionByBlank, poolByBlankId],
+  );
+
+  const blankBreakdown = useMemo(() => {
+    const rows = [];
+    consumptionByBlank.forEach((kg, blankId) => {
+      const poolRow = poolByBlankId.get(String(blankId));
+      const remaining = poolRow?.remainingKg ?? 0;
+      rows.push({
+        blankId: String(blankId),
+        blankName: poolRow?.blankName || `Заготовка #${blankId}`,
+        consumedKg: kg,
+        remainingKg: remaining,
+        afterKg: Math.max(0, remaining - kg),
+      });
+    });
+    return rows.sort((a, b) => a.blankName.localeCompare(b.blankName, 'ru'));
+  }, [consumptionByBlank, poolByBlankId]);
+
+  const defectBlankOptions = useMemo(() => {
+    const ids = new Set();
+    profileLines.forEach((ln) => {
+      const prof = ln.profileId ? profilesById.get(String(ln.profileId)) : null;
+      if (prof?.blankId) ids.add(String(prof.blankId));
+    });
+    return Array.from(ids).map((id) => {
+      const poolRow = poolByBlankId.get(id);
+      const prof = Array.from(profilesById.values()).find((p) => p.blankId === id);
+      return {
+        value: id,
+        label: poolRow?.blankName || prof?.blankName || `Заготовка #${id}`,
+      };
+    });
+  }, [profileLines, profilesById, poolByBlankId]);
+
   const hasValidLines = profileLines.some(
     (ln) => ln.profileId && Math.floor(Number(ln.pieces)) > 0,
   );
-  const defectOk =
-    String(defectValue ?? '').trim() === '' ||
-    (Number.isFinite(defectParsed.value) && defectParsed.value >= 0);
-  const defectProfileOk = defectUnit !== 'pieces' || String(defectValue ?? '').trim() === '' || defectProfileId;
-  const overRemaining = consumedKg > remainingKg + 1e-6;
-  const canSubmit = hasValidLines && defectOk && defectProfileOk && !overRemaining && consumedKg > 0;
+  const defectOk = String(defectKgStr ?? '').trim() === '' || (Number.isFinite(defectKg) && defectKg >= 0);
+  const defectBlankOk = defectKg <= 0 || Boolean(effectiveDefectBlankId);
+  const canSubmit = hasValidLines && defectOk && defectBlankOk && overages.length === 0 && consumedKg > 0;
 
   const addProfileLine = () => setProfileLines((prev) => [...prev, emptyProfileLine()]);
 
@@ -125,11 +198,21 @@ const OtkAccountModal = ({ poolEntry, onClose, onSaved }) => {
     setProfileLines((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx)));
   };
 
+  const addPacker = (id) => {
+    const sid = id != null ? String(id) : '';
+    if (!sid || packerIds.includes(sid)) return;
+    setPackerIds((prev) => [...prev, sid]);
+    setPackerPick('');
+  };
+
+  const removePacker = (id) => {
+    setPackerIds((prev) => prev.filter((x) => x !== id));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!poolEntry?.blankId) return;
     if (!canSubmit) {
-      if (overRemaining) toast.warning('Списание больше остатка заготовки в ОТК');
+      if (overages.length) toast.warning('Списание больше остатка по заготовке');
       else toast.warning('Добавьте профили с количеством');
       return;
     }
@@ -138,15 +221,14 @@ const OtkAccountModal = ({ poolEntry, onClose, onSaved }) => {
     try {
       const payload = buildOtkAccountPayload({
         profileLines,
-        defect:
-          String(defectValue ?? '').trim() !== '' && Number(defectParsed.value) >= 0
-            ? defectParsed
-            : null,
+        defectKg: Number.isFinite(defectKg) && defectKg > 0 ? defectKg : 0,
+        defectBlankId: effectiveDefectBlankId,
+        shiftPeriod,
         operatorId,
         chemistId,
-        packerId,
+        packerIds,
       });
-      await postOtkAccount(poolEntry.blankId, payload);
+      await postOtkAccountSession(payload);
       toast.success('Учёт сохранён — товар на складе');
       onSaved?.();
       onClose();
@@ -159,8 +241,6 @@ const OtkAccountModal = ({ poolEntry, onClose, onSaved }) => {
     }
   };
 
-  if (!poolEntry) return null;
-
   const modalContent = (
     <div className="otk-account-overlay" onClick={onClose} role="presentation">
       <div
@@ -172,11 +252,9 @@ const OtkAccountModal = ({ poolEntry, onClose, onSaved }) => {
       >
         <header className="otk-account-screen__head">
           <div className="otk-account-screen__head-text">
-            <h2 id="otk-account-title" className="otk-account-screen__title">
-              Учесть: {poolEntry.blankName || 'Заготовка'}
-            </h2>
+            <h2 id="otk-account-title" className="otk-account-screen__title">Учесть</h2>
             <p className="otk-account-screen__lead">
-              Профили → склад. Брак → заготовка (цех). Кг считаются автоматически.
+              Кг списываются с заготовки, привязанной к профилю. Брак — в кг, необязательно.
             </p>
           </div>
           <button
@@ -190,20 +268,31 @@ const OtkAccountModal = ({ poolEntry, onClose, onSaved }) => {
           </button>
         </header>
 
-        <div className="otk-account-screen__stats">
-          <div className="otk-account-screen__stat">
-            <span className="otk-account-screen__stat-label">В ОТК</span>
-            <span className="otk-account-screen__stat-value">{formatNumberForInput(remainingKg)} кг</span>
+        {blankBreakdown.length > 0 ? (
+          <div className="otk-account-screen__stats otk-account-screen__stats--blanks">
+            {blankBreakdown.map((row) => (
+              <div
+                key={row.blankId}
+                className={`otk-account-screen__stat${row.consumedKg > row.remainingKg + 1e-6 ? ' otk-account-screen__stat--warn' : ''}`}
+              >
+                <span className="otk-account-screen__stat-label">{row.blankName}</span>
+                <span className="otk-account-screen__stat-value">
+                  −{formatNumberForInput(row.consumedKg)} кг
+                  <span className="otk-account-screen__stat-sub">
+                    останется {formatNumberForInput(row.afterKg)} кг
+                  </span>
+                </span>
+              </div>
+            ))}
           </div>
-          <div className="otk-account-screen__stat">
-            <span className="otk-account-screen__stat-label">Списание</span>
-            <span className="otk-account-screen__stat-value">{formatNumberForInput(consumedKg)} кг</span>
+        ) : (
+          <div className="otk-account-screen__stats">
+            <div className="otk-account-screen__stat">
+              <span className="otk-account-screen__stat-label">Списание</span>
+              <span className="otk-account-screen__stat-value">{formatNumberForInput(consumedKg)} кг</span>
+            </div>
           </div>
-          <div className={`otk-account-screen__stat${overRemaining ? ' otk-account-screen__stat--warn' : ''}`}>
-            <span className="otk-account-screen__stat-label">Останется</span>
-            <span className="otk-account-screen__stat-value">{formatNumberForInput(remainingAfter)} кг</span>
-          </div>
-        </div>
+        )}
 
         <form id="otk-account-form" className="otk-account-screen__form" onSubmit={handleSubmit}>
           <div className="otk-account-screen__body">
@@ -214,6 +303,11 @@ const OtkAccountModal = ({ poolEntry, onClose, onSaved }) => {
                   + Профиль
                 </button>
               </div>
+              {profileOptions.length === 0 ? (
+                <p className="otk-account-card__hint">
+                  Нет товаров с привязкой к заготовке. Добавьте в «Химия → Товары».
+                </p>
+              ) : null}
               <div className="otk-account-card__table">
                 <div className="otk-account-card__table-head" aria-hidden="true">
                   <span>Профиль</span>
@@ -235,6 +329,11 @@ const OtkAccountModal = ({ poolEntry, onClose, onSaved }) => {
                             placeholder="Выберите профиль"
                             options={profileOptions}
                           />
+                          {prof ? (
+                            <span className="otk-account-card__line-hint">
+                              Заготовка: {prof.blankName} ({formatNumberForInput(prof.remainingKg)} кг в ОТК)
+                            </span>
+                          ) : null}
                         </div>
                         <div className="otk-account-card__field otk-account-card__field--qty">
                           <IntegerInput
@@ -271,46 +370,34 @@ const OtkAccountModal = ({ poolEntry, onClose, onSaved }) => {
             <aside className="otk-account-screen__side">
               <section className="otk-account-card">
                 <h3 className="otk-account-card__title">Брак</h3>
-                <div className={`otk-account-card__grid${defectUnit === 'pieces' ? ' otk-account-card__grid--3' : ''}`}>
+                <div className="otk-account-card__field">
+                  <span className="otk-account-card__label">Кг (необязательно)</span>
+                  <DecimalInput min={0} value={defectKgStr} onChange={setDefectKgStr} placeholder="0" />
+                </div>
+                {defectKg > 0 && defectBlankOptions.length > 1 ? (
                   <div className="otk-account-card__field">
-                    <span className="otk-account-card__label">Единица</span>
+                    <span className="otk-account-card__label">Заготовка для брака</span>
                     <Select
-                      value={defectUnit}
-                      onChange={(v) => setDefectUnit(v === 'pieces' ? 'pieces' : 'kg')}
-                      options={[
-                        { value: 'kg', label: 'Кг' },
-                        { value: 'pieces', label: 'Шт' },
-                      ]}
+                      value={defectBlankId || firstLineBlankId}
+                      onChange={(v) => setDefectBlankId(v != null ? String(v) : '')}
+                      options={defectBlankOptions}
                     />
                   </div>
-                  {defectUnit === 'pieces' ? (
-                    <div className="otk-account-card__field">
-                      <span className="otk-account-card__label">Профиль</span>
-                      <Select
-                        value={defectProfileId}
-                        onChange={(v) => setDefectProfileId(v != null ? String(v) : '')}
-                        placeholder="Выберите"
-                        options={profileOptions}
-                      />
-                    </div>
-                  ) : null}
-                  <div className="otk-account-card__field">
-                    <span className="otk-account-card__label">
-                      {defectUnit === 'pieces' ? 'Кол-во, шт' : 'Кол-во, кг'}
-                    </span>
-                    {defectUnit === 'pieces' ? (
-                      <IntegerInput min={0} value={defectValue} onChange={setDefectValue} placeholder="0" />
-                    ) : (
-                      <DecimalInput min={0} value={defectValue} onChange={setDefectValue} placeholder="0" />
-                    )}
-                  </div>
-                </div>
+                ) : null}
                 <p className="otk-account-card__hint">Брак возвращается в заготовку (цех).</p>
               </section>
 
               <section className="otk-account-card">
                 <h3 className="otk-account-card__title">Сотрудники</h3>
-                <div className="otk-account-card__grid otk-account-card__grid--3">
+                <div className="otk-account-card__field">
+                  <span className="otk-account-card__label">Смена</span>
+                  <Select
+                    value={shiftPeriod}
+                    onChange={(v) => setShiftPeriod(v === 'night' ? 'night' : 'day')}
+                    options={OTK_SHIFT_PERIODS}
+                  />
+                </div>
+                <div className="otk-account-card__grid otk-account-card__grid--2">
                   <div className="otk-account-card__field">
                     <span className="otk-account-card__label">Оператор</span>
                     <Select
@@ -329,28 +416,55 @@ const OtkAccountModal = ({ poolEntry, onClose, onSaved }) => {
                       options={employeeOptions}
                     />
                   </div>
-                  <div className="otk-account-card__field">
-                    <span className="otk-account-card__label">Упаковщик</span>
-                    <Select
-                      value={packerId}
-                      onChange={(v) => setPackerId(v != null ? String(v) : '')}
-                      placeholder="Выберите"
-                      options={employeeOptions}
-                    />
-                  </div>
                 </div>
+                <div className="otk-account-card__field">
+                  <span className="otk-account-card__label">Упаковщики</span>
+                  {packerIds.length > 0 ? (
+                    <div className="otk-account-packers">
+                      {packerIds.map((id) => {
+                        const opt = employeeOptions.find((o) => o.value === id);
+                        return (
+                          <span key={id} className="otk-account-packers__chip">
+                            {opt?.label || `#${id}`}
+                            <button
+                              type="button"
+                              className="otk-account-packers__remove"
+                              onClick={() => removePacker(id)}
+                              aria-label="Убрать"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="otk-account-card__hint otk-account-card__hint--inline">Можно выбрать несколько</p>
+                  )}
+                  {packerAddOptions.length > 0 ? (
+                    <Select
+                      value={packerPick}
+                      onChange={(v) => addPacker(v)}
+                      placeholder="Добавить упаковщика"
+                      options={packerAddOptions}
+                    />
+                  ) : null}
+                </div>
+                <p className="otk-account-card__hint">
+                  Смена «{shiftPeriod === 'night' ? 'Ночь' : 'День'}» — сотрудники попадут в отчёт смен.
+                </p>
               </section>
             </aside>
           </div>
 
-          {(error || overRemaining) ? (
+          {(error || overages.length > 0) ? (
             <div className="otk-account-screen__alerts">
               {error ? <p className="otk-account-screen__alert">{error}</p> : null}
-              {overRemaining ? (
-                <p className="otk-account-screen__alert">
-                  Списание ({formatNumberForInput(consumedKg)} кг) больше остатка ({formatNumberForInput(remainingKg)} кг).
+              {overages.map((o) => (
+                <p key={o.blankId} className="otk-account-screen__alert">
+                  {o.blankName}: списание {formatNumberForInput(o.consumedKg)} кг, в ОТК {formatNumberForInput(o.remainingKg)} кг
                 </p>
-              ) : null}
+              ))}
             </div>
           ) : null}
         </form>

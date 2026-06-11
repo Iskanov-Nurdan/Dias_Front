@@ -27,11 +27,34 @@ const profilesSummary = (lines) => {
   return lines.map((ln) => `${ln.profileName || 'Профиль'}: ${ln.pieces} шт`).join('; ');
 };
 
-const staffInRow = (row) => [
-  { id: row.operatorId, name: row.operatorName, role: 'Оператор' },
-  { id: row.chemistId, name: row.chemistName, role: 'Химик' },
-  { id: row.packerId, name: row.packerName, role: 'Упаковщик' },
-].filter((s) => s.id || s.name);
+const formatShiftPeriod = (v) => {
+  if (v === 'night') return 'Ночь';
+  if (v === 'day') return 'День';
+  return '';
+};
+
+const staffInRow = (row) => {
+  const packers = (row.packerNames?.length
+    ? row.packerNames.map((name, i) => ({
+      id: row.packerIds?.[i] ?? '',
+      name,
+      role: 'Упаковщик',
+    }))
+    : row.packerName
+      ? [{ id: row.packerId, name: row.packerName, role: 'Упаковщик' }]
+      : []);
+  return [
+    { id: row.operatorId, name: row.operatorName, role: 'Оператор' },
+    { id: row.chemistId, name: row.chemistName, role: 'Химик' },
+    ...packers,
+  ].filter((s) => s.id || s.name);
+};
+
+const formatPackersCell = (row) => {
+  if (row.packerNames?.length) return row.packerNames.join(', ');
+  if (row.packerName) return row.packerName;
+  return '—';
+};
 
 const OtkStaffReportTab = ({ users = [] }) => {
   const toast = useToast();
@@ -171,10 +194,11 @@ const OtkStaffReportTab = ({ users = [] }) => {
             <thead>
               <tr>
                 <th>Дата и время</th>
+                <th>Смена</th>
                 <th>Заготовка</th>
                 <th>Оператор</th>
                 <th>Химик</th>
-                <th>Упаковщик</th>
+                <th>Упаковщики</th>
                 <th>Профили</th>
                 <th>Списано</th>
                 <th>Брак</th>
@@ -185,10 +209,11 @@ const OtkStaffReportTab = ({ users = [] }) => {
               {visible.map((row) => (
                 <tr key={row.id}>
                   <td>{formatDateTime(row.createdAt)}</td>
+                  <td>{formatShiftPeriod(row.shiftPeriod) || '—'}</td>
                   <td>{row.blankName || '—'}</td>
                   <td>{row.operatorName || '—'}</td>
                   <td>{row.chemistName || '—'}</td>
-                  <td>{row.packerName || '—'}</td>
+                  <td>{formatPackersCell(row)}</td>
                   <td className="otk-staff-report__profiles">{profilesSummary(row.lines)}</td>
                   <td>{formatNumberForInput(row.consumedKg)} кг</td>
                   <td>{formatNumberForInput(row.defectKg)} кг</td>
@@ -222,10 +247,11 @@ const OtkStaffReportTab = ({ users = [] }) => {
           <DetailFields
             rows={[
               { label: 'Дата и время', value: formatDateTime(detail.createdAt) },
+              { label: 'Смена', value: formatShiftPeriod(detail.shiftPeriod) || '—' },
               { label: 'Заготовка', value: detail.blankName || '—' },
               { label: 'Оператор', value: detail.operatorName || '—' },
               { label: 'Химик', value: detail.chemistName || '—' },
-              { label: 'Упаковщик', value: detail.packerName || '—' },
+              { label: 'Упаковщики', value: formatPackersCell(detail) },
               { label: 'Списано', value: `${formatNumberForInput(detail.consumedKg)} кг` },
               { label: 'Брак', value: `${formatNumberForInput(detail.defectKg)} кг` },
               { label: 'Остаток после', value: `${formatNumberForInput(detail.remainingAfterKg)} кг` },

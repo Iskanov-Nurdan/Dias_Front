@@ -14,6 +14,7 @@ import {
   ConfirmModal,
   RecordDetailsModal,
   DetailFields,
+  Select,
 } from '../../../../shared/ui';
 import {
   createPlasticProfile,
@@ -22,11 +23,20 @@ import {
 } from '../../../production/api/productionApi';
 import { readPlasticProfileWeightKg } from '../../../production/lib/readPlasticProfilePieceWeight';
 import {
+  PROFILE_EXTRA_EXPENSE_FIELDS,
+  readProfileBlankId,
+  readProfileBlankName,
   readProfileCostPrice,
   readProfileMarkupAmount,
+  readProfileExtraExpense,
+  readProfileOtherExpensesTotal,
   formatMarkupPercentDisplay,
   formatProfileCostDisplay,
+  formatProfileSalePriceDisplay,
+  calcProfileSaleUnitPrice,
+  buildPlasticProfileExpensePayload,
 } from '../../../production/lib/plasticProfilePricing';
+import { mapWorkshopBlankFromApi } from '../../api/blankWorkshopApi';
 import '../ChemistryPage/ChemistryPage.scss';
 
 const listQ = { page: 1, page_size: 500, ordering: 'name' };
@@ -76,7 +86,13 @@ const findProfileByName = (items, name, excludeId = null) => {
 
 const profileDisplayName = (p) => p?.name || '—';
 
-const ProfileFormModal = ({ mode, profile, onClose, onSaved, existingProfiles = [] }) => {
+const initExpenseStr = (profile, apiKey) => {
+  if (!profile) return '';
+  const n = readProfileExtraExpense(profile, apiKey);
+  return n > 0 ? formatNumberForInput(n) : '';
+};
+
+const ProfileFormModal = ({ mode, profile, onClose, onSaved, existingProfiles = [], blanks = [] }) => {
   const toast = useToast();
   const isEdit = mode === 'edit';
   const serverWeight = isEdit ? readPlasticProfileWeightKg(profile) : null;
@@ -84,6 +100,7 @@ const ProfileFormModal = ({ mode, profile, onClose, onSaved, existingProfiles = 
   const serverMarkup = isEdit ? readProfileMarkupAmount(profile) : null;
 
   const [name, setName] = useState(isEdit ? profile?.name || '' : '');
+  const [blankId, setBlankId] = useState(isEdit ? readProfileBlankId(profile) : '');
   const [kgStr, setKgStr] = useState(() => {
     if (!isEdit || serverWeight == null) return '';
     return splitTotalKgToFields(serverWeight).kgStr;
@@ -92,14 +109,41 @@ const ProfileFormModal = ({ mode, profile, onClose, onSaved, existingProfiles = 
     if (!isEdit || serverWeight == null) return '';
     return splitTotalKgToFields(serverWeight).gramsStr;
   });
+  const [expenseStr, setExpenseStr] = useState(() => {
+    const init = {};
+    PROFILE_EXTRA_EXPENSE_FIELDS.forEach(({ apiKey }) => {
+      init[apiKey] = initExpenseStr(profile, apiKey);
+    });
+    return init;
+  });
   const [markupStr, setMarkupStr] = useState(
     isEdit && serverMarkup != null ? formatNumberForInput(serverMarkup) : '',
   );
   const [busy, setBusy] = useState(false);
   const [validationError, setValidationError] = useState('');
 
+  const blankOptions = useMemo(
+    () =>
+      (blanks || []).map((b) => ({
+        value: String(b.id),
+        label: b.name || `#${b.id}`,
+      })),
+    [blanks],
+  );
+
   const markupNum = parseLocaleNumber(markupStr);
   const markupPctDisplay = formatMarkupPercentDisplay(serverCost, markupNum);
+  const expensePayloadPreview = useMemo(
+    () => buildPlasticProfileExpensePayload(expenseStr),
+    [expenseStr],
+  );
+  const otherExpensesTotal = useMemo(
+    () => Object.values(expensePayloadPreview).reduce((s, n) => s + (Number(n) || 0), 0),
+    [expensePayloadPreview],
+  );
+  const salePricePreview = serverCost != null
+    ? calcProfileSaleUnitPrice(serverCost, otherExpensesTotal, markupNum >= 0 ? markupNum : 0)
+    : null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -114,6 +158,10 @@ const ProfileFormModal = ({ mode, profile, onClose, onSaved, existingProfiles = 
       return;
     }
     setValidationError('');
+    if (!blankId) {
+      toast.warning('Выберите заготовку.');
+      return;
+    }
     const pieceKg = calcPieceKg(kgStr, gramsStr);
     if (!Number.isFinite(pieceKg) || pieceKg <= 0) {
       toast.warning('Укажите вес одной штуки (кг и/или граммы).');
@@ -123,8 +171,10 @@ const ProfileFormModal = ({ mode, profile, onClose, onSaved, existingProfiles = 
     try {
       const payload = {
         name: n,
+        blank_id: Number(blankId),
         weight_kg_per_piece: pieceKg,
         markup_amount: Number.isFinite(markupNum) && markupNum >= 0 ? markupNum : 0,
+        ...buildPlasticProfileExpensePayload(expenseStr),
       };
       if (isEdit) {
         await updatePlasticProfile(profile.id, payload);
@@ -177,17 +227,42 @@ const ProfileFormModal = ({ mode, profile, onClose, onSaved, existingProfiles = 
             onChange={(ev) => setGramsStr(clampGramsInput(ev.target.value))}
             placeholder="0–999"
           />
-          {isEdit ? (
-            <>
-              <label>Себестоимость, сом</label>
-              <p className="chemistry-plastic-profiles__readonly-cost">
-                {serverCost != null ? `${formatNumberForInput(serverCost)} сом` : '—'}
-              </p>
-              <p className="chemistry-plastic-profiles__hint">
-                Считается системой автоматически. Изменить вручную нельзя.
-              </p>
-            </>
+          <label>Заготовка *</label>
+          <Select
+            value={blankId === '' ? '' : String(blankId)}
+            onChange={setBlankId}
+            placeholder={blankOptions.length ? 'Выберите заготовку' : 'Нет заготовок'}
+            options={blankOptions}
+          />
+          <p className="chemistry-plastic-profiles__hint">
+            В ОТК при учёте этой заготовки будут доступны только товары с этой привязкой.
+          </p>
+          <p className="chemistry-plastic-profiles__section-title">Прочие расходы на 1 шт, сом</p>
+          {PROFILE_EXTRA_EXPENSE_FIELDS.map(({ apiKey, label }) => (
+            <React.Fragment key={apiKey}>
+              <label>{label}</label>
+              <DecimalInput
+                min={0}
+                value={expenseStr[apiKey] ?? ''}
+                onChange={(v) => setExpenseStr((prev) => ({ ...prev, [apiKey]: v }))}
+                placeholder="0"
+              />
+            </React.Fragment>
+          ))}
+          <p className="chemistry-plastic-profiles__section-title">Цена</p>
+          <label>Себестоимость, сом</label>
+          <p className="chemistry-plastic-profiles__readonly-cost">
+            {serverCost != null ? `${formatNumberForInput(serverCost)} сом` : '—'}
+          </p>
+          {!isEdit || serverCost == null ? (
+            <p className="chemistry-plastic-profiles__hint">
+              Считается системой после первого учёта в ОТК. Изменить вручную нельзя.
+            </p>
           ) : null}
+          <label>Прочие расходы, сом</label>
+          <p className="chemistry-plastic-profiles__readonly-cost">
+            {formatNumberForInput(otherExpensesTotal)} сом
+          </p>
           <label>Наценка, сом</label>
           <div className="chemistry-plastic-profiles__markup-row">
             <DecimalInput min={0} value={markupStr} onChange={setMarkupStr} placeholder="0" />
@@ -195,11 +270,18 @@ const ProfileFormModal = ({ mode, profile, onClose, onSaved, existingProfiles = 
               {markupPctDisplay}
             </span>
           </div>
-          {!isEdit && serverCost == null ? (
+          {serverCost == null ? (
             <p className="chemistry-plastic-profiles__hint">
               % наценки появится после расчёта себестоимости системой.
             </p>
           ) : null}
+          <label>Итого цена товара, сом</label>
+          <p className="chemistry-plastic-profiles__readonly-cost chemistry-plastic-profiles__readonly-cost--total">
+            {salePricePreview != null ? `${formatNumberForInput(salePricePreview)} сом` : '—'}
+          </p>
+          <p className="chemistry-plastic-profiles__hint">
+            Себестоимость + прочие расходы + наценка.
+          </p>
           {validationError && <p className="modal__error">{validationError}</p>}
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose} disabled={busy}>
@@ -220,10 +302,19 @@ const profileDetailRows = (profile) => {
   const viewKgGrams = splitTotalKgToFields(serverWeight);
   const viewKgDisplay = viewKgGrams.kgStr === '' && viewKgGrams.gramsStr === '' ? '—' : (viewKgGrams.kgStr || '0');
   const viewGramsDisplay = viewKgGrams.gramsStr === '' ? '—' : viewKgGrams.gramsStr;
+  const extras = readProfileOtherExpensesTotal(profile);
   return [
     { label: 'Кг', value: viewKgDisplay },
     { label: 'Граммы', value: viewGramsDisplay },
+    { label: 'Заготовка', value: readProfileBlankName(profile) || readProfileBlankId(profile) || '—' },
+    ...PROFILE_EXTRA_EXPENSE_FIELDS.map(({ apiKey, label }) => ({
+      label,
+      value: readProfileExtraExpense(profile, apiKey) > 0
+        ? `${formatNumberForInput(readProfileExtraExpense(profile, apiKey))} сом`
+        : '0 сом',
+    })),
     { label: 'Себестоимость', value: formatProfileCostDisplay(profile) },
+    { label: 'Прочие расходы', value: `${formatNumberForInput(extras)} сом` },
     {
       label: 'Наценка',
       value: readProfileMarkupAmount(profile) != null
@@ -234,6 +325,7 @@ const profileDetailRows = (profile) => {
       label: 'Наценка, %',
       value: formatMarkupPercentDisplay(readProfileCostPrice(profile), readProfileMarkupAmount(profile)),
     },
+    { label: 'Итого цена', value: formatProfileSalePriceDisplay(profile) },
   ];
 };
 
@@ -269,6 +361,11 @@ const ChemistryPlasticProfilesTab = () => {
     error,
     refetch,
   } = useServerQuery('plastic-profiles/', listQ, { enabled: true });
+  const { items: blankItems } = useServerQuery('workshop/blanks/', listQ, { enabled: true });
+  const blanks = useMemo(
+    () => (blankItems || []).map(mapWorkshopBlankFromApi).filter(Boolean),
+    [blankItems],
+  );
 
   const sorted = useMemo(() => {
     const list = [...(profiles || [])];
@@ -369,6 +466,7 @@ const ChemistryPlasticProfilesTab = () => {
           mode={formModal.mode}
           profile={formModal.profile}
           existingProfiles={sorted}
+          blanks={blanks}
           onClose={() => setFormModal(null)}
           onSaved={refetchAll}
         />

@@ -39,10 +39,15 @@ cost_price = blank_cost_per_kg × weight_kg_per_piece
 
 До первого учёта: `"cost_price": null`
 
-### 4. Наценка
+### 4. Наценка и итоговая цена
 
 - `markup_amount` — редактируется пользователем.
 - % считает фронт: `markup / cost_price × 100`.
+- Прочие расходы и `sale_unit_price` — см. `BACKEND_PLASTIC_PROFILE_BLANK_EXPENSES.md`:
+
+```text
+sale_unit_price = cost_price + other_expenses_total + markup_amount
+```
 
 ---
 

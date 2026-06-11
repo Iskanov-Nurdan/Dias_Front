@@ -46,7 +46,7 @@ const OTKPage = () => {
   const [accountHistory, setAccountHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [accountTarget, setAccountTarget] = useState(null);
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
   const [historyDetail, setHistoryDetail] = useState(null);
 
   const loadAll = useCallback(async () => {
@@ -84,9 +84,18 @@ const OTKPage = () => {
     );
   }, [accountHistory, dateFilterIso]);
 
-  const openAccount = (entry) => {
-    if (!entry?.canAccount) return;
-    setAccountTarget(entry);
+  const canOpenAccount = poolWithKg.some((p) => p.canAccount);
+
+  const formatShiftPeriod = (v) => {
+    if (v === 'night') return 'Ночь';
+    if (v === 'day') return 'День';
+    return '—';
+  };
+
+  const formatPackers = (row) => {
+    if (row.packerNames?.length) return row.packerNames.join(', ');
+    if (row.packerName) return row.packerName;
+    return '—';
   };
 
   return (
@@ -113,11 +122,20 @@ const OTKPage = () => {
       </div>
 
       <div className="otk-card">
-        <div className="otk-card__toolbar">
-          <h2 className="otk-card__title">{mainTab === 'pool' ? 'Заготовки в ОТК' : 'Учёты ОТК'}</h2>
-          {mainTab === 'history' ? (
-            <ClientDateFilter value={dateFilterIso} onChange={setDateFilterIso} id="otk-date-filter" />
-          ) : null}
+        <div className="otk-card__toolbar ds-toolbar ds-toolbar--in-card">
+          <div className="ds-toolbar__start">
+            <h2 className="otk-card__title">{mainTab === 'pool' ? 'Заготовки в ОТК' : 'Учёты ОТК'}</h2>
+          </div>
+          <div className="ds-toolbar__end">
+            {mainTab === 'pool' && canOpenAccount ? (
+              <button type="button" className="btn btn--primary" onClick={() => setAccountModalOpen(true)}>
+                Учесть
+              </button>
+            ) : null}
+            {mainTab === 'history' ? (
+              <ClientDateFilter value={dateFilterIso} onChange={setDateFilterIso} id="otk-date-filter" />
+            ) : null}
+          </div>
         </div>
 
         {loading && <Loading />}
@@ -147,9 +165,6 @@ const OTKPage = () => {
                 }
                 return '—';
               }}
-              detailsLabel={(p) => (p.canAccount ? 'Учесть' : null)}
-              showDetails={(p) => Boolean(p.canAccount)}
-              onDetails={(p) => openAccount(p)}
             />
           )
         )}
@@ -175,10 +190,10 @@ const OTKPage = () => {
         )}
       </div>
 
-      {accountTarget ? (
+      {accountModalOpen ? (
         <OtkAccountModal
-          poolEntry={accountTarget}
-          onClose={() => setAccountTarget(null)}
+          pool={poolWithKg}
+          onClose={() => setAccountModalOpen(false)}
           onSaved={loadAll}
         />
       ) : null}
@@ -200,9 +215,10 @@ const OTKPage = () => {
               { label: 'Заготовка', value: historyDetail.blankName || '—' },
               { label: 'Списано', value: `${formatNumberForInput(historyDetail.consumedKg)} кг` },
               { label: 'Брак', value: `${formatNumberForInput(historyDetail.defectKg)} кг` },
+              { label: 'Смена', value: formatShiftPeriod(historyDetail.shiftPeriod) },
               { label: 'Оператор', value: historyDetail.operatorName || '—' },
               { label: 'Химик', value: historyDetail.chemistName || '—' },
-              { label: 'Упаковщик', value: historyDetail.packerName || '—' },
+              { label: 'Упаковщики', value: formatPackers(historyDetail) },
               {
                 label: 'Профили',
                 value: (historyDetail.lines || [])

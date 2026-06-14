@@ -25,7 +25,7 @@
 
 **Не отдаётся:** `production_summary`, `production_by_line`, `sales_by_client`, лишние поля в `warehouse_summary`.
 
-**P&L на фронте:** **выручка** = `revenue_total` (только продажи); **расходы** = `purchase_total` (приход сырья по дате прихода в периоде); **маржа** = выручка − расходы. `production_cost_total` в блок «Расходы» не входит. **Себестоимость товара** — отдельная кнопка в шапке «Финансы», `GET analytics/product-unit-costs/`.
+**P&L на фронте:** **выручка** = `revenue_total`; **расходы** = `period_expenses_total` (= приход сырья + общие прочие + себестоимость продаж + прочие расходы товара); **прибыль** = выручка − расходы. См. **`docs/BACKEND_ANALYTICS_PNL_V2.md`**
 
 ### Долг (`client_debt_total`)
 

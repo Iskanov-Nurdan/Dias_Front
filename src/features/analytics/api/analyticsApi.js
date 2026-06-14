@@ -15,6 +15,12 @@ export const getSalesCostDetails = (opts) => {
   return apiClient.get('analytics/sales-cost-details/', { params, signal });
 };
 
+/** Прочие расходы товара (профиля) по продажам за период — сумма extra_* × шт */
+export const getProductOtherExpensesDetails = (opts) => {
+  const { signal, ...params } = opts || {};
+  return apiClient.get('analytics/product-other-expenses-details/', { params, signal });
+};
+
 /** Справочник: профили (товары) и себестоимость за шт — не расход за период */
 export const getProductUnitCosts = (opts) => {
   const { signal, ...params } = opts || {};

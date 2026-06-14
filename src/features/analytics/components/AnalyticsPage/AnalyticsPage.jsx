@@ -20,6 +20,7 @@ import {
   getAnalyticsSummary,
   getRevenueDetails,
   getSalesCostDetails,
+  getProductOtherExpensesDetails,
   getProductUnitCosts,
   getProfitDetails,
   getDebtDetails,
@@ -220,18 +221,39 @@ const purchaseTotalFromCards = (c) =>
       c?.raw_purchase_total,
   );
 
-/** Прочие расходы (принятые) за период. */
+/** Себестоимость проданных товаров за период (cost_price × шт). */
+const salesCostFromCards = (c) =>
+  toMoneyNum(c?.sales_cost_total ?? c?.cogs_total ?? c?.sold_cost_total);
+
+/** Прочие расходы профиля на проданные штуки (extra_* × шт). Не путать с other_expenses_total. */
+const productOtherExpensesFromCards = (c) =>
+  toMoneyNum(
+    c?.product_other_expenses_total ??
+      c?.sold_product_other_expenses_total ??
+      c?.profile_other_expenses_total,
+  );
+
+/** Расходы на проданный товар = себестоимость + прочие расходы товара (без сырья и общих прочих). */
+const soldGoodsCostFromCards = (c) => {
+  const explicit = toMoneyNum(c?.sold_goods_cost_total);
+  if (c?.sold_goods_cost_total != null) return explicit;
+  return salesCostFromCards(c) + productOtherExpensesFromCards(c);
+};
+
+/** Прочие расходы (принятые) за период — общие, не по профилю. */
 const otherExpensesFromCards = (c) =>
   toMoneyNum(c?.other_expenses_total ?? c?.accepted_other_expenses_total ?? c?.misc_expenses_total);
 
-/** Расходы периода = приход сырья + принятые прочие (по дате расхода). */
+/** Полные расходы периода. */
 const periodExpensesFromCards = (c) => {
   const purchase = purchaseTotalFromCards(c);
   const other = otherExpensesFromCards(c);
+  const salesCost = salesCostFromCards(c);
+  const productOther = productOtherExpensesFromCards(c);
   if (c?.period_expenses_total != null || c?.operating_expenses_total != null) {
     return toMoneyNum(c?.period_expenses_total ?? c?.operating_expenses_total);
   }
-  return purchase + other;
+  return purchase + other + salesCost + productOther;
 };
 
 /** Приход сырья за точку тренда (день/месяц). */
@@ -241,11 +263,20 @@ const trendPurchaseFromPoint = (t) =>
 const trendOtherExpensesFromPoint = (t) =>
   toMoneyNum(t?.other_expenses_total ?? t?.misc_expenses_total);
 
+const trendSalesCostFromPoint = (t) =>
+  toMoneyNum(t?.sales_cost_total ?? t?.cogs_total);
+
+const trendProductOtherFromPoint = (t) =>
+  toMoneyNum(t?.product_other_expenses_total ?? t?.profile_other_expenses_total);
+
 /** Расходы за точку тренда. */
 const trendPeriodExpensesFromPoint = (t) => {
   const combined = toMoneyNum(t?.period_expenses_total ?? t?.expenses);
   if (t?.period_expenses_total != null || t?.expenses != null) return combined;
-  return trendPurchaseFromPoint(t) + trendOtherExpensesFromPoint(t);
+  return trendPurchaseFromPoint(t)
+    + trendOtherExpensesFromPoint(t)
+    + trendSalesCostFromPoint(t)
+    + trendProductOtherFromPoint(t);
 };
 
 const sliceIsoDate = (raw) => {
@@ -270,7 +301,16 @@ const productCell = (name, fallback) => {
   return f || '—';
 };
 
-const DETAIL_MODAL_TYPES = new Set(['revenue', 'sales_cost', 'product_cost', 'profit', 'debt', 'production', 'purchase']);
+const DETAIL_MODAL_TYPES = new Set([
+  'revenue',
+  'sales_cost',
+  'product_other',
+  'product_cost',
+  'profit',
+  'debt',
+  'production',
+  'purchase',
+]);
 
 const unitCostPerPieceFromRecord = (row) => {
   const raw =
@@ -412,9 +452,12 @@ const AnalyticsPage = () => {
   const revenueVal = toMoneyNum(cards.revenue_total);
   const purchaseVal = purchaseTotalFromCards(cards);
   const otherExpensesVal = otherExpensesFromCards(cards);
+  const salesCostVal = salesCostFromCards(cards);
+  const productOtherVal = productOtherExpensesFromCards(cards);
+  const soldGoodsCostVal = soldGoodsCostFromCards(cards);
   const expenseTotalSum = periodExpensesFromCards(cards);
-  const netMargin = revenueVal - expenseTotalSum;
-  const marginPct = revenueVal > 0 ? (netMargin / revenueVal) * 100 : null;
+  const netProfit = revenueVal - expenseTotalSum;
+  const profitPct = revenueVal > 0 ? (netProfit / revenueVal) * 100 : null;
   const avgCheck = salesCount > 0 ? revenueVal / salesCount : 0;
   const packagingSummary = data?.packaging_summary && typeof data.packaging_summary === 'object' ? data.packaging_summary : null;
   const packagingPieces = Number(packagingSummary?.pieces_total ?? packagingSummary?.pieces ?? 0) || 0;
@@ -431,6 +474,8 @@ const AnalyticsPage = () => {
   const expensePieData = [
     { name: 'Приход сырья', value: purchaseVal, color: 'var(--accent-2)' },
     { name: 'Прочие расходы', value: otherExpensesVal, color: 'var(--danger)' },
+    { name: 'Себестоимость продаж', value: salesCostVal, color: '#8b5cf6' },
+    { name: 'Прочие расходы товара', value: productOtherVal, color: '#f59e0b' },
   ].filter((item) => item.value > 0);
   const revenuePieData = topSeriesWithOther(
     productChartData.map((item) => ({
@@ -569,7 +614,7 @@ const AnalyticsPage = () => {
           <div className="analytics-pnl__card analytics-pnl__card--out">
             <div className="analytics-pnl__card-body">
               <h3 className="analytics-pnl__card-title">Расходы</h3>
-              <p className="analytics-pnl__card-caption">Приход сырья и прочие</p>
+              <p className="analytics-pnl__card-caption">Сырьё, прочие, себестоимость продаж</p>
               <p className="analytics-pnl__card-figure">{formatMoney(expenseTotalSum)}</p>
             </div>
             <div className="analytics-pnl__card-actions">
@@ -583,10 +628,61 @@ const AnalyticsPage = () => {
             </div>
           </div>
           <div
-            className={`analytics-pnl__card analytics-pnl__card--net${netMargin >= 0 ? ' analytics-pnl__card--net-pos' : ' analytics-pnl__card--net-neg'}`}
+            className={`analytics-pnl__card analytics-pnl__card--net${netProfit >= 0 ? ' analytics-pnl__card--net-pos' : ' analytics-pnl__card--net-neg'}`}
           >
-            <h3 className="analytics-pnl__card-title">Маржа</h3>
-            <p className="analytics-pnl__card-figure analytics-pnl__card-figure--net">{formatMoney(netMargin)}</p>
+            <div className="analytics-pnl__card-body">
+              <h3 className="analytics-pnl__card-title">Прибыль</h3>
+              <p className="analytics-pnl__card-caption analytics-pnl__card-caption--spacer" aria-hidden="true">
+                &nbsp;
+              </p>
+              <p className="analytics-pnl__card-figure analytics-pnl__card-figure--net">{formatMoney(netProfit)}</p>
+            </div>
+            <div className="analytics-pnl__card-actions">
+              <button
+                type="button"
+                className="btn btn--secondary btn--sm"
+                onClick={() => setDetailModal({ type: 'profit' })}
+              >
+                Детали
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="analytics-pnl__breakdown" aria-label="Структура расходов">
+          <div className="analytics-pnl__exp-line">
+            <span className="analytics-pnl__exp-line-label">Приход сырья</span>
+            <span className="analytics-pnl__exp-line-value">{formatMoney(purchaseVal)}</span>
+          </div>
+          <div className="analytics-pnl__exp-line">
+            <span className="analytics-pnl__exp-line-label">Прочие расходы</span>
+            <span className="analytics-pnl__exp-line-value">{formatMoney(otherExpensesVal)}</span>
+          </div>
+          <div className="analytics-pnl__exp-line">
+            <span className="analytics-pnl__exp-line-label">Себестоимость продаж</span>
+            <span className="analytics-pnl__exp-line-value">{formatMoney(salesCostVal)}</span>
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm analytics-pnl__exp-line-btn"
+              onClick={() => setDetailModal({ type: 'sales_cost' })}
+            >
+              Детали
+            </button>
+          </div>
+          <div className="analytics-pnl__exp-line">
+            <span className="analytics-pnl__exp-line-label">Прочие расходы товара</span>
+            <span className="analytics-pnl__exp-line-value">{formatMoney(productOtherVal)}</span>
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm analytics-pnl__exp-line-btn"
+              onClick={() => setDetailModal({ type: 'product_other' })}
+            >
+              Детали
+            </button>
+          </div>
+          <div className="analytics-pnl__exp-line analytics-pnl__exp-line--highlight">
+            <span className="analytics-pnl__exp-line-label">На проданный товар</span>
+            <span className="analytics-pnl__exp-line-value">{formatMoney(soldGoodsCostVal)}</span>
+            <span className="analytics-pnl__exp-line-hint">без сырья и общих прочих</span>
           </div>
         </div>
         <div className="analytics-fact-rail" aria-label="Короткая сводка">
@@ -632,11 +728,11 @@ const AnalyticsPage = () => {
       <section className="analytics-command-grid" aria-label="Ключевые цифры аналитики">
         <article className="analytics-command-card analytics-command-card--primary">
           <span className="analytics-command-card__label">Чистый результат</span>
-          <strong className={netMargin >= 0 ? 'analytics-command-card__value analytics-command-card__value--good' : 'analytics-command-card__value analytics-command-card__value--bad'}>
-            {formatMoney(netMargin)}
+          <strong className={netProfit >= 0 ? 'analytics-command-card__value analytics-command-card__value--good' : 'analytics-command-card__value analytics-command-card__value--bad'}>
+            {formatMoney(netProfit)}
           </strong>
           <span className="analytics-command-card__hint">
-            {marginPct == null ? 'Маржа не рассчитана без выручки' : `Маржинальность ${formatDefectPct(marginPct)}`}
+            {profitPct == null ? 'Прибыль не рассчитана без выручки' : `Рентабельность ${formatDefectPct(profitPct)}`}
           </span>
         </article>
         <article className="analytics-command-card">
@@ -1124,6 +1220,7 @@ const AnalyticsPage = () => {
 const DETAIL_TITLES = {
   revenue: 'Выручка',
   sales_cost: 'Себестоимость продаж',
+  product_other: 'Прочие расходы товара',
   product_cost: 'Себестоимость товара',
   profit: 'Прибыль',
   debt: 'Долг клиентов',
@@ -1135,7 +1232,12 @@ const DetailModal = ({ type, queryParams, summaryCards, debtAsOfHint: debtHintTe
   const [details, setDetails] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
-  const [expenseSectionsOpen, setExpenseSectionsOpen] = useState({ purchase: false, other: false });
+  const [expenseSectionsOpen, setExpenseSectionsOpen] = useState({
+    purchase: false,
+    other: false,
+    sales_cost: false,
+    product_other: false,
+  });
 
   useEffect(() => {
     if (!DETAIL_MODAL_TYPES.has(type)) return undefined;
@@ -1154,26 +1256,57 @@ const DetailModal = ({ type, queryParams, summaryCards, debtAsOfHint: debtHintTe
         }
 
         if (type === 'purchase') {
-          const [purchaseRes, otherRes] = await Promise.all([
+          const [purchaseRes, otherRes, salesCostRes, productOtherRes] = await Promise.all([
             getPurchaseDetails(req),
             getOtherExpenses(req),
+            getSalesCostDetails(req),
+            getProductOtherExpensesDetails(req).catch(() => ({ data: { items: [], total: 0 } })),
           ]);
           const purchaseData = purchaseRes.data || {};
           const otherRaw = Array.isArray(otherRes.data?.items) ? otherRes.data.items : [];
           const otherAccepted = otherRaw.filter(
             (row) => String(row.status ?? '').toLowerCase() === 'accepted',
           );
+          const salesCostData = salesCostRes.data || {};
+          const productOtherData = productOtherRes.data || {};
           const purchaseTotal =
             Number(purchaseData.total_purchase_amount ?? purchaseData.total ?? 0) || 0;
           const otherTotal = otherAccepted.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+          const salesCostTotal =
+            Number(salesCostData.total_sales_cost ?? salesCostData.total ?? 0) || 0;
+          const productOtherTotal =
+            Number(
+              productOtherData.total_product_other_expenses ??
+                productOtherData.total ??
+                0,
+            ) || 0;
           setDetails({
             purchase: purchaseData,
             purchase_items: Array.isArray(purchaseData.items) ? purchaseData.items : [],
             other_items: otherAccepted,
+            sales_cost_items: Array.isArray(salesCostData.items) ? salesCostData.items : [],
+            product_other_items: Array.isArray(productOtherData.items) ? productOtherData.items : [],
             purchase_total: purchaseTotal,
             other_total: otherTotal,
-            period_total: purchaseTotal + otherTotal,
+            sales_cost_total: salesCostTotal,
+            product_other_total: productOtherTotal,
+            sold_goods_total: salesCostTotal + productOtherTotal,
+            period_total: purchaseTotal + otherTotal + salesCostTotal + productOtherTotal,
           });
+          return;
+        }
+
+        if (type === 'product_other') {
+          try {
+            const res = await getProductOtherExpensesDetails(req);
+            setDetails(res.data);
+          } catch (err) {
+            if (err.response?.status === 404) {
+              setDetails({ items: [], total_product_other_expenses: 0 });
+              return;
+            }
+            throw err;
+          }
           return;
         }
 
@@ -1209,7 +1342,12 @@ const DetailModal = ({ type, queryParams, summaryCards, debtAsOfHint: debtHintTe
 
   useEffect(() => {
     if (type === 'purchase') {
-      setExpenseSectionsOpen({ purchase: false, other: false });
+      setExpenseSectionsOpen({
+        purchase: false,
+        other: false,
+        sales_cost: false,
+        product_other: false,
+      });
     }
   }, [type, details]);
 
@@ -1219,13 +1357,23 @@ const DetailModal = ({ type, queryParams, summaryCards, debtAsOfHint: debtHintTe
 
   const profitTotals = details?.totals;
   const summary = summaryCards || {};
-  const displayProfit = profitTotals?.profit ?? summary.profit_total;
+  const summaryRevenue = toMoneyNum(summary.revenue_total);
+  const summaryPurchase = purchaseTotalFromCards(summary);
+  const summaryOther = otherExpensesFromCards(summary);
+  const summarySalesCost = salesCostFromCards(summary);
+  const summaryProductOther = productOtherExpensesFromCards(summary);
+  const summaryExpenses = periodExpensesFromCards(summary);
+  const summaryProfit = summaryRevenue - summaryExpenses;
+  const displayProfit = type === 'profit' ? summaryProfit : (profitTotals?.profit ?? summary.profit_total);
   const displayRevenue = profitTotals?.revenue ?? summary.revenue_total;
   const displayCost = profitTotals?.sales_cost ?? summary.sales_cost_total;
 
   const itemsLen = (() => {
     if (type === 'purchase' && details) {
-      return (details.purchase_items?.length || 0) + (details.other_items?.length || 0);
+      return (details.purchase_items?.length || 0)
+        + (details.other_items?.length || 0)
+        + (details.sales_cost_items?.length || 0)
+        + (details.product_other_items?.length || 0);
     }
     if (!details?.items || !Array.isArray(details.items)) return 0;
     return details.items.length;
@@ -1569,6 +1717,165 @@ const DetailModal = ({ type, queryParams, summaryCards, debtAsOfHint: debtHintTe
                   </div>
                 )}
               </div>
+              <div className="detail-accordion">
+                <button
+                  type="button"
+                  className={`detail-row detail-row--compact detail-accordion__trigger${expenseSectionsOpen.sales_cost ? ' detail-accordion__trigger--open' : ''}`}
+                  aria-expanded={expenseSectionsOpen.sales_cost}
+                  onClick={() => toggleExpenseSection('sales_cost')}
+                >
+                  <span className="detail-accordion__label">
+                    <span className="detail-accordion__chevron" aria-hidden>
+                      {expenseSectionsOpen.sales_cost ? '▾' : '▸'}
+                    </span>
+                    <span className="detail-row__label">Себестоимость продаж</span>
+                  </span>
+                  <span className="detail-row__value">{formatMoney(details.sales_cost_total ?? 0)}</span>
+                </button>
+                {expenseSectionsOpen.sales_cost && (
+                  <div className="detail-accordion__panel">
+                    {details.sales_cost_items?.length > 0 ? (
+                      <>
+                        <div className="detail-table-header detail-table-header--5">
+                          <div className="detail-table-cell">Дата</div>
+                          <div className="detail-table-cell">Продукт</div>
+                          <div className="detail-table-cell detail-table-cell--num">Кол-во</div>
+                          <div className="detail-table-cell detail-table-cell--num">Себест. / шт</div>
+                          <div className="detail-table-cell detail-table-cell--num">Сумма</div>
+                        </div>
+                        <div className="detail-table">
+                          {details.sales_cost_items.map((item, i) => (
+                            <div key={`sc-${i}`} className="detail-table-row detail-table-row--5">
+                              <div className="detail-table-cell">{sliceIsoDate(item.date || item.sale_date)}</div>
+                              <div className="detail-table-cell detail-table-cell--object">
+                                {productCell(item.product_name, item.profile_name)}
+                              </div>
+                              <div className="detail-table-cell detail-table-cell--num">
+                                {item.quantity != null ? `${formatNumber(item.quantity)} шт` : '—'}
+                              </div>
+                              <div className="detail-table-cell detail-table-cell--num">
+                                {item.cost_per_unit != null ? formatMoney(item.cost_per_unit) : '—'}
+                              </div>
+                              <div className="detail-table-cell detail-table-cell--strong detail-table-cell--num">
+                                {formatMoney(item.total_cost ?? 0)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <EmptyHint />
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="detail-accordion">
+                <button
+                  type="button"
+                  className={`detail-row detail-row--compact detail-accordion__trigger${expenseSectionsOpen.product_other ? ' detail-accordion__trigger--open' : ''}`}
+                  aria-expanded={expenseSectionsOpen.product_other}
+                  onClick={() => toggleExpenseSection('product_other')}
+                >
+                  <span className="detail-accordion__label">
+                    <span className="detail-accordion__chevron" aria-hidden>
+                      {expenseSectionsOpen.product_other ? '▾' : '▸'}
+                    </span>
+                    <span className="detail-row__label">Прочие расходы товара</span>
+                  </span>
+                  <span className="detail-row__value">{formatMoney(details.product_other_total ?? 0)}</span>
+                </button>
+                {expenseSectionsOpen.product_other && (
+                  <div className="detail-accordion__panel">
+                    {details.product_other_items?.length > 0 ? (
+                      <>
+                        <div className="detail-table-header detail-table-header--5">
+                          <div className="detail-table-cell">Дата</div>
+                          <div className="detail-table-cell">Продукт</div>
+                          <div className="detail-table-cell detail-table-cell--num">Кол-во</div>
+                          <div className="detail-table-cell detail-table-cell--num">Прочие / шт</div>
+                          <div className="detail-table-cell detail-table-cell--num">Сумма</div>
+                        </div>
+                        <div className="detail-table">
+                          {details.product_other_items.map((item, i) => (
+                            <div key={`po-${i}`} className="detail-table-row detail-table-row--5">
+                              <div className="detail-table-cell">{sliceIsoDate(item.date || item.sale_date)}</div>
+                              <div className="detail-table-cell detail-table-cell--object">
+                                {productCell(item.product_name, item.profile_name)}
+                              </div>
+                              <div className="detail-table-cell detail-table-cell--num">
+                                {item.quantity != null ? `${formatNumber(item.quantity)} шт` : '—'}
+                              </div>
+                              <div className="detail-table-cell detail-table-cell--num">
+                                {item.other_per_unit != null
+                                  ? formatMoney(item.other_per_unit)
+                                  : item.unit_other_expenses != null
+                                    ? formatMoney(item.unit_other_expenses)
+                                    : '—'}
+                              </div>
+                              <div className="detail-table-cell detail-table-cell--strong detail-table-cell--num">
+                                {formatMoney(item.total_other_expenses ?? item.total ?? 0)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <EmptyHint />
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="detail-row detail-row--compact detail-row--subtotal">
+                <span className="detail-row__label">На проданный товар</span>
+                <span className="detail-row__value">{formatMoney(details.sold_goods_total ?? 0)}</span>
+              </div>
+            </>
+          )}
+
+          {type === 'product_other' && details && !loading && !error && (
+            <>
+              <div className="detail-row detail-row--big detail-row--compact">
+                <span className="detail-row__label">Итого</span>
+                <span className="detail-row__value">
+                  {formatMoney(details.total_product_other_expenses ?? details.total ?? 0)}
+                </span>
+              </div>
+              {itemsLen === 0 ? (
+                <EmptyHint />
+              ) : (
+                <div className="detail-section detail-section--tight">
+                  <div className="detail-table-header detail-table-header--5">
+                    <div className="detail-table-cell">Дата</div>
+                    <div className="detail-table-cell">Продукт</div>
+                    <div className="detail-table-cell detail-table-cell--num">Кол-во</div>
+                    <div className="detail-table-cell detail-table-cell--num">Прочие / шт</div>
+                    <div className="detail-table-cell detail-table-cell--num">Сумма</div>
+                  </div>
+                  <div className="detail-table">
+                    {(details.items || []).map((item, i) => (
+                      <div key={`po-d-${i}`} className="detail-table-row detail-table-row--5">
+                        <div className="detail-table-cell">{sliceIsoDate(item.date || item.sale_date)}</div>
+                        <div className="detail-table-cell detail-table-cell--object">
+                          {productCell(item.product_name, item.profile_name)}
+                        </div>
+                        <div className="detail-table-cell detail-table-cell--num">
+                          {item.quantity != null ? `${formatNumber(item.quantity)} шт` : '—'}
+                        </div>
+                        <div className="detail-table-cell detail-table-cell--num">
+                          {item.other_per_unit != null
+                            ? formatMoney(item.other_per_unit)
+                            : item.unit_other_expenses != null
+                              ? formatMoney(item.unit_other_expenses)
+                              : '—'}
+                        </div>
+                        <div className="detail-table-cell detail-table-cell--strong detail-table-cell--num">
+                          {formatMoney(item.total_other_expenses ?? item.total ?? 0)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           )}
 
@@ -1620,20 +1927,42 @@ const DetailModal = ({ type, queryParams, summaryCards, debtAsOfHint: debtHintTe
             <>
               <div className="detail-row detail-row--big detail-row--compact">
                 <span className="detail-row__label">Прибыль</span>
-                <span className="detail-row__value">{formatMoney(displayProfit)}</span>
+                <span className="detail-row__value">{formatMoney(summaryProfit)}</span>
               </div>
               <div className="detail-section detail-section--tight">
                 <div className="detail-row">
                   <span className="detail-row__label">Выручка</span>
-                  <span className="detail-row__value detail-row__value--positive">+ {formatMoney(displayRevenue)}</span>
+                  <span className="detail-row__value detail-row__value--positive">+ {formatMoney(summaryRevenue)}</span>
                 </div>
                 <div className="detail-row">
-                  <span className="detail-row__label">Себестоимость</span>
-                  <span className="detail-row__value detail-row__value--negative">− {formatMoney(displayCost)}</span>
+                  <span className="detail-row__label">Приход сырья</span>
+                  <span className="detail-row__value detail-row__value--negative">− {formatMoney(summaryPurchase)}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-row__label">Прочие расходы</span>
+                  <span className="detail-row__value detail-row__value--negative">− {formatMoney(summaryOther)}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-row__label">Себестоимость продаж</span>
+                  <span className="detail-row__value detail-row__value--negative">− {formatMoney(summarySalesCost)}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-row__label">Прочие расходы товара</span>
+                  <span className="detail-row__value detail-row__value--negative">− {formatMoney(summaryProductOther)}</span>
+                </div>
+                <div className="detail-row detail-row--subtotal">
+                  <span className="detail-row__label">На проданный товар</span>
+                  <span className="detail-row__value detail-row__value--negative">
+                    − {formatMoney(summarySalesCost + summaryProductOther)}
+                  </span>
                 </div>
                 <div className="detail-row detail-row--total">
-                  <span className="detail-row__label">Итого</span>
-                  <span className="detail-row__value">{formatMoney(displayProfit)}</span>
+                  <span className="detail-row__label">Итого расходов</span>
+                  <span className="detail-row__value detail-row__value--negative">− {formatMoney(summaryExpenses)}</span>
+                </div>
+                <div className="detail-row detail-row--total">
+                  <span className="detail-row__label">Прибыль</span>
+                  <span className="detail-row__value">{formatMoney(summaryProfit)}</span>
                 </div>
               </div>
               {details?.items && details.items.length > 0 ? (

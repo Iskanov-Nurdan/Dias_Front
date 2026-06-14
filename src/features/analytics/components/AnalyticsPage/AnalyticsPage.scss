@@ -237,6 +237,33 @@
   }
 }
 
+.analytics-pnl__breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.analytics-pnl__exp-line--highlight {
+  grid-template-columns: 1fr auto;
+  background: color-mix(in srgb, var(--info) 8%, var(--bg-hover));
+  border: 1px solid color-mix(in srgb, var(--info) 18%, var(--border-subtle));
+}
+
+.analytics-pnl__exp-line-hint {
+  grid-column: 1 / -1;
+  font-size: var(--font-caption);
+  color: var(--text-muted);
+}
+
+.detail-row--subtotal {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px dashed var(--border-subtle);
+}
+
 .analytics-finance-shell__head {
   display: flex;
   flex-wrap: wrap;

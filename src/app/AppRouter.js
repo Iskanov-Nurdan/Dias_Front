@@ -6,6 +6,8 @@ import NoAccessPage from './components/NoAccessPage';
 import { PAGE_IDS } from '../shared/constants/pages';
 
 const LoginPage = React.lazy(() => import('../features/auth/LoginPage'));
+const TaplinkPage = React.lazy(() => import('../features/taplink/TaplinkPage'));
+const TaplinkEditorPage = React.lazy(() => import('../features/taplink/TaplinkEditor'));
 const EmployeesPage = React.lazy(() => import('../features/employees/EmployeesPage'));
 const SportsTrainersPage = React.lazy(() => import('../features/sports-trainers/SportsTrainersPage'));
 const ClientsPage = React.lazy(() => import('../features/clients/ClientsPage'));
@@ -37,6 +39,7 @@ const IndexRedirect = () => {
 const AppRouter = () => (
   <BrowserRouter>
     <Routes>
+      <Route path="/taplink" element={<TaplinkPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route
         path="/"
@@ -127,6 +130,7 @@ const AppRouter = () => (
             </ProtectedRoute>
           }
         />
+        <Route path="taplink-editor" element={<TaplinkEditorPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

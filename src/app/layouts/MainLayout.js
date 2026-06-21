@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Menu, ChevronLeft, ChevronRight, X,
-  User, LogOut, Moon, Sun,
+  User, LogOut, Moon, Sun, Link2,
 } from 'lucide-react';
 import { useAuth } from '../providers/AuthProvider';
 import { prefetchRoutePage } from '../prefetchRoutes';
@@ -189,6 +189,18 @@ const MainLayout = () => {
               })}
             </div>
           ))}
+          {/* Taplink editor — always visible for any logged-in user */}
+          <div className="main-layout__nav-group main-layout__nav-group--taplink">
+            <button
+              type="button"
+              className={`main-layout__nav-item${location.pathname === '/taplink-editor' ? ' main-layout__nav-item--active' : ''}`}
+              onClick={() => { navigate('/taplink-editor'); if (isMobile) setMobileMenuOpen(false); }}
+              title="Taplink страница"
+            >
+              <span className="main-layout__nav-icon" aria-hidden><Link2 size={18} strokeWidth={1.75} /></span>
+              <span className="main-layout__nav-label">Taplink страница</span>
+            </button>
+          </div>
         </nav>
         <div className="main-layout__sidebar-footer">
           <div className="main-layout__sidebar-user-card">

@@ -9,7 +9,9 @@ import { SEARCH_DEBOUNCE_MS } from '../../shared/constants/common';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
 import { LeadFormModal, LeadCardModal, FunnelBoard } from './components';
 import { ErrorState, EmptyState, ConfirmModal, Pagination, FilterBar, SkeletonTable } from '../../shared/ui';
+import TaplinkLeadsTab from './TaplinkLeadsTab';
 import './LeadsPage.scss';
+import './TaplinkLeadsTab.scss';
 
 const CHANNEL_LABELS = { instagram: 'Instagram', whatsapp: 'WhatsApp', tiktok: 'TikTok', other: 'Другое' };
 
@@ -21,8 +23,9 @@ const getStatusLabel = (status) => {
 
 const hasFinalStatus = (lead) => lead?.status === 'accepted' || lead?.status === 'rejected';
 
-const TAB_LEADS = 'leads';
-const TAB_FUNNEL = 'funnel';
+const TAB_LEADS   = 'leads';
+const TAB_TAPLINK = 'taplink';
+const TAB_FUNNEL  = 'funnel';
 
 const LeadsPage = () => {
   const { isAdmin, showAccessDenied } = useAuth();
@@ -266,6 +269,13 @@ const LeadsPage = () => {
         </button>
         <button
           type="button"
+          className={`leads-page__tab ${activeTab === TAB_TAPLINK ? 'leads-page__tab--active' : ''}`}
+          onClick={() => setActiveTab(TAB_TAPLINK)}
+        >
+          С Таплинка
+        </button>
+        <button
+          type="button"
           className={`leads-page__tab ${activeTab === TAB_FUNNEL ? 'leads-page__tab--active' : ''}`}
           onClick={() => setActiveTab(TAB_FUNNEL)}
         >
@@ -404,6 +414,9 @@ const LeadsPage = () => {
           />
         </>
       )}
+
+      {/* ══ Таб: С Таплинка ══ */}
+      {activeTab === TAB_TAPLINK && <TaplinkLeadsTab />}
 
       {/* ══ Таб: Воронка ══ */}
       {activeTab === TAB_FUNNEL && (

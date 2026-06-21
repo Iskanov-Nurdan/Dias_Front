@@ -1,0 +1,205 @@
+.tlt {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+// ─── Status filter tabs ───────────────────────────────────────────────────────
+.tlt__status-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.tlt__status-tab {
+  padding: 6px 14px;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+
+  &:hover {
+    background: var(--color-surface-hover, rgba(255,255,255,0.04));
+    color: var(--color-text);
+  }
+
+  &--on {
+    background: var(--color-primary, #E63946);
+    border-color: var(--color-primary, #E63946);
+    color: #fff;
+  }
+}
+
+// ─── Table ───────────────────────────────────────────────────────────────────
+.tlt__table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--color-border);
+}
+
+.tlt__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th {
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    background: var(--color-surface);
+    white-space: nowrap;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  td {
+    padding: 10px 12px;
+    vertical-align: top;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  tbody tr:hover td {
+    background: var(--color-surface-hover, rgba(255,255,255,0.02));
+  }
+}
+
+.tlt__skeleton-cell,
+.tlt__empty-cell {
+  padding: 0 !important;
+  border: none !important;
+}
+
+// Подозрительная заявка — слегка подсвечиваем
+.tlt__row--suspect td {
+  background: rgba(251, 191, 36, 0.04);
+}
+
+// ─── Cell content ─────────────────────────────────────────────────────────────
+.tlt__name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.tlt__suspect-icon {
+  color: #F59E0B;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.tlt__phone {
+  color: var(--color-primary, #E63946);
+  text-decoration: none;
+  white-space: nowrap;
+
+  &:hover { text-decoration: underline; }
+}
+
+.tlt__time,
+.tlt__date {
+  white-space: nowrap;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.tlt__comment {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+// ─── Status badge ─────────────────────────────────────────────────────────────
+.tlt__badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &--new {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60A5FA;
+  }
+
+  &--accepted {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ADE80;
+  }
+
+  &--rejected {
+    background: rgba(239, 68, 68, 0.1);
+    color: #F87171;
+  }
+
+  &--spam {
+    background: rgba(156, 163, 175, 0.12);
+    color: #9CA3AF;
+  }
+}
+
+// ─── Action buttons ───────────────────────────────────────────────────────────
+.tlt__actions {
+  padding-right: 8px !important;
+}
+
+.tlt__action-group {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.tlt__btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  &--accept {
+    background: rgba(34, 197, 94, 0.14);
+    color: #4ADE80;
+    border-color: rgba(34, 197, 94, 0.25);
+    &:hover:not(:disabled) { background: rgba(34, 197, 94, 0.22); }
+  }
+
+  &--reject {
+    background: rgba(239, 68, 68, 0.1);
+    color: #F87171;
+    border-color: rgba(239, 68, 68, 0.2);
+    &:hover:not(:disabled) { background: rgba(239, 68, 68, 0.18); }
+  }
+
+  &--spam {
+    background: rgba(156, 163, 175, 0.1);
+    color: #9CA3AF;
+    border-color: rgba(156, 163, 175, 0.2);
+    &:hover:not(:disabled) { background: rgba(156, 163, 175, 0.18); }
+  }
+
+  &--undo {
+    background: transparent;
+    color: var(--color-text-muted);
+    border-color: var(--color-border);
+    &:hover:not(:disabled) { color: var(--color-text); }
+  }
+}

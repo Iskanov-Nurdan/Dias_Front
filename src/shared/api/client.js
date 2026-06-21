@@ -5,6 +5,10 @@ import axios from 'axios';
 // false = запросы на бэкенд по домену (rahmanata.kg)
 const USE_LOCAL_API = false;
 
+// Taplink использует бэкенд (а не localStorage).
+// false = демо-режим (только localStorage, без сервера)
+export const TAPLINK_BACKEND_ENABLED = true;
+
 // В dev (npm start) используем прокси — запросы идут на localhost, CRA проксирует на сервер (обход CORS)
 const isDev = process.env.NODE_ENV === 'development';
 const API_BASE = USE_LOCAL_API

@@ -642,7 +642,38 @@ $r-lg:   22px;
   &__err {
     font-size: 12px;
     color: #DC2626;
+
+    &--center { text-align: center; }
   }
+}
+
+// ─── Custom select arrow + color-scheme ───────────────────────────────────────
+// appearance:none removes the native arrow — we draw our own via background-image
+select.tp-field__input {
+  cursor: pointer;
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 14px 8px;
+  padding-right: 40px;
+  // Keep font-size identical to other inputs to avoid text cut-off
+  -webkit-tap-highlight-color: transparent;
+}
+
+select.tp-field__input:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+// Dark theme — light grey arrow + force dark option bg via color-scheme
+.tp-page--dark select.tp-field__input {
+  color-scheme: dark;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='8' viewBox='0 0 14 8'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%23a0a8c0' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+// Light theme — dark grey arrow + force light option bg
+.tp-page--light select.tp-field__input {
+  color-scheme: light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='8' viewBox='0 0 14 8'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%23555e7a' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 // ─── Bottom Sheet ─────────────────────────────────────────────────────────────
@@ -839,18 +870,26 @@ $r-lg:   22px;
   }
 
   &__x {
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    border: 1px solid var(--bd2);
-    background: var(--card);
-    color: var(--text2);
+    border: 1.5px solid var(--bd2);
+    background: transparent;
+    color: var(--text);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.15s;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    flex-shrink: 0;
 
-    &:hover { background: var(--card2); }
+    &:hover { background: var(--card2); border-color: var(--text2); }
+  }
+
+  // When logo is removed, title is still absolute-centered.
+  // X must be pushed to the right edge manually.
+  &__x--bar {
+    margin-left: auto;
   }
 
   &__body {

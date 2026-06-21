@@ -171,28 +171,39 @@ export function setSessionData(data) {
   _session = data;
 }
 
+/** True if editor has pushed live session data (blob: video URLs present). */
+export function hasSessionData() {
+  return _session !== null;
+}
+
+// ─── Shared merge helper ──────────────────────────────────────────────────────
+
+function mergeWithDefaults(p) {
+  const nonEmpty = (arr, def) => (Array.isArray(arr) && arr.length > 0) ? arr : def;
+  return {
+    hero:     { ...DEFAULT_DATA.hero,     ...(p.hero     || {}) },
+    stats:    nonEmpty(p.stats,    DEFAULT_DATA.stats),
+    sports:   nonEmpty(p.sports,   DEFAULT_DATA.sports).map(s => {
+      if (s.schedule && s.schedule.length > 0) return s;
+      const def = DEFAULT_DATA.sports.find(d => d.id === s.id);
+      return { ...s, schedule: def ? def.schedule : [] };
+    }),
+    trainers: nonEmpty(p.trainers, DEFAULT_DATA.trainers),
+    prices:   nonEmpty(p.prices,   DEFAULT_DATA.prices),
+    offer:    { ...DEFAULT_DATA.offer,    ...(p.offer    || {}) },
+    footer:   { ...DEFAULT_DATA.footer,   ...(p.footer   || {}) },
+  };
+}
+
+// ─── Sync (localStorage / session) ───────────────────────────────────────────
+
 export function loadTaplinkData() {
   // Prefer live session data (has blob: video URLs) over persisted localStorage data
   if (_session) return _session;
   try {
     const raw = localStorage.getItem('taplink-data');
     if (!raw) return DEFAULT_DATA;
-    const p = JSON.parse(raw);
-    return {
-      hero:     { ...DEFAULT_DATA.hero,     ...(p.hero     || {}) },
-      stats:    Array.isArray(p.stats)    ? p.stats    : DEFAULT_DATA.stats,
-      sports:   Array.isArray(p.sports)
-        ? p.sports.map(s => {
-            if (s.schedule && s.schedule.length > 0) return s;
-            const def = DEFAULT_DATA.sports.find(d => d.id === s.id);
-            return { ...s, schedule: def ? def.schedule : [] };
-          })
-        : DEFAULT_DATA.sports,
-      trainers: Array.isArray(p.trainers) ? p.trainers : DEFAULT_DATA.trainers,
-      prices:   Array.isArray(p.prices)   ? p.prices   : DEFAULT_DATA.prices,
-      offer:    { ...DEFAULT_DATA.offer,    ...(p.offer    || {}) },
-      footer:   { ...DEFAULT_DATA.footer,   ...(p.footer   || {}) },
-    };
+    return mergeWithDefaults(JSON.parse(raw));
   } catch {
     return DEFAULT_DATA;
   }
@@ -207,4 +218,37 @@ export function saveTaplinkData(data) {
     trainers: data.trainers.map(t => ({ ...t, videos: cleanVids(t.videos) })),
   };
   localStorage.setItem('taplink-data', JSON.stringify(clean));
+}
+
+// ─── Async (API) ──────────────────────────────────────────────────────────────
+// Used when BACKEND_ENABLED = true in api.js.
+// Falls back to sync localStorage on any error.
+
+export async function loadTaplinkDataAsync() {
+  const { BACKEND_ENABLED, fetchConfig } = await import('./api.js');
+  if (!BACKEND_ENABLED) return loadTaplinkData();
+  try {
+    const raw = await fetchConfig();
+    const merged = mergeWithDefaults(raw);
+    // Cache to localStorage so offline / fallback still works
+    saveTaplinkData(merged);
+    return merged;
+  } catch {
+    return loadTaplinkData();
+  }
+}
+
+export async function saveTaplinkDataAsync(data) {
+  const { BACKEND_ENABLED, saveConfig } = await import('./api.js');
+  // Always persist locally first (instant feedback, offline safety)
+  saveTaplinkData(data);
+  if (!BACKEND_ENABLED) return;
+  // Strip blob: URLs before sending to server
+  const cleanVids = arr => (arr || []).map(v => (v && v.startsWith('blob:')) ? '' : (v || ''));
+  const payload = {
+    ...data,
+    sports:   data.sports.map(s => ({ ...s, videos: cleanVids(s.videos) })),
+    trainers: data.trainers.map(t => ({ ...t, videos: cleanVids(t.videos) })),
+  };
+  return saveConfig(payload);
 }

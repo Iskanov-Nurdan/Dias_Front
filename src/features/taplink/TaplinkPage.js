@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import './TaplinkPage.scss';
-import { loadTaplinkData } from './taplinkStore';
+import { loadTaplinkData, loadTaplinkDataAsync, hasSessionData } from './taplinkStore';
+import { BACKEND_ENABLED, submitBooking } from './api';
 
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -121,9 +122,10 @@ const TrainersSlider = ({ trainers, onDetails, onBook }) => {
   const next = useCallback(() => go((idx + 1) % trainers.length, 'next'), [idx, trainers.length, go]);
 
   useEffect(() => {
+    if (trainers.length < 2) return;
     const timer = setInterval(next, 3000);
     return () => clearInterval(timer);
-  }, [next]);
+  }, [next, trainers.length]);
 
   const onTouchStart = e => { touchX.current = e.touches[0].clientX; };
   const onTouchEnd   = e => {
@@ -133,7 +135,8 @@ const TrainersSlider = ({ trainers, onDetails, onBook }) => {
     touchX.current = null;
   };
 
-  const t = trainers[idx];
+  if (!trainers.length) return null;
+  const t = trainers[idx] || trainers[0];
 
   return (
     <div className="tp-slider" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
@@ -334,12 +337,13 @@ const TrainerSheet = ({ trainer, onClose, onBook, sports = [] }) => {
 
 // ─── Booking Modal (full screen) ──────────────────────────────────────────────
 
-const EMPTY = { name: '', phone: '', email: '', sport: '', trainer: '', comment: '' };
+const EMPTY_BOOKING = { name: '', phone: '+996 ', sport: '', trainer: '', preferredTime: '', comment: '' };
 
 const BookingModal = ({ onClose, initial = {}, dark, sports = [], trainers = [] }) => {
-  const [form, setForm] = useState({ ...EMPTY, ...initial });
+  const [form, setForm] = useState({ ...EMPTY_BOOKING, ...initial });
   const [errors, setErrors] = useState({});
   const [done, setDone] = useState(false);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -351,14 +355,56 @@ const BookingModal = ({ onClose, initial = {}, dark, sports = [], trainers = [] 
     setErrors(p => ({ ...p, [f]: '' }));
   };
 
-  const submit = e => {
+  // When sport changes — reset trainer & preferredTime if they don't match new sport
+  const setSport = e => {
+    const sport = e.target.value;
+    setForm(p => ({
+      ...p,
+      sport,
+      trainer:       trainers.find(t => t.name === p.trainer && t.sportName === sport) ? p.trainer : '',
+      preferredTime: '',
+    }));
+    setErrors(p => ({ ...p, sport: '' }));
+  };
+
+  // Only show trainers for the selected sport
+  const sportTrainers = form.sport
+    ? trainers.filter(t => t.sportName === form.sport)
+    : [];
+
+  // Schedule slots for the selected sport → "Группа — Дни Время"
+  const selectedSport   = sports.find(s => s.name === form.sport);
+  const scheduleSlots   = selectedSport?.schedule || [];
+
+  const submit = async e => {
     e.preventDefault();
     const errs = {};
     if (!form.name.trim()) errs.name = 'Введите ФИО';
-    if (!form.phone.trim()) errs.phone = 'Введите номер телефона';
-    if (!form.sport) errs.sport = 'Выберите вид спорта';
+    const phoneClean = form.phone.replace(/[\s\-()]/g, '');
+    if (!phoneClean || phoneClean === '+996') errs.phone = 'Введите номер телефона';
+    if (!form.sport) errs.sport = 'Выберите секцию';
     if (Object.keys(errs).length) { setErrors(errs); return; }
-    setDone(true);
+
+    if (BACKEND_ENABLED) {
+      setSending(true);
+      try {
+        await submitBooking({
+          name:          form.name.trim(),
+          phone:         form.phone.trim(),
+          sport:         form.sport,
+          trainer:       form.trainer || undefined,
+          preferredTime: form.preferredTime.trim() || undefined,
+          comment:       form.comment.trim() || undefined,
+        });
+        setDone(true);
+      } catch {
+        setErrors(p => ({ ...p, _submit: 'Ошибка отправки. Попробуйте ещё раз.' }));
+      } finally {
+        setSending(false);
+      }
+    } else {
+      setDone(true);
+    }
   };
 
   return (
@@ -366,9 +412,8 @@ const BookingModal = ({ onClose, initial = {}, dark, sports = [], trainers = [] 
 
       {/* Sticky top bar */}
       <div className="tp-fs-modal__bar">
-        <img src="/rahman.png" alt="Рахман Ата" className="tp-fs-modal__logo" />
         <span className="tp-fs-modal__bar-title">Онлайн-запись</span>
-        <button className="tp-fs-modal__x" onClick={onClose} aria-label="Закрыть">
+        <button className="tp-fs-modal__x tp-fs-modal__x--bar" onClick={onClose} aria-label="Закрыть">
           <XIcon />
         </button>
       </div>
@@ -388,34 +433,39 @@ const BookingModal = ({ onClose, initial = {}, dark, sports = [], trainers = [] 
         ) : (
           <>
             <div className="tp-fs-modal__hero">
-              <img src="/rahman.png" alt="Рахман Ата" className="tp-fs-modal__hero-logo" />
               <h2 className="tp-fs-modal__title">Запись на тренировку</h2>
               <p className="tp-fs-modal__sub">Оставьте заявку — мы перезвоним вам</p>
             </div>
 
             <form className="tp-form" onSubmit={submit} noValidate>
-              {[
-                { f: 'name',  label: 'ФИО *',    type: 'text',  ph: 'Иванов Иван' },
-                { f: 'phone', label: 'Телефон *', type: 'tel',   ph: '+7 (700) 000-00-00' },
-                { f: 'email', label: 'Email',     type: 'email', ph: 'example@mail.com' },
-              ].map(({ f, label, type, ph }) => (
-                <div key={f} className="tp-field">
-                  <label className="tp-field__label">{label}</label>
-                  <input
-                    className={`tp-field__input${errors[f] ? ' tp-field__input--err' : ''}`}
-                    type={type} placeholder={ph}
-                    value={form[f]} onChange={set(f)}
-                    autoComplete={f === 'name' ? 'name' : f === 'phone' ? 'tel' : 'email'}
-                  />
-                  {errors[f] && <span className="tp-field__err">{errors[f]}</span>}
-                </div>
-              ))}
+
+              <div className="tp-field">
+                <label className="tp-field__label">ФИО *</label>
+                <input
+                  className={`tp-field__input${errors.name ? ' tp-field__input--err' : ''}`}
+                  type="text" placeholder="Бекматов Асан"
+                  value={form.name} onChange={set('name')}
+                  autoComplete="name"
+                />
+                {errors.name && <span className="tp-field__err">{errors.name}</span>}
+              </div>
+
+              <div className="tp-field">
+                <label className="tp-field__label">Телефон *</label>
+                <input
+                  className={`tp-field__input${errors.phone ? ' tp-field__input--err' : ''}`}
+                  type="tel" placeholder="+996 555 123 456"
+                  value={form.phone} onChange={set('phone')}
+                  autoComplete="tel"
+                />
+                {errors.phone && <span className="tp-field__err">{errors.phone}</span>}
+              </div>
 
               <div className="tp-field">
                 <label className="tp-field__label">Вид спорта *</label>
                 <select
                   className={`tp-field__input${errors.sport ? ' tp-field__input--err' : ''}`}
-                  value={form.sport} onChange={set('sport')}
+                  value={form.sport} onChange={setSport}
                 >
                   <option value="">— Выберите секцию —</option>
                   {sports.map(s => (
@@ -427,10 +477,40 @@ const BookingModal = ({ onClose, initial = {}, dark, sports = [], trainers = [] 
 
               <div className="tp-field">
                 <label className="tp-field__label">Тренер (необязательно)</label>
-                <select className="tp-field__input" value={form.trainer} onChange={set('trainer')}>
-                  <option value="">Любой тренер</option>
-                  {trainers.map(t => (
-                    <option key={t.id} value={t.name}>{t.name} — {t.sportName}</option>
+                <select
+                  className="tp-field__input"
+                  value={form.trainer}
+                  onChange={set('trainer')}
+                  disabled={!form.sport}
+                >
+                  <option value="">
+                    {!form.sport ? '— Сначала выберите секцию —' : 'Любой тренер'}
+                  </option>
+                  {sportTrainers.map(t => (
+                    <option key={t.id} value={t.name}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="tp-field">
+                <label className="tp-field__label">Удобное время занятий</label>
+                <select
+                  className="tp-field__input"
+                  value={form.preferredTime}
+                  onChange={set('preferredTime')}
+                  disabled={!form.sport}
+                >
+                  <option value="">
+                    {!form.sport
+                      ? '— Сначала выберите секцию —'
+                      : !scheduleSlots.length
+                        ? '— Расписание не указано —'
+                        : '— Выберите удобное время —'}
+                  </option>
+                  {scheduleSlots.map((slot, i) => (
+                    <option key={i} value={`${slot.group} — ${slot.days} ${slot.time}`}>
+                      {slot.group} — {slot.days} {slot.time}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -439,13 +519,21 @@ const BookingModal = ({ onClose, initial = {}, dark, sports = [], trainers = [] 
                 <label className="tp-field__label">Комментарий</label>
                 <textarea
                   className="tp-field__input tp-field__ta"
-                  placeholder="Уровень подготовки, удобное время для занятий..."
+                  placeholder="Уровень подготовки, пожелания, вопросы..."
                   value={form.comment} onChange={set('comment')}
                 />
               </div>
 
-              <button type="submit" className="tp-btn tp-btn--red tp-btn--full tp-btn--lg">
-                Отправить заявку
+              {errors._submit && (
+                <p className="tp-field__err tp-field__err--center">{errors._submit}</p>
+              )}
+
+              <button
+                type="submit"
+                className="tp-btn tp-btn--red tp-btn--full tp-btn--lg"
+                disabled={sending}
+              >
+                {sending ? 'Отправляем…' : 'Отправить заявку'}
               </button>
             </form>
           </>
@@ -461,10 +549,21 @@ const TaplinkPage = () => {
   const [dark, setDark] = useState(() => {
     try { return localStorage.getItem('tp-theme') === 'dark'; } catch { return false; }
   });
-  const [{ hero, stats, sports, trainers, prices, offer, footer }] = useState(() => loadTaplinkData());
+  // Sync initial load (localStorage / session) — no flicker
+  const [pageData, setPageData] = useState(() => loadTaplinkData());
+  const { hero, stats, sports, trainers, prices, offer, footer } = pageData;
+
   const [activeSport,   setActiveSport]   = useState(null);
   const [activeTrainer, setActiveTrainer] = useState(null);
   const [booking,       setBooking]       = useState(null);
+
+  // Async load from API when backend is ready (skipped if editor session data is present)
+  useEffect(() => {
+    if (!BACKEND_ENABLED || hasSessionData()) return;
+    loadTaplinkDataAsync()
+      .then(d => { if (d) setPageData(d); })
+      .catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     document.body.style.backgroundColor = dark ? '#15192A' : '#F0F2FA';

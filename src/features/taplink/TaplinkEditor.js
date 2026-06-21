@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loadTaplinkData, saveTaplinkData, setSessionData } from './taplinkStore';
+import { loadTaplinkData, saveTaplinkDataAsync, loadTaplinkDataAsync, setSessionData } from './taplinkStore';
+import { BACKEND_ENABLED, uploadFile } from './api';
 import './TaplinkEditor.scss';
 
 const TABS = [
@@ -23,20 +24,34 @@ const Field = ({ label, children }) => (
 
 // ─── Photo upload ─────────────────────────────────────────────────────────────
 
-const PhotoUpload = ({ value, onChange, shape = 'rect', placeholder = 'Загрузить фото' }) => {
+const PhotoUpload = ({ value, onChange, shape = 'rect', placeholder = 'Загрузить фото', context = '' }) => {
   const ref = useRef();
+  const [uploading, setUploading] = useState(false);
 
-  const handleFile = e => {
+  const handleFile = async e => {
     const file = e.target.files[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
       alert('Файл слишком большой. Максимум 5 МБ.');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = ev => onChange(ev.target.result);
-    reader.readAsDataURL(file);
     e.target.value = '';
+
+    if (BACKEND_ENABLED) {
+      setUploading(true);
+      try {
+        const url = await uploadFile(file, context);
+        onChange(url);
+      } catch {
+        alert('Ошибка загрузки файла. Попробуйте ещё раз.');
+      } finally {
+        setUploading(false);
+      }
+    } else {
+      const reader = new FileReader();
+      reader.onload = ev => onChange(ev.target.result);
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
@@ -45,20 +60,22 @@ const PhotoUpload = ({ value, onChange, shape = 'rect', placeholder = 'Загр�
       {value ? (
         <div className="tpe-photo__has">
           <img src={value} alt="" className="tpe-photo__img" />
-          <div className="tpe-photo__overlay">
-            <button type="button" className="tpe-photo__change" onClick={() => ref.current.click()}>
-              Заменить
-            </button>
-            <button type="button" className="tpe-photo__del" onClick={() => onChange(null)}>
-              Удалить
-            </button>
-          </div>
+          {!uploading && (
+            <div className="tpe-photo__overlay">
+              <button type="button" className="tpe-photo__change" onClick={() => ref.current.click()}>
+                Заменить
+              </button>
+              <button type="button" className="tpe-photo__del" onClick={() => onChange(null)}>
+                Удалить
+              </button>
+            </div>
+          )}
         </div>
       ) : (
-        <div className="tpe-photo__empty" onClick={() => ref.current.click()}>
-          <span className="tpe-photo__ic">📷</span>
-          <span className="tpe-photo__txt">{placeholder}</span>
-          <span className="tpe-photo__hint">JPG, PNG, WEBP · до 5 МБ</span>
+        <div className="tpe-photo__empty" onClick={() => !uploading && ref.current.click()}>
+          <span className="tpe-photo__ic">{uploading ? '⏳' : '📷'}</span>
+          <span className="tpe-photo__txt">{uploading ? 'Загружается...' : placeholder}</span>
+          {!uploading && <span className="tpe-photo__hint">JPG, PNG, WEBP · до 5 МБ</span>}
         </div>
       )}
     </div>
@@ -67,16 +84,31 @@ const PhotoUpload = ({ value, onChange, shape = 'rect', placeholder = 'Загр�
 
 // ─── Video upload ─────────────────────────────────────────────────────────────
 
-const VideoUpload = ({ value, onChange, num }) => {
+const VideoUpload = ({ value, onChange, num, context = '' }) => {
   const ref = useRef();
+  const [uploading, setUploading] = useState(false);
 
-  const handleFile = e => {
+  const handleFile = async e => {
     const file = e.target.files[0];
     if (!file) return;
-    if (value && value.startsWith('blob:')) URL.revokeObjectURL(value);
-    const url = URL.createObjectURL(file);
-    onChange(url);
     e.target.value = '';
+
+    if (BACKEND_ENABLED) {
+      if (value && value.startsWith('blob:')) URL.revokeObjectURL(value);
+      setUploading(true);
+      try {
+        const url = await uploadFile(file, context);
+        onChange(url);
+      } catch {
+        alert('Ошибка загрузки видео. Попробуйте ещё раз.');
+      } finally {
+        setUploading(false);
+      }
+    } else {
+      if (value && value.startsWith('blob:')) URL.revokeObjectURL(value);
+      const url = URL.createObjectURL(file);
+      onChange(url);
+    }
   };
 
   const remove = () => {
@@ -90,16 +122,18 @@ const VideoUpload = ({ value, onChange, num }) => {
       {value ? (
         <div className="tpe-vid__has">
           <video src={value} controls className="tpe-vid__player" />
-          <div className="tpe-vid__actions">
-            <button type="button" onClick={() => ref.current.click()}>Заменить</button>
-            <button type="button" className="tpe-vid__del" onClick={remove}>Удалить</button>
-          </div>
+          {!uploading && (
+            <div className="tpe-vid__actions">
+              <button type="button" onClick={() => ref.current.click()}>Заменить</button>
+              <button type="button" className="tpe-vid__del" onClick={remove}>Удалить</button>
+            </div>
+          )}
         </div>
       ) : (
-        <div className="tpe-vid__empty" onClick={() => ref.current.click()}>
-          <span className="tpe-vid__ic">🎬</span>
-          <span className="tpe-vid__txt">Видео {num}</span>
-          <span className="tpe-vid__hint">MP4, WEBM</span>
+        <div className="tpe-vid__empty" onClick={() => !uploading && ref.current.click()}>
+          <span className="tpe-vid__ic">{uploading ? '⏳' : '🎬'}</span>
+          <span className="tpe-vid__txt">{uploading ? 'Загружается...' : `Видео ${num}`}</span>
+          {!uploading && <span className="tpe-vid__hint">MP4, WEBM</span>}
         </div>
       )}
     </div>
@@ -120,6 +154,7 @@ const HeroTab = ({ data, setData }) => {
           onChange={v => set('bg', v)}
           shape="hero"
           placeholder="Загрузить фон главного экрана"
+          context="hero-bg"
         />
       </Field>
 
@@ -312,6 +347,7 @@ const SportsTab = ({ data, setData }) => {
                     onChange={v => set(i, 'photo', v)}
                     shape="rect"
                     placeholder="Загрузить фото секции"
+                    context="sport-photo"
                   />
                 </Field>
 
@@ -380,12 +416,15 @@ const SportsTab = ({ data, setData }) => {
                         num={vi + 1}
                         value={(sport.videos || [])[vi] || ''}
                         onChange={v => setVideo(i, vi, v)}
+                        context="sport-video"
                       />
                     ))}
                   </div>
-                  <p className="tpe-videos-block__note">
-                    Видео сохраняются только в рамках текущей сессии браузера
-                  </p>
+                  {!BACKEND_ENABLED && (
+                    <p className="tpe-videos-block__note">
+                      Видео сохраняются только в рамках текущей сессии браузера
+                    </p>
+                  )}
                 </div>
 
                 <button className="tpe-delete-btn" type="button" onClick={() => remove(i)}>
@@ -496,6 +535,7 @@ const TrainersTab = ({ data, setData }) => {
                       onChange={v => set(i, 'photo', v)}
                       shape="round"
                       placeholder="Фото тренера"
+                      context="trainer-photo"
                     />
                   </Field>
                   <div className="tpe-trainer-fields">
@@ -555,12 +595,15 @@ const TrainersTab = ({ data, setData }) => {
                         num={vi + 1}
                         value={(t.videos || [])[vi] || ''}
                         onChange={v => setVideo(i, vi, v)}
+                        context="trainer-video"
                       />
                     ))}
                   </div>
-                  <p className="tpe-videos-block__note">
-                    Видео сохраняются только в рамках текущей сессии браузера
-                  </p>
+                  {!BACKEND_ENABLED && (
+                    <p className="tpe-videos-block__note">
+                      Видео сохраняются только в рамках текущей сессии браузера
+                    </p>
+                  )}
                 </div>
 
                 <button className="tpe-delete-btn" type="button" onClick={() => remove(i)}>
@@ -696,26 +739,59 @@ const FooterTab = ({ data, setData }) => {
 // ─── Main Editor ──────────────────────────────────────────────────────────────
 
 const TaplinkEditor = () => {
-  const [data, setData] = useState(() => loadTaplinkData());
-  const [tab, setTab]   = useState('hero');
-  const [saved, setSaved] = useState(false);
+  const [data,    setData]    = useState(() => loadTaplinkData());
+  const [tab,     setTab]     = useState('hero');
+  const [saved,   setSaved]   = useState(false);
+  const [saving,  setSaving]  = useState(false);
+  const [saveErr, setSaveErr] = useState(null);
+  const [loading, setLoading] = useState(BACKEND_ENABLED);
   const navigate = useNavigate();
+
+  // Load from API on mount (if backend is enabled and no fresh session data)
+  useEffect(() => {
+    if (!BACKEND_ENABLED) return;
+    loadTaplinkDataAsync()
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep session store in sync so TaplinkPage can access blob: video URLs
   useEffect(() => {
     setSessionData(data);
   }, [data]);
 
-  const save = () => {
-    saveTaplinkData(data);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+  const save = async () => {
+    if (saving) return;
+    setSaving(true);
+    setSaveErr(null);
+    try {
+      await saveTaplinkDataAsync(data);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e) {
+      setSaveErr(e?.response?.data?.error?.message || e?.message || 'Ошибка сохранения');
+      setTimeout(() => setSaveErr(null), 4000);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const preview = () => {
     // Navigate within the SPA so blob: URLs remain valid in the same tab
     navigate('/taplink');
   };
+
+  if (loading) {
+    return (
+      <div className="tpe">
+        <div style={{ padding: '60px 32px', color: 'var(--color-text-muted)', fontSize: 14 }}>
+          Загрузка данных…
+        </div>
+      </div>
+    );
+  }
+
+  const saveBtnLabel = saving ? 'Сохранение…' : saved ? '✓ Сохранено' : 'Сохранить';
 
   return (
     <div className="tpe">
@@ -731,8 +807,13 @@ const TaplinkEditor = () => {
           <button type="button" className="tpe__preview-btn" onClick={preview}>
             👁 Предпросмотр
           </button>
-          <button type="button" className={`tpe__save-btn${saved ? ' tpe__save-btn--done' : ''}`} onClick={save}>
-            {saved ? '✓ Сохранено' : 'Сохранить'}
+          <button
+            type="button"
+            className={`tpe__save-btn${saved ? ' tpe__save-btn--done' : ''}`}
+            onClick={save}
+            disabled={saving}
+          >
+            {saveBtnLabel}
           </button>
         </div>
       </div>
@@ -757,10 +838,19 @@ const TaplinkEditor = () => {
 
       <div className="tpe__bottom-bar">
         <span className="tpe__bottom-note">
-          {saved ? '✓ Изменения сохранены' : 'Несохранённые изменения будут потеряны при перезагрузке'}
+          {saveErr
+            ? `⚠ ${saveErr}`
+            : saved
+              ? '✓ Изменения сохранены'
+              : 'Несохранённые изменения будут потеряны при перезагрузке'}
         </span>
-        <button type="button" className={`tpe__save-btn${saved ? ' tpe__save-btn--done' : ''}`} onClick={save}>
-          {saved ? '✓ Сохранено' : 'Сохранить изменения'}
+        <button
+          type="button"
+          className={`tpe__save-btn${saved ? ' tpe__save-btn--done' : ''}`}
+          onClick={save}
+          disabled={saving}
+        >
+          {saveBtnLabel}
         </button>
       </div>
     </div>

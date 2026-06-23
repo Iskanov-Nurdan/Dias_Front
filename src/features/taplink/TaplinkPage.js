@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import './TaplinkPage.scss';
 import { loadTaplinkData, loadTaplinkDataAsync, hasSessionData } from './taplinkStore';
 import { BACKEND_ENABLED, submitBooking } from './api';
+import Select from '../../shared/ui/Select';
 
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -377,6 +378,12 @@ const BookingModal = ({ onClose, initial = {}, dark, sports = [], trainers = [] 
     setErrors(p => ({ ...p, [f]: '' }));
   };
 
+  // Для Select-компонента (приходит value напрямую, не event)
+  const setSelectField = f => v => {
+    setForm(p => ({ ...p, [f]: v }));
+    setErrors(p => ({ ...p, [f]: '' }));
+  };
+
   // When sport changes — reset trainer & preferredTime if they don't match new sport
   const setSport = e => {
     const sport = e.target.value;
@@ -384,6 +391,16 @@ const BookingModal = ({ onClose, initial = {}, dark, sports = [], trainers = [] 
       ...p,
       sport,
       trainer:       trainers.find(t => t.name === p.trainer && t.sportName === sport) ? p.trainer : '',
+      preferredTime: '',
+    }));
+    setErrors(p => ({ ...p, sport: '' }));
+  };
+
+  const setSportSelect = v => {
+    setForm(p => ({
+      ...p,
+      sport: v,
+      trainer:       trainers.find(t => t.name === p.trainer && t.sportName === v) ? p.trainer : '',
       preferredTime: '',
     }));
     setErrors(p => ({ ...p, sport: '' }));
@@ -483,58 +500,44 @@ const BookingModal = ({ onClose, initial = {}, dark, sports = [], trainers = [] 
                 {errors.phone && <span className="tp-field__err">{errors.phone}</span>}
               </div>
 
-              <div className="tp-field">
+              <div className={`tp-field${errors.sport ? ' tp-field--err' : ''}`}>
                 <label className="tp-field__label">Вид спорта *</label>
-                <select
-                  className={`tp-field__input${errors.sport ? ' tp-field__input--err' : ''}`}
-                  value={form.sport} onChange={setSport}
-                >
-                  <option value="">— Выберите секцию —</option>
-                  {sports.map(s => (
-                    <option key={s.id} value={s.name}>{s.emoji} {s.name}</option>
-                  ))}
-                </select>
+                <Select
+                  value={form.sport}
+                  onChange={setSportSelect}
+                  placeholder="— Выберите секцию —"
+                  options={sports.map(s => ({ value: s.name, label: s.name }))}
+                />
                 {errors.sport && <span className="tp-field__err">{errors.sport}</span>}
               </div>
 
               <div className="tp-field">
                 <label className="tp-field__label">Тренер (необязательно)</label>
-                <select
-                  className="tp-field__input"
+                <Select
                   value={form.trainer}
-                  onChange={set('trainer')}
+                  onChange={setSelectField('trainer')}
                   disabled={!form.sport}
-                >
-                  <option value="">
-                    {!form.sport ? '— Сначала выберите секцию —' : 'Любой тренер'}
-                  </option>
-                  {sportTrainers.map(t => (
-                    <option key={t.id} value={t.name}>{t.name}</option>
-                  ))}
-                </select>
+                  placeholder={!form.sport ? '— Сначала выберите секцию —' : 'Любой тренер'}
+                  options={sportTrainers.map(t => ({ value: t.name, label: t.name }))}
+                />
               </div>
 
               <div className="tp-field">
                 <label className="tp-field__label">Удобное время занятий</label>
-                <select
-                  className="tp-field__input"
+                <Select
                   value={form.preferredTime}
-                  onChange={set('preferredTime')}
+                  onChange={setSelectField('preferredTime')}
                   disabled={!form.sport}
-                >
-                  <option value="">
-                    {!form.sport
-                      ? '— Сначала выберите секцию —'
-                      : !scheduleSlots.length
-                        ? '— Расписание не указано —'
-                        : '— Выберите удобное время —'}
-                  </option>
-                  {scheduleSlots.map((slot, i) => (
-                    <option key={i} value={`${slot.group} — ${slot.days} ${slot.time}`}>
-                      {slot.group} — {slot.days} {slot.time}
-                    </option>
-                  ))}
-                </select>
+                  placeholder={
+                    !form.sport           ? '— Сначала выберите секцию —'
+                    : !scheduleSlots.length ? '— Расписание не указано —'
+                    : '— Выберите время —'
+                  }
+                  options={scheduleSlots.map((slot, i) => ({
+                    value: `${slot.group} — ${slot.days} ${slot.time}`,
+                    label: `${slot.group} — ${slot.days} ${slot.time}`,
+                  }))}
+                />
               </div>
 
               <div className="tp-field">
@@ -590,6 +593,15 @@ const TaplinkPage = () => {
   useEffect(() => {
     document.body.style.backgroundColor = dark ? '#15192A' : '#F0F2FA';
     document.body.style.margin = '0';
+  }, [dark]);
+
+  // Ставим класс на body чтобы Select-порталы знали о теме страницы
+  useEffect(() => {
+    const add = dark ? 'tp-body--dark' : 'tp-body--light';
+    const rem = dark ? 'tp-body--light' : 'tp-body--dark';
+    document.body.classList.add(add);
+    document.body.classList.remove(rem);
+    return () => document.body.classList.remove('tp-body--dark', 'tp-body--light');
   }, [dark]);
 
   const toggleTheme = () => {

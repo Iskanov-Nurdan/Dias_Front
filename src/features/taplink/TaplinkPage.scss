@@ -770,6 +770,131 @@ $r-lg:   22px;
   }
 }
 
+// ─── Кастомный Select-компонент внутри taplink страницы ──────────────────────
+// Триггер (внутри .tp-page, CSS-переменные доступны)
+.tp-page--dark,
+.tp-page--light {
+  .select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .select__trigger {
+    width: 100%;
+    height: 46px;
+    min-height: 46px;
+    font-size: 15px;
+    font-family: $font;
+    border-radius: $r-sm;
+    padding: 0 14px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-bd);
+    color: var(--text);
+    transition: border-color 0.18s, background 0.18s;
+
+    &:hover:not(:disabled) {
+      border-color: var(--bd2);
+      background: var(--card2);
+    }
+
+    &:focus {
+      outline: none;
+      border-color: rgba($red, 0.55);
+      box-shadow: 0 0 0 3px rgba($red, 0.1);
+    }
+  }
+
+  .select__value { color: var(--text); }
+  .select__chevron { color: var(--text3); }
+
+  .select--open .select__trigger {
+    border-color: rgba($red, 0.55);
+  }
+
+  .select--disabled .select__trigger {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  // Ошибка
+  .tp-field--err .select__trigger {
+    border-color: $red;
+  }
+}
+
+// ─── Порталы Select (dropdown/sheet) рендерятся на document.body ──────────────
+// Тёмная тема таплинк
+body.tp-body--dark {
+  .select__dropdown {
+    background: #1E2537;
+    border-color: rgba(255,255,255,0.09);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  }
+
+  .select__option {
+    color: #EEF2FF;
+    border-radius: 8px;
+
+    &:hover { background: rgba(255,255,255,0.07); }
+
+    &--selected {
+      background: rgba(197,48,48,0.15);
+      color: #C53030;
+      font-weight: 600;
+    }
+  }
+
+  .select__sheet {
+    background: #1C2236;
+    box-shadow: 0 -8px 40px rgba(0,0,0,0.5);
+  }
+
+  .select__sheet-handle { background: rgba(255,255,255,0.18); }
+  .select__sheet-head   { border-bottom-color: rgba(255,255,255,0.09); }
+  .select__sheet-title  { color: #EEF2FF; }
+  .select__sheet-close  { color: rgba(220,228,255,0.55); }
+
+  .select__sheet-option {
+    color: #EEF2FF;
+
+    &:hover     { background: rgba(255,255,255,0.07); }
+    &--selected { background: rgba(197,48,48,0.15); color: #C53030; font-weight: 600; }
+  }
+}
+
+// Светлая тема таплинк
+body.tp-body--light {
+  .select__dropdown {
+    background: #FFFFFF;
+    border-color: rgba(60,72,130,0.12);
+    box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+  }
+
+  .select__option {
+    color: #18213E;
+
+    &:hover     { background: rgba(0,0,0,0.04); }
+    &--selected { background: rgba(197,48,48,0.08); color: #C53030; font-weight: 600; }
+  }
+
+  .select__sheet {
+    background: #FFFFFF;
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.14);
+  }
+
+  .select__sheet-handle { background: rgba(60,72,130,0.2); }
+  .select__sheet-head   { border-bottom-color: rgba(60,72,130,0.1); }
+  .select__sheet-title  { color: #18213E; }
+  .select__sheet-close  { color: rgba(24,33,62,0.45); }
+
+  .select__sheet-option {
+    color: #18213E;
+
+    &:hover     { background: rgba(0,0,0,0.04); }
+    &--selected { background: rgba(197,48,48,0.08); color: #C53030; font-weight: 600; }
+  }
+}
+
 // ─── Custom select arrow + color-scheme ───────────────────────────────────────
 // appearance:none removes the native arrow — we draw our own via background-image
 select.tp-field__input {

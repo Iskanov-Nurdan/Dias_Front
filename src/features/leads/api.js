@@ -4,15 +4,17 @@ const withSignal = (config, signal) => (signal ? { ...config, signal } : config)
 
 // ─── Лиды ───────────────────────────────────────────────────────────────────
 
-/** GET /api/leads/ — query: search, status, channel, stageId, page, perPage */
+/** GET /api/leads/ — query: search, status, channel, stageId, page, perPage, date_from, date_to */
 export const fetchLeads = async (queryState, signal) => {
   const params = {};
-  if (queryState?.search)  params.search  = queryState.search;
-  if (queryState?.status)  params.status  = queryState.status;
-  if (queryState?.channel) params.channel = queryState.channel;
-  if (queryState?.stageId) params.stageId = queryState.stageId;
-  if (queryState?.page)    params.page    = queryState.page;
-  if (queryState?.perPage) params.perPage = queryState.perPage;
+  if (queryState?.search)     params.search     = queryState.search;
+  if (queryState?.status)     params.status     = queryState.status;
+  if (queryState?.channel)    params.channel    = queryState.channel;
+  if (queryState?.stageId)    params.stageId    = queryState.stageId;
+  if (queryState?.page)       params.page       = queryState.page;
+  if (queryState?.perPage)    params.perPage    = queryState.perPage;
+  if (queryState?.date_from)  params.date_from  = queryState.date_from;
+  if (queryState?.date_to)    params.date_to    = queryState.date_to;
   const { data } = await apiClient.get('/leads/', { params, ...withSignal({}, signal) });
   return data;
 };

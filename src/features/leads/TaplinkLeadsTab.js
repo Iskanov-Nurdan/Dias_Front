@@ -1,26 +1,34 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { fetchLeads, updateLead } from './api';
 import { useToast } from '../../app/providers/ToastProvider';
 import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { ErrorState, EmptyState, Pagination, SkeletonTable } from '../../shared/ui';
+import Select from '../../shared/ui/Select';
 
-// Статусы таплинк-лидов
+// ─── Константы ────────────────────────────────────────────────────────────────
+
 const STATUS = {
-  all:      { label: 'Все',           filter: undefined },
-  pending:  { label: 'Новые',         filter: 'pending'  },
-  accepted: { label: 'Запишутся',     filter: 'accepted' },
-  rejected: { label: 'Не захотели',   filter: 'rejected' },
-  spam:     { label: 'Спам',          filter: 'spam'     },
+  all:      { label: 'Все',         filter: undefined },
+  pending:  { label: 'Новые',       filter: 'pending'  },
+  accepted: { label: 'Запишутся',   filter: 'accepted' },
+  rejected: { label: 'Не захотели', filter: 'rejected' },
+  spam:     { label: 'Спам',        filter: 'spam'     },
 };
 
 const STATUS_BADGE = {
-  pending:  { text: 'Новая',       cls: 'tlt__badge--new'      },
-  accepted: { text: 'Запишется',   cls: 'tlt__badge--accepted' },
-  rejected: { text: 'Отказался',   cls: 'tlt__badge--rejected' },
-  spam:     { text: 'Спам',        cls: 'tlt__badge--spam'     },
+  pending:  { text: 'Новая',     cls: 'tlt__badge--new'      },
+  accepted: { text: 'Запишется', cls: 'tlt__badge--accepted' },
+  rejected: { text: 'Отказался', cls: 'tlt__badge--rejected' },
+  spam:     { text: 'Спам',      cls: 'tlt__badge--spam'     },
 };
 
-// Визуальная подсказка менеджеру — не блокирует, просто предупреждает
+const MONTHS = [
+  'Январь','Февраль','Март','Апрель','Май','Июнь',
+  'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь',
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 const isSuspect = (lead) => {
   if (lead.isDuplicate ?? lead.is_duplicate) return true;
   const phone = (lead.phone || '').replace(/[\s\-()]/g, '');
@@ -42,16 +50,68 @@ const fmt = (iso) => {
   return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' });
 };
 
+const getTotal = (res) => res?.meta?.total ?? res?.count ?? res?.total ?? 0;
+
+// Строим date_from / date_to из выбранных фильтров
+const buildDateRange = (year, month, day) => {
+  if (!year) return {};
+  const y = year;
+  const m = month; // 1-indexed, null = все
+  const d = day;   // 1-indexed, null = все
+
+  let from, to;
+  if (d && m) {
+    const ds = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    from = ds; to = ds;
+  } else if (m) {
+    const last = new Date(y, m, 0).getDate();
+    from = `${y}-${String(m).padStart(2,'0')}-01`;
+    to   = `${y}-${String(m).padStart(2,'0')}-${String(last).padStart(2,'0')}`;
+  } else {
+    from = `${y}-01-01`;
+    to   = `${y}-12-31`;
+  }
+  return { date_from: from, date_to: to };
+};
+
+// ─── Компонент ────────────────────────────────────────────────────────────────
+
 const TaplinkLeadsTab = () => {
   const toast = useToast();
   const { run } = useAbortSafeFetch();
 
-  const [statusKey, setStatusKey]   = useState('all');
-  const [page,      setPage]        = useState(1);
-  const [data,      setData]        = useState(null);
-  const [loading,   setLoading]     = useState(false);
-  const [error,     setError]       = useState(null);
-  const [saving,    setSaving]      = useState(null); // id of lead being updated
+  // Фильтры даты
+  const now = new Date();
+  const [filterYear,  setFilterYear]  = useState(now.getFullYear());
+  const [filterMonth, setFilterMonth] = useState(null); // null = все месяцы
+  const [filterDay,   setFilterDay]   = useState(null); // null = все дни
+
+  // Таблица
+  const [statusKey, setStatusKey] = useState('all');
+  const [page,      setPage]      = useState(1);
+  const [data,      setData]      = useState(null);
+  const [loading,   setLoading]   = useState(false);
+  const [error,     setError]     = useState(null);
+  const [saving,    setSaving]    = useState(null);
+
+  // Статистика
+  const [stats,        setStats]        = useState(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+
+  const dateRange = useMemo(
+    () => buildDateRange(filterYear, filterMonth, filterDay),
+    [filterYear, filterMonth, filterDay],
+  );
+
+  // Дни в выбранном месяце (для пикера дня)
+  const daysInMonth = useMemo(() => {
+    if (!filterMonth) return 31;
+    return new Date(filterYear || now.getFullYear(), filterMonth, 0).getDate();
+  }, [filterYear, filterMonth]);
+
+  const years = [2026, 2027];
+
+  // ─── Загрузка таблицы ───────────────────────────────────────────────────────
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -59,7 +119,7 @@ const TaplinkLeadsTab = () => {
     try {
       const status = STATUS[statusKey]?.filter;
       const res = await run(signal => fetchLeads(
-        { channel: 'taplink', status, page, perPage: 25 },
+        { channel: 'taplink', status, page, perPage: 25, ...dateRange },
         signal,
       ));
       if (res === null) return;
@@ -69,9 +129,40 @@ const TaplinkLeadsTab = () => {
     } finally {
       setLoading(false);
     }
-  }, [run, statusKey, page]);
+  }, [run, statusKey, page, dateRange]);
 
   useEffect(() => { load(); }, [load]);
+
+  // ─── Загрузка статистики (5 параллельных запросов) ──────────────────────────
+
+  const loadStats = useCallback(async () => {
+    setStatsLoading(true);
+    const base = { channel: 'taplink', page: 1, perPage: 1, ...dateRange };
+    try {
+      const [all, pending, accepted, rejected, spam] = await Promise.all([
+        fetchLeads(base),
+        fetchLeads({ ...base, status: 'pending'  }),
+        fetchLeads({ ...base, status: 'accepted' }),
+        fetchLeads({ ...base, status: 'rejected' }),
+        fetchLeads({ ...base, status: 'spam'     }),
+      ]);
+      setStats({
+        total:    getTotal(all),
+        pending:  getTotal(pending),
+        accepted: getTotal(accepted),
+        rejected: getTotal(rejected),
+        spam:     getTotal(spam),
+      });
+    } catch {
+      setStats(null);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [dateRange]);
+
+  useEffect(() => { loadStats(); }, [loadStats]);
+
+  // ─── Смена статуса ──────────────────────────────────────────────────────────
 
   const setStatus = async (lead, status) => {
     setSaving(lead.id);
@@ -84,6 +175,7 @@ const TaplinkLeadsTab = () => {
         status === 'pending'  ? 'Статус сброшен'          : 'Сохранено'
       );
       load();
+      loadStats();
     } catch (e) {
       toast.error(e?.response?.data?.error?.message ?? 'Ошибка');
     } finally {
@@ -91,11 +183,80 @@ const TaplinkLeadsTab = () => {
     }
   };
 
+  // ─── Handlers ───────────────────────────────────────────────────────────────
+
+  const changeYear = (y) => {
+    setFilterYear(Number(y));
+    setFilterDay(null);
+    setPage(1);
+  };
+
+  const changeMonth = (m) => {
+    setFilterMonth(m ? Number(m) : null);
+    setFilterDay(null);
+    setPage(1);
+  };
+
+  const changeDay = (d) => {
+    setFilterDay(d ? Number(d) : null);
+    setPage(1);
+  };
+
   const items = data?.items ?? data?.results ?? (Array.isArray(data) ? data : []);
+
+  // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="tlt">
-      {/* Фильтр по статусу */}
+
+      {/* ── Фильтры даты ─────────────────────────────────────────────────── */}
+      <div className="tlt__date-filters">
+        <Select
+          className="tlt__date-select"
+          value={String(filterYear)}
+          onChange={v => changeYear(v)}
+          options={years.map(y => ({ value: String(y), label: String(y) }))}
+          placeholder="Год"
+        />
+        <Select
+          className="tlt__date-select"
+          value={filterMonth ? String(filterMonth) : ''}
+          onChange={v => changeMonth(v)}
+          placeholder="Все месяцы"
+          options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+        />
+        <Select
+          className="tlt__date-select"
+          value={filterDay ? String(filterDay) : ''}
+          onChange={v => changeDay(v)}
+          placeholder="Все дни"
+          disabled={!filterMonth}
+          options={Array.from({ length: daysInMonth }, (_, i) => ({
+            value: String(i + 1),
+            label: String(i + 1),
+          }))}
+        />
+      </div>
+
+      {/* ── Мини-аналитика ───────────────────────────────────────────────── */}
+      <div className="tlt__stats">
+        {[
+          { key: 'total',    label: 'Всего лидов', mod: ''          },
+          { key: 'pending',  label: 'Новые',        mod: '--new'     },
+          { key: 'accepted', label: 'Запишутся',    mod: '--accept'  },
+          { key: 'rejected', label: 'Отказались',   mod: '--reject'  },
+          { key: 'spam',     label: 'Спам',         mod: '--spam'    },
+        ].map(({ key, label, mod }) => (
+          <div key={key} className={`tlt__stat-card${mod ? ' tlt__stat-card' + mod : ''}`}>
+            <span className="tlt__stat-num">
+              {statsLoading ? '—' : (stats?.[key] ?? '—')}
+            </span>
+            <span className="tlt__stat-lbl">{label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Фильтр по статусу ────────────────────────────────────────────── */}
       <div className="tlt__status-tabs">
         {Object.entries(STATUS).map(([key, { label }]) => (
           <button
@@ -111,6 +272,7 @@ const TaplinkLeadsTab = () => {
 
       {error && <ErrorState message={error} onRetry={load} />}
 
+      {/* ── Таблица ──────────────────────────────────────────────────────── */}
       <div className="tlt__table-wrap">
         <table className="tlt__table">
           <thead>
@@ -140,8 +302,8 @@ const TaplinkLeadsTab = () => {
                 </td>
               </tr>
             ) : items.map(lead => {
-              const status = lead.status || 'pending';
-              const badge  = STATUS_BADGE[status] ?? STATUS_BADGE.pending;
+              const status  = lead.status || 'pending';
+              const badge   = STATUS_BADGE[status] ?? STATUS_BADGE.pending;
               const suspect = isSuspect(lead);
               return (
                 <tr key={lead.id} className={suspect && status === 'pending' ? 'tlt__row--suspect' : ''}>
@@ -157,8 +319,7 @@ const TaplinkLeadsTab = () => {
                     {lead.phone ? (
                       <a
                         href={`https://wa.me/${(lead.phone).replace(/\D/g, '')}`}
-                        target="_blank"
-                        rel="noreferrer"
+                        target="_blank" rel="noreferrer"
                         className="tlt__phone"
                       >
                         {lead.phone}
@@ -176,54 +337,39 @@ const TaplinkLeadsTab = () => {
                   <td className="tlt__actions">
                     {status === 'pending' && (
                       <div className="tlt__action-group">
-                        <button
-                          type="button"
-                          className="tlt__btn tlt__btn--accept"
+                        <button type="button" className="tlt__btn tlt__btn--accept"
                           disabled={saving === lead.id}
                           onClick={() => setStatus(lead, 'accepted')}
-                          title="Запишется — клиент решил заниматься"
-                        >
-                          Запишется
+                          title="Запишется — клиент решил заниматься">
+                          ✓ Запись
                         </button>
-                        <button
-                          type="button"
-                          className="tlt__btn tlt__btn--reject"
+                        <button type="button" className="tlt__btn tlt__btn--reject"
                           disabled={saving === lead.id}
                           onClick={() => setStatus(lead, 'rejected')}
-                          title="Отказался — не захотел"
-                        >
-                          Отказался
+                          title="Отказался — не захотел">
+                          ✕ Отказ
                         </button>
-                        <button
-                          type="button"
-                          className="tlt__btn tlt__btn--spam"
+                        <button type="button" className="tlt__btn tlt__btn--spam"
                           disabled={saving === lead.id}
                           onClick={() => setStatus(lead, 'spam')}
-                          title="Пометить как спам"
-                        >
-                          Спам
+                          title="Пометить как спам">
+                          ⚠ Спам
                         </button>
                       </div>
                     )}
                     {status === 'spam' && (
-                      <button
-                        type="button"
-                        className="tlt__btn tlt__btn--undo"
+                      <button type="button" className="tlt__btn tlt__btn--undo"
                         disabled={saving === lead.id}
                         onClick={() => setStatus(lead, 'pending')}
-                        title="Не спам — вернуть в новые"
-                      >
+                        title="Не спам — вернуть в новые">
                         ↩ Не спам
                       </button>
                     )}
                     {(status === 'accepted' || status === 'rejected') && (
-                      <button
-                        type="button"
-                        className="tlt__btn tlt__btn--undo"
+                      <button type="button" className="tlt__btn tlt__btn--undo"
                         disabled={saving === lead.id}
                         onClick={() => setStatus(lead, 'pending')}
-                        title="Вернуть в новые"
-                      >
+                        title="Вернуть в новые">
                         ↩ Вернуть
                       </button>
                     )}

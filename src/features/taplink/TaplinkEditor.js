@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadTaplinkData, saveTaplinkDataAsync, loadTaplinkDataAsync, setSessionData } from './taplinkStore';
 import { BACKEND_ENABLED, uploadFile } from './api';
+import Select from '../../shared/ui/Select';
 import './TaplinkEditor.scss';
 
 const TABS = [
@@ -543,7 +544,12 @@ const TrainersTab = ({ data, setData }) => {
                       <input className="tpe-input" value={t.name} onChange={e => set(i, 'name', e.target.value)} />
                     </Field>
                     <Field label="Вид спорта">
-                      <input className="tpe-input" value={t.sportName} onChange={e => set(i, 'sportName', e.target.value)} />
+                      <Select
+                        value={t.sportName}
+                        onChange={v => set(i, 'sportName', v)}
+                        placeholder="— выберите секцию —"
+                        options={data.sports.map(s => ({ value: s.name, label: s.name }))}
+                      />
                     </Field>
                     <Field label="Опыт (напр. 10 лет)">
                       <input className="tpe-input" value={t.experience} onChange={e => set(i, 'experience', e.target.value)} />
@@ -708,9 +714,6 @@ const FooterTab = ({ data, setData }) => {
         <p className="tpe-card__subtitle">Контактные данные</p>
         <Field label="Телефон">
           <input className="tpe-input" type="tel" value={f.phone} onChange={e => set('phone', e.target.value)} />
-        </Field>
-        <Field label="Email">
-          <input className="tpe-input" type="email" value={f.email} onChange={e => set('email', e.target.value)} />
         </Field>
         <Field label="Адрес">
           <input className="tpe-input" value={f.address} onChange={e => set('address', e.target.value)} />

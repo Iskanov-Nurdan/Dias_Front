@@ -13,6 +13,7 @@ const ACCESS_MODAL_GROUPS = [
   { label: 'Спорт, клиенты и лиды', ids: ['clients', 'sports-trainers', 'leads'] },
   { label: 'Склад', ids: ['warehouse'] },
   { label: 'Продажи и финансы', ids: ['sales', 'expenses', 'salary'] },
+  { label: 'Сайт', ids: ['taplink'] },
 ];
 
 /** Нормализует ответ бэка (data.access, data.data.access, массив id) в объект { pageId: boolean } */

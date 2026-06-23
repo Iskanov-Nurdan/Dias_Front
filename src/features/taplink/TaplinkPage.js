@@ -142,8 +142,13 @@ const TrainersSlider = ({ trainers, onDetails, onBook }) => {
     <div className="tp-slider" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <div key={animKey} className={`tp-tc tp-tc--${animKey === 0 ? 'init' : dir}`}>
 
-        <span className="tp-tc__sport">{t.sportName}</span>
+        {/* Шапка: секция + счётчик */}
+        <div className="tp-tc__header">
+          <span className="tp-tc__sport">{t.sportName}</span>
+          <span className="tp-tc__counter">{idx + 1} / {trainers.length}</span>
+        </div>
 
+        {/* Фото */}
         <div className="tp-tc__ring">
           {t.photo
             ? <img src={t.photo} alt={t.name} className="tp-tc__ava-img" />
@@ -151,13 +156,30 @@ const TrainersSlider = ({ trainers, onDetails, onBook }) => {
           }
         </div>
 
+        {/* Имя */}
         <h3 className="tp-tc__name">{t.name}</h3>
+
+        {/* Краткое bio */}
         <p className="tp-tc__bio">{t.shortBio}</p>
 
-        <div className="tp-tc__meta">
-          <span>⭐ {t.experience} опыта</span>
+        {/* Стат-полоса: опыт + главное достижение */}
+        <div className="tp-tc__stats">
+          <div className="tp-tc__stat">
+            <span className="tp-tc__stat-val">⭐ {t.experience}</span>
+            <span className="tp-tc__stat-lbl">опыта</span>
+          </div>
+          {t.achievements?.[0] && (
+            <>
+              <div className="tp-tc__stat-sep" />
+              <div className="tp-tc__stat tp-tc__stat--wide">
+                <span className="tp-tc__stat-val">🏆</span>
+                <span className="tp-tc__stat-lbl">{t.achievements[0]}</span>
+              </div>
+            </>
+          )}
         </div>
 
+        {/* Кнопки */}
         <div className="tp-tc__btns">
           <button className="tp-btn tp-btn--outline" onClick={() => onDetails(t)}>Подробнее</button>
           <button className="tp-btn tp-btn--red" onClick={() => onBook(t)}>Записаться</button>
@@ -648,18 +670,18 @@ const TaplinkPage = () => {
         <div className="tp-sports-grid">
           {sports.map(s => (
             <button key={s.id} className="tp-sport-card" onClick={() => setActiveSport(s)}>
+              {/* Фон — градиент или фото */}
               <div
-                className="tp-sport-card__photo"
+                className="tp-sport-card__bg"
                 style={s.photo ? {} : { background: s.gradient }}
               >
-                {s.photo
-                  ? <img src={s.photo} alt={s.name} className="tp-sport-card__photo-img" />
-                  : <span className="tp-sport-card__em">{s.emoji}</span>
-                }
+                {s.photo && <img src={s.photo} alt={s.name} className="tp-sport-card__photo-img" />}
               </div>
-              <div className="tp-sport-card__foot">
+
+              {/* Нижний overlay с названием */}
+              <div className="tp-sport-card__overlay">
                 <span className="tp-sport-card__name">{s.name}</span>
-                <span className="tp-sport-card__arr"><ArrowRight /></span>
+                <span className="tp-sport-card__arr" aria-hidden><ArrowRight size={14} /></span>
               </div>
             </button>
           ))}
@@ -737,44 +759,49 @@ const TaplinkPage = () => {
           <span className="tp-footer__link">📍 {footer.address}</span>
         </div>
 
-        {footer.mapUrl && (
-          <a
-            href={footer.mapUrl}
-            className="tp-map-btn"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <MapPinIcon />
-            Открыть в 2GIS
-          </a>
-        )}
-
         <p className="tp-footer__copy">{footer.copy}</p>
       </footer>
 
-      {/* ── WhatsApp / Telegram sticky bar ────────── */}
-      {(footer.whatsapp || footer.telegram) && (
+      {/* ── WhatsApp / Telegram / 2GIS sticky bar ────────── */}
+      {(footer.whatsapp || footer.telegram || footer.mapUrl) && (
         <div className="tp-cta-bar">
-          {footer.whatsapp && (
-            <a
-              href={`https://wa.me/${footer.whatsapp.replace(/\D/g, '')}`}
-              className="tp-cta-bar__btn tp-cta-bar__btn--wa"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <WhatsAppIcon />
-              <span>WhatsApp</span>
-            </a>
+          {/* Первая строка: WA + TG */}
+          {(footer.whatsapp || footer.telegram) && (
+            <div className="tp-cta-bar__row">
+              {footer.whatsapp && (
+                <a
+                  href={`https://wa.me/${footer.whatsapp.replace(/\D/g, '')}`}
+                  className="tp-cta-bar__btn tp-cta-bar__btn--wa"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <WhatsAppIcon />
+                  <span>WhatsApp</span>
+                </a>
+              )}
+              {footer.telegram && (
+                <a
+                  href={`https://t.me/${footer.telegram.replace('@', '')}`}
+                  className="tp-cta-bar__btn tp-cta-bar__btn--tg"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <TelegramIcon />
+                  <span>Telegram</span>
+                </a>
+              )}
+            </div>
           )}
-          {footer.telegram && (
+          {/* Вторая строка: 2GIS */}
+          {footer.mapUrl && (
             <a
-              href={`https://t.me/${footer.telegram.replace('@', '')}`}
-              className="tp-cta-bar__btn tp-cta-bar__btn--tg"
+              href={footer.mapUrl}
+              className="tp-cta-bar__btn tp-cta-bar__btn--gis"
               target="_blank"
               rel="noopener noreferrer"
             >
-              <TelegramIcon />
-              <span>Telegram</span>
+              <MapPinIcon />
+              <span>Открыть в 2GIS</span>
             </a>
           )}
         </div>

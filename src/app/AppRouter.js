@@ -130,7 +130,14 @@ const AppRouter = () => (
             </ProtectedRoute>
           }
         />
-        <Route path="taplink-editor" element={<TaplinkEditorPage />} />
+        <Route
+          path="taplink-editor"
+          element={
+            <ProtectedRoute pageId="taplink">
+              <TaplinkEditorPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

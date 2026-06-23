@@ -1,5 +1,5 @@
 import {
-  BarChart3, Users, Trophy, UsersRound, ClipboardList, Package, ShoppingCart, Receipt, Wallet, Inbox,
+  BarChart3, Users, Trophy, UsersRound, ClipboardList, Package, ShoppingCart, Receipt, Wallet, Inbox, Link2,
 } from 'lucide-react';
 
 export const PAGE_IDS = [
@@ -13,6 +13,7 @@ export const PAGE_IDS = [
   'sales',
   'expenses',
   'salary',
+  'taplink',
 ];
 
 export const PAGE_ICONS = {
@@ -26,6 +27,7 @@ export const PAGE_ICONS = {
   sales: ShoppingCart,
   expenses: Receipt,
   salary: Wallet,
+  taplink: Link2,
 };
 
 export const PAGE_LABELS = {
@@ -39,6 +41,7 @@ export const PAGE_LABELS = {
   sales: 'Продажи',
   expenses: 'Расходы',
   salary: 'Зарплата',
+  taplink: 'Taplink страница',
 };
 
 export const PAGE_ROUTES = {
@@ -52,6 +55,7 @@ export const PAGE_ROUTES = {
   sales: '/sales',
   expenses: '/expenses',
   salary: '/salary',
+  taplink: '/taplink-editor',
 };
 
 /** Группы пунктов меню: ключ группы → массив pageId */
@@ -60,4 +64,5 @@ export const PAGE_GROUPS = {
   'Люди': ['clients', 'sports-trainers', 'leads', 'employees'],
   'Склад': ['warehouse'],
   'Финансы': ['sales', 'expenses', 'salary'],
+  'Сайт': ['taplink'],
 };

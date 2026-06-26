@@ -572,7 +572,10 @@ const BookingModal = ({ onClose, initial = {}, dark, sports = [], trainers = [] 
 
 const TaplinkPage = () => {
   const [dark, setDark] = useState(() => {
-    try { return localStorage.getItem('tp-theme') === 'dark'; } catch { return false; }
+    try {
+      const saved = localStorage.getItem('tp-theme');
+      return saved === null ? true : saved === 'dark';
+    } catch { return true; }
   });
   // Sync initial load (localStorage / session) — no flicker
   const [pageData, setPageData] = useState(() => loadTaplinkData());

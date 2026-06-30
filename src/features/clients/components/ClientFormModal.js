@@ -28,6 +28,39 @@ import {
 } from '../lib/clientActualPayments';
 import './ClientFormModal.scss';
 
+// Маппинг API-полей → русские названия
+const FIELD_LABELS = {
+  sportId:       'Вид спорта',
+  sport_id:      'Вид спорта',
+  trainerId:     'Тренер',
+  trainer_id:    'Тренер',
+  fio:           'ФИО',
+  phone:         'Телефон',
+  dateStart:     'Дата начала',
+  date_start:    'Дата начала',
+  price:         'Цена',
+  clientType:    'Тип клиента',
+  client_type:   'Тип клиента',
+  months:        'Месяцев',
+  paid:          'Оплачено',
+  trainingSlot:  'Время занятия',
+  training_slot: 'Время занятия',
+};
+
+// Парсит строку "sportId: Текст. trainerId: Текст." → [{field, label, message}]
+const parseApiError = (error) => {
+  if (!error || typeof error !== 'string') return null;
+  // Пробуем распарсить как список "field: message."
+  const pattern = /([a-zA-Z_]+):\s*([^.]+\.?)/g;
+  const matches = [...error.matchAll(pattern)];
+  if (!matches.length) return null;
+  return matches.map(([, field, msg]) => ({
+    field,
+    label: FIELD_LABELS[field] || field,
+    message: msg.trim().replace(/\.$/, ''),
+  }));
+};
+
 // Первая буква каждого слова — заглавная (работает для любого языка и вставленного текста)
 const capitalizeWords = (str) => {
   if (!str) return '';
@@ -639,7 +672,25 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
           <h2 id="client-form-modal-title" className="client-form-modal__title">{client?.id ? 'Редактировать клиента' : 'Добавить клиента'}</h2>
           <button type="button" className="client-form-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
         </div>
-        {error && <p className="client-form-modal__error" role="alert">{error}</p>}
+        {error && (() => {
+          const parsed = parseApiError(error);
+          if (parsed) {
+            return (
+              <div className="client-form-modal__error-block" role="alert">
+                <span className="client-form-modal__error-title">Пожалуйста, исправьте ошибки:</span>
+                <ul className="client-form-modal__error-list">
+                  {parsed.map(({ field, label, message }) => (
+                    <li key={field} className="client-form-modal__error-item">
+                      <span className="client-form-modal__error-field">{label}</span>
+                      <span className="client-form-modal__error-msg">{message}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          }
+          return <p className="client-form-modal__error" role="alert">{error}</p>;
+        })()}
         <form onSubmit={handleSubmit} className="client-form-modal__form">
           <div className="client-form-modal__scroll">
           <div className="client-form-modal__section">
@@ -877,16 +928,20 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               </div>
             ) : null}
 
-            <div className="client-form-modal__row">
-              <div className="client-form-modal__label client-form-modal__label--toggle">
-                <span className="client-form-modal__label-text">Оплачено</span>
-                <div className="client-form-modal__paid-toggle" role="group" aria-label="Статус оплаты">
-                  <button type="button" className={`client-form-modal__paid-option ${paid ? 'client-form-modal__paid-option--active' : ''}`} onClick={() => setPaid(true)}>Да</button>
-                  <button type="button" className={`client-form-modal__paid-option ${!paid ? 'client-form-modal__paid-option--active' : ''}`} onClick={() => setPaid(false)}>Нет</button>
-                </div>
-              </div>
-              <div />
-            </div>
+            <label className="client-form-modal__paid-toggle" aria-label="Статус оплаты">
+              <input
+                type="checkbox"
+                className="client-form-modal__paid-input"
+                checked={paid}
+                onChange={e => setPaid(e.target.checked)}
+              />
+              <span className="client-form-modal__paid-track">
+                <span className="client-form-modal__paid-thumb" />
+              </span>
+              <span className={`client-form-modal__paid-label ${paid ? 'client-form-modal__paid-label--yes' : 'client-form-modal__paid-label--no'}`}>
+                {paid ? 'Оплачено' : 'Не оплачено'}
+              </span>
+            </label>
             {(contractBaseAmount > 0 || rawPriceInput > 0) && (
             <div className="client-form-modal__price-summary">
               <div className="client-form-modal__price-row">

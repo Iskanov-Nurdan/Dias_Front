@@ -596,29 +596,136 @@
   &__filters-row {
     display: flex;
     align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
+    gap: 10px;
+    flex-wrap: nowrap;
     min-width: 0;
+    width: 100%;
 
     &--main {
       flex: 1;
-    }
-
-    &--date {
-      padding: 10px 14px;
-      background: var(--color-surface-secondary);
-      border-radius: var(--radius-md);
-      border: 1px solid var(--color-border);
     }
   }
 
   &__filters-group {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     flex-wrap: wrap;
     flex: 1;
     min-width: 0;
+  }
+
+  // ── Dropdown фильтров ───────────────────────────────────────────────────────
+  &__filter-drop-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  &__filter-drop-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+    height: 38px;
+    border-radius: var(--input-radius);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color 0.15s, background 0.15s;
+
+    &:hover, &--open {
+      border-color: var(--color-primary);
+      background: var(--color-surface-secondary);
+    }
+  }
+
+  &__filter-drop-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: var(--color-primary);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  &__filter-drop-arrow {
+    font-size: 10px;
+    color: var(--color-text-muted);
+  }
+
+  &__filter-drop-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 200;
+    width: 560px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md, 10px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.28);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  &__filter-drop-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  &__filter-drop-label {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+
+    > span {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: var(--color-text-muted);
+    }
+  }
+
+  &__filter-drop-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-border);
+  }
+
+  &__filter-drop-reset {
+    background: transparent;
+    border: none;
+    color: var(--color-text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0;
+    &:hover { color: var(--color-danger); }
+  }
+
+  &__filter-drop-apply {
+    padding: 8px 20px;
+    border-radius: var(--input-radius);
+    background: var(--color-primary);
+    border: none;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    &:hover { background: var(--color-primary-hover); }
   }
 
   &__toolbar-mobile {

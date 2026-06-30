@@ -93,6 +93,20 @@ const ClientsPage = () => {
   const [extendFormError, setExtendFormError] = useState(null);
   const [extendFormSaving, setExtendFormSaving] = useState(false);
   const [filtersModalOpen, setFiltersModalOpen] = useState(false);
+  const [filtersDropOpen, setFiltersDropOpen] = useState(false);
+  const filtersDropRef = useRef(null);
+
+  // Закрываем дропдаун при клике вне
+  useEffect(() => {
+    if (!filtersDropOpen) return;
+    const handler = (e) => {
+      if (filtersDropRef.current && !filtersDropRef.current.contains(e.target)) {
+        setFiltersDropOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [filtersDropOpen]);
 
   const resetListFilters = useCallback(() => {
     setQueryState((q) => ({
@@ -343,43 +357,64 @@ const ClientsPage = () => {
             <div className="clients-page__filters clients-page__filters--desktop">
               <div className="clients-page__filters-row clients-page__filters-row--main">
                 <input type="text" placeholder="Поиск" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="clients-page__search" />
-                <div className="clients-page__filters-group">
-                  <Select value={queryState.sportId} onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))} options={[{ value: '', label: 'Все виды спорта' }, ...sports.map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="Спорт" className="clients-page__select-wrap" />
-                  <Select value={queryState.trainerId} onChange={(v) => setQueryState((q) => ({ ...q, trainerId: v, page: 1 }))} options={[{ value: '', label: 'Тренер — все' }, ...trainers.map((t) => ({ value: String(t.id), label: t.fio || '' }))]} placeholder="Тренер" className="clients-page__select-wrap" />
-                  <Select value={queryState.paid} onChange={(v) => setQueryState((q) => ({ ...q, paid: v, page: 1 }))} options={[{ value: '', label: 'Оплата — все' }, { value: 'true', label: 'Оплачено' }, { value: 'false', label: 'Не оплачено' }]} placeholder="Оплата" className="clients-page__select-wrap" />
-                  <Select value={queryState.clientType} onChange={(v) => setQueryState((q) => ({ ...q, clientType: v, page: 1 }))} options={[{ value: '', label: 'Тип — все' }, { value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }, { value: 'one-time', label: 'Разовый' }]} placeholder="Тип" className="clients-page__select-wrap" />
+
+                {/* Кнопка Фильтры с дропдауном */}
+                <div className="clients-page__filter-drop-wrap" ref={filtersDropRef}>
+                  <button
+                    type="button"
+                    className={`clients-page__filter-drop-btn${filtersDropOpen ? ' clients-page__filter-drop-btn--open' : ''}`}
+                    onClick={() => setFiltersDropOpen((v) => !v)}
+                  >
+                    Фильтры
+                    {[queryState.sportId, queryState.trainerId, queryState.paid, queryState.clientType, queryState.year, queryState.month, queryState.day].filter(Boolean).length > 0 && (
+                      <span className="clients-page__filter-drop-count">
+                        {[queryState.sportId, queryState.trainerId, queryState.paid, queryState.clientType, queryState.year, queryState.month, queryState.day].filter(Boolean).length}
+                      </span>
+                    )}
+                    <span className="clients-page__filter-drop-arrow">{filtersDropOpen ? '▲' : '▼'}</span>
+                  </button>
+
+                  {filtersDropOpen && (
+                    <div className="clients-page__filter-drop-panel">
+                      <div className="clients-page__filter-drop-grid">
+                        <label className="clients-page__filter-drop-label">
+                          <span>Вид спорта</span>
+                          <Select value={queryState.sportId} onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...sports.map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="Все" className="clients-page__select-wrap" />
+                        </label>
+                        <label className="clients-page__filter-drop-label">
+                          <span>Тренер</span>
+                          <Select value={queryState.trainerId} onChange={(v) => setQueryState((q) => ({ ...q, trainerId: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...trainers.map((t) => ({ value: String(t.id), label: t.fio || '' }))]} placeholder="Все" className="clients-page__select-wrap" />
+                        </label>
+                        <label className="clients-page__filter-drop-label">
+                          <span>Оплата</span>
+                          <Select value={queryState.paid} onChange={(v) => setQueryState((q) => ({ ...q, paid: v, page: 1 }))} options={[{ value: '', label: 'Все' }, { value: 'true', label: 'Оплачено' }, { value: 'false', label: 'Не оплачено' }]} placeholder="Все" className="clients-page__select-wrap" />
+                        </label>
+                        <label className="clients-page__filter-drop-label">
+                          <span>Тип</span>
+                          <Select value={queryState.clientType} onChange={(v) => setQueryState((q) => ({ ...q, clientType: v, page: 1 }))} options={[{ value: '', label: 'Все' }, { value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }, { value: 'one-time', label: 'Разовый' }]} placeholder="Все" className="clients-page__select-wrap" />
+                        </label>
+                        <label className="clients-page__filter-drop-label">
+                          <span>Год</span>
+                          <Select value={queryState.year} onChange={(v) => setQueryState((q) => ({ ...q, year: v, month: v ? q.month : '', day: v ? q.day : '', page: 1 }))} options={[{ value: '', label: 'Все' }, ...clientListFilterYearValues.map((y) => ({ value: y, label: y }))]} placeholder="Все" className="clients-page__select-wrap" />
+                        </label>
+                        <label className="clients-page__filter-drop-label">
+                          <span>Месяц</span>
+                          <Select value={queryState.month} onChange={(v) => setQueryState((q) => ({ ...q, month: v, day: v ? q.day : '', page: 1 }))} disabled={!queryState.year} options={[{ value: '', label: 'Все' }, { value: '1', label: 'Январь' }, { value: '2', label: 'Февраль' }, { value: '3', label: 'Март' }, { value: '4', label: 'Апрель' }, { value: '5', label: 'Май' }, { value: '6', label: 'Июнь' }, { value: '7', label: 'Июль' }, { value: '8', label: 'Август' }, { value: '9', label: 'Сентябрь' }, { value: '10', label: 'Октябрь' }, { value: '11', label: 'Ноябрь' }, { value: '12', label: 'Декабрь' }]} placeholder="Все" className="clients-page__select-wrap" />
+                        </label>
+                        <label className="clients-page__filter-drop-label">
+                          <span>День</span>
+                          <Select value={queryState.day} onChange={(v) => setQueryState((q) => ({ ...q, day: v, page: 1 }))} disabled={!queryState.month} options={[{ value: '', label: 'Все' }, ...Array.from({ length: 31 }, (_, i) => i + 1).map((d) => ({ value: String(d), label: String(d) }))]} placeholder="Все" className="clients-page__select-wrap" />
+                        </label>
+                      </div>
+                      <div className="clients-page__filter-drop-footer">
+                        <button type="button" className="clients-page__filter-drop-reset" onClick={() => { resetListFilters(); setFiltersDropOpen(false); }}>Сбросить всё</button>
+                        <button type="button" className="clients-page__filter-drop-apply" onClick={() => setFiltersDropOpen(false)}>Применить</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
+
                 <button type="button" className="clients-page__add clients-page__add--desktop filter-bar__action" onClick={() => setFormClient({})}>Добавить клиента</button>
-              </div>
-              <div className="clients-page__filters-row clients-page__filters-row--date">
-                <Select
-                value={queryState.year}
-                onChange={(v) => setQueryState((q) => ({ ...q, year: v, month: v ? q.month : '', day: v ? q.day : '', page: 1 }))}
-                options={[{ value: '', label: 'Год — все' }, ...clientListFilterYearValues.map((y) => ({ value: y, label: y }))]}
-                placeholder="Год"
-                className="clients-page__select-wrap clients-page__select-year"
-              />
-              {queryState.year && (
-                <Select
-                  value={queryState.month}
-                  onChange={(v) => setQueryState((q) => ({ ...q, month: v, day: v ? q.day : '', page: 1 }))}
-                  options={[{ value: '', label: 'Месяц — все' }, { value: '1', label: 'Январь' }, { value: '2', label: 'Февраль' }, { value: '3', label: 'Март' }, { value: '4', label: 'Апрель' }, { value: '5', label: 'Май' }, { value: '6', label: 'Июнь' }, { value: '7', label: 'Июль' }, { value: '8', label: 'Август' }, { value: '9', label: 'Сентябрь' }, { value: '10', label: 'Октябрь' }, { value: '11', label: 'Ноябрь' }, { value: '12', label: 'Декабрь' }]}
-                  placeholder="Месяц"
-                  className="clients-page__select-wrap"
-                />
-              )}
-              {queryState.year && queryState.month && (
-                <Select
-                  value={queryState.day}
-                  onChange={(v) => setQueryState((q) => ({ ...q, day: v, page: 1 }))}
-                  options={[{ value: '', label: 'День — все' }, ...Array.from({ length: 31 }, (_, i) => i + 1).map((d) => ({ value: String(d), label: String(d) }))]}
-                  placeholder="День"
-                  className="clients-page__select-wrap clients-page__select-day"
-                />
-              )}
-                {(queryState.year || queryState.month || queryState.day) && (
-                <button type="button" className="clients-page__date-clear" onClick={() => setQueryState((q) => ({ ...q, year: '', month: '', day: '', page: 1 }))} title="Сбросить дату">✕</button>
-                )}
               </div>
             </div>
             <div className="clients-page__toolbar-mobile clients-page__toolbar-mobile--filter-bar">

@@ -61,10 +61,14 @@ const ClientsList = ({
                   <td data-label="ФИО" title={c.fio || undefined}><span className="clients-list__cell-value">{c.fio || '—'}</span></td>
                   <td data-label="Дата начала"><span className="clients-list__cell-value">{dateStart ? new Date(dateStart).toLocaleDateString() : '—'}</span></td>
                   <td data-label="Вид спорта" title={(c.sportName ?? c.sport?.name) || undefined}><span className="clients-list__cell-value">{c.sportName ?? c.sport?.name ?? '—'}</span></td>
-                  <td data-label="Оплачено"><span className="clients-list__cell-value">{paid ? 'Да' : 'Нет'}</span></td>
+                  <td data-label="Оплачено">
+                    <span className={`clients-list__paid-badge ${paid ? 'clients-list__paid-badge--yes' : 'clients-list__paid-badge--no'}`}>
+                      {paid ? 'Оплачено' : 'Не оплачено'}
+                    </span>
+                  </td>
                   <td className="clients-list__actions" data-label="">
                     <button type="button" className="clients-list__btn clients-list__btn--primary" onClick={() => onDetails(c)}>Подробнее</button>
-                    <button type="button" className="clients-list__btn" onClick={() => onExtend(c)}>Продлить</button>
+                    <button type="button" className="clients-list__btn clients-list__btn--extend" onClick={() => onExtend(c)}>Продлить</button>
                   </td>
                 </tr>
               );

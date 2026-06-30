@@ -1,38 +1,214 @@
 @use '../../../shared/styles/mixins';
 
 .extend-modal__backdrop { @include mixins.modal-backdrop; }
+
 .extend-modal {
   background: var(--color-bg-card);
   border-radius: var(--radius-xl);
   padding: 0;
-  max-width: 340px;
+  max-width: 400px;
   width: 100%;
   box-shadow: var(--shadow-xl);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
-.extend-modal__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); padding: var(--space-6) var(--space-6) var(--space-2); }
-.extend-modal__title { margin: 0; font-size: 18px; }
+
+// ── Шапка ──────────────────────────────────────────────────────────────────
+.extend-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.extend-modal__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
 .extend-modal__close { @include mixins.modal-close-btn; flex-shrink: 0; }
-.extend-modal__client { margin: 0 var(--space-6) var(--space-3); color: var(--color-text-muted); font-size: 14px; }
-.extend-modal__error { margin: 0 var(--space-6) var(--space-3); padding: 10px 12px; background: rgba(220, 38, 38, 0.1); border: 1px solid #dc2626; border-radius: 8px; color: #b91c1c; font-size: 14px; }
+
+// ── Карточка клиента ────────────────────────────────────────────────────────
+.extend-modal__client-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  background: var(--color-surface-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.extend-modal__client-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(var(--color-primary-rgb, 197,48,48), 0.12);
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.extend-modal__client-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.extend-modal__client-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.extend-modal__client-sport {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+// ── Ошибка ──────────────────────────────────────────────────────────────────
+.extend-modal__error {
+  margin: 12px 20px 0;
+  padding: 10px 12px;
+  background: rgba(220,38,38,0.1);
+  border: 1px solid #dc2626;
+  border-radius: 8px;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+// ── Форма ───────────────────────────────────────────────────────────────────
 .extend-modal__form { display: flex; flex-direction: column; flex: 1; }
-.extend-modal__form-body { padding: 0 var(--space-6) var(--space-4); }
-.extend-modal__label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
-.extend-modal__input { padding: 0 12px; height: 40px; border: 1px solid var(--input-border); border-radius: var(--input-radius); background: var(--input-bg); color: var(--color-text); font-size: 14px; &:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--input-shadow-focus); } }
+
+.extend-modal__form-body {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.extend-modal__section-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+}
+
+// ── Быстрые чипы ────────────────────────────────────────────────────────────
+.extend-modal__quick {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.extend-modal__chip {
+  padding: 7px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+  &--active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff;
+    font-weight: 600;
+  }
+}
+
+// ── Ввод количества ─────────────────────────────────────────────────────────
+.extend-modal__label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.extend-modal__input {
+  width: 100%;
+  padding: 0 12px;
+  height: 40px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-radius);
+  background: var(--input-bg);
+  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 600;
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: var(--input-shadow-focus);
+  }
+}
+
+// ── Результат (новая дата) ───────────────────────────────────────────────────
+.extend-modal__result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  background: rgba(34,197,94,0.08);
+  border: 1px solid rgba(34,197,94,0.22);
+  border-radius: var(--radius-md, 8px);
+  font-size: 13px;
+  color: var(--color-text);
+
+  strong { color: #4ADE80; }
+}
+
+.extend-modal__result-icon { color: #4ADE80; flex-shrink: 0; }
+
+// ── Кнопки ──────────────────────────────────────────────────────────────────
 .extend-modal__actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   justify-content: flex-end;
-  padding: var(--space-4) var(--space-6) var(--space-6);
+  padding: 14px 20px 20px;
   border-top: 1px solid var(--color-border);
   background: var(--color-surface-secondary);
-  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
 }
-.extend-modal__btn { padding: 8px 16px; border-radius: 6px; font-size: 14px; }
-.extend-modal__btn--cancel { background: var(--color-bg); border: 1px solid var(--color-border); color: var(--color-text); }
-.extend-modal__btn--submit { background: var(--color-primary); color: #fff; border: none; }
 
+.extend-modal__btn {
+  padding: 9px 18px;
+  border-radius: var(--input-radius, 6px);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+
+  &--cancel {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    &:hover { color: var(--color-text); border-color: var(--color-border-strong); }
+  }
+
+  &--submit {
+    background: var(--color-primary);
+    color: #fff;
+    border: none;
+    &:hover { background: var(--color-primary-hover); }
+  }
+}
+
+// ── Мобильный fullscreen ─────────────────────────────────────────────────────
 @include mixins.mobile {
   .extend-modal__backdrop.extend-modal__backdrop--fullscreen {
     display: flex;
@@ -51,34 +227,19 @@
     box-shadow: none;
   }
 
-  .extend-modal.extend-modal--fullscreen .extend-modal__form {
-    flex: 1;
-    min-height: 0;
-  }
+  .extend-modal.extend-modal--fullscreen .extend-modal__form { flex: 1; min-height: 0; }
 
   .extend-modal.extend-modal--fullscreen .extend-modal__header {
-    padding-top: max(var(--space-6), env(safe-area-inset-top));
-    padding-left: max(var(--space-6), env(safe-area-inset-left));
-    padding-right: max(var(--space-6), env(safe-area-inset-right));
-  }
-
-  .extend-modal.extend-modal--fullscreen .extend-modal__client,
-  .extend-modal.extend-modal--fullscreen .extend-modal__error {
-    margin-left: max(var(--space-6), env(safe-area-inset-left));
-    margin-right: max(var(--space-6), env(safe-area-inset-right));
-  }
-
-  .extend-modal.extend-modal--fullscreen .extend-modal__form-body {
-    flex: 1;
-    padding-left: max(var(--space-6), env(safe-area-inset-left));
-    padding-right: max(var(--space-6), env(safe-area-inset-right));
+    padding-top: max(20px, env(safe-area-inset-top));
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
   }
 
   .extend-modal.extend-modal--fullscreen .extend-modal__actions {
     margin-top: auto;
-    padding-left: max(var(--space-6), env(safe-area-inset-left));
-    padding-right: max(var(--space-6), env(safe-area-inset-right));
-    padding-bottom: max(var(--space-6), env(safe-area-inset-bottom));
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
     border-radius: 0;
   }
 }

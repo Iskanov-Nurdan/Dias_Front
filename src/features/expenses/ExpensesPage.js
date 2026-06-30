@@ -154,7 +154,7 @@ const ExpensesPage = () => {
 
   return (
     <div className="expenses-page">
-      <h1 className="expenses-page__title ui-page-h1">Расходы</h1>
+      
       {selectedCategoryId == null ? (
         <>
           <FilterBar className="expenses-page__filter-bar">

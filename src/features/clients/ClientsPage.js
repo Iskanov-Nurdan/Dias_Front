@@ -341,7 +341,7 @@ const ClientsPage = () => {
 
   return (
     <div className="clients-page">
-      <h1 className="clients-page__title ui-page-h1">Клиенты</h1>
+      
 
       {/* Главные табы */}
       <div className="clients-page__tabs">

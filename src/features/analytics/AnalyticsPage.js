@@ -227,7 +227,7 @@ const AnalyticsPage = () => {
         <header className="analytics-page__header analytics-page__header--dashboard">
           <div className="analytics-page__header-main">
             <div className="analytics-page__header-text">
-              <h1 className="analytics-page__title ui-page-h1">Аналитика</h1>
+              
               <p className="analytics-page__subtitle">Дашборд по финансам, клиентам и заявкам</p>
             </div>
             <div className="analytics-page__period-chip" title="Текущий период фильтрации">

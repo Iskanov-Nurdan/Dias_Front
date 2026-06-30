@@ -226,7 +226,7 @@ const WarehousePage = () => {
 
   return (
     <div className="warehouse-page">
-      <h1 className="warehouse-page__title ui-page-h1">Склад</h1>
+      
       <div className="warehouse-page__tabs">
         <button type="button" className={`warehouse-page__tab ${activeTab === TAB_PRODUCTS ? 'warehouse-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_PRODUCTS)}>Товары</button>
         <button type="button" className={`warehouse-page__tab ${activeTab === TAB_CATEGORIES ? 'warehouse-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_CATEGORIES)}>Категории</button>

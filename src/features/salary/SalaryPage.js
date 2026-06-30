@@ -107,7 +107,7 @@ const SalaryPage = () => {
 
   return (
     <div className="salary-page">
-      <h1 className="salary-page__title ui-page-h1">Зарплата</h1>
+      
       <FilterBar className="salary-page__filter-bar">
         <div className="salary-page__filter-item">
           <input type="number" placeholder="Год" value={queryState.year} onChange={(e) => setQueryState((q) => ({ ...q, year: Number(e.target.value) || q.year }))} className="salary-page__input" min="2020" max="2030" />

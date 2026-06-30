@@ -334,7 +334,7 @@ const ClientsReportsPage = () => {
 
   return (
     <div className="clients-page">
-      <h1 className="clients-page__title ui-page-h1">Отчёты</h1>
+      
 
       <div className="clients-page__tabs">
         <button

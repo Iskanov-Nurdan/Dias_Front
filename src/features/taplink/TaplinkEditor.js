@@ -802,7 +802,7 @@ const TaplinkEditor = () => {
         <div className="tpe__top-left">
           <img src="/rahman.png" alt="" className="tpe__logo" />
           <div>
-            <h1 className="tpe__title">Редактор Taplink</h1>
+            <p className="tpe__title">Редактор Taplink</p>
             <p className="tpe__subtitle">Редактируйте все элементы публичной страницы</p>
           </div>
         </div>

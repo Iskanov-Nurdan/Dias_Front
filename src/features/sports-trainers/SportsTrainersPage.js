@@ -164,7 +164,7 @@ const SportsTrainersPage = () => {
 
   return (
     <div className="sports-trainers-page">
-      <h1 className="sports-trainers-page__title ui-page-h1">Спорт и тренеры</h1>
+      
       <div className="sports-trainers-page__tabs">
         <button type="button" className={`sports-trainers-page__tab ${activeTab === TAB_SPORTS ? 'sports-trainers-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_SPORTS)}>Виды спорта</button>
         <button type="button" className={`sports-trainers-page__tab ${activeTab === TAB_TRAINERS ? 'sports-trainers-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_TRAINERS)}>Тренеры</button>

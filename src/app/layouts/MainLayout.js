@@ -143,11 +143,9 @@ const MainLayout = () => {
           >
             {mobileMenuOpen ? <X size={ICON_SIZE} /> : <Menu size={ICON_SIZE} />}
           </button>
-          <span className="main-layout__brand">Рахман Ата</span>
-        </div>
-        <div className="main-layout__header-center">
           <span className="main-layout__header-page-title">{sectionTitle}</span>
         </div>
+        <div className="main-layout__header-center" />
         <div className="main-layout__header-right">
           <button
             type="button"

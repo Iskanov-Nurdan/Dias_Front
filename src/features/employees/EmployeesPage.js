@@ -220,7 +220,7 @@ const EmployeesPage = () => {
 
   return (
     <div className="employees-page">
-      <h1 className="employees-page__title ui-page-h1">Сотрудники</h1>
+      
       <div className="employees-page__tabs">
         <button
           type="button"

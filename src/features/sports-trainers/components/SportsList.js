@@ -1,4 +1,5 @@
 import React from 'react';
+import { Dumbbell } from 'lucide-react';
 import { ErrorState, EmptyState, ConfirmModal, SkeletonTable } from '../../../shared/ui';
 import './SportsList.scss';
 
@@ -50,19 +51,33 @@ const SportsList = ({
                 </tr>
               ) : list.map((s) => (
                 <tr key={s.id}>
-                  <td data-label="Название">{s.name || '—'}</td>
+                  <td data-label="Название">
+                    <div className="sports-list__name-cell">
+                      <span className="sports-list__icon-wrap">
+                        <Dumbbell size={16} />
+                      </span>
+                      <span className="sports-list__name">{s.name || '—'}</span>
+                    </div>
+                  </td>
                   <td className="sports-list__actions" data-label="">
-                    <button type="button" className="sports-list__btn sports-list__btn--primary" onClick={() => onEdit(s)}>Изменить</button>
+                    <button type="button" className="sports-list__btn sports-list__btn--edit" onClick={() => onEdit(s)}>Изменить</button>
                     <button type="button" className="sports-list__btn sports-list__btn--danger" onClick={() => onDelete(s)}>Удалить</button>
                   </td>
                 </tr>
-              )) }
+              ))}
             </tbody>
           </table>
         </div>
       </div>
       {confirmDelete && (
-        <ConfirmModal title="Удалить вид спорта?" message={confirmDelete.name ? `Вид спорта: ${confirmDelete.name}` : undefined} confirmText="Удалить" onConfirm={onConfirmDelete} onCancel={onCancelDelete} danger />
+        <ConfirmModal
+          title="Удалить вид спорта?"
+          message={confirmDelete.name ? `Вид спорта: ${confirmDelete.name}` : undefined}
+          confirmText="Удалить"
+          onConfirm={onConfirmDelete}
+          onCancel={onCancelDelete}
+          danger
+        />
       )}
     </>
   );

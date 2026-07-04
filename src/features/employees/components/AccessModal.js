@@ -1,22 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, Check } from 'lucide-react';
 import { PAGE_IDS, PAGE_LABELS, PAGE_ICONS } from '../../../shared/constants/pages';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { SubmitButton } from '../../../shared/ui';
 import './AccessModal.scss';
 
-/** Логические группы доступа (не хаос из одной линии) */
 const ACCESS_MODAL_GROUPS = [
-  { label: 'Аналитика', ids: ['analytics', 'reports'] },
-  { label: 'Персонал', ids: ['employees'] },
+  { label: 'Аналитика',           ids: ['analytics', 'reports'] },
+  { label: 'Персонал',            ids: ['employees'] },
   { label: 'Спорт, клиенты и лиды', ids: ['clients', 'sports-trainers', 'leads'] },
-  { label: 'Склад', ids: ['warehouse'] },
-  { label: 'Продажи и финансы', ids: ['sales', 'expenses', 'salary'] },
-  { label: 'Сайт', ids: ['taplink'] },
+  { label: 'Склад',               ids: ['warehouse'] },
+  { label: 'Продажи и финансы',   ids: ['sales', 'expenses', 'salary'] },
+  { label: 'Сайт',                ids: ['taplink'] },
 ];
 
-/** Нормализует ответ бэка (data.access, data.data.access, массив id) в объект { pageId: boolean } */
 const normalizeAccess = (raw) => {
   if (!raw || typeof raw !== 'object') return {};
   const inner = raw?.data?.access ?? raw?.access ?? raw;
@@ -63,48 +61,75 @@ const AccessModal = ({ employee, currentAccess, onSave, onClose, error, saving }
   const content = (
     <div className="access-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="access-modal-title">
       <div className="access-modal" onClick={(e) => e.stopPropagation()}>
+
         <div className="access-modal__header">
-          <h2 id="access-modal-title" className="access-modal__title">Доступы — {displayName}</h2>
+          <div>
+            <p className="access-modal__header-sub">Управление доступами</p>
+            <h2 id="access-modal-title" className="access-modal__title">{displayName}</h2>
+          </div>
           <button type="button" className="access-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
         </div>
+
         {error && <p className="access-modal__error" role="alert">{error}</p>}
+
         <form onSubmit={handleSubmit} className="access-modal__form">
           <div className="access-modal__toolbar">
-            <button type="button" className="access-modal__bulk" onClick={() => setAll(true)}>Выбрать всё</button>
-            <button type="button" className="access-modal__bulk" onClick={() => setAll(false)}>Снять всё</button>
+            <button type="button" className="access-modal__bulk-btn" onClick={() => setAll(true)}>
+              <Check size={13} />Выбрать всё
+            </button>
+            <button type="button" className="access-modal__bulk-btn access-modal__bulk-btn--clear" onClick={() => setAll(false)}>
+              <X size={13} />Снять всё
+            </button>
           </div>
+
           <div className="access-modal__body">
-            {ACCESS_MODAL_GROUPS.map(({ label, ids }) => (
-              <section key={label} className="access-modal__group">
-                <div className="access-modal__group-head">
-                  <h3 className="access-modal__group-title">{label}</h3>
-                  <div className="access-modal__group-bulk">
-                    <button type="button" className="access-modal__bulk access-modal__bulk--small" onClick={() => setGroup(ids, true)}>Все</button>
-                    <button type="button" className="access-modal__bulk access-modal__bulk--small" onClick={() => setGroup(ids, false)}>Нет</button>
+            {ACCESS_MODAL_GROUPS.map(({ label, ids }) => {
+              const checkedCount = ids.filter((id) => access[id] === true).length;
+              return (
+                <section key={label} className="access-modal__group">
+                  <div className="access-modal__group-head">
+                    <div className="access-modal__group-head-left">
+                      <h3 className="access-modal__group-title">{label}</h3>
+                      <span className="access-modal__group-count">{checkedCount}/{ids.length}</span>
+                    </div>
+                    <div className="access-modal__group-bulk">
+                      <button type="button" className="access-modal__mini-btn" onClick={() => setGroup(ids, true)}>Все</button>
+                      <button type="button" className="access-modal__mini-btn access-modal__mini-btn--off" onClick={() => setGroup(ids, false)}>Нет</button>
+                    </div>
                   </div>
-                </div>
-                <div className="access-modal__grid">
-                  {ids.map((pageId) => {
-                    const Icon = PAGE_ICONS[pageId];
-                    return (
-                      <label key={pageId} className="access-modal__item">
-                        <span className="access-modal__item-text">
-                          {Icon && <Icon className="access-modal__item-icon" size={18} strokeWidth={1.75} aria-hidden />}
-                          <span className="access-modal__item-label">{PAGE_LABELS[pageId] || pageId}</span>
-                        </span>
-                        <input
-                          type="checkbox"
-                          checked={access[pageId] === true}
-                          onChange={() => toggle(pageId)}
-                          className="access-modal__checkbox"
-                        />
-                      </label>
-                    );
-                  })}
-                </div>
-              </section>
-            ))}
+                  <div className="access-modal__grid">
+                    {ids.map((pageId) => {
+                      const Icon = PAGE_ICONS[pageId];
+                      const checked = access[pageId] === true;
+                      return (
+                        <label
+                          key={pageId}
+                          className={`access-modal__item${checked ? ' access-modal__item--on' : ''}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggle(pageId)}
+                            className="access-modal__checkbox-hidden"
+                          />
+                          <span className="access-modal__item-left">
+                            <span className={`access-modal__item-icon-wrap${checked ? ' access-modal__item-icon-wrap--on' : ''}`}>
+                              {Icon && <Icon size={16} strokeWidth={1.75} aria-hidden />}
+                            </span>
+                            <span className="access-modal__item-label">{PAGE_LABELS[pageId] || pageId}</span>
+                          </span>
+                          <span className={`access-modal__toggle${checked ? ' access-modal__toggle--on' : ''}`} aria-hidden>
+                            <span className="access-modal__toggle-thumb" />
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })}
           </div>
+
           <div className="access-modal__actions">
             <button type="button" className="access-modal__btn access-modal__btn--cancel" onClick={onClose} disabled={saving}>
               Отмена

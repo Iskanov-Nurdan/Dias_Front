@@ -1,91 +1,138 @@
 @use '../../../shared/styles/mixins';
 
 .clients-list {
-  &__cell-value {
-    min-width: 0;
-    flex: 1 1 auto;
-    text-align: right;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
-
   &__table-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    border-radius: var(--block-radius);
-    border: 1px solid var(--color-border);
-    box-shadow: var(--shadow-sm);
-    background: var(--color-bg-card);
     @include mixins.scrollbar;
 
     @include mixins.mobile {
       overflow-x: visible;
-      border: none;
-      box-shadow: none;
-      background: transparent;
     }
   }
 
   &__table {
     width: 100%;
-    border-collapse: collapse;
-    background: var(--color-bg-card);
+    border-collapse: separate;
+    border-spacing: 0 4px;
+    background: transparent;
 
-    th,
-    td {
-      padding: var(--table-cell-padding);
+    th {
+      padding: 8px 16px 12px;
       text-align: left;
-      border-bottom: 1px solid var(--color-border);
       vertical-align: middle;
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--color-text);
+      opacity: 0.5;
+      white-space: nowrap;
     }
 
-    @include mixins.desktop-only {
-      tbody td:not(.clients-list__actions) {
-        max-width: 360px;
-        vertical-align: top;
-      }
-
-      tbody tr {
-        min-height: var(--table-row-min-height);
-      }
+    // ── Card rows ───────────────────────────────────────────
+    tbody td {
+      height: 70px;
+      padding: 12px 16px;
+      vertical-align: middle;
+      background: var(--color-surface);
+      border-top: 1px solid var(--color-border);
+      border-bottom: 1px solid var(--color-border);
+      transition: background 0.15s;
     }
 
+    tbody td:first-child {
+      border-left: 1px solid var(--color-border);
+      border-radius: 10px 0 0 10px;
+    }
+
+    tbody td:last-child {
+      border-right: 1px solid var(--color-border);
+      border-radius: 0 10px 10px 0;
+    }
+
+    tbody tr:hover td {
+      background: var(--color-bg);
+    }
+
+    // ── Row states ──────────────────────────────────────────
+    tbody tr.clients-list__row--unpaid td {
+      background: rgba(197, 48, 48, 0.06);
+      border-color: rgba(197, 48, 48, 0.2);
+    }
+    tbody tr.clients-list__row--unpaid:hover td {
+      background: rgba(197, 48, 48, 0.1);
+    }
+
+    tbody tr.clients-list__row--subscription-expired td {
+      background: rgba(245, 158, 11, 0.08);
+      border-color: rgba(245, 158, 11, 0.25);
+    }
+    tbody tr.clients-list__row--subscription-expired:hover td {
+      background: rgba(245, 158, 11, 0.13);
+    }
+
+    tbody tr.clients-list__row--installments-complete td {
+      background: rgba(22, 163, 74, 0.07);
+      border-color: rgba(22, 163, 74, 0.2);
+    }
+    tbody tr.clients-list__row--installments-complete:hover td {
+      background: rgba(22, 163, 74, 0.12);
+    }
+
+    tbody tr.clients-list__row--one-time td {
+      background: rgba(37, 99, 235, 0.06);
+      border-color: rgba(37, 99, 235, 0.2);
+    }
+    tbody tr.clients-list__row--one-time:hover td {
+      background: rgba(37, 99, 235, 0.11);
+    }
+
+    tbody tr.clients-list__row--individual td {
+      background: rgba(109, 40, 217, 0.06);
+      border-color: rgba(109, 40, 217, 0.2);
+    }
+    tbody tr.clients-list__row--individual:hover td {
+      background: rgba(109, 40, 217, 0.11);
+    }
+
+    // ── Mobile cards ────────────────────────────────────────
     @include mixins.mobile {
       display: block;
       background: transparent;
 
-      thead {
-        display: none;
-      }
+      thead { display: none; }
 
       tbody {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
       }
 
       tr {
         display: block;
         padding: 14px 16px;
-        background: var(--color-bg-card);
-        border: 1px solid var(--block-border);
-        border-radius: var(--block-radius);
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: 12px;
         box-shadow: var(--shadow-card);
       }
 
-        td {
-          display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
-          gap: 12px;
-          padding: 6px 0;
-          border-bottom: none;
-          font-size: 14px;
+      td {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 6px 0;
+        border: none !important;
+        border-radius: 0 !important;
+        font-size: 14px;
+        background: transparent !important;
 
-          &::before {
+        &::before {
           content: attr(data-label);
           font-size: 11px;
-          font-weight: 400;
+          font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.04em;
           color: var(--color-text-muted);
@@ -94,19 +141,19 @@
 
         &:last-child {
           padding-top: 12px;
-          margin-top: 8px;
-          border-top: 1px solid var(--color-border);
+          margin-top: 6px;
+          border-top: 1px solid var(--color-border) !important;
           justify-content: stretch;
           flex-wrap: wrap;
+          gap: 8px;
 
-          &::before {
-            display: none;
-          }
+          &::before { display: none; }
 
           .clients-list__btn {
             flex: 1 1 calc(50% - 4px);
             min-width: 0;
             justify-content: center;
+            min-height: 40px;
           }
         }
 
@@ -115,88 +162,115 @@
         &.clients-list__empty-cell {
           display: flex;
           justify-content: center;
-          &::before {
-            display: none;
-          }
-        }
-
-        @include mixins.xs {
-          font-size: 13px;
+          &::before { display: none; }
         }
       }
     }
+  }
 
-    th {
-      background: var(--color-bg);
-      font-weight: 600;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--color-text-muted);
+  // ── Avatar ──────────────────────────────────────────────
+  &__avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--color-primary, #ef4444);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+    letter-spacing: 0.02em;
+  }
+
+  // ── Name cell ───────────────────────────────────────────
+  &__name-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  &__name-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  &__fio {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text);
+    @include mixins.text-ellipsis;
+  }
+
+  &__cell--muted {
+    font-size: 13px;
+    color: var(--color-text-muted);
+  }
+
+  &__sport {
+    font-size: 13px;
+    color: var(--color-text);
+    @include mixins.text-ellipsis;
+    display: block;
+    max-width: 220px;
+  }
+
+  // ── Type badges ─────────────────────────────────────────
+  &__type-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 20px;
+    white-space: nowrap;
+
+    &--individual {
+      background: rgba(124, 58, 237, 0.1);
+      color: #7c3aed;
+      [data-theme='dark'] & { background: rgba(167, 139, 250, 0.14); color: #a78bfa; }
     }
 
-    tbody tr {
-      transition: background var(--transition-fast);
+    &--regular {
+      background: rgba(59, 130, 246, 0.1);
+      color: #1d4ed8;
+      [data-theme='dark'] & { background: rgba(96, 165, 250, 0.14); color: #60a5fa; }
     }
-    tbody tr:nth-child(even) {
-      background: rgba(0, 0, 0, 0.02);
-    }
-    tbody tr.clients-list__row--unpaid {
-      background: rgba(197, 48, 48, 0.06);
-      border-left: 3px solid rgba(197, 48, 48, 0.4);
-    }
-    tbody tr.clients-list__row--unpaid:nth-child(even) {
-      background: rgba(197, 48, 48, 0.08);
-    }
-    tbody tr.clients-list__row--subscription-expired,
-    tbody tr.clients-list__row--subscription-expired:nth-child(even) {
-      background: #fcd34d;
-      border-left: 4px solid #b45309;
-      box-shadow: inset 0 0 0 1px rgba(180, 83, 9, 0.4);
-    }
-    tbody tr.clients-list__row--installments-complete {
-      background: rgba(22, 163, 74, 0.14);
-      border-left: 3px solid rgba(22, 163, 74, 0.55);
-    }
-    tbody tr.clients-list__row--installments-complete:nth-child(even) {
-      background: rgba(22, 163, 74, 0.2);
-    }
-    tbody tr.clients-list__row--one-time {
-      background: rgba(37, 99, 235, 0.14);
-    }
-    tbody tr.clients-list__row--one-time:nth-child(even) {
-      background: rgba(37, 99, 235, 0.2);
-    }
-    tbody tr.clients-list__row--individual {
-      background: rgba(109, 40, 217, 0.12);
-      border-left: 3px solid rgba(109, 40, 217, 0.35);
-    }
-    tbody tr.clients-list__row--individual:nth-child(even) {
-      background: rgba(109, 40, 217, 0.16);
-    }
-    tbody tr:hover {
-      background: var(--color-primary-light);
-    }
-    tbody tr.clients-list__row--unpaid:hover {
-      background: rgba(197, 48, 48, 0.1);
-    }
-    tbody tr.clients-list__row--subscription-expired:hover {
-      background: #fbbf24;
-    }
-    tbody tr.clients-list__row--installments-complete:hover {
-      background: rgba(22, 163, 74, 0.24);
-    }
-    tbody tr.clients-list__row--one-time:hover {
-      background: rgba(37, 99, 235, 0.22);
-    }
-    tbody tr.clients-list__row--individual:hover {
-      background: rgba(109, 40, 217, 0.2);
-    }
-    tbody tr:last-child td {
-      border-bottom: none;
+
+    &--onetime {
+      background: rgba(156, 163, 175, 0.1);
+      color: #6b7280;
+      [data-theme='dark'] & { background: rgba(156, 163, 175, 0.14); color: #9ca3af; }
     }
   }
 
+  // ── Paid badge ──────────────────────────────────────────
+  &__paid-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+
+    &--yes {
+      background: rgba(34, 197, 94, 0.12);
+      color: #16a34a;
+      [data-theme='dark'] & { background: rgba(34, 197, 94, 0.16); color: #4ade80; }
+    }
+
+    &--no {
+      background: rgba(239, 68, 68, 0.1);
+      color: #dc2626;
+      [data-theme='dark'] & { background: rgba(239, 68, 68, 0.14); color: #f87171; }
+    }
+  }
+
+  // ── Actions ─────────────────────────────────────────────
   &__loading-cell,
   &__empty-cell {
     text-align: center;
@@ -206,19 +280,19 @@
 
   &__skeleton-cell {
     padding: 0 !important;
-    border-bottom: none;
+    border: none !important;
+    border-radius: 0 !important;
     vertical-align: top;
 
-    .skeleton-table {
-      width: 100%;
-    }
+    .skeleton-table { width: 100%; }
   }
 
   &__actions {
     display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+    gap: 6px;
+    flex-wrap: nowrap;
     justify-content: flex-end;
+    align-items: center;
   }
 
   &__table th:last-child,
@@ -226,83 +300,56 @@
     text-align: right;
   }
 
-  &__type-cell--individual {
-    color: #6d28d9;
-    font-weight: 500;
-  }
-
-  &__type-cell--one-time {
-    color: var(--color-info);
-    font-weight: 500;
-  }
-
-  &__paid-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 3px 10px;
-    border-radius: 10px;
-    font-size: 12px;
-    font-weight: 600;
-    white-space: nowrap;
-
-    &--yes {
-      background: rgba(34, 197, 94, 0.14);
-      color: #4ADE80;
-    }
-
-    &--no {
-      background: rgba(239, 68, 68, 0.12);
-      color: #F87171;
-    }
-  }
-
+  // ── Buttons ─────────────────────────────────────────────
   &__btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 8px 14px;
-    font-size: 13px;
-    font-weight: 500;
-    border-radius: var(--input-radius);
-    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+    height: 30px;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
 
-    &--primary {
-      background: var(--color-primary);
-      border: 1px solid var(--color-primary);
-      color: #fff;
-      &:hover {
-        background: var(--color-primary-hover);
-        border-color: var(--color-primary-hover);
-      }
-    }
-
-    &--extend {
+    &--details {
       background: transparent;
-      border: 1px solid var(--color-border-strong, rgba(255,255,255,0.18));
-      color: var(--color-text);
-      &:hover {
-        background: var(--color-surface-hover, rgba(255,255,255,0.06));
-        border-color: var(--color-text-muted);
-      }
-    }
-
-    &:not(&--primary):not(&--extend):not(&--danger) {
-      background: transparent;
-      border: 1px solid var(--block-border);
+      border: 1px solid var(--color-border);
       color: var(--color-text-muted);
+
       &:hover {
         background: var(--color-bg);
-        border-color: var(--color-border-strong);
+        border-color: var(--color-text-muted);
         color: var(--color-text);
       }
     }
 
-    &--danger {
-      border-color: var(--color-error);
-      color: var(--color-error);
-      &:hover {
-        background: var(--color-error-light);
+    &--extend {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #16a34a;
+
+      [data-theme='dark'] & {
+        background: rgba(74, 222, 128, 0.1);
+        border-color: rgba(74, 222, 128, 0.25);
+        color: #4ade80;
       }
+
+      &:hover {
+        background: rgba(34, 197, 94, 0.18);
+        border-color: rgba(34, 197, 94, 0.5);
+      }
+    }
+
+    &--danger {
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #dc2626;
+      background: transparent;
+      [data-theme='dark'] & { color: #f87171; }
+
+      &:hover { background: rgba(239, 68, 68, 0.08); }
     }
   }
 }

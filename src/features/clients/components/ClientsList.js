@@ -4,6 +4,15 @@ import { isClientPaid } from '../../../shared/constants/common';
 import { composeClientDataRowClass } from '../lib/clientRowHighlight';
 import './ClientsList.scss';
 
+const getInitials = (fio) =>
+  (fio || '').split(' ').slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
+
+const TYPE_LABEL = {
+  individual: { label: 'Индивид.', cls: 'clients-list__type-badge--individual' },
+  regular:    { label: 'Регуляр',  cls: 'clients-list__type-badge--regular'    },
+  'one-time': { label: 'Разовый', cls: 'clients-list__type-badge--onetime'    },
+};
+
 const ClientsList = ({
   items,
   loading,
@@ -29,7 +38,7 @@ const ClientsList = ({
               <th>ФИО</th>
               <th>Дата начала</th>
               <th>Вид спорта</th>
-              <th>Оплачено</th>
+              <th>Оплата</th>
               <th></th>
             </tr>
           </thead>
@@ -56,23 +65,44 @@ const ClientsList = ({
               const paid = isClientPaid(c);
               const dateStart = c.dateStart ?? c.date_start;
               const rowClass = composeClientDataRowClass(c, 'clients-list__row');
+              const initials = getInitials(c.fio);
+              const typeInfo = TYPE_LABEL[c.clientType];
+              const sportName = c.sportName ?? c.sport?.name;
               return (
                 <tr key={c.id} className={rowClass}>
-                  <td data-label="ФИО" title={c.fio || undefined}><span className="clients-list__cell-value">{c.fio || '—'}</span></td>
-                  <td data-label="Дата начала"><span className="clients-list__cell-value">{dateStart ? new Date(dateStart).toLocaleDateString() : '—'}</span></td>
-                  <td data-label="Вид спорта" title={(c.sportName ?? c.sport?.name) || undefined}><span className="clients-list__cell-value">{c.sportName ?? c.sport?.name ?? '—'}</span></td>
-                  <td data-label="Оплачено">
+                  <td data-label="ФИО">
+                    <div className="clients-list__name-cell">
+                      <span className="clients-list__avatar">{initials}</span>
+                      <div className="clients-list__name-info">
+                        <span className="clients-list__fio">{c.fio || '—'}</span>
+                        {typeInfo && (
+                          <span className={`clients-list__type-badge ${typeInfo.cls}`}>{typeInfo.label}</span>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td data-label="Дата начала" className="clients-list__cell--muted">
+                    {dateStart ? new Date(dateStart).toLocaleDateString('ru-RU') : '—'}
+                  </td>
+                  <td data-label="Вид спорта" title={sportName || undefined}>
+                    <span className="clients-list__sport">{sportName ?? '—'}</span>
+                  </td>
+                  <td data-label="Оплата">
                     <span className={`clients-list__paid-badge ${paid ? 'clients-list__paid-badge--yes' : 'clients-list__paid-badge--no'}`}>
                       {paid ? 'Оплачено' : 'Не оплачено'}
                     </span>
                   </td>
                   <td className="clients-list__actions" data-label="">
-                    <button type="button" className="clients-list__btn clients-list__btn--primary" onClick={() => onDetails(c)}>Подробнее</button>
-                    <button type="button" className="clients-list__btn clients-list__btn--extend" onClick={() => onExtend(c)}>Продлить</button>
+                    <button type="button" className="clients-list__btn clients-list__btn--details" onClick={() => onDetails(c)}>
+                      Подробнее
+                    </button>
+                    <button type="button" className="clients-list__btn clients-list__btn--extend" onClick={() => onExtend(c)}>
+                      Продлить
+                    </button>
                   </td>
                 </tr>
               );
-            }) }
+            })}
           </tbody>
         </table>
       </div>

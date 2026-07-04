@@ -3,10 +3,10 @@
 .roles-list {
   &__table-wrap {
     overflow-x: auto;
-    border-radius: var(--radius-lg);
+    border-radius: 12px;
     border: 1px solid var(--color-border);
     box-shadow: var(--shadow-card);
-    background: var(--color-bg-card);
+    background: var(--color-surface);
     @include mixins.scrollbar;
     min-width: 0;
 
@@ -21,96 +21,119 @@
   &__table {
     width: 100%;
     border-collapse: collapse;
-    background: var(--color-bg-card);
+    background: var(--color-surface);
 
-    th,
-    td {
-      padding: 12px 20px;
+    th, td {
+      padding: 12px 18px;
       text-align: left;
       border-bottom: 1px solid var(--color-border);
+      vertical-align: middle;
     }
+
+    th {
+      background: var(--color-surface);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-text-muted);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    th:first-child, td:first-child { min-width: 220px; }
+
+    tbody tr { transition: background 0.12s; }
+    tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+    tbody tr:last-child td { border-bottom: none; }
 
     @include mixins.mobile {
       display: block;
       background: transparent;
 
-      thead {
-        display: none;
-      }
+      thead { display: none; }
 
       tbody {
         display: flex;
         flex-direction: column;
-        gap: var(--space-3);
+        gap: 10px;
       }
 
       tr {
-        display: block;
-        padding: var(--space-4);
-        background: var(--color-bg-card);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-sm);
-      }
-
-      td {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: var(--space-3);
-        padding: var(--space-2) 0;
-        border-bottom: none;
-        font-size: 15px;
-        font-weight: 600;
+        gap: 12px;
+        padding: 14px 16px;
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: 12px;
+      }
 
-        &::before {
-          content: attr(data-label);
-          font-size: 11px;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-          color: var(--color-text-muted);
-          flex-shrink: 0;
-        }
+      td {
+        padding: 0;
+        border-bottom: none;
 
         &.roles-list__actions {
-          flex-wrap: wrap;
-          justify-content: flex-end;
-          padding-top: var(--space-3);
-          margin-top: var(--space-2);
-          border-top: 1px solid var(--color-border);
-
-          &::before {
-            display: none;
-          }
+          flex-shrink: 0;
         }
       }
     }
-
-    th {
-      background: var(--color-surface-secondary);
-      font-weight: 600;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--color-text-secondary);
-      border-bottom: 2px solid var(--color-border-strong);
-    }
-
-    tbody tr {
-      transition: background var(--transition-fast);
-    }
-    tbody tr:nth-child(even) {
-      background: rgba(0, 0, 0, 0.015);
-    }
-    tbody tr:hover {
-      background: var(--color-primary-light);
-    }
-    tbody tr:last-child td {
-      border-bottom: none;
-    }
   }
 
+  // ── System row ────────────────────────────────────────────
+  &__row--system {
+    opacity: 0.7;
+
+    &:hover { background: transparent !important; }
+  }
+
+  // ── Name cell ─────────────────────────────────────────────
+  &__name-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  &__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(59, 130, 246, 0.5);
+    flex-shrink: 0;
+  }
+
+  &__system-icon {
+    display: flex;
+    align-items: center;
+    color: var(--color-text-muted);
+    opacity: 0.6;
+    flex-shrink: 0;
+  }
+
+  &__name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  &__system-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: rgba(156, 163, 175, 0.1);
+    color: var(--color-text-muted);
+    white-space: nowrap;
+  }
+
+  &__system-note {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    opacity: 0.6;
+    font-style: italic;
+  }
+
+  // ── Actions ───────────────────────────────────────────────
   &__loading-cell,
   &__empty-cell {
     text-align: center;
@@ -122,86 +145,66 @@
     padding: 0 !important;
     border-bottom: none;
     vertical-align: top;
-
-    .skeleton-table {
-      width: 100%;
-    }
   }
 
   &__actions {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     justify-content: flex-end;
-    flex-wrap: wrap;
-
-    @include mixins.mobile {
-      width: 100%;
-      justify-content: stretch;
-
-      .roles-list__btn {
-        flex: 1 1 auto;
-        min-height: 44px;
-        justify-content: center;
-      }
-    }
-  }
-
-  &__table th:last-child,
-  &__table td.roles-list__actions {
+    align-items: center;
     text-align: right;
   }
 
-  // Первая колонка — занимает оставшееся место, чтобы таблица ролей не выглядела пустой
-  &__table th:first-child,
-  &__table td:first-child {
-    min-width: 200px;
-
-    @include mixins.mobile {
-      min-width: 0;
-    }
-  }
-
   &__btn {
+    height: 30px;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, border-color 0.15s;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 6px 12px;
-    font-size: 13px;
-    font-weight: 500;
-    border-radius: var(--radius-sm);
-    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 
-    &--primary {
-      background: var(--color-primary);
-      border: 1px solid var(--color-primary);
-      color: #fff;
+    &--edit {
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #1d4ed8;
+      background: rgba(59, 130, 246, 0.06);
 
-      &:hover {
-        background: var(--color-primary-hover);
-        border-color: var(--color-primary-hover);
+      [data-theme='dark'] & {
+        color: #60a5fa;
+        border-color: rgba(96, 165, 250, 0.25);
+        background: rgba(96, 165, 250, 0.08);
       }
-    }
-
-    &:not(&--primary):not(&--danger) {
-      background: transparent;
-      border: 1px solid var(--color-border);
-      color: var(--color-text-muted);
 
       &:hover {
-        background: var(--color-bg);
-        border-color: var(--color-border-strong);
-        color: var(--color-text);
+        background: rgba(59, 130, 246, 0.12);
+        border-color: rgba(59, 130, 246, 0.5);
       }
     }
 
     &--danger {
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #dc2626;
       background: transparent;
-      border: 1px solid var(--color-danger);
-      color: var(--color-danger);
+
+      [data-theme='dark'] & {
+        color: #f87171;
+        border-color: rgba(239, 68, 68, 0.25);
+      }
 
       &:hover {
-        background: var(--color-danger-soft);
+        background: rgba(239, 68, 68, 0.08);
+        border-color: rgba(239, 68, 68, 0.5);
       }
+    }
+
+    @include mixins.mobile {
+      height: 36px;
+      padding: 0 14px;
+      font-size: 13px;
     }
   }
 }

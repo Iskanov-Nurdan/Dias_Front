@@ -4,9 +4,12 @@ import { ErrorState, EmptyState, ConfirmModal, SkeletonTable } from '../../../sh
 import './EmployeesList.scss';
 
 const MOBILE_MQ = '(max-width: 768px)';
-const ROW_HEIGHT = 52;
+const ROW_HEIGHT = 56;
 const VIRTUALIZE_THRESHOLD = 30;
-const LIST_HEIGHT = 420;
+const LIST_HEIGHT = 448;
+
+const getInitials = (fio) =>
+  (fio || '').split(' ').slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
 
 const EmployeesList = ({
   items,
@@ -40,15 +43,23 @@ const EmployeesList = ({
   const Row = useCallback(
     ({ index, style }) => {
       const emp = list[index];
+      const initials = getInitials(emp.fio);
       return (
         <div className="employees-list__virtual-row" style={style} role="row">
-          <div className="employees-list__virtual-cell">{emp.fio || '—'}</div>
+          <div className="employees-list__virtual-cell employees-list__cell--name">
+            <span className="employees-list__avatar">{initials}</span>
+            <span className="employees-list__fio">{emp.fio || '—'}</span>
+          </div>
           <div className="employees-list__virtual-cell">{emp.login || '—'}</div>
           <div className="employees-list__virtual-cell">{emp.phone || '—'}</div>
-          <div className="employees-list__virtual-cell">{emp.roleName ?? emp.role?.name ?? '—'}</div>
+          <div className="employees-list__virtual-cell">
+            {(emp.roleName ?? emp.role?.name) ? (
+              <span className="employees-list__role-badge">{emp.roleName ?? emp.role?.name}</span>
+            ) : '—'}
+          </div>
           <div className="employees-list__virtual-cell employees-list__actions">
             <button type="button" className="employees-list__btn" onClick={() => onAccess(emp)}>Доступы</button>
-            <button type="button" className="employees-list__btn employees-list__btn--primary" onClick={() => onEdit(emp)}>Изменить</button>
+            <button type="button" className="employees-list__btn employees-list__btn--edit" onClick={() => onEdit(emp)}>Изменить</button>
             <button type="button" className="employees-list__btn employees-list__btn--danger" onClick={() => onDelete(emp)}>Удалить</button>
           </div>
         </div>
@@ -61,34 +72,43 @@ const EmployeesList = ({
 
   const renderMobileCards = () => (
     <div className="employees-list__cards">
-      {list.map((emp) => (
-        <article key={emp.id} className="employees-list__card">
-          <div className="employees-list__card-head">
-            <div className="employees-list__card-name" title={emp.fio || undefined}>{emp.fio || '—'}</div>
-            <div className="employees-list__card-role">{emp.roleName ?? emp.role?.name ?? '—'}</div>
-          </div>
-          <dl className="employees-list__card-dl">
-            <div className="employees-list__card-row">
-              <dt>Логин</dt>
-              <dd title={emp.login || undefined}>{emp.login || '—'}</dd>
-            </div>
-            <div className="employees-list__card-row">
-              <dt>Телефон</dt>
-              <dd>{emp.phone || '—'}</dd>
-            </div>
-          </dl>
-          <div className="employees-list__card-actions">
-            <button type="button" className="employees-list__card-btn employees-list__card-btn--primary" onClick={() => onEdit(emp)}>Изменить</button>
-            <details className="employees-list__card-more">
-              <summary className="employees-list__card-more-summary">Ещё действия</summary>
-              <div className="employees-list__card-more-body">
-                <button type="button" className="employees-list__card-btn employees-list__card-btn--secondary" onClick={() => onAccess(emp)}>Доступы</button>
-                <button type="button" className="employees-list__card-btn employees-list__card-btn--danger" onClick={() => onDelete(emp)}>Удалить</button>
+      {list.map((emp) => {
+        const initials = getInitials(emp.fio);
+        const roleName = emp.roleName ?? emp.role?.name;
+        return (
+          <article key={emp.id} className="employees-list__card">
+            <div className="employees-list__card-head">
+              <span className="employees-list__avatar employees-list__avatar--lg">{initials}</span>
+              <div>
+                <div className="employees-list__card-name">{emp.fio || '—'}</div>
+                {roleName && <span className="employees-list__role-badge">{roleName}</span>}
               </div>
-            </details>
-          </div>
-        </article>
-      ))}
+            </div>
+            <dl className="employees-list__card-dl">
+              <div className="employees-list__card-row">
+                <dt>Логин</dt>
+                <dd>{emp.login || '—'}</dd>
+              </div>
+              {emp.phone && (
+                <div className="employees-list__card-row">
+                  <dt>Телефон</dt>
+                  <dd>{emp.phone}</dd>
+                </div>
+              )}
+            </dl>
+            <div className="employees-list__card-actions">
+              <button type="button" className="employees-list__card-btn employees-list__card-btn--edit" onClick={() => onEdit(emp)}>Изменить</button>
+              <details className="employees-list__card-more">
+                <summary className="employees-list__card-more-summary">Ещё</summary>
+                <div className="employees-list__card-more-body">
+                  <button type="button" className="employees-list__card-btn employees-list__card-btn--secondary" onClick={() => onAccess(emp)}>Доступы</button>
+                  <button type="button" className="employees-list__card-btn employees-list__card-btn--danger" onClick={() => onDelete(emp)}>Удалить</button>
+                </div>
+              </details>
+            </div>
+          </article>
+        );
+      })}
     </div>
   );
 
@@ -100,11 +120,7 @@ const EmployeesList = ({
             <SkeletonTable rows={8} cols={5} />
           ) : !list.length ? (
             <div className="employees-list__empty-wrap">
-              <EmptyState
-                message="Нет сотрудников"
-                actionLabel={emptyStateActionLabel}
-                onAction={emptyStateOnAction}
-              />
+              <EmptyState message="Нет сотрудников" actionLabel={emptyStateActionLabel} onAction={emptyStateOnAction} />
             </div>
           ) : isMobile ? (
             renderMobileCards()
@@ -139,19 +155,32 @@ const EmployeesList = ({
                 </tr>
               </thead>
               <tbody>
-                {list.map((emp) => (
-                  <tr key={emp.id}>
-                    <td>{emp.fio || '—'}</td>
-                    <td>{emp.login || '—'}</td>
-                    <td>{emp.phone || '—'}</td>
-                    <td>{emp.roleName ?? emp.role?.name ?? '—'}</td>
-                    <td className="employees-list__actions">
-                      <button type="button" className="employees-list__btn" onClick={() => onAccess(emp)}>Доступы</button>
-                      <button type="button" className="employees-list__btn employees-list__btn--primary" onClick={() => onEdit(emp)}>Изменить</button>
-                      <button type="button" className="employees-list__btn employees-list__btn--danger" onClick={() => onDelete(emp)}>Удалить</button>
-                    </td>
-                  </tr>
-                ))}
+                {list.map((emp) => {
+                  const initials = getInitials(emp.fio);
+                  const roleName = emp.roleName ?? emp.role?.name;
+                  return (
+                    <tr key={emp.id}>
+                      <td>
+                        <div className="employees-list__cell--name">
+                          <span className="employees-list__avatar">{initials}</span>
+                          <span className="employees-list__fio">{emp.fio || '—'}</span>
+                        </div>
+                      </td>
+                      <td className="employees-list__cell--muted">{emp.login || '—'}</td>
+                      <td className="employees-list__cell--muted">{emp.phone || '—'}</td>
+                      <td>
+                        {roleName ? (
+                          <span className="employees-list__role-badge">{roleName}</span>
+                        ) : '—'}
+                      </td>
+                      <td className="employees-list__actions">
+                        <button type="button" className="employees-list__btn" onClick={() => onAccess(emp)}>Доступы</button>
+                        <button type="button" className="employees-list__btn employees-list__btn--edit" onClick={() => onEdit(emp)}>Изменить</button>
+                        <button type="button" className="employees-list__btn employees-list__btn--danger" onClick={() => onDelete(emp)}>Удалить</button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

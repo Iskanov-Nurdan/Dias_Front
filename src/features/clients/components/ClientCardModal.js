@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, Phone, Calendar, User, Dumbbell, Clock, CreditCard, Camera, MessageSquare, Snowflake } from 'lucide-react';
 import { formatMoney, isClientPaid } from '../../../shared/constants/common';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { useToast } from '../../../app/providers/ToastProvider';
@@ -25,7 +25,6 @@ const formatHm = (v) => {
   return /^\d{2}:\d{2}/.test(s) ? s.slice(0, 5) : s;
 };
 
-/** Склонение «N дней» */
 const formatDaysRu = (n) => {
   const x = Math.abs(Number(n)) % 100;
   const d = x % 10;
@@ -35,14 +34,13 @@ const formatDaysRu = (n) => {
   return `${n} дней`;
 };
 
-/** Строка для карточки: день недели + интервал из training_* */
 const formatTrainingScheduleLabel = (client) => {
   const tw = client?.trainingWeekday ?? client?.training_weekday;
   const tf = formatHm(client?.trainingTimeFrom ?? client?.training_time_from);
   const tt = formatHm(client?.trainingTimeTo ?? client?.training_time_to);
   const hasDay = tw != null && tw !== '';
   const hasTime = Boolean(tf || tt);
-  if (!hasDay && !hasTime) return '—';
+  if (!hasDay && !hasTime) return null;
   const dayMeta = hasDay ? WEEKDAYS.find((w) => w.weekday === Number(tw)) : null;
   const dayPart = dayMeta ? dayMeta.label : hasDay ? `День ${tw}` : '';
   let timePart = '';
@@ -50,92 +48,63 @@ const formatTrainingScheduleLabel = (client) => {
   else if (tf) timePart = `с ${tf}`;
   else if (tt) timePart = `до ${tt}`;
   if (dayPart && timePart) return `${dayPart}, ${timePart}`;
-  return dayPart || timePart || '—';
+  return dayPart || timePart || null;
+};
+
+const CLIENT_TYPE_MAP = {
+  individual: { label: 'Индивидуальный', cls: 'ccm__badge--individual' },
+  regular:    { label: 'Регулярный',     cls: 'ccm__badge--regular'    },
+  'one-time': { label: 'Разовый',        cls: 'ccm__badge--onetime'    },
 };
 
 const ClientCardModal = ({
-  client,
-  onEdit,
-  onDelete,
-  onClose,
-  onClientUpdated,
-  canManageFreeze = false,
-  onFreezeAccessDenied,
-  fullscreen = false,
+  client, onEdit, onDelete, onClose, onClientUpdated,
+  canManageFreeze = false, onFreezeAccessDenied, fullscreen = false,
 }) => {
   const toast = useToast();
   useModalEffect(!!client, onClose);
 
   const [cardPhotos, setCardPhotos] = React.useState([]);
   const [cardPhotosLoading, setCardPhotosLoading] = React.useState(false);
-
   const [freezeModalMode, setFreezeModalMode] = useState(null);
   const [freezeFormError, setFreezeFormError] = useState(null);
   const [freezeSaving, setFreezeSaving] = useState(false);
   const [deleteFreezeOpen, setDeleteFreezeOpen] = useState(false);
 
   React.useEffect(() => {
-    if (!client?.id) {
-      setCardPhotos([]);
-      setCardPhotosLoading(false);
-      return undefined;
-    }
+    if (!client?.id) { setCardPhotos([]); return undefined; }
     let cancelled = false;
     setCardPhotosLoading(true);
     fetchClientPhotos(client.id, null)
-      .then((res) => {
-        if (!cancelled) setCardPhotos(res?.items ?? []);
-      })
-      .catch(() => {
-        if (!cancelled) setCardPhotos([]);
-      })
-      .finally(() => {
-        if (!cancelled) setCardPhotosLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .then((res) => { if (!cancelled) setCardPhotos(res?.items ?? []); })
+      .catch(() => { if (!cancelled) setCardPhotos([]); })
+      .finally(() => { if (!cancelled) setCardPhotosLoading(false); });
+    return () => { cancelled = true; };
   }, [client?.id]);
 
-  const applyClientFromServer = useCallback(
-    async (payload) => {
-      let next = payload;
-      if (!next?.id && client?.id) {
-        try {
-          next = await fetchClient(client.id, null);
-        } catch (e) {
-          const msg = getApiErrorMessage(e);
-          toast.error(msg);
-          return;
-        }
-      }
-      if (next?.id) {
-        onClientUpdated?.(next);
-      }
-    },
-    [client?.id, onClientUpdated, toast]
-  );
+  const applyClientFromServer = useCallback(async (payload) => {
+    let next = payload;
+    if (!next?.id && client?.id) {
+      try { next = await fetchClient(client.id, null); }
+      catch (e) { toast.error(getApiErrorMessage(e)); return; }
+    }
+    if (next?.id) onClientUpdated?.(next);
+  }, [client?.id, onClientUpdated, toast]);
 
   const handleFreezeSubmit = async (body) => {
     if (!client?.id) return;
     setFreezeFormError(null);
     setFreezeSaving(true);
     try {
-      const updated =
-        freezeModalMode === 'edit'
-          ? await updateClientFreeze(client.id, body, null)
-          : await createClientFreeze(client.id, body, null);
+      const updated = freezeModalMode === 'edit'
+        ? await updateClientFreeze(client.id, body, null)
+        : await createClientFreeze(client.id, body, null);
       await applyClientFromServer(updated);
       setFreezeModalMode(null);
       toast.success(freezeModalMode === 'edit' ? 'Заморозка обновлена' : 'Заморозка сохранена');
     } catch (e) {
-      const msg = isPeriodClosedError(e)
-        ? 'Период закрыт. Изменение данных запрещено.'
-        : getApiErrorMessage(e);
-      setFreezeFormError(msg);
-    } finally {
-      setFreezeSaving(false);
-    }
+      setFreezeFormError(isPeriodClosedError(e) ? 'Период закрыт.' : getApiErrorMessage(e));
+    } finally { setFreezeSaving(false); }
   };
 
   const handleDeleteFreeze = async () => {
@@ -145,260 +114,230 @@ const ClientCardModal = ({
       await applyClientFromServer(updated);
       toast.success('Заморозка удалена');
     } catch (e) {
-      const msg = isPeriodClosedError(e)
-        ? 'Период закрыт. Изменение данных запрещено.'
-        : getApiErrorMessage(e);
-      toast.error(msg);
+      toast.error(isPeriodClosedError(e) ? 'Период закрыт.' : getApiErrorMessage(e));
     }
   };
 
   const openFreezeModal = (mode) => {
-    if (!canManageFreeze) {
-      onFreezeAccessDenied?.();
-      return;
-    }
+    if (!canManageFreeze) { onFreezeAccessDenied?.(); return; }
     setFreezeFormError(null);
     setFreezeModalMode(mode);
   };
 
-  const freeze = client ? getFreezeFromClient(client) : null;
-  const hasFreeze = Boolean(freeze);
-  const freezeSummary =
-    freeze?.reason != null && String(freeze.reason).trim() !== ''
-      ? `Абонемент был заморожен на ${formatDaysRu(freeze.days)}. Причина: ${freeze.reason}.`
-      : null;
-  const createdByFio = freeze?.createdBy?.fio ?? '—';
-
   if (!client) return null;
 
+  const freeze = getFreezeFromClient(client);
+  const hasFreeze = Boolean(freeze);
   const dateStartRaw = client.dateStart ?? client.date_start;
   const paymentParts = getClientPaymentsForCard(client);
   const priceDisplay = client.priceDisplay ?? client.totalPrice ?? client.price_display ?? client.total_price;
   const priceBase = Number(client.price) || 0;
   const discountPct = Number(client.discount ?? client.discount_percent) || 0;
-  const priceFinal =
-    priceDisplay != null ? Number(priceDisplay) : discountPct > 0 ? priceBase * (1 - discountPct / 100) : priceBase;
+  const priceFinal = priceDisplay != null ? Number(priceDisplay) : discountPct > 0 ? priceBase * (1 - discountPct / 100) : priceBase;
+  const paid = isClientPaid(client);
+  const typeInfo = CLIENT_TYPE_MAP[client.clientType] || null;
+  const scheduleLabel = formatTrainingScheduleLabel(client);
+  const initials = (client.fio || '').split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
 
   const content = (
     <div
-      className={`client-card-modal__backdrop${fullscreen ? ' client-card-modal__backdrop--fullscreen' : ''}`}
+      className={`ccm__backdrop${fullscreen ? ' ccm__backdrop--fullscreen' : ''}`}
       onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="client-card-modal-title"
+      role="dialog" aria-modal="true" aria-labelledby="ccm-title"
     >
-      <div
-        className={`client-card-modal${fullscreen ? ' client-card-modal--fullscreen' : ''}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="client-card-modal__header">
-          <h2 id="client-card-modal-title" className="client-card-modal__title">
-            Карточка клиента
-          </h2>
-          <button type="button" className="client-card-modal__close" onClick={onClose} aria-label="Закрыть">
-            <X size={18} />
-          </button>
+      <div className={`ccm${fullscreen ? ' ccm--fullscreen' : ''}`} onClick={(e) => e.stopPropagation()}>
+
+        {/* ── Шапка ── */}
+        <div className="ccm__header">
+          <div className="ccm__header-info">
+            <div className="ccm__avatar">{initials || <User size={18} />}</div>
+            <div>
+              <h2 id="ccm-title" className="ccm__name">{client.fio || '—'}</h2>
+              {client.phone && (
+                <a href={`tel:${client.phone}`} className="ccm__phone">
+                  <Phone size={12} />{client.phone}
+                </a>
+              )}
+            </div>
+          </div>
+          <button type="button" className="ccm__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
         </div>
-        <div className="client-card-modal__sections">
-          <section className="client-card-modal__section">
-            <h3 className="client-card-modal__section-title">Личные данные</h3>
-            <dl className="client-card-modal__dl">
-              <dt>ФИО</dt>
-              <dd>{client.fio || '—'}</dd>
-              <dt>Телефон</dt>
-              <dd>{client.phone || '—'}</dd>
-            </dl>
-          </section>
-          <section className="client-card-modal__section">
-            <h3 className="client-card-modal__section-title">Абонемент</h3>
-            <dl className="client-card-modal__dl">
-              <dt>Вид спорта</dt>
-              <dd>{client.sportName ?? client.sport?.name ?? '—'}</dd>
-              <dt>Тренер</dt>
-              <dd>{client.trainerName ?? client.trainer?.fio ?? '—'}</dd>
-              <dt>Время занятия</dt>
-              <dd>{formatTrainingScheduleLabel(client)}</dd>
-              <dt>Дата начала</dt>
-              <dd>{dateStartRaw ? new Date(dateStartRaw).toLocaleDateString('ru-RU') : '—'}</dd>
-              <dt>Тип</dt>
-              <dd
-                className={
-                  client.clientType === 'individual'
-                    ? 'client-card-modal__type-cell client-card-modal__type-cell--individual'
-                    : client.clientType === 'one-time'
-                      ? 'client-card-modal__type-cell client-card-modal__type-cell--one-time'
-                      : ''
-                }
-              >
-                {client.clientType === 'individual'
-                  ? 'Индивидуальный'
-                  : client.clientType === 'regular'
-                    ? 'Регулярный'
-                    : client.clientType === 'one-time'
-                      ? 'Разовый'
-                      : client.clientType || '—'}
-              </dd>
-            </dl>
+
+        <div className="ccm__body">
+
+          {/* ── Абонемент ── */}
+          <section className="ccm__section">
+            <h3 className="ccm__section-title"><Dumbbell size={13} />Абонемент</h3>
+            <div className="ccm__info-grid">
+              {(client.sportName ?? client.sport?.name) && (
+                <div className="ccm__info-row">
+                  <span className="ccm__info-label">Вид спорта</span>
+                  <span className="ccm__info-val">{client.sportName ?? client.sport?.name}</span>
+                </div>
+              )}
+              {(client.trainerName ?? client.trainer?.fio) && (
+                <div className="ccm__info-row">
+                  <span className="ccm__info-label">Тренер</span>
+                  <span className="ccm__info-val">{client.trainerName ?? client.trainer?.fio}</span>
+                </div>
+              )}
+              {scheduleLabel && (
+                <div className="ccm__info-row">
+                  <span className="ccm__info-label"><Clock size={11} />Время</span>
+                  <span className="ccm__info-val">{scheduleLabel}</span>
+                </div>
+              )}
+              {dateStartRaw && (
+                <div className="ccm__info-row">
+                  <span className="ccm__info-label"><Calendar size={11} />Дата начала</span>
+                  <span className="ccm__info-val">{new Date(dateStartRaw).toLocaleDateString('ru-RU')}</span>
+                </div>
+              )}
+              {typeInfo && (
+                <div className="ccm__info-row">
+                  <span className="ccm__info-label">Тип</span>
+                  <span className={`ccm__badge ${typeInfo.cls}`}>{typeInfo.label}</span>
+                </div>
+              )}
+            </div>
           </section>
 
-          <section className="client-card-modal__section client-card-modal__section--freeze">
-            <div className="client-card-modal__freeze-head">
-              <h3 className="client-card-modal__section-title">Заморозка</h3>
+          {/* ── Оплата ── */}
+          <section className="ccm__section">
+            <h3 className="ccm__section-title"><CreditCard size={13} />Оплата</h3>
+            <div className="ccm__info-grid">
+              <div className="ccm__info-row">
+                <span className="ccm__info-label">Цена</span>
+                <span className="ccm__info-val ccm__price">
+                  {formatMoney(priceFinal)}
+                  {discountPct > 0 && <span className="ccm__discount-badge">−{discountPct}%</span>}
+                </span>
+              </div>
+              <div className="ccm__info-row">
+                <span className="ccm__info-label">Статус</span>
+                <span className={`ccm__badge ${paid ? 'ccm__badge--paid' : 'ccm__badge--unpaid'}`}>
+                  {paid ? 'Оплачено' : 'Не оплачено'}
+                </span>
+              </div>
+              {paymentParts.length > 0 && (
+                <div className="ccm__info-row ccm__info-row--col">
+                  <span className="ccm__info-label">Частичные оплаты</span>
+                  <div className="ccm__payments">
+                    {paymentParts.map((p, i) => {
+                      const dateStr = p.date
+                        ? new Date(Number(p.date.slice(0,4)), Number(p.date.slice(5,7))-1, Number(p.date.slice(8,10))).toLocaleDateString('ru-RU')
+                        : '—';
+                      const amtStr = p.amount != null && Number.isFinite(p.amount)
+                        ? `${Number(p.amount).toLocaleString('ru-RU')} сом` : null;
+                      return (
+                        <div key={i} className="ccm__payment-row">
+                          {amtStr && <strong>{amtStr}</strong>}
+                          <span>{dateStr}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* ── Заморозка ── */}
+          <section className="ccm__section ccm__section--freeze">
+            <div className="ccm__freeze-head">
+              <h3 className="ccm__section-title"><Snowflake size={13} />Заморозка</h3>
               {canManageFreeze && (
-                <div className="client-card-modal__freeze-actions">
+                <div className="ccm__freeze-btns">
                   {!hasFreeze ? (
-                    <button
-                      type="button"
-                      className="client-card-modal__btn-mini client-card-modal__btn-mini--primary"
-                      onClick={() => openFreezeModal('create')}
-                    >
+                    <button type="button" className="ccm__btn-mini ccm__btn-mini--freeze" onClick={() => openFreezeModal('create')}>
                       Заморозить
                     </button>
                   ) : (
                     <>
-                      <button
-                        type="button"
-                        className="client-card-modal__btn-mini client-card-modal__btn-mini--primary"
-                        onClick={() => openFreezeModal('edit')}
-                      >
-                        Изменить заморозку
-                      </button>
-                      <button
-                        type="button"
-                        className="client-card-modal__btn-mini client-card-modal__btn-mini--danger"
-                        onClick={() => setDeleteFreezeOpen(true)}
-                      >
-                        Удалить заморозку
-                      </button>
+                      <button type="button" className="ccm__btn-mini ccm__btn-mini--edit" onClick={() => openFreezeModal('edit')}>Изменить</button>
+                      <button type="button" className="ccm__btn-mini ccm__btn-mini--danger" onClick={() => setDeleteFreezeOpen(true)}>Удалить</button>
                     </>
                   )}
                 </div>
               )}
             </div>
-            <dl className="client-card-modal__dl">
-              <dt>Статус</dt>
-              <dd>{hasFreeze ? freezeStatusLabel(freeze.status) : 'Нет заморозки'}</dd>
-              <dt>Дней заморозки</dt>
-              <dd>{hasFreeze ? formatDaysRu(freeze.days) : '—'}</dd>
-              <dt>Причина</dt>
-              <dd className="client-card-modal__freeze-reason">{hasFreeze ? freeze.reason || '—' : '—'}</dd>
-              <dt>Старая дата начала</dt>
-              <dd>{hasFreeze ? formatFreezeDateLabel(freeze.dateStartBefore) : '—'}</dd>
-              <dt>Новая дата начала</dt>
-              <dd>{hasFreeze ? formatFreezeDateLabel(freeze.dateStartAfter) : '—'}</dd>
-              <dt>Кто добавил</dt>
-              <dd>{hasFreeze ? createdByFio : '—'}</dd>
-              <dt>Дата создания заморозки</dt>
-              <dd>{hasFreeze ? formatFreezeDateTimeLabel(freeze.createdAt) : '—'}</dd>
-            </dl>
-          </section>
 
-          <section className="client-card-modal__section">
-            <h3 className="client-card-modal__section-title">Оплата</h3>
-            <dl className="client-card-modal__dl">
-              {discountPct > 0 && (
-                <>
-                  <dt>Скидка</dt>
-                  <dd>{discountPct}%</dd>
-                </>
-              )}
-              <dt>Цена</dt>
-              <dd>{formatMoney(priceFinal)}</dd>
-              <dt>Оплачено</dt>
-              <dd>{isClientPaid(client) ? 'Да' : 'Нет'}</dd>
-              <dt>Частичные оплаты</dt>
-              <dd>
-                {paymentParts.length === 0 ? (
-                  '—'
-                ) : (
-                  <ul className="client-card-modal__payments-list">
-                    {paymentParts.map((p, i) => {
-                      const dateStr = p.date
-                        ? new Date(
-                            Number(p.date.slice(0, 4)),
-                            Number(p.date.slice(5, 7)) - 1,
-                            Number(p.date.slice(8, 10))
-                          ).toLocaleDateString('ru-RU')
-                        : '—';
-                      const amtStr =
-                        p.amount != null && Number.isFinite(p.amount)
-                          ? `${Number(p.amount).toLocaleString('ru-RU')} сом`
-                          : null;
-                      return (
-                        <li key={i} className="client-card-modal__payments-item">
-                          {amtStr ? (
-                            <>
-                              <span className="client-card-modal__payments-amt">{amtStr}</span>
-                              <span> · </span>
-                            </>
-                          ) : null}
-                          <span className="client-card-modal__payments-date">{dateStr}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </dd>
-            </dl>
-          </section>
-          <section className="client-card-modal__section">
-            <h3 className="client-card-modal__section-title">Фото для сверки</h3>
-            {cardPhotosLoading ? (
-              <p className="client-card-modal__photos-status">Загрузка…</p>
-            ) : cardPhotos.length === 0 ? (
-              <p className="client-card-modal__photos-status">Нет фото</p>
+            {!hasFreeze ? (
+              <p className="ccm__freeze-empty">Заморозки нет</p>
             ) : (
-              <ul className="client-card-modal__photos-grid" aria-label="Фото чеков и наличных">
-                {cardPhotos.map((ph) => (
-                  <li key={ph.id} className="client-card-modal__photos-item">
-                    <a
-                      href={ph.url || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="client-card-modal__photos-link"
-                    >
-                      <img src={ph.url} alt="" className="client-card-modal__photos-thumb" />
-                      <span className="client-card-modal__photos-kind">{getClientPhotoKindLabel(ph.kind)}</span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              <div className="ccm__info-grid">
+                <div className="ccm__info-row">
+                  <span className="ccm__info-label">Статус</span>
+                  <span className="ccm__badge ccm__badge--freeze">{freezeStatusLabel(freeze.status)}</span>
+                </div>
+                <div className="ccm__info-row">
+                  <span className="ccm__info-label">Дней</span>
+                  <span className="ccm__info-val">{formatDaysRu(freeze.days)}</span>
+                </div>
+                {freeze.reason && (
+                  <div className="ccm__info-row">
+                    <span className="ccm__info-label">Причина</span>
+                    <span className="ccm__info-val">{freeze.reason}</span>
+                  </div>
+                )}
+                <div className="ccm__info-row">
+                  <span className="ccm__info-label">Дата до</span>
+                  <span className="ccm__info-val">{formatFreezeDateLabel(freeze.dateStartBefore)}</span>
+                </div>
+                <div className="ccm__info-row">
+                  <span className="ccm__info-label">Дата после</span>
+                  <span className="ccm__info-val">{formatFreezeDateLabel(freeze.dateStartAfter)}</span>
+                </div>
+                <div className="ccm__info-row">
+                  <span className="ccm__info-label">Добавил</span>
+                  <span className="ccm__info-val">{freeze?.createdBy?.fio ?? '—'}</span>
+                </div>
+                <div className="ccm__info-row">
+                  <span className="ccm__info-label">Создана</span>
+                  <span className="ccm__info-val">{formatFreezeDateTimeLabel(freeze.createdAt)}</span>
+                </div>
+              </div>
             )}
           </section>
-          <section className="client-card-modal__section">
-            <h3 className="client-card-modal__section-title">Комментарий</h3>
-            <p className="client-card-modal__comment">{client.comment || '—'}</p>
-          </section>
+
+          {/* ── Фото ── */}
+          {(cardPhotosLoading || cardPhotos.length > 0) && (
+            <section className="ccm__section">
+              <h3 className="ccm__section-title"><Camera size={13} />Фото для сверки</h3>
+              {cardPhotosLoading ? (
+                <p className="ccm__muted">Загрузка…</p>
+              ) : (
+                <ul className="ccm__photos">
+                  {cardPhotos.map((ph) => (
+                    <li key={ph.id}>
+                      <a href={ph.url || '#'} target="_blank" rel="noopener noreferrer" className="ccm__photo-link">
+                        <img src={ph.url} alt="" className="ccm__photo-thumb" />
+                        <span className="ccm__photo-kind">{getClientPhotoKindLabel(ph.kind)}</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+
+          {/* ── Комментарий ── */}
+          {client.comment && (
+            <section className="ccm__section">
+              <h3 className="ccm__section-title"><MessageSquare size={13} />Комментарий</h3>
+              <p className="ccm__comment">{client.comment}</p>
+            </section>
+          )}
+
         </div>
 
-        {freezeSummary ? (
-          <p className="client-card-modal__freeze-footer" role="status">
-            {freezeSummary}
-          </p>
-        ) : null}
-
-        <div className="client-card-modal__actions">
-          <button
-            type="button"
-            className="client-card-modal__btn client-card-modal__btn--primary"
-            onClick={() => {
-              onEdit(client);
-              onClose();
-            }}
-          >
+        {/* ── Кнопки ── */}
+        <div className="ccm__actions">
+          <button type="button" className="ccm__btn ccm__btn--primary" onClick={() => { onEdit(client); onClose(); }}>
             Редактировать
           </button>
-          <button type="button" className="client-card-modal__btn" onClick={onClose}>
-            Закрыть
-          </button>
-          <button
-            type="button"
-            className="client-card-modal__btn client-card-modal__btn--danger"
-            onClick={() => {
-              onDelete(client);
-              onClose();
-            }}
-          >
+          <button type="button" className="ccm__btn" onClick={onClose}>Закрыть</button>
+          <button type="button" className="ccm__btn ccm__btn--danger" onClick={() => { onDelete(client); onClose(); }}>
             Удалить
           </button>
         </div>
@@ -411,9 +350,7 @@ const ClientCardModal = ({
         initialReason={freeze?.reason ?? ''}
         clientFio={client.fio}
         onSubmit={handleFreezeSubmit}
-        onClose={() => {
-          if (!freezeSaving) setFreezeModalMode(null);
-        }}
+        onClose={() => { if (!freezeSaving) setFreezeModalMode(null); }}
         error={freezeFormError}
         saving={freezeSaving}
         fullscreen={fullscreen}
@@ -422,7 +359,7 @@ const ClientCardModal = ({
       {deleteFreezeOpen && (
         <ConfirmModal
           title="Удалить заморозку?"
-          message={`Вернуть дату начала абонемента к исходной (${formatFreezeDateLabel(freeze?.dateStartBefore)})? Текущая дата начала в карточке будет пересчитана.`}
+          message={`Вернуть дату начала к исходной (${formatFreezeDateLabel(freeze?.dateStartBefore)})?`}
           confirmText="Удалить"
           onConfirm={handleDeleteFreeze}
           onCancel={() => setDeleteFreezeOpen(false)}
@@ -431,14 +368,8 @@ const ClientCardModal = ({
       )}
     </div>
   );
+
   return createPortal(content, document.body);
 };
 
 export default ClientCardModal;
-
-
-
-
-
-
-

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Lock } from 'lucide-react';
 import { ErrorState, EmptyState, ConfirmModal, SkeletonTable } from '../../../shared/ui';
 import './RolesList.scss';
 
@@ -44,7 +45,7 @@ const RolesList = ({
               {loading ? (
                 <tr>
                   <td colSpan={2} className="roles-list__skeleton-cell">
-                    <SkeletonTable rows={6} cols={2} />
+                    <SkeletonTable rows={4} cols={2} />
                   </td>
                 </tr>
               ) : !list.length ? (
@@ -54,25 +55,37 @@ const RolesList = ({
                   </td>
                 </tr>
               ) : list.map((role) => {
-                const systemRole = isSystemRole(role);
+                const system = isSystemRole(role);
                 return (
-                  <tr key={role.id}>
-                    <td data-label="Название">{role.name || '—'}</td>
-                    <td className="roles-list__actions" data-label="">
-                      {!systemRole && (
+                  <tr key={role.id} className={system ? 'roles-list__row--system' : ''}>
+                    <td>
+                      <div className="roles-list__name-cell">
+                        {system ? (
+                          <span className="roles-list__system-icon"><Lock size={14} /></span>
+                        ) : (
+                          <span className="roles-list__dot" />
+                        )}
+                        <span className="roles-list__name">{role.name || '—'}</span>
+                        {system && <span className="roles-list__system-badge">Системная</span>}
+                      </div>
+                    </td>
+                    <td className="roles-list__actions">
+                      {!system ? (
                         <>
-                          <button type="button" className="roles-list__btn roles-list__btn--primary" onClick={() => handleEdit(role)}>
+                          <button type="button" className="roles-list__btn roles-list__btn--edit" onClick={() => handleEdit(role)}>
                             Изменить
                           </button>
                           <button type="button" className="roles-list__btn roles-list__btn--danger" onClick={() => handleDelete(role)}>
                             Удалить
                           </button>
                         </>
+                      ) : (
+                        <span className="roles-list__system-note">нельзя изменить</span>
                       )}
                     </td>
                   </tr>
                 );
-              }) }
+              })}
             </tbody>
           </table>
         </div>

@@ -492,7 +492,7 @@ const ClientsPage = () => {
           </div>
 
           {allLoading ? (
-            <div className="clients-page__dup-loading"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка всех клиентов…</span></div>
+            <div className="clients-page__dup-loading"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка клиентов…</span></div>
           ) : !dupYear ? (
             <div className="clients-page__dup-empty">Выберите год и месяц для просмотра дубликатов</div>
           ) : activeDupTab === SUBTAB_EXACT ? (
@@ -502,10 +502,11 @@ const ClientsPage = () => {
               </div>
             ) : (
               <>
-                <p className="clients-page__dup-info">
-                  Период: <strong>{dupYear}</strong>{dupMonth ? ` · ${MONTHS[Number(dupMonth)]}` : ' · весь год'}
-                  {' · '}Найдено групп с одинаковым ФИО: <strong>{exactGroups.length}</strong>
-                </p>
+                <div className="clients-page__dup-stats">
+                  <span><strong>{dupYear}</strong>{dupMonth ? ` · ${MONTHS[Number(dupMonth)]}` : ''}</span>
+                  <span className="clients-page__dup-stats-sep">·</span>
+                  <span>Групп с одинаковым ФИО: <strong>{exactGroups.length}</strong></span>
+                </div>
                 {exactGroups.map((group, i) => <DuplicateGroup key={i} group={group} label={group[0].fio} onDetails={handleOpenCard} />)}
               </>
             )
@@ -516,10 +517,11 @@ const ClientsPage = () => {
               </div>
             ) : (
               <>
-                <p className="clients-page__dup-info">
-                  Период: <strong>{dupYear}</strong>{dupMonth ? ` · ${MONTHS[Number(dupMonth)]}` : ' · весь год'}
-                  {' · '}Найдено групп с похожими именами: <strong>{similarGroups.length}</strong>
-                </p>
+                <div className="clients-page__dup-stats">
+                  <span><strong>{dupYear}</strong>{dupMonth ? ` · ${MONTHS[Number(dupMonth)]}` : ''}</span>
+                  <span className="clients-page__dup-stats-sep">·</span>
+                  <span>Групп с похожими именами: <strong>{similarGroups.length}</strong></span>
+                </div>
                 {similarGroups.map((group, i) => <DuplicateGroup key={i} group={group} label={`${group[0].fio} / ${group[1].fio}${group.length > 2 ? ` +${group.length - 2}` : ''}`} onDetails={handleOpenCard} />)}
               </>
             )
@@ -530,20 +532,14 @@ const ClientsPage = () => {
       {/* ── Разовый ── */}
       {activeTab === TAB_ONETIME && (
         <div className="clients-page__onetime-section">
-          <p className="clients-page__onetime-desc">
-            Разовые доплаты к абонементам по месяцам. Введите сумму и нажмите «Добавить доплату», чтобы зафиксировать доплату за выбранный период.
-          </p>
           <FilterBar className="clients-page__onetime-toolbar">
-            <div className="clients-page__onetime-search-wrap">
-              <input
-                type="text"
-                placeholder="Поиск по имени"
-                value={oneTimeSearch}
-                onChange={(e) => setOneTimeSearch(e.target.value)}
-                className="clients-page__onetime-search"
-              />
-            </div>
-            <span className="clients-page__onetime-filter-label">Период:</span>
+            <input
+              type="text"
+              placeholder="Поиск по имени"
+              value={oneTimeSearch}
+              onChange={(e) => setOneTimeSearch(e.target.value)}
+              className="clients-page__onetime-search"
+            />
             <Select
               value={oneTimeYear}
               onChange={setOneTimeYear}
@@ -562,7 +558,7 @@ const ClientsPage = () => {
               className="clients-page__onetime-select"
             />
             {(oneTimeYear || oneTimeMonth) && (
-              <button type="button" className="clients-page__date-clear" onClick={() => { setOneTimeYear(''); setOneTimeMonth(''); setOneTimePage(1); }} title="Сбросить дату">✕</button>
+              <button type="button" className="clients-page__date-clear" onClick={() => { setOneTimeYear(''); setOneTimeMonth(''); setOneTimePage(1); }} title="Сбросить фильтры">✕</button>
             )}
           </FilterBar>
 
@@ -573,12 +569,17 @@ const ClientsPage = () => {
               <div className="clients-page__onetime-block">
                 <table className="clients-page__onetime-table">
                   <thead>
-                    <tr><th>Имя</th><th>Месяц</th><th>Год</th><th>Текущая сумма</th><th>Доплата</th></tr>
+                    <tr>
+                      <th>Имя</th>
+                      <th>Период</th>
+                      <th>Текущая сумма</th>
+                      <th>Добавить доплату</th>
+                    </tr>
                   </thead>
                   <tbody>
                     {!(oneTimeData?.items ?? oneTimeData?.results ?? []).length ? (
                       <tr>
-                        <td colSpan={5} className="clients-page__stats-empty">
+                        <td colSpan={4} className="clients-page__stats-empty">
                           <EmptyState
                             compact
                             tableCell
@@ -586,7 +587,7 @@ const ClientsPage = () => {
                               <>
                                 Нет данных
                                 {(oneTimeYear || oneTimeMonth) && (
-                                  <span className="clients-page__onetime-empty-hint"> · Попробуйте сбросить год/месяц</span>
+                                  <span className="clients-page__onetime-empty-hint"> · Попробуйте сбросить фильтры</span>
                                 )}
                               </>
                             }
@@ -609,24 +610,23 @@ const ClientsPage = () => {
                         const inputVal = oneTimeAddInputs[c.id] ?? '';
                         return (
                           <tr key={c.id}>
-                            <td>{c.fio || '—'}</td>
-                            <td>{monthName}</td>
-                            <td>{yearStr}</td>
-                            <td>{amountStr}</td>
+                            <td className="clients-page__onetime-name">{c.fio || '—'}</td>
+                            <td className="clients-page__onetime-period">
+                              <span className="clients-page__onetime-month">{monthName}</span>
+                              <span className="clients-page__onetime-year">{yearStr}</span>
+                            </td>
+                            <td className="clients-page__onetime-amount">{amountStr}</td>
                             <td>
                               <div className="clients-page__onetime-actions">
-                                <label className="clients-page__onetime-add-label">
-                                  <span className="clients-page__onetime-add-label-text">Сумма, сом</span>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    placeholder="0"
-                                    value={inputVal}
-                                    onChange={(e) => setOneTimeAddInputs((prev) => ({ ...prev, [c.id]: e.target.value }))}
-                                    className="clients-page__onetime-input"
-                                    disabled={isLoading}
-                                  />
-                                </label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  placeholder="Сумма"
+                                  value={inputVal}
+                                  onChange={(e) => setOneTimeAddInputs((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                                  className="clients-page__onetime-input"
+                                  disabled={isLoading}
+                                />
                                 <button
                                   type="button"
                                   className="clients-page__onetime-add-btn"
@@ -641,7 +641,7 @@ const ClientsPage = () => {
                                   }}
                                   disabled={isLoading}
                                 >
-                                  {isLoading ? '…' : 'Добавить доплату'}
+                                  {isLoading ? '…' : '+ Доплата'}
                                 </button>
                               </div>
                             </td>
@@ -687,7 +687,6 @@ const ClientsPage = () => {
           }}
           canManageFreeze={isAdmin}
           onFreezeAccessDenied={showAccessDenied}
-          fullscreen
         />
       )}
       {extendClientObj && (

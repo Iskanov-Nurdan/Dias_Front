@@ -1,15 +1,6 @@
 @use '../../shared/styles/mixins';
 
 .expenses-page {
-  &__title {
-    margin: 0 0 var(--space-2);
-    font-size: var(--font-page-title);
-    font-weight: var(--font-weight-page-title);
-    letter-spacing: -0.02em;
-    line-height: 1.2;
-    color: var(--color-text);
-  }
-
   &__filter-bar {
     margin-bottom: var(--space-5);
 
@@ -25,27 +16,25 @@
     }
   }
 
-  &__cell-value {
-    min-width: 0;
-    flex: 1 1 auto;
-    text-align: right;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
-
   &__search {
     height: 40px;
-    min-height: 40px;
     padding: 0 14px;
-    border: 1px solid var(--input-border);
-    border-radius: var(--input-radius);
+    border: 1.5px solid var(--color-border);
+    border-radius: 10px;
     background: var(--color-surface);
+    color: var(--color-text);
     font-size: 14px;
     min-width: 220px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+
+    &::placeholder {
+      color: var(--color-text-muted);
+    }
+
     &:focus {
       outline: none;
       border-color: var(--color-primary);
-      box-shadow: 0 0 0 3px rgba(197, 48, 48, 0.12);
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
     }
 
     @include mixins.mobile {
@@ -57,32 +46,43 @@
   }
 
   &__back {
-    padding: var(--space-2) 0;
-    background: none;
-    border: none;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 14px;
+    background: transparent;
+    border: 1.5px solid var(--color-border);
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
     cursor: pointer;
-    transition: color var(--transition-fast);
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+
     &:hover {
+      background: var(--color-surface-secondary);
+      border-color: var(--color-text-muted);
       color: var(--color-text);
-      text-decoration: underline;
     }
   }
 
   &__add {
     height: 40px;
-    padding: 0 16px;
+    padding: 0 18px;
     background: var(--color-primary);
     color: #fff;
     border: none;
     border-radius: 10px;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
     white-space: nowrap;
     flex-shrink: 0;
-    transition: background var(--transition-fast);
+    cursor: pointer;
+    transition: background 0.15s;
+
     &:hover {
       background: var(--color-primary-hover);
     }
@@ -94,19 +94,20 @@
   }
 
   &__section {
-    margin: 0 0 var(--space-3);
-    font-size: var(--font-section-title);
-    font-weight: var(--font-weight-section-title);
-    line-height: 1.3;
+    margin: 0 0 var(--space-4);
+    font-size: 20px;
+    font-weight: 700;
     color: var(--color-text);
+    letter-spacing: -0.01em;
   }
 
+  // ── Table wrap ───────────────────────────────────────────
   &__table-wrap {
     overflow-x: auto;
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-lg);
     border: 1px solid var(--color-border);
-    box-shadow: var(--shadow-xs);
-    background: var(--color-surface);
+    box-shadow: var(--shadow-card);
+    background: var(--color-bg-card);
     @include mixins.scrollbar;
 
     @include mixins.mobile {
@@ -120,45 +121,50 @@
   &__table {
     width: 100%;
     border-collapse: collapse;
-    background: var(--color-surface);
-
-    th,
-    td {
-      padding: 14px 16px;
-      text-align: left;
-      border-bottom: 1px solid var(--color-border);
-      height: 52px;
-      vertical-align: middle;
-    }
+    background: var(--color-bg-card);
 
     th {
-      background: var(--color-bg);
-      font-weight: 600;
-      font-size: 12px;
-      letter-spacing: 0.04em;
-      color: var(--color-text-muted);
-      position: sticky;
-      top: 0;
-      z-index: 1;
+      padding: 10px 20px;
+      text-align: left;
+      font-weight: 700;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-text);
+      opacity: 0.45;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    tbody td {
+      padding: 0 20px;
+      height: 64px;
+      vertical-align: middle;
+      border-bottom: 1px solid var(--color-border);
+      font-size: 14px;
     }
 
     tbody tr {
-      transition: background var(--transition-fast);
+      transition: background 0.15s;
     }
+
     tbody tr:hover {
-      background: var(--color-bg);
+      background: rgba(239, 68, 68, 0.04);
     }
+
     tbody tr:last-child td {
       border-bottom: none;
+    }
+
+    th:last-child,
+    td.expenses-page__actions {
+      text-align: right;
     }
 
     @include mixins.mobile {
       display: block;
       background: transparent;
 
-      thead {
-        display: none;
-      }
+      thead { display: none; }
 
       tbody {
         display: flex;
@@ -169,10 +175,10 @@
       tr {
         display: block;
         padding: var(--space-4);
-        background: var(--color-surface);
+        background: var(--color-bg-card);
         border: 1px solid var(--color-border);
-        border-radius: var(--radius-xl);
-        box-shadow: var(--shadow-xs);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
       }
 
       td {
@@ -180,9 +186,9 @@
         align-items: flex-start;
         justify-content: space-between;
         gap: var(--space-3);
+        height: auto !important;
         padding: var(--space-2) 0;
         border-bottom: none;
-        height: auto !important;
 
         &::before {
           content: attr(data-label);
@@ -201,9 +207,7 @@
           margin-top: var(--space-2);
           border-top: 1px solid var(--color-border);
 
-          &::before {
-            display: none;
-          }
+          &::before { display: none; }
 
           .expenses-page__action,
           .expenses-page__save-btn {
@@ -212,57 +216,80 @@
             justify-content: center;
             display: inline-flex;
             align-items: center;
-            box-sizing: border-box;
           }
         }
 
         &.expenses-page__skeleton-cell,
         &.expenses-page__empty-cell {
           justify-content: center;
-
-          &::before {
-            display: none;
-          }
+          &::before { display: none; }
         }
-      }
-
-      .expenses-page__category-link {
-        text-align: right;
-        width: 100%;
       }
 
       tr.expenses-page__categories-hint-row td {
         justify-content: center;
         text-align: center;
-
-        &::before {
-          display: none;
-        }
+        &::before { display: none; }
       }
     }
   }
 
-  &__category-row {
-    &:hover {
-      background: var(--color-bg);
-    }
-  }
-
+  // ── Category row ────────────────────────────────────────
   &__category-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
     padding: 0;
     border: none;
     background: none;
-    font: inherit;
-    color: inherit;
-    text-align: left;
+    color: var(--color-text);
+    font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
+    text-align: left;
     width: 100%;
+    transition: color 0.15s;
+
     &:hover {
-      text-decoration: underline;
       color: var(--color-primary);
+
+      .expenses-page__category-chevron {
+        opacity: 1;
+        transform: translateX(2px);
+      }
+
+      .expenses-page__category-icon {
+        background: rgba(239, 68, 68, 0.15);
+      }
     }
   }
 
+  &__category-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(239, 68, 68, 0.09);
+    color: var(--color-primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+
+  &__category-name {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__category-chevron {
+    opacity: 0.3;
+    flex-shrink: 0;
+    transition: opacity 0.15s, transform 0.15s;
+    margin-left: auto;
+  }
+
+  // ── Hint row ────────────────────────────────────────────
   &__loading-cell,
   &__empty-cell {
     text-align: center;
@@ -275,78 +302,109 @@
     border-bottom: none;
     vertical-align: top;
 
-    .skeleton-table {
-      width: 100%;
-    }
+    .skeleton-table { width: 100%; }
   }
 
+  // ── Cell value ──────────────────────────────────────────
+  &__cell-value {
+    font-size: 14px;
+    color: var(--color-text);
+  }
+
+  // ── Actions ─────────────────────────────────────────────
   &__actions {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
+    flex-wrap: nowrap;
+    gap: 8px;
     align-items: center;
     justify-content: flex-end;
   }
 
   &__save-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     height: 32px;
     padding: 0 16px;
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
     background: var(--color-primary);
     color: #fff;
     border: none;
-    border-radius: var(--radius-sm);
-    transition: background var(--transition-fast);
+    border-radius: 8px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+
     &:hover:not(:disabled) {
       background: var(--color-primary-hover);
     }
   }
 
   &__action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     height: 32px;
-    padding: 0 12px;
+    padding: 0 14px;
     font-size: 13px;
     font-weight: 500;
-    border-radius: var(--radius-sm);
+    border-radius: 8px;
     cursor: pointer;
     white-space: nowrap;
-    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+
     &--edit {
-      background: var(--color-primary);
-      color: #fff;
-      border: 1px solid var(--color-primary);
+      background: transparent;
+      border: 1.5px solid rgba(59, 130, 246, 0.4);
+      color: #2563eb;
+
+      [data-theme='dark'] & {
+        border-color: rgba(96, 165, 250, 0.35);
+        color: #60a5fa;
+      }
+
       &:hover {
-        background: var(--color-primary-hover);
+        background: rgba(59, 130, 246, 0.08);
+        border-color: rgba(59, 130, 246, 0.6);
       }
     }
+
     &--secondary {
       background: transparent;
-      border: 1px solid var(--color-border);
+      border: 1.5px solid var(--color-border);
       color: var(--color-text-secondary);
+
       &:hover {
-        border-color: var(--color-primary);
-        color: var(--color-primary);
+        border-color: var(--color-text-muted);
+        color: var(--color-text);
       }
     }
+
     &--delete {
       background: transparent;
-      border: none;
-      color: var(--color-text-muted);
-      padding: 0 8px;
-      font-size: 12px;
+      border: 1.5px solid rgba(239, 68, 68, 0.35);
+      color: #dc2626;
+
+      [data-theme='dark'] & {
+        border-color: rgba(248, 113, 113, 0.35);
+        color: #f87171;
+      }
+
       &:hover {
-        color: var(--color-danger);
+        background: rgba(239, 68, 68, 0.08);
+        border-color: rgba(239, 68, 68, 0.55);
       }
     }
   }
 }
 
 .expenses-page__categories-hint-row td {
-  padding: 14px 16px !important;
+  height: auto !important;
+  padding: 12px 20px !important;
   font-size: 13px;
   color: var(--color-text-muted);
-  text-align: left;
-  background: var(--color-surface-secondary) !important;
-  border-bottom: 1px dashed var(--color-border);
+  background: rgba(239, 68, 68, 0.03) !important;
+  border-bottom: 1px solid var(--color-border);
+  border-left: 3px solid rgba(239, 68, 68, 0.25);
 }

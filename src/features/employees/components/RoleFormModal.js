@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, Tag } from 'lucide-react';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { SubmitButton } from '../../../shared/ui';
 import './RoleFormModal.scss';
@@ -21,26 +21,45 @@ const RoleFormModal = ({ role, onSave, onClose, error, saving }) => {
   };
 
   const content = (
-    <div className="role-form-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="role-form-modal-title">
-      <div className="role-form-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="role-form-modal__header">
-          <h2 id="role-form-modal-title" className="role-form-modal__title">{isEdit ? 'Редактировать роль' : 'Добавить роль'}</h2>
-          <button type="button" className="role-form-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
-        </div>
-        {error && <p className="role-form-modal__error" role="alert">{error}</p>}
-        <form onSubmit={handleSubmit} className="role-form-modal__form">
-          <div className="role-form-modal__form-body">
-          <label className="role-form-modal__label">
-            <span className="role-form-modal__label-caption">Название <span className="form-label-required" aria-hidden="true">*</span></span>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="role-form-modal__input" />
-          </label>
+    <div className="rfm__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="rfm-title">
+      <div className="rfm" onClick={(e) => e.stopPropagation()}>
+
+        <div className="rfm__header">
+          <div>
+            <p className="rfm__header-sub">{isEdit ? 'Редактирование' : 'Новая роль'}</p>
+            <h2 id="rfm-title" className="rfm__title">{isEdit ? role?.name || 'Роль' : 'Добавить роль'}</h2>
           </div>
-          <div className="role-form-modal__actions">
-            <button type="button" className="role-form-modal__btn role-form-modal__btn--cancel" onClick={onClose} disabled={saving}>
+          <button type="button" className="rfm__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
+        </div>
+
+        {error && <p className="rfm__error" role="alert">{error}</p>}
+
+        <form onSubmit={handleSubmit} className="rfm__form">
+          <div className="rfm__body">
+            <div className="rfm__field">
+              <label className="rfm__label" htmlFor="rfm-name">
+                <Tag size={14} className="rfm__label-icon" />
+                Название <span className="rfm__required">*</span>
+              </label>
+              <input
+                id="rfm-name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="rfm__input"
+                autoFocus
+                placeholder="Например: Тренер"
+              />
+            </div>
+          </div>
+
+          <div className="rfm__actions">
+            <button type="button" className="rfm__btn rfm__btn--cancel" onClick={onClose} disabled={saving}>
               Отмена
             </button>
-            <SubmitButton loading={saving} className="role-form-modal__btn role-form-modal__btn--submit">
-              Сохранить
+            <SubmitButton loading={saving} className="rfm__btn rfm__btn--submit">
+              {isEdit ? 'Сохранить' : 'Добавить'}
             </SubmitButton>
           </div>
         </form>

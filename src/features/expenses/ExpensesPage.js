@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Tag, ChevronRight, ArrowLeft } from 'lucide-react';
 import { fetchExpenseCategories, fetchExpenses, saveExpense, createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, updateExpense, deleteExpense } from './api';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
@@ -182,16 +183,16 @@ const ExpensesPage = () => {
                     {categoriesList.map((c) => (
                   <tr key={c.id} className="expenses-page__category-row">
                     <td data-label="Название">
-                      <span className="expenses-page__cell-value">
-                        <button
-                          type="button"
-                          className="expenses-page__category-link"
-                          onClick={() => setSelectedCategoryId(c.id)}
-                          aria-label={`Открыть расходы по категории ${c.name}`}
-                        >
-                          {c.name}
-                        </button>
-                      </span>
+                      <button
+                        type="button"
+                        className="expenses-page__category-link"
+                        onClick={() => setSelectedCategoryId(c.id)}
+                        aria-label={`Открыть расходы по категории ${c.name}`}
+                      >
+                        <span className="expenses-page__category-icon"><Tag size={15} /></span>
+                        <span className="expenses-page__category-name">{c.name}</span>
+                        <ChevronRight size={14} className="expenses-page__category-chevron" />
+                      </button>
                     </td>
                     <td className="expenses-page__actions" data-label="">
                       <button type="button" className="expenses-page__action expenses-page__action--edit" onClick={() => (isAdmin ? setFormCategory(c) : showAccessDenied())}>Изменить</button>
@@ -208,7 +209,10 @@ const ExpensesPage = () => {
       ) : (
         <>
           <FilterBar className="expenses-page__filter-bar">
-            <button type="button" className="expenses-page__back" onClick={() => setSelectedCategoryId(null)}>← К категориям</button>
+            <button type="button" className="expenses-page__back" onClick={() => setSelectedCategoryId(null)}>
+              <ArrowLeft size={14} />
+              К категориям
+            </button>
             <input type="text" placeholder="Поиск" value={expensesSearch} onChange={(e) => setExpensesSearch(e.target.value)} className="expenses-page__search" />
             <button type="button" className="expenses-page__add filter-bar__action" onClick={() => setFormExpense({ categoryId: selectedCategoryId })}>Добавить расход</button>
           </FilterBar>

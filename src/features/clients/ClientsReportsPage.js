@@ -457,11 +457,6 @@ const ClientsReportsPage = () => {
             <div className="clients-page__dup-loading"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка статистики…</span></div>
           ) : statsData ? (
             <>
-              <p className="clients-page__stats-info">
-                Период: <strong>{statsYear || 'все годы'}</strong>
-                {statsMonth ? ` · ${MONTHS[Number(statsMonth)]}` : ''}
-              </p>
-
               <div className="clients-page__stats-cards">
                 <div className="clients-page__stats-card">
                   <div className="clients-page__stats-card-value">{statsData.summary?.total ?? 0}</div>
@@ -531,10 +526,6 @@ const ClientsReportsPage = () => {
             </p>
           ) : (
             <>
-              <p className="clients-page__stats-info">
-                Период: <strong>{paymentDayYear}</strong>
-                {` · ${MONTHS[Number(paymentDayMonth)]}`}
-              </p>
               <ClientsPaymentDayReportBlock
                 raw={paymentDayReportRaw}
                 loading={paymentDayReportLoading}

@@ -84,9 +84,11 @@
   }
 
   &__not-renewed-toolbar-label {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-text);
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
   }
 
   &__not-renewed-select {
@@ -107,10 +109,24 @@
   }
 
   &__not-renewed-period {
-    margin: 0 0 var(--space-4);
-    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 20px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: rgba(59, 130, 246, 0.06);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    font-size: 13px;
     line-height: 1.45;
     color: var(--color-text-muted);
+
+    &::before {
+      content: 'ℹ';
+      font-size: 14px;
+      color: rgba(59, 130, 246, 0.7);
+      flex-shrink: 0;
+    }
 
     strong {
       color: var(--color-text);
@@ -121,8 +137,8 @@
   &__not-renewed-cards {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: var(--space-3);
-    margin-bottom: var(--space-5);
+    gap: 12px;
+    margin-bottom: 24px;
 
     @include mixins.lg {
       grid-template-columns: repeat(2, 1fr);
@@ -138,24 +154,52 @@
   }
 
   &__not-renewed-card {
-    padding: var(--space-4);
+    padding: 14px 16px;
     border-radius: 10px;
     border: 1px solid var(--color-border);
     background: var(--color-surface);
+    border-top-width: 2px;
+
+    // Card 1 — база (нейтральный синий)
+    &:nth-child(1) {
+      border-top-color: rgba(59, 130, 246, 0.6);
+      .clients-page__not-renewed-card-value { color: #3b82f6; }
+    }
+
+    // Card 2 — следующий месяц (зелёный = продлили)
+    &:nth-child(2) {
+      border-top-color: rgba(34, 197, 94, 0.6);
+      .clients-page__not-renewed-card-value { color: #16a34a; }
+    }
+
+    // Card 3 — не продлили (красный = плохо)
+    &:nth-child(3) {
+      border-top-color: rgba(239, 68, 68, 0.6);
+      .clients-page__not-renewed-card-value { color: #dc2626; }
+    }
+
+    // Card 4 — процент (янтарный = предупреждение)
+    &:nth-child(4) {
+      border-top-color: rgba(245, 158, 11, 0.7);
+      .clients-page__not-renewed-card-value { color: #d97706; }
+    }
   }
 
   &__not-renewed-card-value {
-    font-size: 22px;
+    font-size: 26px;
     font-weight: 700;
-    line-height: 1.2;
-    color: var(--color-text);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
   }
 
   &__not-renewed-card-label {
-    margin-top: 6px;
-    font-size: 12px;
-    line-height: 1.35;
+    margin-top: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.4;
     color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
   &__dup-section {
@@ -250,16 +294,32 @@
   }
 
   &__stats-info {
-    margin: 0 0 20px;
-    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 16px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: rgba(59, 130, 246, 0.06);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    font-size: 13px;
     color: var(--color-text-muted);
+
+    &::before {
+      content: 'ℹ';
+      font-size: 14px;
+      color: rgba(59, 130, 246, 0.7);
+      flex-shrink: 0;
+    }
+
+    strong { color: var(--color-text); font-weight: 600; }
   }
 
   &__stats-cards {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    margin-bottom: 24px;
+    gap: 12px;
+    margin-bottom: 20px;
 
     @include mixins.mobile {
       grid-template-columns: 1fr;
@@ -267,23 +327,40 @@
   }
 
   &__stats-card {
-    padding: 16px 18px;
+    padding: 14px 16px;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
+    border-top-width: 2px;
+    border-radius: 10px;
+
+    // Учеников — синий
+    &:nth-child(1) {
+      border-top-color: rgba(59, 130, 246, 0.6);
+      .clients-page__stats-card-value { color: #3b82f6; }
+    }
+
+    // Оплатили — зелёный
+    &:nth-child(2) {
+      border-top-color: rgba(34, 197, 94, 0.6);
+      .clients-page__stats-card-value { color: #16a34a; }
+    }
+
+    // Не оплатили — красный
+    &:nth-child(3) {
+      border-top-color: rgba(239, 68, 68, 0.6);
+      .clients-page__stats-card-value { color: #dc2626; }
+    }
   }
 
   &__stats-card-value {
-    font-size: 24px;
+    font-size: 26px;
     font-weight: 700;
-    color: var(--color-text);
-    letter-spacing: -0.02em;
-    line-height: 1.2;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
   }
 
   &__stats-card-label {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 500;
     color: var(--color-text-muted);
     text-transform: uppercase;

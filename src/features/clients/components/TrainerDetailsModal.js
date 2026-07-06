@@ -12,6 +12,12 @@ import './TrainerDetailsModal.scss';
 
 const MONTH_NAMES = ['', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 
+const TYPE_MAP = {
+  individual: { label: 'Индивид.',  cls: 'tdm__type-badge--individual' },
+  regular:    { label: 'Регуляр',   cls: 'tdm__type-badge--regular'    },
+  'one-time': { label: 'Разовый',   cls: 'tdm__type-badge--onetime'    },
+};
+
 const TrainerDetailsModal = ({
   trainerId,
   trainerName,
@@ -58,38 +64,42 @@ const TrainerDetailsModal = ({
   if (!trainerId) return null;
 
   const periodStr = [year, month ? MONTH_NAMES[Number(month)] : ''].filter(Boolean).join(' ');
+  const slotLabel = slotFilterActive
+    ? formatScheduleSlotLabel(Number(trainingWeekday), String(trainingTimeFrom).slice(0, 5), String(trainingTimeTo).slice(0, 5))
+    : null;
 
   const content = (
-    <div className="trainer-details-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="trainer-details-modal-title">
-      <div className="trainer-details-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="trainer-details-modal__header">
-          <h2 id="trainer-details-modal-title" className="trainer-details-modal__title">
-            Ученики: {trainerName || '—'}
-          </h2>
-          <button type="button" className="trainer-details-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
+    <div className="tdm__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="tdm-title">
+      <div className="tdm" onClick={(e) => e.stopPropagation()}>
+
+        <div className="tdm__header">
+          <div className="tdm__header-info">
+            <div className="tdm__header-sub">Ученики тренера</div>
+            <h2 id="tdm-title" className="tdm__title">{trainerName || '—'}</h2>
+          </div>
+          <button type="button" className="tdm__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
         </div>
-        {periodStr && (
-          <p className="trainer-details-modal__period">
-            Период: {periodStr}
-            {slotFilterActive
-              ? ` · Слот: ${formatScheduleSlotLabel(Number(trainingWeekday), String(trainingTimeFrom).slice(0, 5), String(trainingTimeTo).slice(0, 5))}`
-              : ''}
-          </p>
+
+        {(periodStr || slotLabel) && (
+          <div className="tdm__meta">
+            {periodStr && <span className="tdm__meta-period">{periodStr}</span>}
+            {slotLabel && <span className="tdm__meta-slot">{slotLabel}</span>}
+          </div>
         )}
 
         {loading ? (
-          <div className="trainer-details-modal__loading">
+          <div className="tdm__loading">
             <span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка учеников…</span>
           </div>
         ) : (
-          <div className="trainer-details-modal__table-wrap">
-            <table className="trainer-details-modal__table">
+          <div className="tdm__table-wrap">
+            <table className="tdm__table">
               <thead>
                 <tr>
                   <th>ФИО</th>
                   <th>Телефон</th>
                   <th>Вид спорта</th>
-                  <th>Оплатили</th>
+                  <th>Оплата</th>
                   <th>Тип</th>
                   <th></th>
                 </tr>
@@ -97,36 +107,44 @@ const TrainerDetailsModal = ({
               <tbody>
                 {students.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="trainer-details-modal__empty">
+                    <td colSpan={6} className="tdm__empty">
                       <EmptyState compact tableCell message="Нет учеников" />
                     </td>
                   </tr>
                 ) : (
-                  students.map((c) => (
-                    <tr
-                      key={c.id}
-                      className={composeClientDataRowClass(c, 'trainer-details-modal__row')}
-                    >
-                      <td>{c.fio || '—'}</td>
-                      <td>{c.phone || '—'}</td>
-                      <td>{c.sportName ?? c.sport?.name ?? '—'}</td>
-                      <td>{isClientPaid(c) ? 'Да' : 'Нет'}</td>
-                      <td className={c.clientType === 'individual' ? 'trainer-details-modal__type-cell trainer-details-modal__type-cell--individual' : c.clientType === 'one-time' ? 'trainer-details-modal__type-cell trainer-details-modal__type-cell--one-time' : ''}>
-                        {c.clientType === 'individual' ? 'Индивид.' : c.clientType === 'regular' ? 'Регуляр' : c.clientType === 'one-time' ? 'Разовый' : c.clientType || '—'}
-                      </td>
-                      <td>
-                        <button type="button" className="trainer-details-modal__btn" onClick={() => onDetails?.(c)}>Подробнее</button>
-                      </td>
-                    </tr>
-                  ))
+                  students.map((c) => {
+                    const paid = isClientPaid(c);
+                    const typeInfo = TYPE_MAP[c.clientType];
+                    return (
+                      <tr key={c.id} className={composeClientDataRowClass(c, 'tdm__row')}>
+                        <td className="tdm__fio">{c.fio || '—'}</td>
+                        <td className="tdm__muted">{c.phone || '—'}</td>
+                        <td className="tdm__muted">{c.sportName ?? c.sport?.name ?? '—'}</td>
+                        <td>
+                          <span className={`tdm__paid-badge tdm__paid-badge--${paid ? 'yes' : 'no'}`}>
+                            {paid ? 'Оплачено' : 'Не оплачено'}
+                          </span>
+                        </td>
+                        <td>
+                          {typeInfo
+                            ? <span className={`tdm__type-badge ${typeInfo.cls}`}>{typeInfo.label}</span>
+                            : <span className="tdm__muted">{c.clientType || '—'}</span>
+                          }
+                        </td>
+                        <td>
+                          <button type="button" className="tdm__btn" onClick={() => onDetails?.(c)}>Подробнее</button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
         )}
 
-        <div className="trainer-details-modal__footer">
-          <button type="button" className="trainer-details-modal__btn trainer-details-modal__btn--cancel" onClick={onClose}>Закрыть</button>
+        <div className="tdm__footer">
+          <button type="button" className="tdm__btn tdm__btn--cancel" onClick={onClose}>Закрыть</button>
         </div>
       </div>
     </div>

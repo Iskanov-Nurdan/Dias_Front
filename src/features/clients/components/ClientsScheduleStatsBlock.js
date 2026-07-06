@@ -130,7 +130,10 @@ const ClientsScheduleStatsBlock = ({
                 const headerRow = (
                   <tr
                     key={`trainer-${tid}`}
-                    className={t.trainerId ? 'clients-schedule-stats__row--clickable' : undefined}
+                    className={[
+                      t.trainerId ? 'clients-schedule-stats__row--clickable' : '',
+                      isOpen ? 'clients-schedule-stats__row--open' : '',
+                    ].filter(Boolean).join(' ')}
                     onClick={t.trainerId ? () => setExpandedTrainerId((prev) => (String(prev) === String(tid) ? null : tid)) : undefined}
                     role={t.trainerId ? 'button' : undefined}
                     tabIndex={t.trainerId ? 0 : undefined}
@@ -145,8 +148,11 @@ const ClientsScheduleStatsBlock = ({
                         : undefined
                     }
                   >
-                    <td>{t.trainerName}</td>
-                    <td className="clients-schedule-stats__slot">{isOpen ? '—' : 'Нажмите для слотов'}</td>
+                    <td className="clients-schedule-stats__trainer-cell">
+                      <span className="clients-schedule-stats__expand-icon">{isOpen ? '▾' : '▸'}</span>
+                      {t.trainerName}
+                    </td>
+                    <td className="clients-schedule-stats__slot">{isOpen ? '' : ''}</td>
                     <td>{t.total}</td>
                     <td>{t.paid}</td>
                     <td>{t.unpaid}</td>
@@ -157,7 +163,7 @@ const ClientsScheduleStatsBlock = ({
                   ? t.slots.map((r, idx) => (
                       <tr
                         key={`slot-${tid}-${r.weekday}-${r.timeFrom}-${r.timeTo}-${idx}`}
-                        className={r.trainerId ? 'clients-schedule-stats__row--clickable' : undefined}
+                        className={['clients-schedule-stats__row--slot', r.trainerId ? 'clients-schedule-stats__row--clickable' : ''].filter(Boolean).join(' ')}
                         onClick={
                           r.trainerId && onTrainerRowClick
                             ? () =>

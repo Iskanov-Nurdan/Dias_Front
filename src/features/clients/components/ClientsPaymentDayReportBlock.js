@@ -122,12 +122,25 @@ const ClientsPaymentDayReportBlock = ({
   return (
     <div className="clients-payment-day-report">
       <h3 className="clients-payment-day-report__title">Записи и оплаты по дням</h3>
-      <p className="clients-payment-day-report__hint">
-        <strong>Записались</strong> — клиенты с датой начала в этот день. <strong>Оплатили</strong> — число <strong>платежей</strong>
-        с этой датой (частичные оплаты в карточке клиента); у одного человека может быть несколько строк в разные дни.{' '}
-        <strong>Сумма итога</strong> — сумма этих платежей за день. Числа в колонках «Записались» и «Оплатили» открывают список,
-        строку в списке — карточку клиента.
-      </p>
+
+      {rows.length > 0 && (
+        <div className="clients-payment-day-report__totals">
+          <span>
+            Всего записей за месяц:
+            <span className="clients-payment-day-report__total-strong">{totals.registered.toLocaleString('ru-RU')}</span>
+          </span>
+          <span>
+            Всего оплат по фактической дате:
+            <span className="clients-payment-day-report__total-strong">{totals.paid.toLocaleString('ru-RU')}</span>
+          </span>
+          <span>
+            Итого по суммам за месяц:
+            <span className="clients-payment-day-report__total-strong">
+              {totals.hasAmount ? formatMoney(totals.amountSum) : '—'}
+            </span>
+          </span>
+        </div>
+      )}
 
       <div className="clients-payment-day-report__table-wrap">
         <table className="clients-payment-day-report__table">
@@ -159,25 +172,6 @@ const ClientsPaymentDayReportBlock = ({
           </tbody>
         </table>
       </div>
-
-      {rows.length > 0 && (
-        <div className="clients-payment-day-report__totals">
-          <span>
-            Всего записей за месяц:
-            <span className="clients-payment-day-report__total-strong">{totals.registered.toLocaleString('ru-RU')}</span>
-          </span>
-          <span>
-            Всего оплат по фактической дате:
-            <span className="clients-payment-day-report__total-strong">{totals.paid.toLocaleString('ru-RU')}</span>
-          </span>
-          <span>
-            Итого по суммам за месяц:
-            <span className="clients-payment-day-report__total-strong">
-              {totals.hasAmount ? formatMoney(totals.amountSum) : '—'}
-            </span>
-          </span>
-        </div>
-      )}
 
       {detail && year && month && (
         <PaymentDayClientsModal

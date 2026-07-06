@@ -181,13 +181,28 @@ const PaymentDayClientsModal = ({
                       <td className="payment-day-clients-modal__date">{fmtRuDate(r.dateStart)}</td>
                       <td className="payment-day-clients-modal__payments-cell">
                         {kind === 'paid'
-                          ? formatPaymentsThatDayCell(r.paymentsThatDay) ||
-                            fmtRuDate(r.actualPaymentDate)
-                          : fmtRuDate(r.actualPaymentDate)}
+                          ? (() => {
+                              const raw = formatPaymentsThatDayCell(r.paymentsThatDay) || fmtRuDate(r.actualPaymentDate);
+                              const match = raw && String(raw).match(/^([\d\s]+)\s*сом$/);
+                              if (match) {
+                                return (
+                                  <span className="payment-day-clients-modal__money">
+                                    {match[1].trim()}
+                                    <span className="payment-day-clients-modal__money-unit">сом</span>
+                                  </span>
+                                );
+                              }
+                              return raw || <span className="payment-day-clients-modal__dash">—</span>;
+                            })()
+                          : (fmtRuDate(r.actualPaymentDate) || <span className="payment-day-clients-modal__dash">—</span>)}
                       </td>
-                      <td>{r.phone || '—'}</td>
-                      <td>{r.trainerName}</td>
-                      <td>{r.sportName}</td>
+                      <td className="payment-day-clients-modal__date">{r.phone || '—'}</td>
+                      <td style={{ fontSize: 13, color: 'var(--color-text)' }}>{r.trainerName || '—'}</td>
+                      <td>
+                        {r.sportName
+                          ? <span className="payment-day-clients-modal__sport">{r.sportName}</span>
+                          : <span className="payment-day-clients-modal__dash">—</span>}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

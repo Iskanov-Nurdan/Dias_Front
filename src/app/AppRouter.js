@@ -12,12 +12,12 @@ const EmployeesPage = React.lazy(() => import('../features/employees/EmployeesPa
 const SportsTrainersPage = React.lazy(() => import('../features/sports-trainers/SportsTrainersPage'));
 const ClientsPage = React.lazy(() => import('../features/clients/ClientsPage'));
 const ClientsReportsPage = React.lazy(() => import('../features/clients/ClientsReportsPage'));
-const WarehousePage = React.lazy(() => import('../features/warehouse/WarehousePage'));
-const SalesPage = React.lazy(() => import('../features/sales/SalesPage'));
 const ExpensesPage = React.lazy(() => import('../features/expenses/ExpensesPage'));
 const SalaryPage = React.lazy(() => import('../features/salary/SalaryPage'));
 const LeadsPage = React.lazy(() => import('../features/leads/LeadsPage'));
 const AnalyticsPage = React.lazy(() => import('../features/analytics/AnalyticsPage'));
+const ShiftsPage = React.lazy(() => import('../features/shifts/ShiftsPage'));
+const SpreadsheetPage = React.lazy(() => import('../features/spreadsheet/SpreadsheetPage'));
 const NotFoundPage = React.lazy(() => import('../features/not-found/NotFoundPage'));
 
 const ProtectedRoute = ({ children, pageId }) => {
@@ -83,22 +83,6 @@ const AppRouter = () => (
           }
         />
         <Route
-          path="warehouse"
-          element={
-            <ProtectedRoute pageId="warehouse">
-              <WarehousePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="sales"
-          element={
-            <ProtectedRoute pageId="sales">
-              <SalesPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="expenses"
           element={
             <ProtectedRoute pageId="expenses">
@@ -131,10 +115,26 @@ const AppRouter = () => (
           }
         />
         <Route
+          path="shifts"
+          element={
+            <ProtectedRoute pageId="shifts">
+              <ShiftsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="taplink-editor"
           element={
             <ProtectedRoute pageId="taplink">
               <TaplinkEditorPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="spreadsheet"
+          element={
+            <ProtectedRoute pageId="spreadsheet">
+              <SpreadsheetPage />
             </ProtectedRoute>
           }
         />

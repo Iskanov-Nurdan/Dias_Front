@@ -25,6 +25,9 @@
 
   &__tab {
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
     padding: 10px 20px;
     border: none;
     background: transparent;

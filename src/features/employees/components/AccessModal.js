@@ -10,10 +10,29 @@ const ACCESS_MODAL_GROUPS = [
   { label: 'Аналитика',           ids: ['analytics', 'reports'] },
   { label: 'Персонал',            ids: ['employees'] },
   { label: 'Спорт, клиенты и лиды', ids: ['clients', 'sports-trainers', 'leads'] },
-  { label: 'Склад',               ids: ['warehouse'] },
-  { label: 'Продажи и финансы',   ids: ['sales', 'expenses', 'salary'] },
+  { label: 'Финансы',             ids: ['expenses', 'salary'] },
+  { label: 'Смены',               ids: ['shifts'] },
   { label: 'Сайт',                ids: ['taplink'] },
+  { label: 'Таблицы',             ids: ['spreadsheet'] },
 ];
+
+// Consecutive single-item groups → one compact row to save vertical space
+const GROUP_ROWS = (() => {
+  const rows = [];
+  let i = 0;
+  while (i < ACCESS_MODAL_GROUPS.length) {
+    if (ACCESS_MODAL_GROUPS[i].ids.length === 1) {
+      const batch = [];
+      while (i < ACCESS_MODAL_GROUPS.length && ACCESS_MODAL_GROUPS[i].ids.length === 1) {
+        batch.push(ACCESS_MODAL_GROUPS[i++]);
+      }
+      rows.push(batch);
+    } else {
+      rows.push([ACCESS_MODAL_GROUPS[i++]]);
+    }
+  }
+  return rows;
+})();
 
 const normalizeAccess = (raw) => {
   if (!raw || typeof raw !== 'object') return {};
@@ -83,49 +102,50 @@ const AccessModal = ({ employee, currentAccess, onSave, onClose, error, saving }
           </div>
 
           <div className="access-modal__body">
-            {ACCESS_MODAL_GROUPS.map(({ label, ids }) => {
-              const checkedCount = ids.filter((id) => access[id] === true).length;
-              return (
-                <section key={label} className="access-modal__group">
-                  <div className="access-modal__group-head">
-                    <div className="access-modal__group-head-left">
-                      <h3 className="access-modal__group-title">{label}</h3>
-                      <span className="access-modal__group-count">{checkedCount}/{ids.length}</span>
+            {GROUP_ROWS.map((batch, ri) => {
+              const isCompact = batch.length > 1;
+              const renderGroup = ({ label, ids }) => {
+                const checkedCount = ids.filter((id) => access[id] === true).length;
+                return (
+                  <section key={label} className={`access-modal__group${isCompact ? ' access-modal__group--compact' : ''}`}>
+                    <div className="access-modal__group-head">
+                      <div className="access-modal__group-head-left">
+                        <h3 className="access-modal__group-title">{label}</h3>
+                        <span className="access-modal__group-count">{checkedCount}/{ids.length}</span>
+                      </div>
+                      <div className="access-modal__group-bulk">
+                        <button type="button" className="access-modal__mini-btn" onClick={() => setGroup(ids, true)}>Все</button>
+                        <button type="button" className="access-modal__mini-btn access-modal__mini-btn--off" onClick={() => setGroup(ids, false)}>Нет</button>
+                      </div>
                     </div>
-                    <div className="access-modal__group-bulk">
-                      <button type="button" className="access-modal__mini-btn" onClick={() => setGroup(ids, true)}>Все</button>
-                      <button type="button" className="access-modal__mini-btn access-modal__mini-btn--off" onClick={() => setGroup(ids, false)}>Нет</button>
-                    </div>
-                  </div>
-                  <div className="access-modal__grid">
-                    {ids.map((pageId) => {
-                      const Icon = PAGE_ICONS[pageId];
-                      const checked = access[pageId] === true;
-                      return (
-                        <label
-                          key={pageId}
-                          className={`access-modal__item${checked ? ' access-modal__item--on' : ''}`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggle(pageId)}
-                            className="access-modal__checkbox-hidden"
-                          />
-                          <span className="access-modal__item-left">
-                            <span className={`access-modal__item-icon-wrap${checked ? ' access-modal__item-icon-wrap--on' : ''}`}>
-                              {Icon && <Icon size={16} strokeWidth={1.75} aria-hidden />}
+                    <div className="access-modal__grid">
+                      {ids.map((pageId) => {
+                        const Icon = PAGE_ICONS[pageId];
+                        const checked = access[pageId] === true;
+                        return (
+                          <label key={pageId} className={`access-modal__item${checked ? ' access-modal__item--on' : ''}`}>
+                            <input type="checkbox" checked={checked} onChange={() => toggle(pageId)} className="access-modal__checkbox-hidden" />
+                            <span className="access-modal__item-left">
+                              <span className={`access-modal__item-icon-wrap${checked ? ' access-modal__item-icon-wrap--on' : ''}`}>
+                                {Icon && <Icon size={16} strokeWidth={1.75} aria-hidden />}
+                              </span>
+                              <span className="access-modal__item-label">{PAGE_LABELS[pageId] || pageId}</span>
                             </span>
-                            <span className="access-modal__item-label">{PAGE_LABELS[pageId] || pageId}</span>
-                          </span>
-                          <span className={`access-modal__toggle${checked ? ' access-modal__toggle--on' : ''}`} aria-hidden>
-                            <span className="access-modal__toggle-thumb" />
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </section>
+                            <span className={`access-modal__toggle${checked ? ' access-modal__toggle--on' : ''}`} aria-hidden>
+                              <span className="access-modal__toggle-thumb" />
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              };
+
+              return isCompact ? (
+                <div key={ri} className="access-modal__compact-row">{batch.map(renderGroup)}</div>
+              ) : (
+                <React.Fragment key={ri}>{batch.map(renderGroup)}</React.Fragment>
               );
             })}
           </div>

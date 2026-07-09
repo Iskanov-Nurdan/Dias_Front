@@ -1493,9 +1493,8 @@ select.tp-field__input:disabled {
   &__trainer {
     font-size: 11px;
     color: var(--text3);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-word;
   }
 
   &__right {

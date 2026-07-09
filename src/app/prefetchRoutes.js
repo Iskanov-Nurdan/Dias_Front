@@ -8,10 +8,9 @@ const loaders = {
   clients: () => import('../features/clients/ClientsPage'),
   reports: () => import('../features/clients/ClientsReportsPage'),
   leads: () => import('../features/leads/LeadsPage'),
-  warehouse: () => import('../features/warehouse/WarehousePage'),
-  sales: () => import('../features/sales/SalesPage'),
   expenses: () => import('../features/expenses/ExpensesPage'),
   salary: () => import('../features/salary/SalaryPage'),
+  spreadsheet: () => import('../features/spreadsheet/SpreadsheetPage'),
 };
 
 export function prefetchRoutePage(pageId) {

@@ -18,6 +18,7 @@ import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { MONTHS, STATS_YEARS } from '../../shared/constants/common';
 import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiError';
 import { prepareClientSavePayload } from './lib/prepareClientSavePayload';
+import { UserX, BarChart2, CalendarDays } from 'lucide-react';
 import { Select, ConfirmModal, Pagination, FilterBar, EmptyState } from '../../shared/ui';
 import {
   ClientsList,
@@ -28,6 +29,7 @@ import {
   ClientsScheduleStatsBlock,
   ClientsPaymentDayReportBlock,
 } from './components';
+import StatsUnpaidModal from './components/StatsUnpaidModal';
 import './ClientsPage.scss';
 
 const TAB_NOT_RENEWED = 'not_renewed';
@@ -83,6 +85,7 @@ const ClientsReportsPage = () => {
   const [extendFormSaving, setExtendFormSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [trainerDetails, setTrainerDetails] = useState(null);
+  const [showUnpaidModal, setShowUnpaidModal] = useState(false);
 
   const fetchNotRenewedSafe = useCallback(async () => {
     if (!nrYear || !nrMonth) return;
@@ -342,21 +345,21 @@ const ClientsReportsPage = () => {
           className={`clients-page__tab${activeTab === TAB_NOT_RENEWED ? ' clients-page__tab--active' : ''}`}
           onClick={() => setActiveTab(TAB_NOT_RENEWED)}
         >
-          Не продлили
+          <UserX size={15} /> Не продлили
         </button>
         <button
           type="button"
           className={`clients-page__tab${activeTab === TAB_STATS ? ' clients-page__tab--active' : ''}`}
           onClick={() => setActiveTab(TAB_STATS)}
         >
-          Статистика
+          <BarChart2 size={15} /> Статистика
         </button>
         <button
           type="button"
           className={`clients-page__tab${activeTab === TAB_PAYMENT_DAYS ? ' clients-page__tab--active' : ''}`}
           onClick={() => setActiveTab(TAB_PAYMENT_DAYS)}
         >
-          Записи по дням
+          <CalendarDays size={15} /> Записи по дням
         </button>
       </div>
 
@@ -466,10 +469,15 @@ const ClientsReportsPage = () => {
                   <div className="clients-page__stats-card-value">{statsData.summary?.paid ?? 0}</div>
                   <div className="clients-page__stats-card-label">Оплатили</div>
                 </div>
-                <div className="clients-page__stats-card">
+                <button
+                  type="button"
+                  className="clients-page__stats-card clients-page__stats-card--clickable"
+                  onClick={() => setShowUnpaidModal(true)}
+                  title="Нажмите, чтобы увидеть список"
+                >
                   <div className="clients-page__stats-card-value">{statsData.summary?.unpaid ?? 0}</div>
                   <div className="clients-page__stats-card-label">Не оплатили</div>
-                </div>
+                </button>
               </div>
 
               <ClientsScheduleStatsBlock
@@ -580,6 +588,13 @@ const ClientsReportsPage = () => {
           onClose={() => setTrainerDetails(null)}
         />
       )}
+      <StatsUnpaidModal
+        open={showUnpaidModal}
+        year={statsYear}
+        month={statsMonth}
+        onClose={() => setShowUnpaidModal(false)}
+        onOpenClient={(c) => { setShowUnpaidModal(false); handleOpenCard(c); }}
+      />
     </div>
   );
 };

@@ -12,6 +12,7 @@ import {
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
+import { Trophy, UserCheck } from 'lucide-react';
 import { Select, Pagination, FilterBar, FiltersModal } from '../../shared/ui';
 import { SportsList, TrainersList, SportFormModal, TrainerFormModal, TrainerScheduleModal } from './components';
 import { WEEKDAYS } from './scheduleConstants';
@@ -166,8 +167,8 @@ const SportsTrainersPage = () => {
     <div className="sports-trainers-page">
       
       <div className="sports-trainers-page__tabs">
-        <button type="button" className={`sports-trainers-page__tab ${activeTab === TAB_SPORTS ? 'sports-trainers-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_SPORTS)}>Виды спорта</button>
-        <button type="button" className={`sports-trainers-page__tab ${activeTab === TAB_TRAINERS ? 'sports-trainers-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_TRAINERS)}>Тренеры</button>
+        <button type="button" className={`sports-trainers-page__tab ${activeTab === TAB_SPORTS ? 'sports-trainers-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_SPORTS)}><Trophy size={15} /> Виды спорта</button>
+        <button type="button" className={`sports-trainers-page__tab ${activeTab === TAB_TRAINERS ? 'sports-trainers-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_TRAINERS)}><UserCheck size={15} /> Тренеры</button>
       </div>
       {activeTab === TAB_SPORTS && (
         <div className="sports-trainers-page__content sports-trainers-page__content--tab">

@@ -8,6 +8,7 @@ import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { SEARCH_DEBOUNCE_MS } from '../../shared/constants/common';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
 import { LeadFormModal, LeadCardModal, FunnelBoard } from './components';
+import { Inbox, Link2, Filter } from 'lucide-react';
 import { ErrorState, EmptyState, ConfirmModal, Pagination, FilterBar, SkeletonTable } from '../../shared/ui';
 import TaplinkLeadsTab from './TaplinkLeadsTab';
 import './LeadsPage.scss';
@@ -265,21 +266,21 @@ const LeadsPage = () => {
           className={`leads-page__tab ${activeTab === TAB_LEADS ? 'leads-page__tab--active' : ''}`}
           onClick={() => setActiveTab(TAB_LEADS)}
         >
-          Заявки
+          <Inbox size={15} /> Заявки
         </button>
         <button
           type="button"
           className={`leads-page__tab ${activeTab === TAB_TAPLINK ? 'leads-page__tab--active' : ''}`}
           onClick={() => setActiveTab(TAB_TAPLINK)}
         >
-          С Таплинка
+          <Link2 size={15} /> С Таплинка
         </button>
         <button
           type="button"
           className={`leads-page__tab ${activeTab === TAB_FUNNEL ? 'leads-page__tab--active' : ''}`}
           onClick={() => setActiveTab(TAB_FUNNEL)}
         >
-          Воронка лидов
+          <Filter size={15} /> Воронка лидов
         </button>
       </div>
 

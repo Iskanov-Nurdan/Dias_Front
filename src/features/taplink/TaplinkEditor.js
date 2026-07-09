@@ -259,6 +259,61 @@ const StatsTab = ({ data, setData }) => {
   );
 };
 
+// ─── Trainer multi-select ─────────────────────────────────────────────────────
+
+const TrainerMultiSelect = ({ value = [], onChange, trainers }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const arr = Array.isArray(value) ? value : (value ? [value] : []);
+
+  const toggle = (name) => {
+    onChange(arr.includes(name) ? arr.filter(n => n !== name) : [...arr, name]);
+  };
+
+  return (
+    <div className="tpe-trainer-sel tpe-sched-entry__trainer" ref={ref}>
+      <button type="button" className="tpe-trainer-sel__btn" onClick={() => setOpen(o => !o)}>
+        {arr.length === 0 ? (
+          <span className="tpe-trainer-sel__placeholder">Тренер</span>
+        ) : (
+          <div className="tpe-trainer-sel__chips">
+            {arr.map(name => (
+              <span key={name} className="tpe-trainer-sel__chip">
+                {name}
+                <span
+                  className="tpe-trainer-sel__chip-del"
+                  onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); toggle(name); }}
+                >✕</span>
+              </span>
+            ))}
+          </div>
+        )}
+        <span className="tpe-trainer-sel__arrow">▾</span>
+      </button>
+      {open && (
+        <div className="tpe-trainer-sel__dropdown">
+          {trainers.length === 0 ? (
+            <span className="tpe-trainer-sel__empty">Сначала добавьте тренеров во вкладке «Тренеры»</span>
+          ) : trainers.map((t) => (
+            <label key={t.id || t.name} className={`tpe-trainer-sel__opt${arr.includes(t.name) ? ' tpe-trainer-sel__opt--checked' : ''}`}>
+              <input type="checkbox" checked={arr.includes(t.name)} onChange={() => toggle(t.name)} />
+              {t.photo && <img src={t.photo} alt="" className="tpe-trainer-sel__ava" />}
+              {t.name}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ─── Sports tab ───────────────────────────────────────────────────────────────
 
 const SportsTab = ({ data, setData }) => {
@@ -289,7 +344,7 @@ const SportsTab = ({ data, setData }) => {
 
   const addSchedRow = (si) => setSched(si, arr => [
     ...arr,
-    { id: Date.now(), group: '', days: '', time: '', trainer: '' },
+    { id: Date.now(), group: '', days: '', time: '', trainers: [] },
   ]);
 
   const removeSchedRow = (si, ri) => setSched(si, arr => arr.filter((_, i) => i !== ri));
@@ -392,11 +447,10 @@ const SportsTab = ({ data, setData }) => {
                         value={row.time}
                         onChange={e => updateSchedRow(i, ri, 'time', e.target.value)}
                       />
-                      <input
-                        className="tpe-input tpe-sched-entry__trainer"
-                        placeholder="Тренер"
-                        value={row.trainer}
-                        onChange={e => updateSchedRow(i, ri, 'trainer', e.target.value)}
+                      <TrainerMultiSelect
+                        value={row.trainers ?? (row.trainer ? [row.trainer] : [])}
+                        onChange={v => updateSchedRow(i, ri, 'trainers', v)}
+                        trainers={data.trainers}
                       />
                       <button
                         className="tpe-icon-btn tpe-icon-btn--danger"

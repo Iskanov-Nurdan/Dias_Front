@@ -238,7 +238,11 @@ const SportSheet = ({ sport, onClose, onBook }) => {
                 <div key={row.id || i} className="tp-sched-item">
                   <div className="tp-sched-item__left">
                     {row.group && <span className="tp-sched-item__group">{row.group}</span>}
-                    {row.trainer && <span className="tp-sched-item__trainer">{row.trainer}</span>}
+                    {(row.trainers?.length > 0 || row.trainer) && (
+                      <span className="tp-sched-item__trainer">
+                        {row.trainers?.length > 0 ? row.trainers.join(', ') : row.trainer}
+                      </span>
+                    )}
                   </div>
                   <div className="tp-sched-item__right">
                     <span className="tp-sched-item__days">{row.days}</span>
@@ -279,11 +283,16 @@ const TrainerSheet = ({ trainer, onClose, onBook, sports = [] }) => {
   }, []);
 
   // Find schedule rows that belong to this trainer across all matching sports
+  const hasTrainer = (r) => {
+    const names = r.trainers?.length > 0 ? r.trainers : (r.trainer ? [r.trainer] : []);
+    return names.length === 0 || names.includes(trainer.name);
+  };
   const trainerSchedule = sports
-    .filter(s => s.name === trainer.sportName || s.schedule?.some(r => r.trainer === trainer.name))
-    .flatMap(s => (s.schedule || []).filter(r => !r.trainer || r.trainer === trainer.name)
-      .map(r => ({ ...r, sportName: s.name }))
-    );
+    .filter(s => s.name === trainer.sportName || s.schedule?.some(r => {
+      const names = r.trainers?.length > 0 ? r.trainers : (r.trainer ? [r.trainer] : []);
+      return names.includes(trainer.name);
+    }))
+    .flatMap(s => (s.schedule || []).filter(hasTrainer).map(r => ({ ...r, sportName: s.name })));
 
   return (
     <div className="tp-overlay" onClick={onClose}>

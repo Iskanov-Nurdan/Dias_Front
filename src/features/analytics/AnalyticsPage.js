@@ -4,7 +4,6 @@ import { ErrorState, Select, DonutChart, Sparkline, Skeleton, SkeletonTable, Fil
 import { MONTHS, MONTHS_SHORT, DONUT_COLORS, formatMoney } from '../../shared/constants/common';
 import { useAnalyticsFilters } from './hooks/useAnalyticsFilters';
 import { useAnalyticsData } from './hooks/useAnalyticsData';
-import AnalyticsSalesSection from './components/AnalyticsSalesSection';
 import './AnalyticsPage.scss';
 
 // expense-detail: для складских строк бэк передаёт type "add" | "restock"; у остальных type нет
@@ -24,6 +23,12 @@ const getExpenseName = (row) => {
 const now = new Date();
 const defaultQuery = { year: now.getFullYear(), month: now.getMonth() + 1, day: '' };
 
+const YEAR_OPTIONS = [2024, 2025, 2026, 2027, 2028].map((y) => ({ value: String(y), label: String(y) }));
+const DAY_OPTIONS = [
+  { value: '', label: 'Все дни' },
+  ...Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })),
+];
+
 function scrollToAnalyticsSection(id) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -33,7 +38,6 @@ const QUICK_NAV = [
   { id: 'analytics-charts', label: 'Графики' },
   { id: 'analytics-leads', label: 'Лиды' },
   { id: 'analytics-tables', label: 'Таблицы' },
-  { id: 'analytics-sales', label: 'Продажи' },
 ];
 
 const AnalyticsPage = () => {
@@ -42,14 +46,7 @@ const AnalyticsPage = () => {
     summary,
     clientsBySport,
     incomeExpenseDaily,
-    topTrainers,
-    warehouseRestocks,
-    warehouseLowStock,
-    salesByProduct,
-    salesByCategory,
-    salesMargin,
     expensesByCategory,
-    newClients,
     newClientsByMonth,
     periodComparison,
     leadsAnalytics,
@@ -57,8 +54,7 @@ const AnalyticsPage = () => {
     error,
     loadAll,
   } = useAnalyticsData(queryState);
-  const [salesTab, setSalesTab] = useState('product');
-  const [marginTab, setMarginTab] = useState('product');
+  const [leadsVisible, setLeadsVisible] = useState(false);
   const [chartHoveredDay, setChartHoveredDay] = useState(null);
   const [detailModal, setDetailModal] = useState(null);
   const [detailData, setDetailData] = useState(null);
@@ -123,19 +119,8 @@ const AnalyticsPage = () => {
     const maxVal = Math.max(1, ...chartData.flatMap((x) => [x.income, x.expense]));
     return Math.ceil(maxVal / 10000) * 10000 || 10000;
   }, [chartData]);
-  const trainerItems = topTrainers?.items ?? [];
-  const restocksPayload = warehouseRestocks ?? {};
-  const restockItems = restocksPayload.items ?? [];
-  const lowStockItems = warehouseLowStock?.items ?? [];
-  const lowStockCount = warehouseLowStock?.count ?? 0;
-  const productItems = salesByProduct?.items ?? [];
-  const categoryItems = salesByCategory?.items ?? [];
-  const salesTotalRevenue = salesTab === 'product' ? (salesByProduct?.totalRevenue ?? null) : (salesByCategory?.totalRevenue ?? null);
-  const newClientsItems = newClients?.items ?? [];
   const expensesByCatItems = expensesByCategory?.items ?? [];
   const expensesByCatTotal = expensesByCategory?.total ?? 0;
-  const marginByProduct = salesMargin?.byProduct ?? [];
-  const marginByCategory = salesMargin?.byCategory ?? [];
   const pc = periodComparison ?? {};
   const momChange = pc.momChange ?? {};
   const yoyChange = pc.yoyChange ?? {};
@@ -225,28 +210,17 @@ const AnalyticsPage = () => {
     <div className="analytics-page">
       <div className="analytics-page__sticky-top">
         <header className="analytics-page__header analytics-page__header--dashboard">
-          <div className="analytics-page__header-main">
-            <div className="analytics-page__header-text">
-              
-              <p className="analytics-page__subtitle">Дашборд по финансам, клиентам и заявкам</p>
-            </div>
-            <div className="analytics-page__period-chip" title="Текущий период фильтрации">
-              <span className="analytics-page__period-chip-dot" aria-hidden />
-              <span className="analytics-page__period-chip-label">{periodSummary}</span>
-            </div>
-          </div>
           <div className="analytics-page__filters-card">
             <span className="analytics-page__filters-label">Период</span>
             <FilterBar className="analytics-page__filter-bar">
               <label className="analytics-page__filter">
                 Год
-                <input
-                  type="number"
-                  value={queryState.year}
-                  onChange={(e) => setQueryState((q) => ({ ...q, year: e.target.value }))}
-                  className="analytics-page__input"
-                  min="2020"
-                  max="2030"
+                <Select
+                  value={String(queryState.year)}
+                  onChange={(v) => setQueryState((q) => ({ ...q, year: v }))}
+                  options={YEAR_OPTIONS}
+                  placeholder="Год"
+                  className="analytics-page__select-wrap"
                 />
               </label>
               <label className="analytics-page__filter analytics-page__filter--month">
@@ -254,21 +228,19 @@ const AnalyticsPage = () => {
                 <Select
                   value={queryState.month ? String(queryState.month) : ''}
                   onChange={(v) => setQueryState((q) => ({ ...q, month: v ? Number(v) : '' }))}
-                  options={[{ value: '', label: 'Все / не задан' }, ...MONTHS.slice(1).map((m, i) => ({ value: String(i + 1), label: m }))]}
+                  options={[{ value: '', label: 'Все месяцы' }, ...MONTHS.slice(1).map((m, i) => ({ value: String(i + 1), label: m }))]}
                   placeholder="Месяц"
                   className="analytics-page__select-wrap"
                 />
               </label>
               <label className="analytics-page__filter">
                 День
-                <input
-                  type="number"
-                  placeholder="—"
-                  value={queryState.day}
-                  onChange={(e) => setQueryState((q) => ({ ...q, day: e.target.value }))}
-                  className="analytics-page__input"
-                  min="1"
-                  max="31"
+                <Select
+                  value={String(queryState.day ?? '')}
+                  onChange={(v) => setQueryState((q) => ({ ...q, day: v }))}
+                  options={DAY_OPTIONS}
+                  placeholder="Все дни"
+                  className="analytics-page__select-wrap"
                 />
               </label>
               <button type="button" className="analytics-page__reset" onClick={resetFilters}>Сбросить</button>
@@ -383,10 +355,6 @@ const AnalyticsPage = () => {
               </button>
             </div>
             <div className="analytics-page__kpis">
-              <div className="analytics-page__card analytics-page__card--static">
-                <span className="analytics-page__card-label">Продаж</span>
-                <span className="analytics-page__card-value analytics-page__card-value--num">{s.salesCount ?? '—'}</span>
-              </div>
               <div className="analytics-page__card analytics-page__card--static">
                 <span className="analytics-page__card-label">Клиентов</span>
                 <span className="analytics-page__card-value analytics-page__card-value--num">{s.clientsCount ?? '—'}</span>
@@ -601,11 +569,22 @@ const AnalyticsPage = () => {
 
           <section id="analytics-leads" className="analytics-page__section analytics-page__section--leads">
             <div className="analytics-page__section-head">
-              <h3 className="analytics-page__section-title">Заявки и воронка лидов</h3>
-              <p className="analytics-page__section-desc">
-                {queryState.year ? `Период: ${queryState.year}${queryState.month ? ` / ${queryState.month}` : ''}${queryState.day ? ` / ${queryState.day}` : ''}` : 'Выберите год для фильтрации по периоду'}
-              </p>
+              <div>
+                <h3 className="analytics-page__section-title">Заявки и воронка лидов</h3>
+                <p className="analytics-page__section-desc">
+                  {queryState.year ? `Период: ${queryState.year}${queryState.month ? ` / ${queryState.month}` : ''}${queryState.day ? ` / ${queryState.day}` : ''}` : 'Выберите год для фильтрации по периоду'}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="analytics-page__leads-toggle"
+                onClick={() => setLeadsVisible((v) => !v)}
+              >
+                {leadsVisible ? 'Скрыть' : 'Показать'}
+              </button>
             </div>
+            {leadsVisible && (
+            <>
             <div className="analytics-page__leads-kpis">
               <div className="analytics-page__card analytics-page__card--static">
                 <span className="analytics-page__card-label">Всего заявок</span>
@@ -769,156 +748,10 @@ const AnalyticsPage = () => {
                 </div>
               </div>
             </div>
+            </>
+            )}
           </section>
 
-          <div id="analytics-tables" className="analytics-page__tables-region">
-          <div className="analytics-page__grid analytics-page__grid--two">
-            <section className="analytics-page__section analytics-page__section--card">
-              <h3 className="analytics-page__section-title">Топ тренеров</h3>
-              {topTrainers?.totalIncome != null && (
-                <p className="analytics-page__section-summary">
-                  Общий доход тренеров: <strong>{formatMoney(topTrainers.totalIncome)}</strong>
-                </p>
-              )}
-              <div className="analytics-page__table-wrap">
-                <table className="analytics-page__table">
-                  <thead>
-                    <tr>
-                      <th>Тренер</th>
-                      <th>Клиентов</th>
-                      <th>Доход</th>
-                      <th>Доля %</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {trainerItems.map((x, i) => (
-                      <tr key={x.trainerId ?? i}>
-                        <td>{x.trainerName ?? '—'}</td>
-                        <td>{x.clientCount ?? 0}</td>
-                        <td>{formatMoney(x.income)}</td>
-                        <td>{x.incomeSharePercent != null ? `${Number(x.incomeSharePercent).toFixed(1)}%` : '—'}</td>
-                      </tr>
-                    ))}
-                    {trainerItems.length === 0 && (
-                      <tr>
-                        <td colSpan={4} className="analytics-page__table-empty-cell">
-                          <EmptyState compact tableCell message="Нет данных" />
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            <section className="analytics-page__section analytics-page__section--card">
-              <h3 className="analytics-page__section-title">Новые клиенты за период</h3>
-              <p className="analytics-page__section-hint">Клиенты, начавшие заниматься в выбранном периоде</p>
-              <div className="analytics-page__table-wrap">
-                <table className="analytics-page__table">
-                  <thead>
-                    <tr>
-                      <th>Клиент</th>
-                      <th>Дата начала</th>
-                      <th>Месяцев с нами</th>
-                      <th>Сумма</th>
-                      <th>Оплачено</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {newClientsItems.map((x) => (
-                      <tr key={x.clientId ?? x.clientName}>
-                        <td>{x.clientName ?? '—'}</td>
-                        <td>{x.dateStart ?? '—'}</td>
-                        <td>{x.monthsWithUs ?? 0}</td>
-                        <td>{formatMoney(x.amount)}</td>
-                        <td>
-                          <span className={`analytics-page__badge analytics-page__badge--${x.paid ? 'paid' : 'unpaid'}`}>
-                            {x.paid ? 'Да' : 'Нет'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                    {newClientsItems.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="analytics-page__table-empty-cell">
-                          <EmptyState compact tableCell message="Нет новых клиентов за период" />
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            <section className="analytics-page__section analytics-page__section--card analytics-page__section--span-full">
-              <h3 className="analytics-page__section-title">Пополнения склада</h3>
-              <p className="analytics-page__section-summary">
-                Всего пополнений: <strong>{restocksPayload.restockCount ?? 0}</strong> на сумму <strong>{formatMoney(restocksPayload.totalRestockSum)}</strong>.
-                {restocksPayload.totalUnitsAdded != null && ` ${restocksPayload.totalUnitsAdded} единиц добавлено.`}
-                {restocksPayload.currentWarehouseValue != null && ` Сумма склада сейчас: ${formatMoney(restocksPayload.currentWarehouseValue)}`}
-              </p>
-              <div className="analytics-page__table-wrap">
-                <table className="analytics-page__table">
-                  <thead><tr><th>Дата</th><th>Товар</th><th>Кол-во</th><th>Сумма</th><th>Сотрудник</th></tr></thead>
-                  <tbody>
-                    {restockItems.map((r, i) => (
-                      <tr key={r.id ?? `${r.date}-${r.productId}-${i}`}>
-                        <td>{r.date ?? '—'}</td>
-                        <td>{r.productName ?? '—'}</td>
-                        <td>{r.quantity ?? r.qty ?? 0}</td>
-                        <td>{formatMoney(r.amount)}</td>
-                        <td>{r.employeeName ?? '—'}</td>
-                      </tr>
-                    ))}
-                    {restockItems.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="analytics-page__table-empty-cell">
-                          <EmptyState compact tableCell message="Нет пополнений за период" />
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              <h4 className="analytics-page__subsection-title">Товары с низким остатком</h4>
-              {lowStockCount === 0 ? (
-                <p className="analytics-page__low-stock-ok">Всё в порядке</p>
-              ) : (
-                <div className="analytics-page__low-stock-list">
-                  {lowStockItems.map((x) => {
-                    const ratio = x.minQty > 0 ? (x.qty ?? 0) / x.minQty : 0;
-                    const isCritical = ratio < 0.5;
-                    return (
-                      <div key={x.productId ?? x.productName} className={`analytics-page__low-stock-item ${isCritical ? 'analytics-page__low-stock-item--critical' : 'analytics-page__low-stock-item--warning'}`}>
-                        <span className="analytics-page__low-stock-name">{x.productName ?? '—'}</span>
-                        <span className="analytics-page__low-stock-cat">{x.categoryName ?? '—'}</span>
-                        <span className="analytics-page__low-stock-qty">Остаток: {x.qty ?? 0} / мин. {x.minQty ?? 0}</span>
-                        <span className="analytics-page__low-stock-deficit">Дефицит: {x.deficit ?? 0}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-          </div>
-          </div>
-
-          <div id="analytics-sales" className="analytics-page__sales-region">
-          <AnalyticsSalesSection
-            marginTab={marginTab}
-            setMarginTab={setMarginTab}
-            salesTab={salesTab}
-            setSalesTab={setSalesTab}
-            salesMargin={salesMargin}
-            marginByProduct={marginByProduct}
-            marginByCategory={marginByCategory}
-            salesTotalRevenue={salesTotalRevenue}
-            productItems={productItems}
-            categoryItems={categoryItems}
-          />
-          </div>
         </>
       )}
 

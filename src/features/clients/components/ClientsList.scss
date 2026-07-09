@@ -110,8 +110,14 @@
       }
 
       tr {
-        display: block;
-        padding: 14px 16px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-areas:
+          "name  paid"
+          "sport date"
+          "acts  acts";
+        gap: 5px 10px;
+        padding: 12px 14px;
         background: var(--color-surface);
         border: 1px solid var(--color-border);
         border-radius: 12px;
@@ -120,46 +126,77 @@
 
       td {
         display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 6px 0;
+        align-items: center;
+        padding: 0;
         border: none !important;
         border-radius: 0 !important;
-        font-size: 14px;
+        height: auto;
         background: transparent !important;
+        font-size: 13px;
 
-        &::before {
-          content: attr(data-label);
-          font-size: 11px;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-          color: var(--color-text-muted);
-          flex-shrink: 0;
+        &::before { display: none; }
+
+        // ФИО + аватар + тип
+        &:nth-child(1) {
+          grid-area: name;
+          align-items: flex-start;
         }
 
-        &:last-child {
-          padding-top: 12px;
-          margin-top: 6px;
-          border-top: 1px solid var(--color-border) !important;
-          justify-content: stretch;
-          flex-wrap: wrap;
+        // Дата начала — справа, серая, мелкая
+        &:nth-child(2) {
+          grid-area: date;
+          font-size: 11px;
+          color: var(--color-text-muted);
+          justify-content: flex-end;
+          align-self: center;
+          white-space: nowrap;
+        }
+
+        // Вид спорта — слева внизу
+        &:nth-child(3) {
+          grid-area: sport;
+          font-size: 12px;
+          color: var(--color-text-muted);
+          align-self: center;
+          min-width: 0;
+
+          .clients-list__sport {
+            font-size: 12px;
+            max-width: none;
+          }
+        }
+
+        // Оплата — справа сверху
+        &:nth-child(4) {
+          grid-area: paid;
+          justify-content: flex-end;
+          align-self: flex-start;
+        }
+
+        // Кнопки — полная ширина снизу
+        &:nth-child(5) {
+          grid-area: acts;
+          display: flex;
           gap: 8px;
+          padding-top: 10px;
+          margin-top: 2px;
+          border-top: 1px solid var(--color-border) !important;
 
           &::before { display: none; }
 
           .clients-list__btn {
-            flex: 1 1 calc(50% - 4px);
-            min-width: 0;
-            justify-content: center;
+            flex: 1;
             min-height: 40px;
+            height: auto;
+            font-size: 13px;
+            justify-content: center;
           }
         }
 
         &.clients-list__loading-cell,
         &.clients-list__skeleton-cell,
         &.clients-list__empty-cell {
+          grid-column: 1 / -1;
           display: flex;
           justify-content: center;
           &::before { display: none; }

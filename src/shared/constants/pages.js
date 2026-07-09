@@ -1,5 +1,5 @@
 import {
-  BarChart3, Users, Trophy, UsersRound, ClipboardList, Package, ShoppingCart, Receipt, Wallet, Inbox, Link2,
+  BarChart3, Users, Trophy, UsersRound, ClipboardList, Receipt, Wallet, Inbox, Link2, Clock, Table2,
 } from 'lucide-react';
 
 export const PAGE_IDS = [
@@ -9,11 +9,11 @@ export const PAGE_IDS = [
   'sports-trainers',
   'leads',
   'employees',
-  'warehouse',
-  'sales',
   'expenses',
   'salary',
+  'shifts',
   'taplink',
+  'spreadsheet',
 ];
 
 export const PAGE_ICONS = {
@@ -23,11 +23,11 @@ export const PAGE_ICONS = {
   clients: UsersRound,
   reports: ClipboardList,
   leads: Inbox,
-  warehouse: Package,
-  sales: ShoppingCart,
   expenses: Receipt,
   salary: Wallet,
+  shifts: Clock,
   taplink: Link2,
+  spreadsheet: Table2,
 };
 
 export const PAGE_LABELS = {
@@ -37,11 +37,11 @@ export const PAGE_LABELS = {
   clients: 'Клиенты',
   reports: 'Отчёты',
   leads: 'Лиды',
-  warehouse: 'Склад',
-  sales: 'Продажи',
   expenses: 'Расходы',
   salary: 'Зарплата',
+  shifts: 'Смены',
   taplink: 'Taplink страница',
+  spreadsheet: 'Таблицы',
 };
 
 export const PAGE_ROUTES = {
@@ -51,18 +51,19 @@ export const PAGE_ROUTES = {
   clients: '/clients',
   reports: '/reports',
   leads: '/leads',
-  warehouse: '/warehouse',
-  sales: '/sales',
   expenses: '/expenses',
   salary: '/salary',
+  shifts: '/shifts',
   taplink: '/taplink-editor',
+  spreadsheet: '/spreadsheet',
 };
 
 /** Группы пунктов меню: ключ группы → массив pageId */
 export const PAGE_GROUPS = {
   'Аналитика': ['analytics', 'reports'],
   'Люди': ['clients', 'sports-trainers', 'leads', 'employees'],
-  'Склад': ['warehouse'],
-  'Финансы': ['sales', 'expenses', 'salary'],
+  'Финансы': ['expenses', 'salary'],
+  'Смены': ['shifts'],
   'Сайт': ['taplink'],
+  'Таблицы': ['spreadsheet'],
 };

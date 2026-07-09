@@ -3,14 +3,7 @@ import {
   fetchAnalytics,
   fetchClientsBySport,
   fetchIncomeExpenseDaily,
-  fetchTopTrainers,
-  fetchWarehouseRestocks,
-  fetchWarehouseLowStock,
-  fetchSalesByProduct,
-  fetchSalesByCategory,
-  fetchSalesMargin,
   fetchExpensesByCategory,
-  fetchNewClients,
   fetchNewClientsForMonth,
   fetchPeriodComparison,
   fetchLeadsAnalytics,
@@ -24,14 +17,7 @@ export function useAnalyticsData(queryState) {
   const [summary, setSummary] = useState(null);
   const [clientsBySport, setClientsBySport] = useState(null);
   const [incomeExpenseDaily, setIncomeExpenseDaily] = useState(null);
-  const [topTrainers, setTopTrainers] = useState(null);
-  const [warehouseRestocks, setWarehouseRestocks] = useState(null);
-  const [warehouseLowStock, setWarehouseLowStock] = useState(null);
-  const [salesByProduct, setSalesByProduct] = useState(null);
-  const [salesByCategory, setSalesByCategory] = useState(null);
-  const [salesMargin, setSalesMargin] = useState(null);
   const [expensesByCategory, setExpensesByCategory] = useState(null);
-  const [newClients, setNewClients] = useState(null);
   const [newClientsByMonth, setNewClientsByMonth] = useState(null);
   const [periodComparison, setPeriodComparison] = useState(null);
   const [leadsAnalytics, setLeadsAnalytics] = useState(null);
@@ -57,14 +43,7 @@ export function useAnalyticsData(queryState) {
         fetchAnalytics(q, s).then((r) => r?.data ?? r ?? {}),
         fetchClientsBySport(q, s).then((r) => r?.data ?? r),
         hasMonth ? fetchIncomeExpenseDaily(q, s).then((r) => r?.data ?? r) : Promise.resolve({ items: [] }),
-        fetchTopTrainers(q, s).then((r) => r?.data ?? r),
-        fetchWarehouseRestocks(q, s).then((r) => r?.data ?? r),
-        fetchWarehouseLowStock(s).then((r) => r?.data ?? r),
-        fetchSalesByProduct(q, s).then((r) => r?.data ?? r),
-        fetchSalesByCategory(q, s).then((r) => r?.data ?? r),
-        fetchSalesMargin(q, s).then((r) => r?.data ?? r),
         fetchExpensesByCategory(q, s).then((r) => r?.data ?? r),
-        fetchNewClients(q, s).then((r) => r?.data ?? r),
         hasMonthNoDay ? fetchPeriodComparison(q, s).then((r) => r?.data ?? r) : Promise.resolve(null),
         fetchLeadsAnalytics(q, s).then((r) => r?.data ?? r),
         ...(monthPromises.length > 0 ? [Promise.all(monthPromises).then((arr) => arr.reduce((acc, { month, count }) => ({ ...acc, [month]: count }), {}))] : [Promise.resolve(null)]),
@@ -72,21 +51,13 @@ export function useAnalyticsData(queryState) {
       const results = await Promise.all(promises);
       const monthRes = monthPromises.length > 0 ? results.pop() : null;
       const [
-        analyticsRes, bySportRes, dailyRes, trainersRes, warehouseRes, lowStockRes,
-        salesProductRes, salesCategoryRes, marginRes, expensesCatRes, newClientsRes,
+        analyticsRes, bySportRes, dailyRes, expensesCatRes,
         periodCompRes, leadsAnalyticsRes,
       ] = results;
       setSummary(analyticsRes ?? {});
       setClientsBySport(bySportRes ?? {});
       setIncomeExpenseDaily(dailyRes ?? {});
-      setTopTrainers(trainersRes ?? {});
-      setWarehouseRestocks(warehouseRes ?? {});
-      setWarehouseLowStock(lowStockRes ?? {});
-      setSalesByProduct(salesProductRes ?? {});
-      setSalesByCategory(salesCategoryRes ?? {});
-      setSalesMargin(marginRes ?? {});
       setExpensesByCategory(expensesCatRes ?? {});
-      setNewClients(newClientsRes ?? {});
       setNewClientsByMonth(monthRes ?? null);
       setPeriodComparison(periodCompRes ?? null);
       setLeadsAnalytics(leadsAnalyticsRes ?? {});
@@ -107,14 +78,7 @@ export function useAnalyticsData(queryState) {
     summary,
     clientsBySport,
     incomeExpenseDaily,
-    topTrainers,
-    warehouseRestocks,
-    warehouseLowStock,
-    salesByProduct,
-    salesByCategory,
-    salesMargin,
     expensesByCategory,
-    newClients,
     newClientsByMonth,
     periodComparison,
     leadsAnalytics,

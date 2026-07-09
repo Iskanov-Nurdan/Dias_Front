@@ -121,6 +121,30 @@
 
 .analytics-page__section-head {
   margin-bottom: var(--space-4);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.analytics-page__leads-toggle {
+  flex-shrink: 0;
+  margin-top: 2px;
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border, rgba(255,255,255,0.12));
+  background: transparent;
+  color: var(--color-text-secondary, #a0a0a0);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+
+  &:hover {
+    background: var(--color-surface-hover, rgba(255,255,255,0.06));
+    color: var(--color-text, #fff);
+    border-color: var(--color-border-strong, rgba(255,255,255,0.25));
+  }
 }
 
 .analytics-page__section-desc {
@@ -252,35 +276,6 @@
 .analytics-page__select-wrap {
   width: 100%;
   min-width: 0;
-  border: none;
-  background: none;
-  padding: 0;
-}
-
-.analytics-page__select-wrap .select__trigger {
-  padding: 0 12px;
-  border-radius: var(--input-radius);
-  font-size: 14px;
-
-  @media (max-width: 768px) {
-    font-size: 16px;
-    padding: 12px 14px;
-  }
-  border: 1px solid var(--input-border);
-  background: var(--input-bg);
-  color: var(--color-text);
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.analytics-page__select-wrap .select__trigger:hover {
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
-}
-
-.analytics-page__select-wrap .select__trigger:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: var(--input-shadow-focus);
 }
 
 .analytics-page__reset {
@@ -515,10 +510,10 @@
   letter-spacing: 0;
 }
 
-// ——— Вторичные KPI (4 карточки) ———
+// ——— Вторичные KPI (3 карточки) ———
 .analytics-page__kpis {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
 }
 
@@ -790,8 +785,12 @@
   max-width: 100%;
 }
 
+.analytics-page__section--chart,
+.analytics-page__section--vbar-chart {
+  margin-bottom: 20px;
+}
+
 .analytics-page__section--chart {
-  margin-bottom: 24px;
   padding: 28px;
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);

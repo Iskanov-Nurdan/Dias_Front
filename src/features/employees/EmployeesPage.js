@@ -14,6 +14,7 @@ import {
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
 import { useDebounce } from '../../shared/hooks/useDebounce';
+import { Users, ShieldCheck } from 'lucide-react';
 import { Select, Pagination, FilterBar, FiltersModal } from '../../shared/ui';
 import { EmployeesList, RolesList, EmployeeFormModal, RoleFormModal, AccessModal } from './components';
 import './EmployeesPage.scss';
@@ -227,14 +228,14 @@ const EmployeesPage = () => {
           className={`employees-page__tab ${activeTab === TAB_EMPLOYEES ? 'employees-page__tab--active' : ''}`}
           onClick={() => setActiveTab(TAB_EMPLOYEES)}
         >
-          Сотрудники
+          <Users size={15} /> Сотрудники
         </button>
         <button
           type="button"
           className={`employees-page__tab ${activeTab === TAB_ROLES ? 'employees-page__tab--active' : ''}`}
           onClick={() => setActiveTab(TAB_ROLES)}
         >
-          Роли
+          <ShieldCheck size={15} /> Роли
         </button>
       </div>
 

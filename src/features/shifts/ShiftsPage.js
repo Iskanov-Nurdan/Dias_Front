@@ -208,11 +208,12 @@ const AddPhotoModal = ({ open, onClose, onSubmit }) => {
 
 // ── Модалка: завершить смену ──────────────────────────────────
 const CloseShiftModal = ({ open, onClose, onSubmit }) => {
-  const [cash, setCash]       = useState('');
-  const [card, setCard]       = useState('');
-  const [expense, setExpense] = useState('');
-  const [advance, setAdvance] = useState('');
-  const [saving, setSaving]   = useState(false);
+  const [cash, setCash]             = useState('');
+  const [card, setCard]             = useState('');
+  const [expense, setExpense]       = useState('');
+  const [advance, setAdvance]       = useState('');
+  const [description, setDescription] = useState('');
+  const [saving, setSaving]         = useState(false);
 
   const total = (Number(cash) || 0) + (Number(card) || 0);
 
@@ -222,13 +223,14 @@ const CloseShiftModal = ({ open, onClose, onSubmit }) => {
     setSaving(true);
     try {
       await onSubmit({
-        cash:    Number(cash)    || 0,
-        card:    Number(card)    || 0,
-        expense: Number(expense) || 0,
-        advance: Number(advance) || 0,
+        cash:        Number(cash)    || 0,
+        card:        Number(card)    || 0,
+        expense:     Number(expense) || 0,
+        advance:     Number(advance) || 0,
         total,
+        description: description.trim(),
       });
-      setCash(''); setCard(''); setExpense(''); setAdvance('');
+      setCash(''); setCard(''); setExpense(''); setAdvance(''); setDescription('');
       onClose();
     } finally {
       setSaving(false);
@@ -282,6 +284,17 @@ const CloseShiftModal = ({ open, onClose, onSubmit }) => {
                 onChange={(e) => setAdvance(e.target.value)} className="shift-modal__input" />
               <span className="shift-modal__currency">сом</span>
             </div>
+          </label>
+
+          <label className="shift-modal__field">
+            <span className="shift-modal__label"><FileText size={15} /> Описание</span>
+            <textarea
+              className="shift-modal__textarea"
+              placeholder="Комментарий к смене (необязательно)"
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
           </label>
 
           <div className="shift-modal__total-block">
@@ -373,8 +386,8 @@ const ShiftsPage = () => {
   useEffect(() => { loadPhotos(); }, [loadPhotos]);
   useEffect(() => { loadShifts(); }, [loadShifts]);
 
-  const handleCloseShift = async ({ cash, card, expense, advance, total }) => {
-    await closeShift({ cash, card, expense, advance, total });
+  const handleCloseShift = async ({ cash, card, expense, advance, total, description }) => {
+    await closeShift({ cash, card, expense, advance, total, description });
     await loadShifts();
   };
 
@@ -531,6 +544,9 @@ const ShiftsPage = () => {
                       </>
                     )}
                   </div>
+                  {s.description && (
+                    <p className="shift-card__desc">{s.description}</p>
+                  )}
                 </div>
               ))}
             </div>

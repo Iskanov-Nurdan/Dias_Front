@@ -37,7 +37,9 @@ export function useAnalyticsData(queryState) {
     setError(null);
     try {
       const monthPromises = hasYear ? Array.from({ length: 12 }, (_, i) =>
-        fetchNewClientsForMonth(q.year, i + 1, s).then((r) => ({ month: i + 1, count: (r?.data?.items ?? r?.items ?? []).length }))
+        fetchNewClientsForMonth(q.year, i + 1, s)
+          .then((r) => ({ month: i + 1, count: (r?.data?.items ?? r?.items ?? []).length }))
+          .catch(() => ({ month: i + 1, count: 0 }))
       ) : [];
       const promises = [
         fetchAnalytics(q, s).then((r) => r?.data ?? r ?? {}),

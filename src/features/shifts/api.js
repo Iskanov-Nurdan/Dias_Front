@@ -12,9 +12,11 @@ export const fetchShifts = async ({ year, month, day } = {}, signal) => {
   return data?.items ?? data?.results ?? (Array.isArray(data) ? data : []);
 };
 
-/** POST /api/shifts/ — завершить смену. Body: { cash, card, expense, advance, total } */
-export const closeShift = async ({ cash, card, expense, advance, total }, signal) => {
-  const { data } = await apiClient.post('/shifts/', { cash, card, expense, advance, total }, withSignal({}, signal));
+/** POST /api/shifts/ — завершить смену. Body: { cash, card, expense, advance, total, description } */
+export const closeShift = async ({ cash, card, expense, advance, total, description }, signal) => {
+  const body = { cash, card, expense, advance, total };
+  if (description) body.description = description;
+  const { data } = await apiClient.post('/shifts/', body, withSignal({}, signal));
   return data;
 };
 

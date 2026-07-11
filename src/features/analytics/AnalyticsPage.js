@@ -758,9 +758,14 @@ const AnalyticsPage = () => {
       {detailModal && (
         <div className="analytics-page__modal" onClick={() => setDetailModal(null)}>
           <div className="analytics-page__modal-content" onClick={(e) => e.stopPropagation()}>
-            <h3 className="analytics-page__modal-title">
-              {detailModal === 'income' ? 'Детализация приходов' : detailModal === 'expense' ? 'Детализация расходов' : 'Детализация прибыли'}
-            </h3>
+            <div className="analytics-page__modal-header">
+              <h3 className="analytics-page__modal-title">
+                {detailModal === 'income' ? 'Детализация приходов' : detailModal === 'expense' ? 'Детализация расходов' : 'Детализация прибыли'}
+              </h3>
+              <button type="button" className="analytics-page__modal-x" onClick={() => setDetailModal(null)} aria-label="Закрыть">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
             {detailLoading && <div className="analytics-page__modal-loading">Загрузка детализации…</div>}
             {!detailLoading && detailModal === 'income' && (() => {
               const incomeItems = detailData?.items ?? detailData?.records ?? detailData?.incomeItems ?? [];
@@ -769,35 +774,39 @@ const AnalyticsPage = () => {
               if (hasItems) {
                 return (
                   <>
-                    <table className="analytics-page__table">
-                      <thead><tr><th>Источник</th><th>Описание</th><th>Сумма</th></tr></thead>
-                      <tbody>
-                        {incomeItems.map((row, i) => (
-                          <tr key={i}>
-                            <td>{row.sourceLabel ?? (row.source === 'clients' ? 'Клиенты' : row.source === 'sales' ? 'Продажи' : row.source) ?? '—'}</td>
-                            <td>{row.description ?? '—'}</td>
-                            <td>{formatMoney(row.amount)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <p className="analytics-page__modal-total">Итого приход: {formatMoney(displayIncomeProfitAdj > 0 ? Math.max(0, (totalFromApi ?? 0) - displayIncomeProfitAdj) : totalFromApi)}</p>
+                    <div className="analytics-page__table-wrap analytics-page__modal-table-wrap">
+                      <table className="analytics-page__table">
+                        <thead><tr><th>Источник</th><th>Описание</th><th>Сумма</th></tr></thead>
+                        <tbody>
+                          {incomeItems.map((row, i) => (
+                            <tr key={i}>
+                              <td>{row.sourceLabel ?? (row.source === 'clients' ? 'Клиенты' : row.source === 'sales' ? 'Продажи' : row.source) ?? '—'}</td>
+                              <td>{row.description ?? '—'}</td>
+                              <td className="analytics-page__table-td--positive">{formatMoney(row.amount)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="analytics-page__modal-footer">
+                      <div className="analytics-page__modal-total-info">
+                        <span className="analytics-page__modal-total-label">Итого приход</span>
+                        <span className="analytics-page__modal-total-value analytics-page__modal-total-value--income">
+                          {formatMoney(displayIncomeProfitAdj > 0 ? Math.max(0, (totalFromApi ?? 0) - displayIncomeProfitAdj) : totalFromApi)}
+                        </span>
+                      </div>
+                      <button type="button" className="analytics-page__modal-close" onClick={() => setDetailModal(null)}>Закрыть</button>
+                    </div>
                   </>
                 );
               }
               return (
-                <EmptyState
-                  compact
-                  className="analytics-page__modal-empty-state"
-                  message={
-                    <>
-                      Нет записей за период.
-                      {income != null && Number(income) > 0 && (
-                        <span className="analytics-page__modal-summary"> Приход по сводке: <strong>{formatMoney(income)}</strong></span>
-                      )}
-                    </>
-                  }
-                />
+                <>
+                  <EmptyState compact className="analytics-page__modal-empty-state" message={<>Нет записей за период.{income != null && Number(income) > 0 && (<span className="analytics-page__modal-summary"> Приход по сводке: <strong>{formatMoney(income)}</strong></span>)}</>} />
+                  <div className="analytics-page__modal-footer">
+                    <button type="button" className="analytics-page__modal-close" onClick={() => setDetailModal(null)}>Закрыть</button>
+                  </div>
+                </>
               );
             })()}
             {!detailLoading && detailModal === 'expense' && (() => {
@@ -807,52 +816,90 @@ const AnalyticsPage = () => {
                 if (saved === false || saved === 'false') return false;
                 return saved === true || saved === 'true';
               };
-              const savedOnly = baseItems.filter(isRowSaved);
-              const expenseItems = savedOnly;
+              const expenseItems = baseItems.filter(isRowSaved);
               const expenseTotal = Number(detailData?.total) ?? 0;
               if (expenseItems.length === 0) {
-                return <EmptyState compact className="analytics-page__modal-empty-state" message="Нет записей за период" />;
+                return (
+                  <>
+                    <EmptyState compact className="analytics-page__modal-empty-state" message="Нет записей за период" />
+                    <div className="analytics-page__modal-footer">
+                      <button type="button" className="analytics-page__modal-close" onClick={() => setDetailModal(null)}>Закрыть</button>
+                    </div>
+                  </>
+                );
               }
               return (
                 <>
-                  <table className="analytics-page__table">
-                    <thead><tr><th>Категория</th><th>Название</th><th>Дата</th><th>Сумма</th></tr></thead>
-                    <tbody>
-                      {expenseItems.map((row, i) => (
-                        <tr key={i}>
-                          <td>{row.categoryName ?? '—'}</td>
-                          <td>{getExpenseName(row)}</td>
-                          <td>{row.date ?? '—'}</td>
-                          <td>{formatMoney(row.amount)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <p className="analytics-page__modal-total">Итого расход: {formatMoney(expenseTotal)}</p>
+                  <div className="analytics-page__table-wrap analytics-page__modal-table-wrap">
+                    <table className="analytics-page__table">
+                      <thead><tr><th>Категория</th><th>Название</th><th>Дата</th><th>Сумма</th></tr></thead>
+                      <tbody>
+                        {expenseItems.map((row, i) => (
+                          <tr key={i}>
+                            <td>{row.categoryName ?? '—'}</td>
+                            <td>{getExpenseName(row)}</td>
+                            <td>{row.date ?? '—'}</td>
+                            <td className="analytics-page__table-td--negative">{formatMoney(row.amount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="analytics-page__modal-footer">
+                    <div className="analytics-page__modal-total-info">
+                      <span className="analytics-page__modal-total-label">Итого расход</span>
+                      <span className="analytics-page__modal-total-value analytics-page__modal-total-value--expense">{formatMoney(expenseTotal)}</span>
+                    </div>
+                    <button type="button" className="analytics-page__modal-close" onClick={() => setDetailModal(null)}>Закрыть</button>
+                  </div>
                 </>
               );
             })()}
             {!detailLoading && detailModal === 'profit' && detailData?.items?.length > 0 && (
               <>
-                <table className="analytics-page__table">
-                  <thead><tr><th>Тип</th><th>Описание</th><th>Сумма</th></tr></thead>
-                  <tbody>
-                    {detailData.items.map((row, i) => (
-                      <tr key={i}>
-                        <td>{row.typeLabel ?? row.type ?? '—'}</td>
-                        <td>{row.description ?? '—'}</td>
-                        <td>{formatMoney(row.amount)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className="analytics-page__modal-total">Приходы: {formatMoney(displayIncomeProfitAdj > 0 ? Math.max(0, (detailData.incomeTotal ?? 0) - displayIncomeProfitAdj) : detailData.incomeTotal)} · Расходы: {formatMoney(detailData.expenseTotal)} · Прибыль: {formatMoney(displayIncomeProfitAdj > 0 ? Math.max(0, (detailData.profit ?? 0) - displayIncomeProfitAdj) : detailData.profit)}</p>
+                <div className="analytics-page__table-wrap analytics-page__modal-table-wrap">
+                  <table className="analytics-page__table">
+                    <thead><tr><th>Тип</th><th>Описание</th><th>Сумма</th></tr></thead>
+                    <tbody>
+                      {detailData.items.map((row, i) => (
+                        <tr key={i}>
+                          <td>{row.typeLabel ?? row.type ?? '—'}</td>
+                          <td>{row.description ?? '—'}</td>
+                          <td className={(row.type ?? '').toLowerCase() === 'expense' ? 'analytics-page__table-td--negative' : 'analytics-page__table-td--positive'}>{formatMoney(row.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="analytics-page__modal-footer">
+                  <div className="analytics-page__modal-profit-summary">
+                    <span className="analytics-page__modal-profit-item">
+                      <span className="analytics-page__modal-profit-label">Приходы</span>
+                      <span className="analytics-page__modal-profit-val analytics-page__modal-profit-val--income">{formatMoney(displayIncomeProfitAdj > 0 ? Math.max(0, (detailData.incomeTotal ?? 0) - displayIncomeProfitAdj) : detailData.incomeTotal)}</span>
+                    </span>
+                    <span className="analytics-page__modal-profit-sep">·</span>
+                    <span className="analytics-page__modal-profit-item">
+                      <span className="analytics-page__modal-profit-label">Расходы</span>
+                      <span className="analytics-page__modal-profit-val analytics-page__modal-profit-val--expense">{formatMoney(detailData.expenseTotal)}</span>
+                    </span>
+                    <span className="analytics-page__modal-profit-sep">·</span>
+                    <span className="analytics-page__modal-profit-item">
+                      <span className="analytics-page__modal-profit-label">Прибыль</span>
+                      <span className="analytics-page__modal-profit-val analytics-page__modal-profit-val--profit">{formatMoney(displayIncomeProfitAdj > 0 ? Math.max(0, (detailData.profit ?? 0) - displayIncomeProfitAdj) : detailData.profit)}</span>
+                    </span>
+                  </div>
+                  <button type="button" className="analytics-page__modal-close" onClick={() => setDetailModal(null)}>Закрыть</button>
+                </div>
               </>
             )}
             {!detailLoading && detailModal === 'profit' && !detailData?.items?.length && (
-              <EmptyState compact className="analytics-page__modal-empty-state" message="Нет записей за период" />
+              <>
+                <EmptyState compact className="analytics-page__modal-empty-state" message="Нет записей за период" />
+                <div className="analytics-page__modal-footer">
+                  <button type="button" className="analytics-page__modal-close" onClick={() => setDetailModal(null)}>Закрыть</button>
+                </div>
+              </>
             )}
-            <button type="button" className="analytics-page__modal-close" onClick={() => setDetailModal(null)}>Закрыть</button>
           </div>
         </div>
       )}

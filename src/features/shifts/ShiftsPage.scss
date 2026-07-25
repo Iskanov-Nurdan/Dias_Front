@@ -280,9 +280,27 @@
   border: 1px solid var(--color-border);
   cursor: pointer;
   padding: 0;
-  background: none;
+  background: var(--color-surface-secondary);
   flex-shrink: 0;
   transition: opacity 0.12s, transform 0.12s;
+  position: relative;
+
+  // shimmer overlay пока изображение не загружено
+  &:not(.photo-card__thumb-btn--loaded)::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.07) 50%,
+      transparent 100%
+    );
+    background-size: 300% 100%;
+    animation: thumb-shimmer 1.3s ease-in-out infinite;
+    pointer-events: none;
+  }
 
   &:hover { opacity: 0.85; transform: scale(1.04); }
 }
@@ -292,6 +310,21 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  opacity: 0;
+  filter: blur(5px);
+  transform: scale(1.04);
+  transition: opacity 0.35s ease, filter 0.35s ease, transform 0.35s ease;
+
+  &--loaded {
+    opacity: 1;
+    filter: none;
+    transform: scale(1);
+  }
+}
+
+@keyframes thumb-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 // ── Shift list ────────────────────────────────────────────────
@@ -846,7 +879,7 @@
 .shifts-lightbox {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.88);
+  background: rgba(0, 0, 0, 0.9);
   z-index: 2000;
   display: flex;
   align-items: center;
@@ -862,7 +895,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.1);
   border: none;
   color: #fff;
   cursor: pointer;
@@ -870,14 +903,46 @@
   align-items: center;
   justify-content: center;
   transition: background 0.12s;
-  &:hover { background: rgba(255,255,255,0.2); }
+  z-index: 10;
+  &:hover { background: rgba(255, 255, 255, 0.22); }
 }
 
 .shifts-lightbox__img {
-  max-width: 100%;
+  max-width: calc(100vw - 40px);
   max-height: 90vh;
   border-radius: 8px;
   object-fit: contain;
   cursor: default;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  transition: filter 0.4s ease, opacity 0.4s ease;
+
+  // Thumbnail показывается размытым пока грузится полный размер
+  &--preview {
+    filter: blur(14px);
+    transform: scale(1.02);
+    opacity: 0.55;
+  }
+}
+
+// Спиннер поверх превью
+.shifts-lightbox__spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.shifts-lightbox__spinner-ring {
+  width: 46px;
+  height: 46px;
+  border: 3px solid rgba(255, 255, 255, 0.18);
+  border-top-color: rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  animation: lightbox-spin 0.75s linear infinite;
+}
+
+@keyframes lightbox-spin {
+  to { transform: rotate(360deg); }
 }

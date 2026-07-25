@@ -30,6 +30,7 @@ import {
   ClientsPaymentDayReportBlock,
 } from './components';
 import StatsUnpaidModal from './components/StatsUnpaidModal';
+import NotRenewedListModal from './components/NotRenewedListModal';
 import './ClientsPage.scss';
 
 const TAB_NOT_RENEWED = 'not_renewed';
@@ -86,6 +87,7 @@ const ClientsReportsPage = () => {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [trainerDetails, setTrainerDetails] = useState(null);
   const [showUnpaidModal, setShowUnpaidModal] = useState(false);
+  const [showNotRenewedModal, setShowNotRenewedModal] = useState(false);
 
   const fetchNotRenewedSafe = useCallback(async () => {
     if (!nrYear || !nrMonth) return;
@@ -407,10 +409,15 @@ const ClientsReportsPage = () => {
                 <div className="clients-page__not-renewed-card-value">{notRenewedSummary.next != null ? notRenewedSummary.next.toLocaleString('ru-RU') : '—'}</div>
                 <div className="clients-page__not-renewed-card-label">Учеников в следующем месяце</div>
               </div>
-              <div className="clients-page__not-renewed-card">
+              <button
+                type="button"
+                className="clients-page__not-renewed-card clients-page__not-renewed-card--clickable"
+                onClick={() => setShowNotRenewedModal(true)}
+                title="Нажмите, чтобы увидеть список"
+              >
                 <div className="clients-page__not-renewed-card-value">{notRenewedSummary.notRen != null ? notRenewedSummary.notRen.toLocaleString('ru-RU') : '—'}</div>
                 <div className="clients-page__not-renewed-card-label">Не продлили</div>
-              </div>
+              </button>
               <div className="clients-page__not-renewed-card">
                 <div className="clients-page__not-renewed-card-value">
                   {notRenewedSummary.pct != null && !Number.isNaN(notRenewedSummary.pct) ? `${String(notRenewedSummary.pct).replace('.', ',')}%` : '—'}
@@ -594,6 +601,14 @@ const ClientsReportsPage = () => {
         month={statsMonth}
         onClose={() => setShowUnpaidModal(false)}
         onOpenClient={(c) => { setShowUnpaidModal(false); handleOpenCard(c); }}
+      />
+      <NotRenewedListModal
+        open={showNotRenewedModal}
+        year={nrYear}
+        month={nrMonth}
+        onClose={() => setShowNotRenewedModal(false)}
+        onOpenClient={(c) => { setShowNotRenewedModal(false); handleOpenCard(c); }}
+        onExtend={(c) => { setShowNotRenewedModal(false); setExtendClientObj(c); }}
       />
     </div>
   );

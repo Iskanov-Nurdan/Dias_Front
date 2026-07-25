@@ -186,6 +186,30 @@
       border-top-color: rgba(245, 158, 11, 0.7);
       .clients-page__not-renewed-card-value { color: #d97706; }
     }
+
+    // Кликабельная карточка (Не продлили)
+    &--clickable {
+      cursor: pointer;
+      text-align: left;
+      width: 100%;
+      transition: box-shadow 0.15s, transform 0.12s, background 0.15s;
+
+      &:hover {
+        box-shadow: 0 4px 16px rgba(239, 68, 68, 0.15);
+        transform: translateY(-2px);
+        background: rgba(239, 68, 68, 0.04);
+      }
+
+      &:active { transform: translateY(0); }
+
+      &::after {
+        content: '↗';
+        font-size: 14px;
+        color: rgba(239, 68, 68, 0.5);
+        float: right;
+        margin-top: -2px;
+      }
+    }
   }
 
   &__not-renewed-card-value {

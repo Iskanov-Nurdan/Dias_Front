@@ -19,6 +19,7 @@ const DAY_OPTIONS = [
 const NOW = new Date();
 const DEFAULT_YEAR = String(NOW.getFullYear());
 const DEFAULT_MONTH = String(NOW.getMonth() + 1);
+const DEFAULT_DAY = String(NOW.getDate());
 
 const formatMoney = (v) => Number(v).toLocaleString('ru-RU') + ' сом';
 
@@ -44,8 +45,8 @@ const getAvatarColor = (name) => {
 };
 
 // ── Фильтры ───────────────────────────────────────────────────
-const FiltersBar = ({ year, month, day, onYear, onMonth, onDay, onReset }) => {
-  const isDefault = year === DEFAULT_YEAR && month === DEFAULT_MONTH && !day;
+const FiltersBar = ({ year, month, day, onYear, onMonth, onDay, onReset, defaultDay = '' }) => {
+  const isDefault = year === DEFAULT_YEAR && month === DEFAULT_MONTH && day === defaultDay;
 
   return (
     <div className="shifts-filters">
@@ -334,6 +335,52 @@ const CloseShiftModal = ({ open, onClose, onSubmit }) => {
   );
 };
 
+// ── Лайтбокс (blur-preview → full load) ──────────────────────
+const LightboxViewer = ({ lightbox, onClose }) => {
+  const [src, setSrc] = useState(lightbox.thumbUrl);
+  const [loading, setLoading] = useState(lightbox.url !== lightbox.thumbUrl);
+
+  useEffect(() => {
+    if (lightbox.url === lightbox.thumbUrl) return;
+    const img = new window.Image();
+    img.onload = () => {
+      setSrc(lightbox.url);
+      setLoading(false);
+    };
+    img.src = lightbox.url;
+    return () => { img.onload = null; };
+  }, [lightbox.url, lightbox.thumbUrl]);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div className="shifts-lightbox" onClick={onClose}>
+      <button
+        type="button"
+        className="shifts-lightbox__close"
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+      >
+        <XIcon size={20} />
+      </button>
+      <img
+        src={src}
+        alt=""
+        className={`shifts-lightbox__img${loading ? ' shifts-lightbox__img--preview' : ''}`}
+        onClick={(e) => e.stopPropagation()}
+      />
+      {loading && (
+        <div className="shifts-lightbox__spinner">
+          <div className="shifts-lightbox__spinner-ring" />
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ── Главная страница ──────────────────────────────────────────
 const TABS = [
   { id: 'photos', label: 'Отчёты', icon: Camera },
@@ -356,7 +403,7 @@ const ShiftsPage = () => {
   // Фильтры для отчётов
   const [pYear, setPYear] = useState(DEFAULT_YEAR);
   const [pMonth, setPMonth] = useState(DEFAULT_MONTH);
-  const [pDay, setPDay] = useState('');
+  const [pDay, setPDay] = useState(DEFAULT_DAY);
 
   // Фильтры для смен
   const [sYear, setSYear] = useState(DEFAULT_YEAR);
@@ -441,7 +488,8 @@ const ShiftsPage = () => {
           <FiltersBar
             year={pYear} month={pMonth} day={pDay}
             onYear={setPYear} onMonth={setPMonth} onDay={setPDay}
-            onReset={() => { setPYear(DEFAULT_YEAR); setPMonth(DEFAULT_MONTH); setPDay(''); }}
+            onReset={() => { setPYear(DEFAULT_YEAR); setPMonth(DEFAULT_MONTH); setPDay(DEFAULT_DAY); }}
+            defaultDay={DEFAULT_DAY}
           />
 
           {photosLoading ? (
@@ -467,11 +515,29 @@ const ShiftsPage = () => {
                   </div>
                   {r.description && <p className="photo-card__desc">{r.description}</p>}
                   <div className="photo-card__photos">
-                    {(r.photos || []).map((p, i) => (
-                      <button key={i} type="button" className="photo-card__thumb-btn" onClick={() => setLightbox(p)}>
-                        <img src={p.url} alt={`Фото ${i + 1}`} className="photo-card__thumb" />
-                      </button>
-                    ))}
+                    {(r.photos || []).map((p, i) => {
+                      const thumbUrl = p.thumbnail_url || p.thumbnailUrl || p.url;
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          className="photo-card__thumb-btn"
+                          onClick={() => setLightbox({ url: p.url, thumbUrl })}
+                        >
+                          <img
+                            src={thumbUrl}
+                            alt={`Фото ${i + 1}`}
+                            className="photo-card__thumb"
+                            loading="lazy"
+                            decoding="async"
+                            onLoad={(e) => {
+                              e.currentTarget.classList.add('photo-card__thumb--loaded');
+                              e.currentTarget.closest('.photo-card__thumb-btn').classList.add('photo-card__thumb-btn--loaded');
+                            }}
+                          />
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
@@ -560,10 +626,7 @@ const ShiftsPage = () => {
 
       {/* Лайтбокс */}
       {lightbox && (
-        <div className="shifts-lightbox" onClick={() => setLightbox(null)}>
-          <button className="shifts-lightbox__close" onClick={() => setLightbox(null)}><XIcon size={20} /></button>
-          <img src={lightbox.url} alt="" className="shifts-lightbox__img" onClick={(e) => e.stopPropagation()} />
-        </div>
+        <LightboxViewer lightbox={lightbox} onClose={() => setLightbox(null)} />
       )}
     </div>
   );

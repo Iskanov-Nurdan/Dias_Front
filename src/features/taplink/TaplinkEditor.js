@@ -329,7 +329,7 @@ const SportsTab = ({ data, setData }) => {
   const setVideo = (si, vi, val) =>
     setData(d => {
       const sports = [...d.sports];
-      const videos = [...(sports[si].videos || ['', '', ''])];
+      const videos = [...(sports[si].videos || ['', '', '', '', ''])];
       videos[vi] = val;
       sports[si] = { ...sports[si], videos };
       return { ...d, sports };
@@ -360,7 +360,7 @@ const SportsTab = ({ data, setData }) => {
       sports: [...d.sports, {
         id: Date.now(), name: 'Новая секция', emoji: '🥋', photo: null,
         gradient: 'linear-gradient(145deg, #1a0505 0%, #6b1414 60%, #8b1a1a 100%)',
-        desc: '', schedule: [], videos: ['', '', ''],
+        desc: '', schedule: [], videos: ['', '', '', '', ''],
       }],
     }));
     setOpen(idx);
@@ -465,7 +465,7 @@ const SportsTab = ({ data, setData }) => {
                 <div className="tpe-videos-block">
                   <p className="tpe-videos-block__label">Видео секции</p>
                   <div className="tpe-videos-grid">
-                    {[0, 1, 2].map(vi => (
+                    {[0, 1, 2, 3, 4].map(vi => (
                       <VideoUpload
                         key={vi}
                         num={vi + 1}
@@ -509,7 +509,7 @@ const TrainersTab = ({ data, setData }) => {
   const setVideo = (ti, vi, val) =>
     setData(d => {
       const trainers = [...d.trainers];
-      const videos = [...(trainers[ti].videos || ['', '', ''])];
+      const videos = [...(trainers[ti].videos || ['', '', '', '', ''])];
       videos[vi] = val;
       trainers[ti] = { ...trainers[ti], videos };
       return { ...d, trainers };
@@ -547,7 +547,7 @@ const TrainersTab = ({ data, setData }) => {
       ...d,
       trainers: [...d.trainers, {
         id: Date.now(), name: 'Новый тренер', sportName: '', emoji: '👤', photo: null,
-        experience: '1 год', shortBio: '', bio: '', achievements: [''], videos: ['', '', ''],
+        experience: '1 год', shortBio: '', bio: '', achievements: [''], videos: ['', '', '', '', ''],
       }],
     }));
     setOpen(idx);
@@ -649,7 +649,7 @@ const TrainersTab = ({ data, setData }) => {
                 <div className="tpe-videos-block">
                   <p className="tpe-videos-block__label">Видео тренировок</p>
                   <div className="tpe-videos-grid">
-                    {[0, 1, 2].map(vi => (
+                    {[0, 1, 2, 3, 4].map(vi => (
                       <VideoUpload
                         key={vi}
                         num={vi + 1}

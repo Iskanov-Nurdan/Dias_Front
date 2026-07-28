@@ -45,6 +45,12 @@ const ChevRight = () => (
   </svg>
 );
 
+const ChevDown = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 9l6 6 6-6" />
+  </svg>
+);
+
 const PlayIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
     <path d="M8 5v14l11-7z" />
@@ -89,18 +95,74 @@ const MapPinIcon = () => (
 
 // ─── Small components ─────────────────────────────────────────────────────────
 
-const VideoSlot = ({ src }) => {
+// Direct video files (even hosted on our own https CDN) must render via <video>,
+// not <iframe> — only true embeddable player pages (YouTube/TikTok/etc.) need an iframe.
+const VIDEO_FILE_RE = /\.(mp4|webm|ogg|mov|m4v)(\?|#|$)/i;
+const isEmbedUrl = src => /^https?:\/\//i.test(src) && !VIDEO_FILE_RE.test(src);
+
+const VideoSlot = ({ src, onOpen }) => {
+  const [ratio, setRatio] = useState(9 / 16);
+  const [visible, setVisible] = useState(false);
+  const elRef = useRef(null);
+
+  // Не грузим все видео сразу при открытии карточки — только те, что реально видны
+  useEffect(() => {
+    if (!elRef.current || visible) return;
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) { setVisible(true); obs.disconnect(); }
+    }, { rootMargin: '200px' });
+    obs.observe(elRef.current);
+    return () => obs.disconnect();
+  }, [visible]);
+
   if (!src) return null;
-  if (src.startsWith('http')) {
-    return (
-      <div className="tp-video tp-video--embed">
-        <iframe src={src} className="tp-video__frame" allowFullScreen title="видео" />
-      </div>
-    );
-  }
+  const isEmbed = isEmbedUrl(src);
+
   return (
-    <div className="tp-video tp-video--file">
-      <video src={src} controls className="tp-video__player" playsInline preload="metadata" />
+    <button
+      ref={elRef}
+      type="button"
+      className="tp-video"
+      style={{ aspectRatio: ratio }}
+      onClick={() => onOpen(src)}
+      aria-label="Открыть видео"
+    >
+      {visible && (
+        isEmbed
+          ? <iframe src={src} className="tp-video__frame" title="видео" tabIndex={-1} />
+          : (
+            <video
+              src={src}
+              className="tp-video__player"
+              muted
+              playsInline
+              preload="metadata"
+              onLoadedMetadata={e => {
+                const v = e.currentTarget;
+                v.currentTime = 0.05;
+                if (v.videoWidth && v.videoHeight) setRatio(v.videoWidth / v.videoHeight);
+              }}
+            />
+          )
+      )}
+      <span className="tp-video__play"><PlayIcon /></span>
+    </button>
+  );
+};
+
+const VideoLightbox = ({ src, onClose }) => {
+  if (!src) return null;
+  const isEmbed = isEmbedUrl(src);
+
+  return (
+    <div className="tp-video-lb" onClick={e => { e.stopPropagation(); onClose(); }}>
+      <button type="button" className="tp-video-lb__x" onClick={e => { e.stopPropagation(); onClose(); }} aria-label="Закрыть"><XIcon /></button>
+      <div className="tp-video-lb__inner" onClick={e => e.stopPropagation()}>
+        {isEmbed
+          ? <iframe src={src} className="tp-video-lb__frame" allowFullScreen title="видео" />
+          : <video src={src} className="tp-video-lb__player" controls autoPlay playsInline />
+        }
+      </div>
     </div>
   );
 };
@@ -124,7 +186,9 @@ const TrainersSlider = ({ trainers, onDetails, onBook }) => {
 
   useEffect(() => {
     if (trainers.length < 2) return;
-    const timer = setInterval(next, 3000);
+    // Таймер пересоздаётся при каждом ручном переключении (next/prev меняются вместе с idx),
+    // так что свайп или клик по точке уже сами по себе сбрасывают отсчёт.
+    const timer = setInterval(next, 5000);
     return () => clearInterval(timer);
   }, [next, trainers.length]);
 
@@ -204,9 +268,79 @@ const TrainersSlider = ({ trainers, onDetails, onBook }) => {
   );
 };
 
+// ─── Collapsible lists (schedule, achievements) ────────────────────────────────
+
+const PREVIEW_COUNT = 3;
+
+const ExpandToggle = ({ expanded, onClick, moreLabel }) => (
+  <button
+    type="button"
+    className={`tp-expand-toggle${expanded ? ' tp-expand-toggle--on' : ''}`}
+    onClick={onClick}
+  >
+    {expanded ? 'Свернуть' : moreLabel}
+    <ChevDown />
+  </button>
+);
+
+const ScheduleList = ({ rows, renderLeft }) => {
+  const [expanded, setExpanded] = useState(false);
+  const hasMore = rows.length > PREVIEW_COUNT;
+  const visible = expanded ? rows : rows.slice(0, PREVIEW_COUNT);
+
+  return (
+    <>
+      <div className="tp-sched-list">
+        {visible.map((row, i) => (
+          <div key={row.id || i} className="tp-sched-item">
+            <div className="tp-sched-item__left">{renderLeft(row, i)}</div>
+            <div className="tp-sched-item__right">
+              <span className="tp-sched-item__days">{row.days}</span>
+              <span className="tp-sched-item__time">{row.time}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      {hasMore && (
+        <ExpandToggle
+          expanded={expanded}
+          onClick={() => setExpanded(e => !e)}
+          moreLabel={`Показать всё расписание (${rows.length})`}
+        />
+      )}
+    </>
+  );
+};
+
+const AchievementsList = ({ items }) => {
+  const [expanded, setExpanded] = useState(false);
+  const hasMore = items.length > PREVIEW_COUNT;
+  const visible = expanded ? items : items.slice(0, PREVIEW_COUNT);
+
+  return (
+    <>
+      {visible.map((a, i) => (
+        <div key={i} className="tp-sheet__achieve">
+          <span className="tp-sheet__achieve-ic">🏆</span>
+          <span>{a}</span>
+        </div>
+      ))}
+      {hasMore && (
+        <ExpandToggle
+          expanded={expanded}
+          onClick={() => setExpanded(e => !e)}
+          moreLabel={`Показать все достижения (${items.length})`}
+        />
+      )}
+    </>
+  );
+};
+
 // ─── Sport Sheet (bottom) ─────────────────────────────────────────────────────
 
 const SportSheet = ({ sport, onClose, onBook }) => {
+  const [openVideo, setOpenVideo] = useState(null);
+
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
@@ -233,24 +367,19 @@ const SportSheet = ({ sport, onClose, onBook }) => {
         {sport.schedule && sport.schedule.length > 0 && (
           <div className="tp-sheet__section">
             <h4 className="tp-sheet__sub">Расписание</h4>
-            <div className="tp-sched-list">
-              {sport.schedule.map((row, i) => (
-                <div key={row.id || i} className="tp-sched-item">
-                  <div className="tp-sched-item__left">
-                    {row.group && <span className="tp-sched-item__group">{row.group}</span>}
-                    {(row.trainers?.length > 0 || row.trainer) && (
-                      <span className="tp-sched-item__trainer">
-                        {row.trainers?.length > 0 ? row.trainers.join(', ') : row.trainer}
-                      </span>
-                    )}
-                  </div>
-                  <div className="tp-sched-item__right">
-                    <span className="tp-sched-item__days">{row.days}</span>
-                    <span className="tp-sched-item__time">{row.time}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <ScheduleList
+              rows={sport.schedule}
+              renderLeft={row => (
+                <>
+                  {row.group && <span className="tp-sched-item__group">{row.group}</span>}
+                  {(row.trainers?.length > 0 || row.trainer) && (
+                    <span className="tp-sched-item__trainer">
+                      {row.trainers?.length > 0 ? row.trainers.join(', ') : row.trainer}
+                    </span>
+                  )}
+                </>
+              )}
+            />
           </div>
         )}
 
@@ -258,7 +387,7 @@ const SportSheet = ({ sport, onClose, onBook }) => {
           <div className="tp-sheet__section">
             <h4 className="tp-sheet__sub">Видео о секции</h4>
             <div className="tp-sheet__videos">
-              {sport.videos.map((v, i) => <VideoSlot key={i} src={v} />)}
+              {sport.videos.map((v, i) => <VideoSlot key={i} src={v} onOpen={setOpenVideo} />)}
             </div>
           </div>
         )}
@@ -270,6 +399,7 @@ const SportSheet = ({ sport, onClose, onBook }) => {
           Записаться на «{sport.name}»
         </button>
       </div>
+      <VideoLightbox src={openVideo} onClose={() => setOpenVideo(null)} />
     </div>
   );
 };
@@ -277,6 +407,8 @@ const SportSheet = ({ sport, onClose, onBook }) => {
 // ─── Trainer Sheet (bottom) ───────────────────────────────────────────────────
 
 const TrainerSheet = ({ trainer, onClose, onBook, sports = [] }) => {
+  const [openVideo, setOpenVideo] = useState(null);
+
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
@@ -317,33 +449,23 @@ const TrainerSheet = ({ trainer, onClose, onBook, sports = [] }) => {
 
         <div className="tp-sheet__section">
           <h4 className="tp-sheet__sub">Достижения</h4>
-          {trainer.achievements.map((a, i) => (
-            <div key={i} className="tp-sheet__achieve">
-              <span className="tp-sheet__achieve-ic">🏆</span>
-              <span>{a}</span>
-            </div>
-          ))}
+          <AchievementsList items={trainer.achievements} />
         </div>
 
         {trainerSchedule.length > 0 && (
           <div className="tp-sheet__section">
             <h4 className="tp-sheet__sub">Расписание</h4>
-            <div className="tp-sched-list">
-              {trainerSchedule.map((row, i) => (
-                <div key={row.id || i} className="tp-sched-item">
-                  <div className="tp-sched-item__left">
-                    {row.group && <span className="tp-sched-item__group">{row.group}</span>}
-                    {trainerSchedule.some(r => r.sportName !== trainerSchedule[0].sportName) && (
-                      <span className="tp-sched-item__trainer">{row.sportName}</span>
-                    )}
-                  </div>
-                  <div className="tp-sched-item__right">
-                    <span className="tp-sched-item__days">{row.days}</span>
-                    <span className="tp-sched-item__time">{row.time}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <ScheduleList
+              rows={trainerSchedule}
+              renderLeft={row => (
+                <>
+                  {row.group && <span className="tp-sched-item__group">{row.group}</span>}
+                  {trainerSchedule.some(r => r.sportName !== trainerSchedule[0].sportName) && (
+                    <span className="tp-sched-item__trainer">{row.sportName}</span>
+                  )}
+                </>
+              )}
+            />
           </div>
         )}
 
@@ -351,7 +473,7 @@ const TrainerSheet = ({ trainer, onClose, onBook, sports = [] }) => {
           <div className="tp-sheet__section">
             <h4 className="tp-sheet__sub">Видео тренировок</h4>
             <div className="tp-sheet__videos">
-              {trainer.videos.map((v, i) => <VideoSlot key={i} src={v} />)}
+              {trainer.videos.map((v, i) => <VideoSlot key={i} src={v} onOpen={setOpenVideo} />)}
             </div>
           </div>
         )}
@@ -363,6 +485,7 @@ const TrainerSheet = ({ trainer, onClose, onBook, sports = [] }) => {
           Записаться к {trainer.name.split(' ')[0]}
         </button>
       </div>
+      <VideoLightbox src={openVideo} onClose={() => setOpenVideo(null)} />
     </div>
   );
 };
@@ -428,8 +551,8 @@ const BookingModal = ({ onClose, initial = {}, dark, sports = [], trainers = [] 
     e.preventDefault();
     const errs = {};
     if (!form.name.trim()) errs.name = 'Введите ФИО';
-    const phoneClean = form.phone.replace(/[\s\-()]/g, '');
-    if (!phoneClean || phoneClean === '+996') errs.phone = 'Введите номер телефона';
+    const phoneDigits = form.phone.replace(/\D/g, '');
+    if (phoneDigits.length < 12) errs.phone = 'Введите корректный номер телефона';
     if (!form.sport) errs.sport = 'Выберите секцию';
     if (Object.keys(errs).length) { setErrors(errs); return; }
 
@@ -594,16 +717,24 @@ const TaplinkPage = () => {
   const [activeTrainer, setActiveTrainer] = useState(null);
   const [booking,       setBooking]       = useState(null);
 
+  // Только на самом первом визите (нет ни сессии, ни закешированных данных) есть шанс
+  // на секунду увидеть дефолтный контент вместо реального — в этом случае показываем лоадер.
+  const [initialLoading, setInitialLoading] = useState(() => {
+    if (!BACKEND_ENABLED || hasSessionData()) return false;
+    try { return !localStorage.getItem('taplink-data'); } catch { return false; }
+  });
+
   // Async load from API when backend is ready (skipped if editor session data is present)
   useEffect(() => {
     if (!BACKEND_ENABLED || hasSessionData()) return;
     loadTaplinkDataAsync()
       .then(d => { if (d) setPageData(d); })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setInitialLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    document.body.style.backgroundColor = dark ? '#15192A' : '#F0F2FA';
+    document.body.style.backgroundColor = dark ? '#17161A' : '#F0F2FA';
     document.body.style.margin = '0';
   }, [dark]);
 
@@ -627,6 +758,17 @@ const TaplinkPage = () => {
   const openBooking = (init = {}) => setBooking(init);
 
   const pageClass = `tp-page ${dark ? 'tp-page--dark' : 'tp-page--light'}`;
+
+  if (initialLoading) {
+    return (
+      <div className={pageClass}>
+        <div className="tp-boot">
+          <img src="/rahman.png" alt="Рахман Ата" className="tp-boot__logo" />
+          <div className="tp-boot__spinner" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={pageClass}>
@@ -789,45 +931,41 @@ const TaplinkPage = () => {
       {/* ── WhatsApp / Telegram / 2GIS sticky bar ────────── */}
       {(footer.whatsapp || footer.telegram || footer.mapUrl) && (
         <div className="tp-cta-bar">
-          {/* Первая строка: WA + TG */}
-          {(footer.whatsapp || footer.telegram) && (
-            <div className="tp-cta-bar__row">
-              {footer.whatsapp && (
-                <a
-                  href={`https://wa.me/${footer.whatsapp.replace(/\D/g, '')}`}
-                  className="tp-cta-bar__btn tp-cta-bar__btn--wa"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <WhatsAppIcon />
-                  <span>WhatsApp</span>
-                </a>
-              )}
-              {footer.telegram && (
-                <a
-                  href={`https://t.me/${footer.telegram.replace('@', '')}`}
-                  className="tp-cta-bar__btn tp-cta-bar__btn--tg"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <TelegramIcon />
-                  <span>Telegram</span>
-                </a>
-              )}
-            </div>
-          )}
-          {/* Вторая строка: 2GIS */}
-          {footer.mapUrl && (
-            <a
-              href={footer.mapUrl}
-              className="tp-cta-bar__btn tp-cta-bar__btn--gis"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <MapPinIcon />
-              <span>Открыть в 2GIS</span>
-            </a>
-          )}
+          <div className="tp-cta-bar__row">
+            {footer.whatsapp && (
+              <a
+                href={`https://wa.me/${footer.whatsapp.replace(/\D/g, '')}`}
+                className="tp-cta-bar__btn tp-cta-bar__btn--wa"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <WhatsAppIcon />
+                <span>WhatsApp</span>
+              </a>
+            )}
+            {footer.telegram && (
+              <a
+                href={`https://t.me/${footer.telegram.replace('@', '')}`}
+                className="tp-cta-bar__btn tp-cta-bar__btn--tg"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <TelegramIcon />
+                <span>Telegram</span>
+              </a>
+            )}
+            {footer.mapUrl && (
+              <a
+                href={footer.mapUrl}
+                className="tp-cta-bar__btn tp-cta-bar__btn--gis"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <MapPinIcon />
+                <span>Открыть в 2GIS</span>
+              </a>
+            )}
+          </div>
         </div>
       )}
 

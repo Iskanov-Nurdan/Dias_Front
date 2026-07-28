@@ -8,28 +8,28 @@ $r-lg:   22px;
 
 // ─── Dark theme (soft — not pitch black) ──────────────────────────────────────
 .tp-page--dark {
-  --bg:          #15192A;
-  --s1:          #1C2236;
-  --s2:          #1F2740;
-  --card:        #1E2537;
-  --card2:       #253047;
-  --bd:          rgba(255, 255, 255, 0.09);
-  --bd2:         rgba(255, 255, 255, 0.16);
-  --text:        #EEF2FF;
-  --text2:       rgba(220, 228, 255, 0.68);
-  --text3:       rgba(200, 210, 255, 0.38);
-  --header-bg:   rgba(21, 25, 42, 0.90);
-  --input-bg:    #1C2236;
+  --bg:          #17161A;
+  --s1:          #1E1C20;
+  --s2:          #221F24;
+  --card:        #201E22;
+  --card2:       #2A272C;
+  --bd:          rgba(255, 255, 255, 0.08);
+  --bd2:         rgba(255, 255, 255, 0.15);
+  --text:        #F2F1F0;
+  --text2:       rgba(230, 228, 225, 0.66);
+  --text3:       rgba(210, 208, 205, 0.36);
+  --header-bg:   rgba(23, 22, 26, 0.90);
+  --input-bg:    #1E1C20;
   --input-bd:    rgba(255, 255, 255, 0.12);
-  --chip-bg:     rgba(255, 255, 255, 0.08);
-  --chip-bd:     rgba(255, 255, 255, 0.14);
-  --chip-text:   rgba(220, 228, 255, 0.65);
+  --chip-bg:     rgba(255, 255, 255, 0.07);
+  --chip-bd:     rgba(255, 255, 255, 0.13);
+  --chip-text:   rgba(230, 228, 225, 0.65);
   --shadow-sm:   0 2px 16px rgba(0, 0, 0, 0.28);
   --shadow-md:   0 6px 32px rgba(0, 0, 0, 0.38);
   --shadow-red:  0 4px 20px rgba(197, 48, 48, 0.40);
-  --overlay-bg:  rgba(10, 12, 22, 0.75);
-  --sheet-bg:    #1C2236;
-  --stat-bd:     rgba(255, 255, 255, 0.09);
+  --overlay-bg:  rgba(9, 8, 10, 0.75);
+  --sheet-bg:    #1E1C20;
+  --stat-bd:     rgba(255, 255, 255, 0.08);
   --red-glow:    rgba(197, 48, 48, 0.22);
 }
 
@@ -78,6 +78,41 @@ $r-lg:   22px;
   button { font-family: $font; cursor: pointer; }
   a { text-decoration: none; color: inherit; }
   h1, h2, h3, h4 { margin: 0; }
+}
+
+// ─── Boot / first-load spinner ─────────────────────────────────────────────────
+.tp-boot {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+
+  &__logo {
+    width: 64px;
+    height: auto;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+    opacity: 0.9;
+  }
+
+  .tp-page--light &__logo {
+    filter: none;
+  }
+
+  &__spinner {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 3px solid var(--bd2);
+    border-top-color: $red;
+    animation: tp-spin 0.8s linear infinite;
+  }
+}
+
+@keyframes tp-spin {
+  to { transform: rotate(360deg); }
 }
 
 // ─── Header ───────────────────────────────────────────────────────────────────
@@ -292,12 +327,8 @@ $r-lg:   22px;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
-
-  // Последняя карточка при нечётном количестве — растягивается на всю ширину
-  .tp-sport-card:last-child:nth-child(odd) {
-    grid-column: span 2;
-    aspect-ratio: 2.2;
-  }
+  // При нечётном количестве последняя карточка остаётся обычным квадратом —
+  // растягивание на всю ширину сильно и некрасиво обрезало фото.
 }
 
 .tp-sport-card {
@@ -520,19 +551,21 @@ $r-lg:   22px;
     gap: 2px;
     flex: 1;
     min-width: 0;
+    overflow: hidden;
 
     &--wide {
       flex-direction: row;
-      align-items: center;
+      align-items: flex-start;
       gap: 5px;
       flex: 2;
       justify-content: center;
+      text-align: left;
     }
   }
 
   &__stat-sep {
     width: 1px;
-    height: 30px;
+    align-self: stretch;
     background: rgba(255,255,255,0.1);
     margin: 0 8px;
     flex-shrink: 0;
@@ -542,7 +575,14 @@ $r-lg:   22px;
     font-size: 13px;
     font-weight: 700;
     color: var(--text);
-    white-space: nowrap;
+    max-width: 100%;
+    overflow-wrap: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-align: center;
   }
 
   &__stat-lbl {
@@ -826,13 +866,13 @@ $r-lg:   22px;
 // Тёмная тема таплинк
 body.tp-body--dark {
   .select__dropdown {
-    background: #1E2537;
+    background: #201E22;
     border-color: rgba(255,255,255,0.09);
     box-shadow: 0 12px 40px rgba(0,0,0,0.45);
   }
 
   .select__option {
-    color: #EEF2FF;
+    color: #F2F1F0;
     border-radius: 8px;
 
     &:hover { background: rgba(255,255,255,0.07); }
@@ -845,17 +885,17 @@ body.tp-body--dark {
   }
 
   .select__sheet {
-    background: #1C2236;
+    background: #1E1C20;
     box-shadow: 0 -8px 40px rgba(0,0,0,0.5);
   }
 
   .select__sheet-handle { background: rgba(255,255,255,0.18); }
   .select__sheet-head   { border-bottom-color: rgba(255,255,255,0.09); }
-  .select__sheet-title  { color: #EEF2FF; }
-  .select__sheet-close  { color: rgba(220,228,255,0.55); }
+  .select__sheet-title  { color: #F2F1F0; }
+  .select__sheet-close  { color: rgba(230,228,225,0.55); }
 
   .select__sheet-option {
-    color: #EEF2FF;
+    color: #F2F1F0;
 
     &:hover     { background: rgba(255,255,255,0.07); }
     &--selected { background: rgba(197,48,48,0.15); color: #C53030; font-weight: 600; }
@@ -1069,8 +1109,18 @@ select.tp-field__input:disabled {
 
   &__videos {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    gap: 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+    margin: 0 -22px;
+    padding-left: 22px;
+    padding-right: 22px;
+
+    &::-webkit-scrollbar { display: none; }
   }
 }
 
@@ -1197,32 +1247,128 @@ select.tp-field__input:disabled {
 
 // ─── Video slot ───────────────────────────────────────────────────────────────
 .tp-video {
+  position: relative;
+  flex: 0 0 auto;
+  height: 220px;
+  width: auto;
+  max-width: 260px;
+  min-width: 100px;
+  aspect-ratio: 9 / 16; // временное значение до загрузки метаданных видео
   border-radius: $r-sm;
   overflow: hidden;
-  border: 1px solid var(--bd);
+  border: none;
+  background: #000;
+  scroll-snap-align: start;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+  padding: 0;
+  display: block;
+  cursor: pointer;
+  transition: transform 0.12s;
+  -webkit-tap-highlight-color: transparent;
 
-  &--embed {
-    position: relative;
-    padding-bottom: 56.25%;
-    height: 0;
+  &:active { transform: scale(0.96); }
 
-    .tp-video__frame {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      border: none;
-    }
+  // Мягкая тень снизу — чтобы иконка play всегда читалась
+  &::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 55%;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent);
+    pointer-events: none;
   }
 
-  &--file {
-    background: #000;
+  &--embed .tp-video__frame {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    pointer-events: none;
   }
 
   &__player {
     width: 100%;
+    height: 100%;
     display: block;
-    max-height: 240px;
+    object-fit: cover;
+    pointer-events: none;
+  }
+
+  &__play {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.42);
+    border: 1.5px solid rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    pointer-events: none;
+
+    svg { margin-left: 2px; }
+  }
+}
+
+// ─── Video lightbox (full-screen player) ──────────────────────────────────────
+.tp-video-lb {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: rgba(6, 8, 16, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: tp-fadein 0.18s ease;
+
+  &__x {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+
+    &:hover { background: rgba(255, 255, 255, 0.16); }
+  }
+
+  &__inner {
+    width: 100%;
+    max-width: 420px;
+    max-height: 88vh;
+    aspect-ratio: 9 / 16;
+    border-radius: $r;
+    overflow: hidden;
+    background: #000;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
+
+  &__frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
+  &__player {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: contain;
+    background: #000;
   }
 }
 
@@ -1516,6 +1662,31 @@ select.tp-field__input:disabled {
     color: $red;
     letter-spacing: -0.3px;
   }
+}
+
+.tp-expand-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  background: transparent;
+  border: none;
+  border-radius: $r-sm;
+  font-family: $font;
+  font-size: 13px;
+  font-weight: 700;
+  color: $red;
+  transition: background 0.15s, color 0.15s;
+
+  svg { transition: transform 0.25s ease; }
+
+  &:hover { background: rgba($red, 0.08); }
+  &:active { transform: scale(0.98); }
+
+  &--on svg { transform: rotate(180deg); }
 }
 
 // ─── Prices ───────────────────────────────────────────────────────────────────

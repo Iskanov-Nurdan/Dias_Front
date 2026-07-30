@@ -1027,22 +1027,33 @@ select.tpe-select {
 }
 
 .tpe-sched-entry {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
-  margin-bottom: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--color-border);
   align-items: start;
+  margin-bottom: 8px;
+  padding: 10px 38px 10px 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 6px);
 
-  &:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  &:last-child { margin-bottom: 0; }
 
   &__group   { grid-column: 1; }
   &__days    { grid-column: 2; }
   &__time    { grid-column: 1; }
   &__trainer { grid-column: 2; }
 
-  .tpe-icon-btn { grid-column: 1 / -1; justify-self: end; width: auto; padding: 0 8px; }
+  // Кнопка удаления — в углу карточки, не занимает отдельную строку
+  .tpe-icon-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+  }
 }
 
 // ── Trainer multi-select ──────────────────────────────────────────────────────

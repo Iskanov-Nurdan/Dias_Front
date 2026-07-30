@@ -1602,18 +1602,16 @@ select.tp-field__input:disabled {
   &:active { transform: scale(0.97); }
 }
 
-// ─── Schedule list (inside sport sheet) ───────────────────────────────────────
-.tp-sched-list {
+// ─── Schedule blocks (inside sport / trainer sheet) ────────────────────────────
+// Строки группируются: блок (тренер / вид спорта) → группа (Взрослые/Дети) →
+// список дни+время, чтобы не повторять одни и те же подписи на каждую строку.
+.tp-sched-blocks {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
-.tp-sched-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+.tp-sched-block {
   padding: 12px 14px;
   background: var(--card2);
   border: 1px solid var(--bd);
@@ -1622,33 +1620,36 @@ select.tp-field__input:disabled {
 
   &:hover { border-color: rgba($red, 0.3); }
 
-  &__left {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    flex: 1;
-    min-width: 0;
+  &__head {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 8px;
+  }
+}
+
+.tp-sched-group {
+  & + & {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--bd);
   }
 
-  &__group {
+  &__name {
     font-size: 13px;
     font-weight: 700;
     color: var(--text);
+    margin-bottom: 4px;
   }
 
-  &__trainer {
-    font-size: 11px;
-    color: var(--text3);
-    white-space: normal;
-    word-break: break-word;
-  }
-
-  &__right {
+  &__row {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
-    flex-shrink: 0;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 2px 0;
   }
 
   &__days {
@@ -1661,6 +1662,7 @@ select.tp-field__input:disabled {
     font-weight: 800;
     color: $red;
     letter-spacing: -0.3px;
+    flex-shrink: 0;
   }
 }
 

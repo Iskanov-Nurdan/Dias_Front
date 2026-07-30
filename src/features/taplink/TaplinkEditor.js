@@ -14,6 +14,16 @@ const TABS = [
   { id: 'footer',   label: 'Контакты',   icon: '📞' },
 ];
 
+const SCHED_GROUP_OPTIONS = [
+  { value: 'Взрослые',      label: 'Взрослые' },
+  { value: 'Дети (5–17)',   label: 'Дети (5–17)' },
+];
+
+const SCHED_DAYS_OPTIONS = [
+  { value: 'Пн, Ср, Пт', label: 'Пн, Ср, Пт' },
+  { value: 'Вт, Чт, Сб', label: 'Вт, Чт, Сб' },
+];
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const Field = ({ label, children }) => (
@@ -429,17 +439,19 @@ const SportsTab = ({ data, setData }) => {
                   )}
                   {(sport.schedule || []).map((row, ri) => (
                     <div key={row.id || ri} className="tpe-sched-entry">
-                      <input
-                        className="tpe-input tpe-sched-entry__group"
-                        placeholder="Группа (Взрослые / Дети 7–14)"
+                      <Select
+                        className="tpe-sched-entry__group"
                         value={row.group}
-                        onChange={e => updateSchedRow(i, ri, 'group', e.target.value)}
+                        onChange={v => updateSchedRow(i, ri, 'group', v)}
+                        placeholder="Группа"
+                        options={SCHED_GROUP_OPTIONS}
                       />
-                      <input
-                        className="tpe-input tpe-sched-entry__days"
-                        placeholder="Дни (Пн, Ср, Пт)"
+                      <Select
+                        className="tpe-sched-entry__days"
                         value={row.days}
-                        onChange={e => updateSchedRow(i, ri, 'days', e.target.value)}
+                        onChange={v => updateSchedRow(i, ri, 'days', v)}
+                        placeholder="Дни"
+                        options={SCHED_DAYS_OPTIONS}
                       />
                       <input
                         className="tpe-input tpe-sched-entry__time"

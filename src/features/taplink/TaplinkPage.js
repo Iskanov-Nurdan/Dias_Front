@@ -283,21 +283,57 @@ const ExpandToggle = ({ expanded, onClick, moreLabel }) => (
   </button>
 );
 
-const ScheduleList = ({ rows, renderLeft }) => {
+// Группирует строки расписания сперва по «блоку» (тренер / вид спорта),
+// затем внутри блока — по названию группы (Взрослые / Дети), чтобы не повторять
+// одни и те же подписи на каждую отдельную пару дни+время.
+const buildScheduleBlocks = (rows, blockKeyFor, blockLabelFor) => {
+  const blocks = [];
+  const blockByKey = new Map();
+
+  rows.forEach((row, i) => {
+    const key = blockKeyFor(row) || '';
+    let block = blockByKey.get(key);
+    if (!block) {
+      block = { key, label: blockLabelFor(row), groups: [], groupByName: new Map() };
+      blockByKey.set(key, block);
+      blocks.push(block);
+    }
+    const gName = row.group || '';
+    let group = block.groupByName.get(gName);
+    if (!group) {
+      group = { name: row.group, entries: [] };
+      block.groupByName.set(gName, group);
+      block.groups.push(group);
+    }
+    group.entries.push({ id: row.id ?? i, days: row.days, time: row.time });
+  });
+
+  return blocks;
+};
+
+const ScheduleList = ({ rows, blockKeyFor, blockLabelFor }) => {
   const [expanded, setExpanded] = useState(false);
-  const hasMore = rows.length > PREVIEW_COUNT;
-  const visible = expanded ? rows : rows.slice(0, PREVIEW_COUNT);
+  const blocks = buildScheduleBlocks(rows, blockKeyFor, blockLabelFor);
+  const hasMore = blocks.length > PREVIEW_COUNT;
+  const visible = expanded ? blocks : blocks.slice(0, PREVIEW_COUNT);
 
   return (
     <>
-      <div className="tp-sched-list">
-        {visible.map((row, i) => (
-          <div key={row.id || i} className="tp-sched-item">
-            <div className="tp-sched-item__left">{renderLeft(row, i)}</div>
-            <div className="tp-sched-item__right">
-              <span className="tp-sched-item__days">{row.days}</span>
-              <span className="tp-sched-item__time">{row.time}</span>
-            </div>
+      <div className="tp-sched-blocks">
+        {visible.map((block, bi) => (
+          <div key={block.key || bi} className="tp-sched-block">
+            {block.label && <div className="tp-sched-block__head">{block.label}</div>}
+            {block.groups.map((group, gi) => (
+              <div key={group.name || gi} className="tp-sched-group">
+                {group.name && <div className="tp-sched-group__name">{group.name}</div>}
+                {group.entries.map((entry, ei) => (
+                  <div key={entry.id ?? ei} className="tp-sched-group__row">
+                    <span className="tp-sched-group__days">{entry.days}</span>
+                    <span className="tp-sched-group__time">{entry.time}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
         ))}
       </div>
@@ -352,15 +388,6 @@ const SportSheet = ({ sport, onClose, onBook }) => {
         <div className="tp-sheet__bar" />
         <button className="tp-sheet__x" onClick={onClose}><XIcon /></button>
 
-        <div
-          className="tp-sheet__sport-thumb"
-          style={sport.photo ? {} : { background: sport.gradient }}
-        >
-          {sport.photo
-            ? <img src={sport.photo} alt={sport.name} className="tp-sheet__sport-img" />
-            : <span>{sport.emoji}</span>
-          }
-        </div>
         <h2 className="tp-sheet__title">{sport.name}</h2>
         <p className="tp-sheet__text">{sport.desc}</p>
 
@@ -369,16 +396,8 @@ const SportSheet = ({ sport, onClose, onBook }) => {
             <h4 className="tp-sheet__sub">Расписание</h4>
             <ScheduleList
               rows={sport.schedule}
-              renderLeft={row => (
-                <>
-                  {row.group && <span className="tp-sched-item__group">{row.group}</span>}
-                  {(row.trainers?.length > 0 || row.trainer) && (
-                    <span className="tp-sched-item__trainer">
-                      {row.trainers?.length > 0 ? row.trainers.join(', ') : row.trainer}
-                    </span>
-                  )}
-                </>
-              )}
+              blockKeyFor={row => (row.trainers?.length > 0 ? row.trainers.join(', ') : row.trainer) || ''}
+              blockLabelFor={row => (row.trainers?.length > 0 ? row.trainers.join(', ') : row.trainer) || null}
             />
           </div>
         )}
@@ -457,13 +476,9 @@ const TrainerSheet = ({ trainer, onClose, onBook, sports = [] }) => {
             <h4 className="tp-sheet__sub">Расписание</h4>
             <ScheduleList
               rows={trainerSchedule}
-              renderLeft={row => (
-                <>
-                  {row.group && <span className="tp-sched-item__group">{row.group}</span>}
-                  {trainerSchedule.some(r => r.sportName !== trainerSchedule[0].sportName) && (
-                    <span className="tp-sched-item__trainer">{row.sportName}</span>
-                  )}
-                </>
+              blockKeyFor={row => row.sportName || ''}
+              blockLabelFor={row => (
+                trainerSchedule.some(r => r.sportName !== trainerSchedule[0].sportName) ? row.sportName : null
               )}
             />
           </div>

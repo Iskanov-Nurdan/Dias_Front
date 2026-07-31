@@ -61,11 +61,12 @@ export const getSimilarGroups = (clients) => {
   return groups.sort((a, b) => b.length - a.length);
 };
 
-/** Фильтрация клиентов по году/месяцу (по dateStart) */
-export const filterClientsByPeriod = (clients, year, month) => {
+/** Фильтрация клиентов по году/месяцу/дню (по dateStart) */
+export const filterClientsByPeriod = (clients, year, month, day) => {
   if (!year) return clients;
   const y = Number(year);
   const m = month ? Number(month) : null;
+  const d0 = day ? Number(day) : null;
   return clients.filter((c) => {
     const ds = c.dateStart ?? c.date_start;
     if (!ds) return false;
@@ -73,6 +74,7 @@ export const filterClientsByPeriod = (clients, year, month) => {
     if (isNaN(d.getTime())) return false;
     if (d.getFullYear() !== y) return false;
     if (m != null && d.getMonth() + 1 !== m) return false;
+    if (d0 != null && d.getDate() !== d0) return false;
     return true;
   });
 };

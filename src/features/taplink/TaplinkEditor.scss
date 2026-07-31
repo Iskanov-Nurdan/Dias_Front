@@ -1,4 +1,5 @@
 // TaplinkEditor — admin panel styles, uses project design system variables
+@use '../../shared/styles/mixins';
 
 .tpe {
   padding: 0 0 120px;
@@ -13,6 +14,10 @@
     gap: 16px;
     padding: 28px 32px 0;
     flex-wrap: wrap;
+
+    @include mixins.mobile {
+      padding: 18px 16px 0;
+    }
   }
 
   &__top-left {
@@ -116,6 +121,10 @@
     scrollbar-width: none;
 
     &::-webkit-scrollbar { display: none; }
+
+    @include mixins.mobile {
+      padding: 14px 16px 0;
+    }
   }
 
   &__tab {
@@ -164,6 +173,10 @@
 
   &__body {
     padding: 28px 32px;
+
+    @include mixins.mobile {
+      padding: 16px;
+    }
   }
 
   // ── Bottom sticky save bar ─────────────────────────────────────────────────
@@ -182,12 +195,25 @@
     background: var(--color-surface);
     border-top: 1px solid var(--color-border);
     box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.06);
+
+    // На мобиле сайдбар — оверлей, а не часть раскладки, поэтому левый отступ
+    // под его ширину не нужен и раньше сжимал панель в узкую полоску справа.
+    @include mixins.mobile {
+      left: 0;
+      flex-wrap: wrap;
+      padding: 10px 16px;
+    }
   }
 
   &__bottom-note {
     font-size: 12px;
     color: var(--color-text-muted);
     margin-right: auto;
+
+    @include mixins.mobile {
+      flex-basis: 100%;
+      margin-right: 0;
+    }
   }
 }
 
@@ -302,6 +328,11 @@ select.tpe-select {
   gap: 16px;
   align-items: start;
   margin-bottom: 12px;
+
+  @include mixins.mobile {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
 }
 
 .tpe-trainer-fields {
@@ -1170,6 +1201,10 @@ select.tpe-select {
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-bottom: 12px;
+
+  @include mixins.mobile {
+    grid-template-columns: 1fr;
+  }
 }
 
 .tpe-price-card {

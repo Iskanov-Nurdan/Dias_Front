@@ -140,6 +140,31 @@ export const fetchClientsNotRenewed = async ({ year, month, page, perPage }, sig
   return data;
 };
 
+/**
+ * Загружает ВСЕХ «не продливших» клиентов, проходя по всем страницам —
+ * бэкенд молча обрезает ответ до своего max page size (обычно 100),
+ * даже если запросить perPage=500, поэтому одним запросом не обойтись.
+ */
+export const fetchAllClientsNotRenewed = async ({ year, month }, signal) => {
+  const perPage = 100;
+  const maxPages = 200; // защита от бесконечного цикла
+  const all = [];
+  let page = 1;
+  let hasMore = true;
+  while (hasMore && page <= maxPages) {
+    const res = await fetchClientsNotRenewed({ year, month, page, perPage }, signal);
+    const list = res?.items ?? res?.results ?? (Array.isArray(res) ? res : []);
+    all.push(...list);
+    const meta = res?.meta;
+    const totalPages = meta?.totalPages;
+    const isLastPage = list.length < perPage;
+    const reachedTotalPages = totalPages != null && page >= totalPages;
+    hasMore = !isLastPage && !reachedTotalPages;
+    page += 1;
+  }
+  return all;
+};
+
 export const fetchClient = async (id, signal) => {
   const { data } = await apiClient.get(`/clients/${id}/`, withSignal({}, signal));
   return data;

@@ -74,6 +74,20 @@
     }
   }
 
+  &__tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--color-primary, #ef4444);
+  }
+
   &__not-renewed-toolbar {
     margin-bottom: var(--space-4);
   }
@@ -610,6 +624,76 @@
 
     tbody tr:last-child td { border-bottom: none; }
     tbody tr:hover { background: var(--color-hover, rgba(255,255,255,0.03)); }
+  }
+
+  // ── Исправление: клиенты с неполными данными ──
+  &__fix-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+
+    th, td {
+      padding: 11px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--color-border);
+      vertical-align: middle;
+    }
+
+    th {
+      background: var(--color-surface-secondary);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      border-bottom: 1px solid var(--color-border);
+      white-space: nowrap;
+    }
+
+    th:nth-child(1) { width: 22%; }
+    th:nth-child(2) { width: 13%; }
+    th:nth-child(3) { width: 15%; }
+    th:nth-child(4) { width: 12%; }
+    th:nth-child(5) { width: 26%; }
+    th:nth-child(6) { width: 12%; }
+
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: var(--color-hover, rgba(255,255,255,0.03)); }
+  }
+
+  &__fix-paid {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    font-weight: 600;
+
+    &--yes { background: rgba(34, 197, 94, 0.14); color: #22c55e; }
+    &--no  { background: rgba(148, 163, 184, 0.16); color: var(--color-text-muted); }
+  }
+
+  &__fix-reasons {
+    margin: 0;
+    padding-left: 16px;
+    font-size: 12.5px;
+    color: var(--color-text-muted);
+    line-height: 1.5;
+  }
+
+  &__fix-btn {
+    padding: 6px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--color-primary, #ef4444);
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background var(--transition-fast);
+
+    &:hover { background: rgba(239, 68, 68, 0.18); }
   }
 
   &__onetime-name {

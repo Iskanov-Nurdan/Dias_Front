@@ -111,7 +111,10 @@
 
       tr {
         display: grid;
-        grid-template-columns: 1fr auto;
+        // minmax(0, 1fr), а не просто 1fr — иначе колонка не сжимается меньше
+        // содержимого (длинное ФИО) и карточка вылезает за край экрана,
+        // обрезая бейдж «Оплачено» и дату.
+        grid-template-columns: minmax(0, 1fr) auto;
         grid-template-areas:
           "name  paid"
           "sport date"
@@ -127,10 +130,13 @@
       td {
         display: flex;
         align-items: center;
-        padding: 0;
+        padding: 0 !important;
         border: none !important;
         border-radius: 0 !important;
-        height: auto;
+        // !important обязателен: десктопное `tbody td { height: 70px }` специфичнее
+        // (tbody+td против одного td) и иначе продолжает побеждать даже в мобильном
+        // медиа-запросе — из-за этого каждая ячейка карточки была минимум 70px высотой.
+        height: auto !important;
         background: transparent !important;
         font-size: 13px;
 
@@ -140,6 +146,12 @@
         &:nth-child(1) {
           grid-area: name;
           align-items: flex-start;
+          min-width: 0;
+
+          .clients-list__name-cell,
+          .clients-list__name-info {
+            min-width: 0;
+          }
         }
 
         // Дата начала — справа, серая, мелкая
@@ -178,7 +190,7 @@
           grid-area: acts;
           display: flex;
           gap: 8px;
-          padding-top: 10px;
+          padding-top: 10px !important;
           margin-top: 2px;
           border-top: 1px solid var(--color-border) !important;
 

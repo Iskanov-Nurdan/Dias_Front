@@ -65,12 +65,18 @@
     font-size: 13px;
     color: var(--color-text-muted);
 
-    @media (max-width: 374px) {
+    // На узких экранах счётчик не помещается в один ряд с кнопками и утягивает
+    // за собой последнюю (стрелку «›») на отдельную строку — переносим его
+    // на свою строку сам, чтобы кнопки переносились единым блоком.
+    @media (max-width: 600px) {
       width: 100%;
       margin-left: 0;
       margin-top: var(--space-2);
-      font-size: 12px;
       text-align: center;
+    }
+
+    @media (max-width: 374px) {
+      font-size: 12px;
     }
   }
 }

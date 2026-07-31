@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Clock, Plus, Banknote, CreditCard, TrendingUp, TrendingDown, Coins, ImagePlus, X as XIcon, Camera, FileText, Filter } from 'lucide-react';
+import { Clock, Plus, Banknote, CreditCard, TrendingUp, TrendingDown, Coins, ImagePlus, X as XIcon, Camera, FileText, Filter, Pencil, History } from 'lucide-react';
 import { useAuth } from '../../app/providers/AuthProvider';
-import { fetchShifts, closeShift, fetchPhotoReports, addPhotoReport } from './api';
+import { fetchShifts, closeShift, updateShift, fetchPhotoReports, addPhotoReport } from './api';
 import { Select } from '../../shared/ui';
 import './ShiftsPage.scss';
 
@@ -207,14 +207,16 @@ const AddPhotoModal = ({ open, onClose, onSubmit }) => {
   );
 };
 
-// ── Модалка: завершить смену ──────────────────────────────────
-const CloseShiftModal = ({ open, onClose, onSubmit }) => {
-  const [cash, setCash]             = useState('');
-  const [card, setCard]             = useState('');
-  const [expense, setExpense]       = useState('');
-  const [advance, setAdvance]       = useState('');
-  const [description, setDescription] = useState('');
+// ── Модалка: завершить / изменить смену ───────────────────────
+// initial !== null → режим правки уже закрытой смены (поля предзаполнены).
+const CloseShiftModal = ({ open, onClose, onSubmit, initial = null, title = 'Завершить смену', submitLabel = 'Завершить смену' }) => {
+  const [cash, setCash]             = useState(initial ? String(initial.cash ?? '') : '');
+  const [card, setCard]             = useState(initial ? String(initial.card ?? '') : '');
+  const [expense, setExpense]       = useState(initial ? String(initial.expense ?? '') : '');
+  const [advance, setAdvance]       = useState(initial ? String(initial.advance ?? '') : '');
+  const [description, setDescription] = useState(initial?.description ?? '');
   const [saving, setSaving]         = useState(false);
+  const [error, setError]           = useState('');
 
   const total = (Number(cash) || 0) + (Number(card) || 0);
 
@@ -222,6 +224,7 @@ const CloseShiftModal = ({ open, onClose, onSubmit }) => {
     e.preventDefault();
     if (saving) return;
     setSaving(true);
+    setError('');
     try {
       await onSubmit({
         cash:        Number(cash)    || 0,
@@ -231,8 +234,12 @@ const CloseShiftModal = ({ open, onClose, onSubmit }) => {
         total,
         description: description.trim(),
       });
-      setCash(''); setCard(''); setExpense(''); setAdvance(''); setDescription('');
+      if (!initial) {
+        setCash(''); setCard(''); setExpense(''); setAdvance(''); setDescription('');
+      }
       onClose();
+    } catch (err) {
+      setError(err?.response?.data?.error?.message ?? err?.message ?? 'Не удалось сохранить. Попробуйте ещё раз.');
     } finally {
       setSaving(false);
     }
@@ -245,7 +252,7 @@ const CloseShiftModal = ({ open, onClose, onSubmit }) => {
       <div className="shift-modal" onClick={(e) => e.stopPropagation()}>
         <div className="shift-modal__header">
           <div>
-            <h2 className="shift-modal__title">Завершить смену</h2>
+            <h2 className="shift-modal__title">{title}</h2>
           </div>
           <button type="button" className="shift-modal__close" onClick={onClose}>✕</button>
         </div>
@@ -321,12 +328,14 @@ const CloseShiftModal = ({ open, onClose, onSubmit }) => {
             )}
           </div>
 
+          {error && <p className="shift-modal__error">{error}</p>}
+
           <div className="shift-modal__actions">
             <button type="button" className="shift-modal__btn shift-modal__btn--cancel" onClick={onClose} disabled={saving}>
               Отмена
             </button>
             <button type="submit" className="shift-modal__btn shift-modal__btn--submit" disabled={saving}>
-              {saving ? 'Сохранение…' : 'Завершить смену'}
+              {saving ? 'Сохранение…' : submitLabel}
             </button>
           </div>
         </form>
@@ -398,6 +407,8 @@ const ShiftsPage = () => {
 
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [shiftModalOpen, setShiftModalOpen] = useState(false);
+  const [editingShift, setEditingShift] = useState(null);
+  const [openHistoryId, setOpenHistoryId] = useState(null);
   const [lightbox, setLightbox] = useState(null);
 
   // Фильтры для отчётов
@@ -435,6 +446,11 @@ const ShiftsPage = () => {
 
   const handleCloseShift = async ({ cash, card, expense, advance, total, description }) => {
     await closeShift({ cash, card, expense, advance, total, description });
+    await loadShifts();
+  };
+
+  const handleEditShift = async (payload) => {
+    await updateShift(editingShift.id, payload);
     await loadShifts();
   };
 
@@ -576,6 +592,7 @@ const ShiftsPage = () => {
                       <span className="shift-card__date">{formatDate(s.createdAt)}</span>
                     </div>
                   </div>
+
                   <div className="shift-card__amounts">
                     <div className="shift-card__amount">
                       <span className="shift-card__amount-label"><Banknote size={13} /> Наличка</span>
@@ -610,8 +627,44 @@ const ShiftsPage = () => {
                       </>
                     )}
                   </div>
+
+                  {s.isEdited ? (
+                    <button
+                      type="button"
+                      className="shift-card__history-btn"
+                      onClick={() => setOpenHistoryId((id) => (id === s.id ? null : s.id))}
+                    >
+                      <History size={13} />
+                      {openHistoryId === s.id ? 'Скрыть исходные данные' : 'Изменено'}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="shift-card__edit-btn"
+                      onClick={() => setEditingShift(s)}
+                    >
+                      <Pencil size={13} /> Изменить
+                    </button>
+                  )}
+
                   {s.description && (
                     <p className="shift-card__desc">{s.description}</p>
+                  )}
+
+                  {openHistoryId === s.id && s.previous && (
+                    <div className="shift-card__prev">
+                      <span className="shift-card__prev-label">Было до изменения:</span>
+                      <div className="shift-card__prev-row">
+                        <span><Banknote size={12} /> {formatMoney(s.previous.cash)}</span>
+                        <span><CreditCard size={12} /> {formatMoney(s.previous.card)}</span>
+                        <span><TrendingUp size={12} /> {formatMoney(s.previous.total)}</span>
+                        {Number(s.previous.advance) > 0 && <span><Coins size={12} /> {formatMoney(s.previous.advance)}</span>}
+                        {Number(s.previous.expense) > 0 && <span><TrendingDown size={12} /> {formatMoney(s.previous.expense)}</span>}
+                      </div>
+                      {s.previous.description && (
+                        <p className="shift-card__prev-desc">{s.previous.description}</p>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}
@@ -623,6 +676,18 @@ const ShiftsPage = () => {
       {/* Модалки */}
       <AddPhotoModal open={photoModalOpen} onClose={() => setPhotoModalOpen(false)} onSubmit={handleAddPhoto} />
       <CloseShiftModal open={shiftModalOpen} onClose={() => setShiftModalOpen(false)} onSubmit={handleCloseShift} />
+
+      {editingShift && (
+        <CloseShiftModal
+          key={editingShift.id}
+          open
+          initial={editingShift}
+          title="Изменить смену"
+          submitLabel="Сохранить изменения"
+          onClose={() => setEditingShift(null)}
+          onSubmit={handleEditShift}
+        />
+      )}
 
       {/* Лайтбокс */}
       {lightbox && (

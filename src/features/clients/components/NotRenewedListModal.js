@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, UserX } from 'lucide-react';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { EmptyState } from '../../../shared/ui';
-import { fetchClientsNotRenewed } from '../api';
+import { fetchAllClientsNotRenewed } from '../api';
 import './StatsUnpaidModal.scss';
 import './NotRenewedListModal.scss';
 
@@ -22,9 +22,8 @@ const NotRenewedListModal = ({ open, year, month, onClose, onOpenClient, onExten
     setLoading(true);
     setError(null);
     setClients([]);
-    fetchClientsNotRenewed({ year: year || undefined, month: month || undefined, perPage: 500 }, ctrl.signal)
-      .then((res) => {
-        const list = res?.items ?? res?.results ?? (Array.isArray(res) ? res : []);
+    fetchAllClientsNotRenewed({ year: year || undefined, month: month || undefined }, ctrl.signal)
+      .then((list) => {
         setClients(Array.isArray(list) ? list : []);
       })
       .catch((err) => {

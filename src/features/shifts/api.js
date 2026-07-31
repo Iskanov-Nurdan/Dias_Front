@@ -20,6 +20,20 @@ export const closeShift = async ({ cash, card, expense, advance, total, descript
   return data;
 };
 
+/**
+ * PATCH /api/shifts/:id/ — исправить уже закрытую смену.
+ * Разрешено только один раз на смену — повторная попытка должна вернуть 400/403,
+ * бэкенд обязан сам это проверять (фронт только прячет кнопку после первого раза).
+ * Бэкенд должен сохранить исходные значения (до правки) и вернуть их в ответе
+ * в поле `previous`, а также `isEdited: true` и `editedAt`.
+ */
+export const updateShift = async (id, { cash, card, expense, advance, total, description }, signal) => {
+  const body = { cash, card, expense, advance, total };
+  if (description !== undefined) body.description = description;
+  const { data } = await apiClient.patch(`/shifts/${id}/`, body, withSignal({}, signal));
+  return data;
+};
+
 /** GET /api/shifts/photo-reports/ — список фото-отчётов. Query: year, month, day */
 export const fetchPhotoReports = async ({ year, month, day } = {}, signal) => {
   const params = {};

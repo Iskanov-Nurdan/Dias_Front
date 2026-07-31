@@ -10,7 +10,8 @@ import { SEARCH_DEBOUNCE_MS, formatMoney, MONTHS, STATS_YEARS } from '../../shar
 import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiError';
 import { filterClientsByPeriod, getExactDuplicates, getSimilarGroups } from '../../shared/lib/duplicates';
 import { prepareClientSavePayload } from './lib/prepareClientSavePayload';
-import { UsersRound, Copy, Ticket } from 'lucide-react';
+import { getClientCorrectionReasons, clientNeedsCorrection } from './lib/needsCorrection';
+import { UsersRound, Copy, Ticket, Wrench } from 'lucide-react';
 import { Select, ConfirmModal, Pagination, FiltersModal, FilterBar, EmptyState } from '../../shared/ui';
 import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal, DuplicateGroup } from './components';
 import './ClientsPage.scss';
@@ -18,6 +19,7 @@ import './ClientsPage.scss';
 const TAB_LIST = 'list';
 const TAB_DUPS = 'dups';
 const TAB_ONETIME = 'onetime';
+const TAB_FIX = 'fix';
 
 const SUBTAB_EXACT   = 'exact';
 const SUBTAB_SIMILAR = 'similar';
@@ -44,6 +46,11 @@ const ClientsPage = () => {
     return (y === 2026 || y === 2027) ? String(y) : '2026';
   });
   const [dupMonth, setDupMonth] = useState(String(new Date().getMonth() + 1));
+
+  // ── Исправление: клиенты с неполными данными — фильтр год/месяц/день ──
+  const [fixYear, setFixYear] = useState(String(new Date().getFullYear()));
+  const [fixMonth, setFixMonth] = useState('');
+  const [fixDay, setFixDay] = useState('');
 
   // ── Основной список ──
   const [searchInput, setSearchInput] = useState('');
@@ -164,7 +171,7 @@ const ClientsPage = () => {
   }, [activeTab, fetchSafe]);
 
   useEffect(() => {
-    if (activeTab === TAB_DUPS) {
+    if (activeTab === TAB_DUPS || activeTab === TAB_FIX) {
       fetchAllClients();
       return () => allControllerRef.current?.abort();
     }
@@ -262,6 +269,16 @@ const ClientsPage = () => {
   const exactGroups  = useMemo(() => getExactDuplicates(dupFilteredClients), [dupFilteredClients]);
   const similarGroups = useMemo(() => getSimilarGroups(dupFilteredClients), [dupFilteredClients]);
 
+  // Клиенты с неполными данными (за выбранный период)
+  const fixPeriodClients = useMemo(
+    () => filterClientsByPeriod(allClients, fixYear, fixMonth || null, fixDay || null),
+    [allClients, fixYear, fixMonth, fixDay]
+  );
+  const fixClients = useMemo(
+    () => fixPeriodClients.filter(clientNeedsCorrection),
+    [fixPeriodClients]
+  );
+
 
   const handleSaveClient = async (payload) => {
     setClientFormError(null);
@@ -349,6 +366,10 @@ const ClientsPage = () => {
         <button type="button" className={`clients-page__tab${activeTab === TAB_LIST ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_LIST)}><UsersRound size={15} /> Клиенты</button>
         <button type="button" className={`clients-page__tab${activeTab === TAB_DUPS ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_DUPS)}><Copy size={15} /> Дубликаты</button>
         <button type="button" className={`clients-page__tab${activeTab === TAB_ONETIME ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_ONETIME)}><Ticket size={15} /> Разовый</button>
+        <button type="button" className={`clients-page__tab${activeTab === TAB_FIX ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_FIX)}>
+          <Wrench size={15} /> Исправление
+          {fixClients.length > 0 && <span className="clients-page__tab-badge">{fixClients.length}</span>}
+        </button>
       </div>
 
       {/* ── Список клиентов ── */}
@@ -655,6 +676,104 @@ const ClientsPage = () => {
               </div>
               <div className="clients-page__onetime-pagination">
                 <Pagination meta={oneTimeData?.meta} currentPage={oneTimePage} onPage={(p) => setOneTimePage(p)} loading={oneTimeLoading} entityLabel="записей" />
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Исправление ── */}
+      {activeTab === TAB_FIX && (
+        <div className="clients-page__fix-section">
+          <FilterBar className="clients-page__dup-toolbar">
+            <Select
+              value={fixYear}
+              onChange={(v) => { setFixYear(v); setFixMonth(''); setFixDay(''); }}
+              options={[{ value: '', label: 'Год — все' }, ...clientListFilterYearValues.map((y) => ({ value: y, label: y }))]}
+              placeholder="Год"
+              className="clients-page__dup-select"
+            />
+            <Select
+              value={fixMonth}
+              onChange={(v) => { setFixMonth(v); setFixDay(''); }}
+              disabled={!fixYear}
+              options={[
+                { value: '', label: 'Месяц — все' },
+                ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: MONTHS[i + 1] })),
+              ]}
+              placeholder="Месяц"
+              className="clients-page__dup-select"
+            />
+            <Select
+              value={fixDay}
+              onChange={setFixDay}
+              disabled={!fixMonth}
+              options={[{ value: '', label: 'День — все' }, ...Array.from({ length: 31 }, (_, i) => i + 1).map((d) => ({ value: String(d), label: String(d) }))]}
+              placeholder="День"
+              className="clients-page__dup-select"
+            />
+          </FilterBar>
+
+          {allLoading ? (
+            <div className="clients-page__dup-loading"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка клиентов…</span></div>
+          ) : fixClients.length === 0 ? (
+            <div className="clients-page__dup-empty">
+              <EmptyState compact message="Клиентов с неполными данными за этот период не найдено" />
+            </div>
+          ) : (
+            <>
+              <div className="clients-page__dup-stats">
+                <span><strong>{fixYear || 'Все годы'}</strong>{fixMonth ? ` · ${MONTHS[Number(fixMonth)]}` : ''}{fixDay ? ` · ${fixDay}` : ''}</span>
+                <span className="clients-page__dup-stats-sep">·</span>
+                <span>Требуют исправления: <strong>{fixClients.length}</strong></span>
+              </div>
+              <div className="clients-page__onetime-block">
+                <table className="clients-page__fix-table">
+                  <thead>
+                    <tr>
+                      <th>ФИО</th>
+                      <th>Дата начала</th>
+                      <th>Вид спорта</th>
+                      <th>Оплата</th>
+                      <th>Что не заполнено</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fixClients.map((c) => {
+                      const dateStart = c.dateStart ?? c.date_start;
+                      const sportName = c.sportName ?? c.sport?.name;
+                      const paid = c.paid === true || c.paid === 'true';
+                      const reasons = getClientCorrectionReasons(c);
+                      return (
+                        <tr key={c.id}>
+                          <td className="clients-page__onetime-name">{c.fio || '—'}</td>
+                          <td>{dateStart ? new Date(dateStart).toLocaleDateString('ru-RU') : '—'}</td>
+                          <td>{sportName ?? '—'}</td>
+                          <td>
+                            <span className={`clients-page__fix-paid ${paid ? 'clients-page__fix-paid--yes' : 'clients-page__fix-paid--no'}`}>
+                              {paid ? 'Оплачено' : 'Не оплачено'}
+                            </span>
+                          </td>
+                          <td>
+                            <ul className="clients-page__fix-reasons">
+                              {reasons.map((r) => <li key={r}>{r}</li>)}
+                            </ul>
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              className="clients-page__fix-btn"
+                              onClick={() => (isAdmin ? setFormClient(c) : showAccessDenied())}
+                            >
+                              Исправить
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </>
           )}

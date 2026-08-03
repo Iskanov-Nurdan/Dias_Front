@@ -14,11 +14,14 @@ import {
   CompactList,
   RecordDetailsModal,
   DetailFields,
+  ProductLineTabs,
 } from '../../../../shared/ui';
+import { useProductLine, PRODUCT_LINE } from '../../../../shared/hooks';
 import { useOperationalRefetch, WS_PRODUCTION } from '../../../../shared/realtime';
 import ProduceBlankModal from '../ProduceBlankModal/ProduceBlankModal';
 import { mapBlankProductionRunFromApi } from '../../../chemistry/api/blankWorkshopApi';
 import { resolveUsedKgForRun } from '../../../chemistry/lib/workshopRunUtils';
+import ProductionFoamTab from '../ProductionFoamTab/ProductionFoamTab';
 import './ProductionPage.scss';
 
 const formatRunDateTime = (d) => {
@@ -38,6 +41,7 @@ const blankRunsQuery = { page: 1, page_size: 200, ordering: '-created_at' };
 
 const ProductionPage = () => {
   const toast = useToast();
+  const [line, setLine] = useProductLine();
   const [produceBlankOpen, setProduceBlankOpen] = useState(false);
   const [clientDateFilter, setClientDateFilter] = useState('');
   const [viewRun, setViewRun] = useState(null);
@@ -66,8 +70,18 @@ const ProductionPage = () => {
 
   useOperationalRefetch(WS_PRODUCTION, refetchBlankRuns, true);
 
+  if (line === PRODUCT_LINE.FOAM) {
+    return (
+      <div className="page page--production">
+        <ProductLineTabs value={line} onChange={setLine} />
+        <ProductionFoamTab />
+      </div>
+    );
+  }
+
   return (
     <div className="page page--production">
+      <ProductLineTabs value={line} onChange={setLine} />
       <div className="production-page__date-row">
         <ClientDateFilter
           value={clientDateFilter}

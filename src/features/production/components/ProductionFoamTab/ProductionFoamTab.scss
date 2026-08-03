@@ -1,0 +1,97 @@
+@use '../../../../shared/styles/variables' as *;
+@use '../../../../shared/styles/mixins' as *;
+
+.production-foam-tab__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.production-foam-tab__stat {
+  @include card-soft;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4);
+}
+
+.production-foam-tab__stat-value {
+  font-size: var(--font-h1);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.production-foam-tab__stat-label {
+  font-size: var(--font-label);
+  color: var(--text-secondary);
+}
+
+.production-foam-tab__hint {
+  margin: -0.35rem 0 var(--space-3);
+  font-size: var(--font-caption);
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.production-foam-tab__calc-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--accent-muted);
+  border: 1px solid var(--border-subtle);
+}
+
+.production-foam-tab__calc-label {
+  font-size: var(--font-label);
+  color: var(--text-secondary);
+}
+
+.production-foam-tab__calc-value {
+  font-size: var(--font-h3);
+  font-weight: var(--weight-semibold);
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.production-foam-tab__loss-note {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-caption);
+  color: var(--text-muted);
+}
+
+.production-foam-tab__params {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--font-caption);
+  color: var(--text-muted);
+}
+
+.production-foam-tab__runs-table .chemistry-table__header,
+.production-foam-tab__runs-table .chemistry-table__row {
+  grid-template-columns:
+    minmax(100px, 1fr)
+    minmax(60px, auto)
+    minmax(70px, auto)
+    minmax(60px, auto)
+    minmax(70px, auto)
+    minmax(90px, auto)
+    minmax(90px, auto)
+    minmax(80px, auto)
+    minmax(80px, auto);
+  align-items: center;
+}
+
+@include responsive-tables {
+  .production-foam-tab__runs-table {
+    min-width: 0 !important;
+  }
+}

@@ -1,14 +1,14 @@
 import React, {
   useMemo, useState, useEffect, useCallback, Fragment,
 } from 'react';
-import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
+import { useDiscardOnClose, useDirtyFromBaseline, useProductLine, PRODUCT_LINE } from '../../../../shared/hooks';
 import {
   useServerQuery,
   formatNumberForInput,
   formatQuantityDisplay,
   parseLocaleNumber,
 } from '../../../../shared/lib';
-import { Loading, EmptyState, ErrorState, ConfirmModal, useToast, DecimalInput, Select } from '../../../../shared/ui';
+import { Loading, EmptyState, ErrorState, ConfirmModal, useToast, DecimalInput, Select, ProductLineTabs } from '../../../../shared/ui';
 import {
   createIncoming,
   createRawMaterial,
@@ -17,6 +17,7 @@ import {
 } from '../../api/materialsApi';
 import { apiClient } from '../../../../shared/api';
 import { useOperationalRefetch, WS_MATERIALS } from '../../../../shared/realtime';
+import MaterialsFoamTab from '../MaterialsFoamTab/MaterialsFoamTab';
 import './MaterialsPage.scss';
 
 /** Значения для API: kg / g (канон бэкенда). */
@@ -154,6 +155,7 @@ const getStockLevelKey = (b) => {
 
 const MaterialsPage = () => {
   const toast = useToast();
+  const [line, setLine] = useProductLine();
   const [mainTab, setMainTab] = useState(MAIN_TAB.CATALOG);
   const [catalogModal, setCatalogModal] = useState(null);
   const [editModal, setEditModal] = useState(null);
@@ -330,8 +332,18 @@ const MaterialsPage = () => {
     });
   };
 
+  if (line === PRODUCT_LINE.FOAM) {
+    return (
+      <div className="page page--materials">
+        <ProductLineTabs value={line} onChange={setLine} />
+        <MaterialsFoamTab />
+      </div>
+    );
+  }
+
   return (
     <div className="page page--materials">
+      <ProductLineTabs value={line} onChange={setLine} />
       <div className="materials-tabs" role="tablist" aria-label="Разделы склада сырья">
         <button
           type="button"

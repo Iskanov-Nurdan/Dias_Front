@@ -24,3 +24,4 @@ export { default as DiasLogo } from './DiasLogo';
 export { default as CompactList } from './CompactList/CompactList';
 export { default as RecordDetailsModal } from './RecordDetailsModal/RecordDetailsModal';
 export { default as DetailFields } from './DetailFields/DetailFields';
+export { default as ProductLineTabs } from './ProductLineTabs/ProductLineTabs';

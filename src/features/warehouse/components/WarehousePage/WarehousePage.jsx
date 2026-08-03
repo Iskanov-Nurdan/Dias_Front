@@ -13,9 +13,12 @@ import {
   RecordDetailsModal,
   DetailFields,
   CompactList,
+  ProductLineTabs,
 } from '../../../../shared/ui';
+import { useProductLine, PRODUCT_LINE } from '../../../../shared/hooks';
 import { useOperationalRefetch, WS_WAREHOUSE } from '../../../../shared/realtime';
 import { getGpStock, getWarehouseOperations } from '../../api/warehouseApi';
+import WarehouseFoamTab from '../WarehouseFoamTab/WarehouseFoamTab';
 import './WarehousePage.scss';
 
 const gpFmtIso = (iso) => {
@@ -235,10 +238,14 @@ const WarehouseStockPanel = () => {
   );
 };
 
-const WarehousePage = () => (
-  <div className="page page--warehouse commercial-page">
-    <WarehouseStockPanel />
-  </div>
-);
+const WarehousePage = () => {
+  const [line, setLine] = useProductLine();
+  return (
+    <div className="page page--warehouse commercial-page">
+      <ProductLineTabs value={line} onChange={setLine} />
+      {line === PRODUCT_LINE.FOAM ? <WarehouseFoamTab /> : <WarehouseStockPanel />}
+    </div>
+  );
+};
 
 export default WarehousePage;

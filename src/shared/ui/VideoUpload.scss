@@ -1,0 +1,75 @@
+.ui-vid {
+  &__has {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+
+  &__player {
+    width: 100%;
+    display: block;
+    max-height: 200px;
+    background: #000;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--color-surface-secondary);
+    border-top: 1px solid var(--color-border);
+
+    button {
+      padding: 5px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--color-border);
+      background: none;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      transition: background 0.15s;
+
+      &:hover { background: var(--color-surface); color: var(--color-text); }
+    }
+  }
+
+  &__del {
+    color: var(--color-danger) !important;
+    border-color: var(--color-danger-soft) !important;
+
+    &:hover { background: var(--color-danger-soft) !important; }
+  }
+
+  &__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 20px 16px;
+    border: 2px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    min-height: 100px;
+    transition: border-color 0.15s, background 0.15s;
+
+    &:hover {
+      border-color: var(--color-primary);
+      background: var(--color-primary-soft);
+    }
+  }
+
+  &__ic { font-size: 22px; line-height: 1; }
+
+  &__txt {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+
+  &__hint {
+    font-size: 11px;
+    color: var(--color-text-muted);
+  }
+}

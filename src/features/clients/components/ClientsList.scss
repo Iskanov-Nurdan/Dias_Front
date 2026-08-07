@@ -28,6 +28,10 @@
       color: var(--color-text);
       opacity: 0.5;
       white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--color-bg);
     }
 
     // ── Card rows ───────────────────────────────────────────

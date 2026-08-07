@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { EmptyState } from '../../../shared/ui';
+import { EmptyState, Spinner } from '../../../shared/ui';
 import './FunnelBoard.scss';
 
 const CHANNEL_LABELS = { instagram: 'Instagram', whatsapp: 'WhatsApp', tiktok: 'TikTok', other: 'Другое' };
@@ -111,7 +111,7 @@ const FunnelBoard = ({ stages, leadsByStage, onCardClick, onMoveLead, loading })
                 onDrop={(e) => handleDrop(e, stage.id)}
               >
                 {loading ? (
-                  <div className="funnel-board__loading">Загрузка…</div>
+                  <div className="funnel-board__loading"><Spinner /></div>
                 ) : leads.length === 0 ? (
                   <div className="funnel-board__no-leads">{isDropTarget ? 'Отпустите здесь' : 'Нет лидов'}</div>
                 ) : (

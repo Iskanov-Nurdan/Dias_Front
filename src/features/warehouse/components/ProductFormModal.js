@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { Select, SubmitButton } from '../../../shared/ui';
+import { Select, SubmitButton, MoneyInput } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './ProductFormModal.scss';
 
@@ -79,11 +79,11 @@ const ProductFormModal = ({ product, categories = [], onSave, onClose, error, sa
             <div className="warehouse-form-modal__grid">
               <label className="warehouse-form-modal__label">
                 <span className="warehouse-form-modal__label-caption">Закупка</span>
-                <input type="number" step="any" min="0" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} className="warehouse-form-modal__input" placeholder="0" />
+                <MoneyInput allowDecimals value={purchasePrice} onChange={setPurchasePrice} className="warehouse-form-modal__input" placeholder="0" />
               </label>
               <label className="warehouse-form-modal__label">
                 <span className="warehouse-form-modal__label-caption">Продажа</span>
-                <input type="number" step="any" min="0" value={sellingPrice} onChange={(e) => setSellingPrice(e.target.value)} className="warehouse-form-modal__input" placeholder="0" />
+                <MoneyInput allowDecimals value={sellingPrice} onChange={setSellingPrice} className="warehouse-form-modal__input" placeholder="0" />
               </label>
             </div>
           </section>

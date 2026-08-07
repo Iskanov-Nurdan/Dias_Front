@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useToast } from '../../../app/providers/ToastProvider';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
-import { Select, SubmitButton } from '../../../shared/ui';
+import { Select, SubmitButton, PhoneInput } from '../../../shared/ui';
 import './LeadCardModal.scss';
 
 const CHANNEL_OPTIONS = [
@@ -81,17 +81,26 @@ const LeadCardModal = ({ lead, stages = [], sports = [], trainers = [], onSave, 
   }, [lead]);
 
   const prevSportIdRef = React.useRef('');
+  const trainersRequestSeq = React.useRef(0);
   useEffect(() => {
     if (!onLoadTrainers) return;
     if (sportId) {
+      // Игнорируем устаревший ответ, если пользователь успел переключить вид спорта —
+      // иначе более медленный старый запрос может перезаписать список тренеров текущего вида спорта.
+      const seq = ++trainersRequestSeq.current;
       onLoadTrainers(sportId)
-        .then(setTrainersList)
+        .then((list) => {
+          if (trainersRequestSeq.current !== seq) return;
+          setTrainersList(list);
+        })
         .catch((e) => {
+          if (trainersRequestSeq.current !== seq) return;
           setTrainersList([]);
           toast.error(e?.userMessage ?? e?.response?.data?.message ?? 'Ошибка загрузки тренеров');
         });
       prevSportIdRef.current = sportId;
     } else {
+      trainersRequestSeq.current += 1;
       setTrainersList([]);
       if (prevSportIdRef.current) {
         setTrainerId('');
@@ -184,10 +193,9 @@ const LeadCardModal = ({ lead, stages = [], sports = [], trainers = [], onSave, 
               </label>
               <label className="lead-card-modal__label">
                 <span className="lead-card-modal__label-text">Телефон</span>
-                <input
-                  type="text"
+                <PhoneInput
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={setPhone}
                   className="lead-card-modal__input"
                   placeholder="+996 ..."
                 />

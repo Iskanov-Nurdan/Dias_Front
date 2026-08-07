@@ -13,7 +13,8 @@ const MONTHS_RU = [
 const now       = new Date();
 const CY        = now.getFullYear();
 const CM        = now.getMonth() + 1;
-const YEAR_OPTS = [2024, 2025, 2026, 2027, 2028];
+// Окно из 5 лет вокруг текущего года — не нужно вручную обновлять на будущее
+const YEAR_OPTS = Array.from({ length: 5 }, (_, i) => CY - 2 + i);
 const DEFAULT_W = 160;
 const DATE_W    = 110;
 const MIN_W     = 50;
@@ -142,6 +143,7 @@ function Gallery({ blocks, loading, opening, error, onOpen, onDelete, onCreateCl
               <button
                 className="sp-card__delete"
                 title="Удалить"
+                aria-label="Удалить"
                 onClick={(e) => { e.stopPropagation(); onDelete(b); }}
               >
                 <Trash2 size={14} />

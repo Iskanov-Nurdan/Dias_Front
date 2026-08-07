@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { EmptyState } from '../../../shared/ui';
+import { EmptyState, Spinner } from '../../../shared/ui';
 import {
   normalizeClientsScheduleStatsResponse,
   sortScheduleSlots,
@@ -70,10 +70,7 @@ const ClientsScheduleStatsBlock = ({
       <div className="clients-schedule-stats">
         <h3 className="clients-schedule-stats__title">По графику тренеров</h3>
         <div className="clients-schedule-stats__loading">
-          <span className="loading-inline">
-            <span className="loading-inline__spinner" aria-hidden />
-            Загрузка статистики по графику…
-          </span>
+          <Spinner label="Загрузка статистики по графику…" />
         </div>
       </div>
     );

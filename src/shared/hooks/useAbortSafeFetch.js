@@ -35,5 +35,5 @@ export function useAbortSafeFetch() {
 
   useEffect(() => () => controllerRef.current?.abort(), []);
 
-  return { run, abort, getSignal: () => controllerRef.current?.signal };
+  return { run, abort };
 }

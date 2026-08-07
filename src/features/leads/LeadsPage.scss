@@ -201,6 +201,9 @@
       text-transform: uppercase;
       letter-spacing: 0.04em;
       color: var(--color-text-muted);
+      position: sticky;
+      top: 0;
+      z-index: 1;
     }
 
     tbody tr {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
-import { EmptyState } from '../../../shared/ui';
+import { EmptyState, Spinner } from '../../../shared/ui';
 import { fetchClientsPaymentDayClients } from '../api';
 import { formatPaymentsThatDayCell, normalizePaymentDayClientsResponse } from '../lib/paymentDayClientsNormalize';
 import './PaymentDayClientsModal.scss';
@@ -121,10 +121,7 @@ const PaymentDayClientsModal = ({
         <div className="payment-day-clients-modal__body">
           {loading && (
             <p className="payment-day-clients-modal__loading">
-              <span className="loading-inline">
-                <span className="loading-inline__spinner" aria-hidden />
-                Загрузка…
-              </span>
+              <Spinner />
             </p>
           )}
           {!loading && missing && (

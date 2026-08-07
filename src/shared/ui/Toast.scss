@@ -71,6 +71,10 @@
   color: var(--color-text);
 }
 
+.toast__icon {
+  flex-shrink: 0;
+}
+
 .toast__message {
   flex: 1;
   min-width: 0;

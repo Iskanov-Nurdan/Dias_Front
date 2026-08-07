@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, User, AtSign, Phone, Shield, Lock } from 'lucide-react';
-import { Select, SubmitButton } from '../../../shared/ui';
+import { Select, SubmitButton, PhoneInput } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './EmployeeFormModal.scss';
 
@@ -11,7 +11,13 @@ const EmployeeFormModal = ({ employee, roles, onSave, onClose, error, saving }) 
   const [phone, setPhone] = useState('');
   const [roleId, setRoleId] = useState('');
   const [password, setPassword] = useState('');
+  const [touched, setTouched] = useState({});
+  const markTouched = (field) => setTouched((t) => (t[field] ? t : { ...t, [field]: true }));
   const isEdit = !!employee?.id;
+
+  const fioError = touched.fio && !fio.trim() ? 'Укажите ФИО' : null;
+  const loginError = touched.login && !login.trim() ? 'Укажите логин' : null;
+  const passwordError = touched.password && !isEdit && !password ? 'Укажите пароль' : null;
 
   useModalEffect(true, onClose);
 
@@ -63,11 +69,13 @@ const EmployeeFormModal = ({ employee, roles, onSave, onClose, error, saving }) 
                 type="text"
                 value={fio}
                 onChange={(e) => setFio(e.target.value)}
+                onBlur={() => markTouched('fio')}
                 required
-                className="efm__input"
+                className={`efm__input${fioError ? ' efm__input--invalid' : ''}`}
                 autoFocus
                 placeholder="Иванов Иван Иванович"
               />
+              {fioError && <span className="efm__field-error">{fioError}</span>}
             </div>
 
             <div className="efm__field">
@@ -81,11 +89,13 @@ const EmployeeFormModal = ({ employee, roles, onSave, onClose, error, saving }) 
                 type="text"
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
+                onBlur={() => markTouched('login')}
                 required
-                className={`efm__input${isEdit ? ' efm__input--disabled' : ''}`}
+                className={`efm__input${isEdit ? ' efm__input--disabled' : ''}${loginError ? ' efm__input--invalid' : ''}`}
                 disabled={isEdit}
                 placeholder="login"
               />
+              {loginError && <span className="efm__field-error">{loginError}</span>}
             </div>
 
             <div className="efm__field">
@@ -93,11 +103,10 @@ const EmployeeFormModal = ({ employee, roles, onSave, onClose, error, saving }) 
                 <Phone size={14} className="efm__label-icon" />
                 Телефон
               </label>
-              <input
+              <PhoneInput
                 id="efm-phone"
-                type="text"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={setPhone}
                 className="efm__input"
                 placeholder="+996 700 000 000"
               />
@@ -128,10 +137,12 @@ const EmployeeFormModal = ({ employee, roles, onSave, onClose, error, saving }) 
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="efm__input"
+                onBlur={() => markTouched('password')}
+                className={`efm__input${passwordError ? ' efm__input--invalid' : ''}`}
                 required={!isEdit}
                 placeholder={isEdit ? 'Оставить без изменений' : 'Введите пароль'}
               />
+              {passwordError && <span className="efm__field-error">{passwordError}</span>}
             </div>
 
           </div>

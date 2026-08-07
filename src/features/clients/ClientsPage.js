@@ -12,7 +12,7 @@ import { filterClientsByPeriod, getExactDuplicates, getSimilarGroups } from '../
 import { prepareClientSavePayload } from './lib/prepareClientSavePayload';
 import { getClientCorrectionReasons, clientNeedsCorrection } from './lib/needsCorrection';
 import { UsersRound, Copy, Ticket, Wrench } from 'lucide-react';
-import { Select, ConfirmModal, Pagination, FiltersModal, FilterBar, EmptyState } from '../../shared/ui';
+import { Select, ConfirmModal, Pagination, FiltersModal, FilterBar, EmptyState, Spinner } from '../../shared/ui';
 import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal, DuplicateGroup } from './components';
 import './ClientsPage.scss';
 
@@ -40,10 +40,10 @@ const ClientsPage = () => {
   const [activeTab, setActiveTab] = useState(TAB_LIST);
   const [activeDupTab, setActiveDupTab] = useState(SUBTAB_EXACT);
 
-  // ── Дубликаты: фильтр по году/месяцу (2026/2027) ──
+  // ── Дубликаты: фильтр по году/месяцу (доступные года — STATS_YEARS) ──
   const [dupYear, setDupYear] = useState(() => {
-    const y = new Date().getFullYear();
-    return (y === 2026 || y === 2027) ? String(y) : '2026';
+    const y = String(new Date().getFullYear());
+    return STATS_YEARS.includes(y) ? y : STATS_YEARS[STATS_YEARS.length - 1];
   });
   const [dupMonth, setDupMonth] = useState(String(new Date().getMonth() + 1));
 
@@ -231,7 +231,7 @@ const ClientsPage = () => {
       }
       fetchOneTime();
       if (pricePatchOk) {
-        toast.success(`Добавлено ${amount.toLocaleString('ru-RU')} сом`);
+        toast.success(`Добавлено ${formatMoney(amount)}`);
       }
     } catch (e) {
       const msg = isPeriodClosedError(e)
@@ -514,7 +514,7 @@ const ClientsPage = () => {
           </div>
 
           {allLoading ? (
-            <div className="clients-page__dup-loading"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка клиентов…</span></div>
+            <div className="clients-page__dup-loading"><Spinner label="Загрузка клиентов…" /></div>
           ) : !dupYear ? (
             <div className="clients-page__dup-empty">Выберите год и месяц для просмотра дубликатов</div>
           ) : activeDupTab === SUBTAB_EXACT ? (
@@ -565,7 +565,7 @@ const ClientsPage = () => {
             <Select
               value={oneTimeYear}
               onChange={setOneTimeYear}
-              options={[{ value: '', label: 'Год — все' }, { value: '2025', label: '2025' }, ...STATS_YEARS.map((y) => ({ value: y, label: y }))]}
+              options={[{ value: '', label: 'Год — все' }, ...STATS_YEARS.map((y) => ({ value: y, label: y }))]}
               placeholder="Год"
               className="clients-page__onetime-select"
             />
@@ -585,7 +585,7 @@ const ClientsPage = () => {
           </FilterBar>
 
           {oneTimeLoading ? (
-            <div className="clients-page__dup-loading"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span></div>
+            <div className="clients-page__dup-loading"><Spinner /></div>
           ) : (
             <>
               <div className="clients-page__onetime-block">
@@ -715,7 +715,7 @@ const ClientsPage = () => {
           </FilterBar>
 
           {allLoading ? (
-            <div className="clients-page__dup-loading"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка клиентов…</span></div>
+            <div className="clients-page__dup-loading"><Spinner label="Загрузка клиентов…" /></div>
           ) : fixClients.length === 0 ? (
             <div className="clients-page__dup-empty">
               <EmptyState compact message="Клиентов с неполными данными за этот период не найдено" />
@@ -818,7 +818,7 @@ const ClientsPage = () => {
       {confirmAddOneTime && (
         <ConfirmModal
           title="Добавить доплату?"
-          message={`Добавить доплату ${confirmAddOneTime.amount.toLocaleString('ru-RU')} сом для ${confirmAddOneTime.client?.fio || '—'}?`}
+          message={`Добавить доплату ${formatMoney(confirmAddOneTime.amount)} для ${confirmAddOneTime.client?.fio || '—'}?`}
           confirmText="Добавить"
           onConfirm={() => handleAddOneTimeAmount(confirmAddOneTime.client, confirmAddOneTime.amount)}
           onCancel={() => setConfirmAddOneTime(null)}

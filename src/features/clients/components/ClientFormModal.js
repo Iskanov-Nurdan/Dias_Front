@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ImagePlus, Plus, Trash2, X } from 'lucide-react';
 import { useToast } from '../../../app/providers/ToastProvider';
-import { Select, SubmitButton, ConfirmModal } from '../../../shared/ui';
+import { Select, SubmitButton, ConfirmModal, PhoneInput, MoneyInput } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { formatMoney, isClientPaid } from '../../../shared/constants/common';
 import { isPeriodClosedError } from '../../../shared/lib/apiError';
@@ -117,7 +117,8 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   /** На странице клиентов: укороченные подсказки только на мобильной вёрстке */
   const compactHints = fullscreen && isMobileFormLayout;
 
-  useModalEffect(true, onClose);
+  const panelRef = useRef(null);
+  useModalEffect(true, onClose, panelRef);
 
   useEffect(() => {
     const mq = window.matchMedia(MOBILE_FORM_MQ);
@@ -132,6 +133,8 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
     return () => clearTimeout(t);
   }, []);
   const [fio, setFio] = useState('');
+  const [touched, setTouched] = useState({});
+  const markTouched = (field) => setTouched((t) => (t[field] ? t : { ...t, [field]: true }));
   const [phone, setPhone] = useState('');
   const [sportId, setSportId] = useState('');
   const [trainerId, setTrainerId] = useState('');
@@ -157,6 +160,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const [oneTimeAdding, setOneTimeAdding] = useState(false);
   const [confirmDeleteOneTime, setConfirmDeleteOneTime] = useState(null);
   const [deletingOneTimeId, setDeletingOneTimeId] = useState(null);
+  const [confirmDeletePhoto, setConfirmDeletePhoto] = useState(null);
 
   const photoInputRef = useRef(null);
   const [serverPhotos, setServerPhotos] = useState([]);
@@ -272,8 +276,10 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   useEffect(() => {
     if (!fetchTrainers) return;
     if (sportId) {
+      let cancelled = false;
       fetchTrainers({ sportId, includeSchedule: true, perPage: 500 }, null)
         .then((d) => {
+          if (cancelled) return;
           let list = d?.items ?? d?.results ?? (Array.isArray(d) ? d : []) ?? [];
           const tid = client?.trainerId ?? client?.trainer_id ?? client?.trainer?.id;
           if (tid != null && tid !== '' && !list.some((t) => String(t.id) === String(tid))) {
@@ -286,18 +292,22 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
           setTrainerId((prev) => {
             if (!prev) return prev;
             if (list.some((t) => String(t.id) === String(prev))) return prev;
-            return prev;
+            return '';
           });
         })
         .catch((e) => {
+          if (cancelled) return;
           setTrainersList([]);
           toast.error(e?.userMessage ?? e?.response?.data?.message ?? 'Ошибка загрузки тренеров');
         });
-    } else {
-      setTrainersList([]);
-      // Не вызывать setTrainerId('') здесь: на первом кадре sportId ещё пустой, а следующий эффект [client]
-      // уже выставил trainerId — иначе получаем гонку и сброс тренера/слота. Обнуление при смене вида спорта — в onChange у Select.
+      return () => {
+        cancelled = true;
+      };
     }
+    setTrainersList([]);
+    // Не вызывать setTrainerId('') здесь: на первом кадре sportId ещё пустой, а следующий эффект [client]
+    // уже выставил trainerId — иначе получаем гонку и сброс тренера/слота. Обнуление при смене вида спорта — в onChange у Select.
+    return undefined;
     // merge использует client.trainer из замыкания; id тренера в deps достаточно при смене карточки
     // eslint-disable-next-line react-hooks/exhaustive-deps -- см. выше
   }, [sportId, fetchTrainers, toast, client?.id, client?.trainerId, client?.trainer_id, client?.trainer?.id]);
@@ -383,6 +393,11 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const trainerPriceNum = Number(trainerPrice);
   const rawTrainerPriceInput = Number.isFinite(trainerPriceNum) ? trainerPriceNum : 0;
   const isIndividualClient = clientType === 'individual';
+  const fioError = touched.fio && !fio.trim() ? 'Укажите ФИО' : null;
+  const priceIsValid = Number.isFinite(Number(String(price).trim())) && Number(String(price).trim()) >= 0;
+  const trainerPriceIsValid = Number.isFinite(Number(String(trainerPrice).trim())) && Number(String(trainerPrice).trim()) >= 0;
+  const priceError = touched.price && isIndividualClient && !priceIsValid ? 'Введите корректную сумму' : null;
+  const trainerPriceError = touched.trainerPrice && isIndividualClient && !trainerPriceIsValid ? 'Введите корректную сумму' : null;
   const individualTotal = Math.max(0, Math.round(rawPriceInput + rawTrainerPriceInput));
   const discountFactor = discountPct >= 100 ? 0 : 1 - discountPct / 100;
 
@@ -667,7 +682,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       aria-modal="true"
       aria-labelledby="client-form-modal-title"
     >
-      <div className={`client-form-modal${fullscreen ? ' client-form-modal--fullscreen' : ''}`} onClick={(e) => e.stopPropagation()}>
+      <div ref={panelRef} className={`client-form-modal${fullscreen ? ' client-form-modal--fullscreen' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className="client-form-modal__header">
           <h2 id="client-form-modal-title" className="client-form-modal__title">{client?.id ? 'Редактировать клиента' : 'Добавить клиента'}</h2>
           <button type="button" className="client-form-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
@@ -698,11 +713,20 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
             <div className="client-form-modal__row">
               <label className="client-form-modal__label">
                 <span className="client-form-modal__label-text">ФИО <span className="form-label-required" aria-hidden="true">*</span></span>
-                <input ref={firstInputRef} type="text" value={fio} onChange={(e) => setFio(capitalizeWords(e.target.value))} required className="client-form-modal__input" />
+                <input
+                  ref={firstInputRef}
+                  type="text"
+                  value={fio}
+                  onChange={(e) => setFio(capitalizeWords(e.target.value))}
+                  onBlur={() => markTouched('fio')}
+                  required
+                  className={`client-form-modal__input${fioError ? ' client-form-modal__input--invalid' : ''}`}
+                />
+                {fioError && <span className="client-form-modal__field-error">{fioError}</span>}
               </label>
               <label className="client-form-modal__label">
                 <span className="client-form-modal__label-text">Телефон</span>
-                <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="client-form-modal__input" />
+                <PhoneInput value={phone} onChange={setPhone} className="client-form-modal__input" />
               </label>
             </div>
           </div>
@@ -775,17 +799,15 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                 <span className="client-form-modal__label-text">
                   {isIndividualClient ? 'Цена клубу, сом' : (discountPct > 0 ? 'К оплате (со скидкой), сом' : 'Цена абонемента, сом')}
                 </span>
-                <input
-                  type="number"
+                <MoneyInput
                   value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  className="client-form-modal__input"
+                  onChange={setPrice}
+                  onBlur={() => markTouched('price')}
+                  className={`client-form-modal__input${priceError ? ' client-form-modal__input--invalid' : ''}`}
                   placeholder="0"
-                  min="0"
-                  step="1"
                   autoComplete="off"
-                  inputMode="numeric"
                 />
+                {priceError && <span className="client-form-modal__field-error">{priceError}</span>}
                 {!compactHints && (
                   <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
                     {isIndividualClient
@@ -802,17 +824,15 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               <div className="client-form-modal__row">
                 <label className="client-form-modal__label client-form-modal__label--full">
                   <span className="client-form-modal__label-text">Цена тренеру, сом</span>
-                  <input
-                    type="number"
+                  <MoneyInput
                     value={trainerPrice}
-                    onChange={(e) => setTrainerPrice(e.target.value)}
-                    className="client-form-modal__input"
+                    onChange={setTrainerPrice}
+                    onBlur={() => markTouched('trainerPrice')}
+                    className={`client-form-modal__input${trainerPriceError ? ' client-form-modal__input--invalid' : ''}`}
                     placeholder="0"
-                    min="0"
-                    step="1"
                     autoComplete="off"
-                    inputMode="numeric"
                   />
+                  {trainerPriceError && <span className="client-form-modal__field-error">{trainerPriceError}</span>}
                   {!compactHints && (
                     <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
                       Итого: <strong>{individualTotal.toLocaleString('ru-RU')} сом</strong>
@@ -1009,7 +1029,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                       <button
                         type="button"
                         className="client-form-modal__photos-remove"
-                        onClick={() => handleDeleteServerPhoto(ph)}
+                        onClick={() => setConfirmDeletePhoto(ph)}
                         disabled={photoDeletingId === ph.id}
                         aria-label="Удалить фото"
                         title="Удалить"
@@ -1128,6 +1148,16 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
             confirmText="Удалить"
             onConfirm={() => handleDeleteOneTimePayment(confirmDeleteOneTime)}
             onCancel={() => setConfirmDeleteOneTime(null)}
+            danger
+          />
+        )}
+        {confirmDeletePhoto && (
+          <ConfirmModal
+            title="Удалить фото?"
+            message="Это действие нельзя отменить."
+            confirmText="Удалить"
+            onConfirm={() => handleDeleteServerPhoto(confirmDeletePhoto)}
+            onCancel={() => setConfirmDeletePhoto(null)}
             danger
           />
         )}

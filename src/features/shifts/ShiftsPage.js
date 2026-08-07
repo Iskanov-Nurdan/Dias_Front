@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Clock, Plus, Banknote, CreditCard, TrendingUp, TrendingDown, Coins, ImagePlus, X as XIcon, Camera, FileText, Filter, Pencil, History } from 'lucide-react';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { fetchShifts, closeShift, updateShift, fetchPhotoReports, addPhotoReport } from './api';
-import { Select } from '../../shared/ui';
+import { Select, Spinner } from '../../shared/ui';
+import { STATS_YEARS, formatMoney } from '../../shared/constants/common';
 import './ShiftsPage.scss';
 
-const FIXED_YEARS = [2026, 2027];
-const YEAR_OPTIONS = [{ value: '', label: 'Год' }, ...FIXED_YEARS.map((y) => ({ value: String(y), label: String(y) }))];
+const YEAR_OPTIONS = [{ value: '', label: 'Год' }, ...STATS_YEARS.map((y) => ({ value: y, label: y }))];
 const MONTH_OPTIONS = [
   { value: '', label: 'Месяц' },
   ...['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
@@ -17,11 +17,10 @@ const DAY_OPTIONS = [
   ...Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })),
 ];
 const NOW = new Date();
-const DEFAULT_YEAR = String(NOW.getFullYear());
+const CURRENT_YEAR_STR = String(NOW.getFullYear());
+const DEFAULT_YEAR = STATS_YEARS.includes(CURRENT_YEAR_STR) ? CURRENT_YEAR_STR : STATS_YEARS[STATS_YEARS.length - 1];
 const DEFAULT_MONTH = String(NOW.getMonth() + 1);
 const DEFAULT_DAY = String(NOW.getDate());
-
-const formatMoney = (v) => Number(v).toLocaleString('ru-RU') + ' сом';
 
 const formatDate = (iso) => {
   const d = new Date(iso);
@@ -421,23 +420,41 @@ const ShiftsPage = () => {
   const [sMonth, setSMonth] = useState(DEFAULT_MONTH);
   const [sDay, setSDay] = useState('');
 
+  const photosControllerRef = useRef(null);
+  const photosRequestSeq = useRef(0);
   const loadPhotos = useCallback(async () => {
+    photosControllerRef.current?.abort();
+    photosControllerRef.current = new AbortController();
+    const { signal } = photosControllerRef.current;
+    const seq = ++photosRequestSeq.current;
     setPhotosLoading(true);
     try {
-      const data = await fetchPhotoReports({ year: pYear, month: pMonth, day: pDay || undefined });
+      const data = await fetchPhotoReports({ year: pYear, month: pMonth, day: pDay || undefined }, signal);
+      if (photosRequestSeq.current !== seq) return;
       setPhotoReports(data);
+    } catch (err) {
+      if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
     } finally {
-      setPhotosLoading(false);
+      if (photosRequestSeq.current === seq) setPhotosLoading(false);
     }
   }, [pYear, pMonth, pDay]);
 
+  const shiftsControllerRef = useRef(null);
+  const shiftsRequestSeq = useRef(0);
   const loadShifts = useCallback(async () => {
+    shiftsControllerRef.current?.abort();
+    shiftsControllerRef.current = new AbortController();
+    const { signal } = shiftsControllerRef.current;
+    const seq = ++shiftsRequestSeq.current;
     setShiftsLoading(true);
     try {
-      const data = await fetchShifts({ year: sYear, month: sMonth, day: sDay || undefined });
+      const data = await fetchShifts({ year: sYear, month: sMonth, day: sDay || undefined }, signal);
+      if (shiftsRequestSeq.current !== seq) return;
       setShifts(data);
+    } catch (err) {
+      if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
     } finally {
-      setShiftsLoading(false);
+      if (shiftsRequestSeq.current === seq) setShiftsLoading(false);
     }
   }, [sYear, sMonth, sDay]);
 
@@ -509,7 +526,7 @@ const ShiftsPage = () => {
           />
 
           {photosLoading ? (
-            <div className="shifts-page__loading"><span>Загрузка…</span></div>
+            <div className="shifts-page__loading"><Spinner /></div>
           ) : photoReports.length === 0 ? (
             <div className="shifts-section__empty">
               <Camera size={40} strokeWidth={1} className="shifts-page__empty-icon" />
@@ -572,7 +589,7 @@ const ShiftsPage = () => {
           />
 
           {shiftsLoading ? (
-            <div className="shifts-page__loading"><span>Загрузка…</span></div>
+            <div className="shifts-page__loading"><Spinner /></div>
           ) : shifts.length === 0 ? (
             <div className="shifts-section__empty">
               <Clock size={40} strokeWidth={1} className="shifts-page__empty-icon" />

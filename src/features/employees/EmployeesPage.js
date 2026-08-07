@@ -42,6 +42,7 @@ const EmployeesPage = () => {
   const [rolesFormSaving, setRolesFormSaving] = useState(false);
   const [accessEmployee, setAccessEmployee] = useState(null);
   const [accessData, setAccessData] = useState(null);
+  const accessRequestSeq = useRef(0);
   const [accessFormError, setAccessFormError] = useState(null);
   const [accessFormSaving, setAccessFormSaving] = useState(false);
   const [employeeFiltersOpen, setEmployeeFiltersOpen] = useState(false);
@@ -198,9 +199,17 @@ const EmployeesPage = () => {
 
   const handleOpenAccess = (emp) => {
     setAccessEmployee(emp);
+    setAccessData(null);
+    const seq = ++accessRequestSeq.current;
     fetchEmployeeAccess(emp.id, null)
-      .then((data) => setAccessData(data?.access ?? data ?? {}))
-      .catch((e) => console.error(e));
+      .then((data) => {
+        if (accessRequestSeq.current !== seq) return;
+        setAccessData(data?.access ?? data ?? {});
+      })
+      .catch((e) => {
+        if (accessRequestSeq.current !== seq) return;
+        console.error(e);
+      });
   };
 
   const handleSaveAccess = async (access) => {

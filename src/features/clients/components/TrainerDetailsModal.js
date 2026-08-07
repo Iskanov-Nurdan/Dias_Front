@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 import { isClientPaid } from '../../../shared/constants/common';
 import { composeClientDataRowClass } from '../lib/clientRowHighlight';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
-import { EmptyState } from '../../../shared/ui';
+import { EmptyState, Spinner } from '../../../shared/ui';
 import { fetchClients } from '../api';
 import { formatScheduleSlotLabel } from '../lib/scheduleStatsNormalize';
 import { filterClientsByTrainingSlot, hasTrainingSlotFilter } from '../lib/filterClientsByTrainingSlot';
@@ -89,7 +89,7 @@ const TrainerDetailsModal = ({
 
         {loading ? (
           <div className="tdm__loading">
-            <span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка учеников…</span>
+            <Spinner label="Загрузка учеников…" />
           </div>
         ) : (
           <div className="tdm__table-wrap">

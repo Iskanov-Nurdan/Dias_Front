@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Trash2 } from 'lucide-react';
 import { loadTaplinkData, saveTaplinkDataAsync, loadTaplinkDataAsync, setSessionData } from './taplinkStore';
 import { BACKEND_ENABLED, uploadFile } from './api';
 import Select from '../../shared/ui/Select';
+import { ConfirmModal, Field, PhotoUpload, VideoUpload } from '../../shared/ui';
 import './TaplinkEditor.scss';
 
 const TABS = [
@@ -24,131 +26,34 @@ const SCHED_DAYS_OPTIONS = [
   { value: 'Вт, Чт, Сб', label: 'Вт, Чт, Сб' },
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// Держим карточку смонтированной ещё ACCORDION_CLOSE_MS после закрытия,
+// чтобы max-height/opacity успели доиграть анимацию, а не пропадали рывком.
+const ACCORDION_CLOSE_MS = 300;
 
-const Field = ({ label, children }) => (
-  <div className="tpe-field">
-    <label className="tpe-field__label">{label}</label>
-    {children}
-  </div>
-);
+const useAccordion = () => {
+  const [open, setOpen] = useState(null);
+  const [closingIdx, setClosingIdx] = useState(null);
+  const timerRef = useRef(null);
 
-// ─── Photo upload ─────────────────────────────────────────────────────────────
-
-const PhotoUpload = ({ value, onChange, shape = 'rect', placeholder = 'Загрузить фото', context = '' }) => {
-  const ref = useRef();
-  const [uploading, setUploading] = useState(false);
-
-  const handleFile = async e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Файл слишком большой. Максимум 5 МБ.');
-      return;
+  const toggle = (i) => {
+    clearTimeout(timerRef.current);
+    const prevOpen = open;
+    if (prevOpen !== null && prevOpen !== i) {
+      setClosingIdx(prevOpen);
+      timerRef.current = setTimeout(() => setClosingIdx(c => (c === prevOpen ? null : c)), ACCORDION_CLOSE_MS);
     }
-    e.target.value = '';
-
-    if (BACKEND_ENABLED) {
-      setUploading(true);
-      try {
-        const url = await uploadFile(file, context);
-        onChange(url);
-      } catch {
-        alert('Ошибка загрузки файла. Попробуйте ещё раз.');
-      } finally {
-        setUploading(false);
-      }
+    if (open === i) {
+      setClosingIdx(i);
+      setOpen(null);
+      timerRef.current = setTimeout(() => setClosingIdx(c => (c === i ? null : c)), ACCORDION_CLOSE_MS);
     } else {
-      const reader = new FileReader();
-      reader.onload = ev => onChange(ev.target.result);
-      reader.readAsDataURL(file);
+      setOpen(i);
     }
   };
 
-  return (
-    <div className={`tpe-photo tpe-photo--${shape}`}>
-      <input ref={ref} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={handleFile} />
-      {value ? (
-        <div className="tpe-photo__has">
-          <img src={value} alt="" className="tpe-photo__img" />
-          {!uploading && (
-            <div className="tpe-photo__overlay">
-              <button type="button" className="tpe-photo__change" onClick={() => ref.current.click()}>
-                Заменить
-              </button>
-              <button type="button" className="tpe-photo__del" onClick={() => onChange(null)}>
-                Удалить
-              </button>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="tpe-photo__empty" onClick={() => !uploading && ref.current.click()}>
-          <span className="tpe-photo__ic">{uploading ? '⏳' : '📷'}</span>
-          <span className="tpe-photo__txt">{uploading ? 'Загружается...' : placeholder}</span>
-          {!uploading && <span className="tpe-photo__hint">JPG, PNG, WEBP · до 5 МБ</span>}
-        </div>
-      )}
-    </div>
-  );
-};
+  const isRendered = (i) => open === i || closingIdx === i;
 
-// ─── Video upload ─────────────────────────────────────────────────────────────
-
-const VideoUpload = ({ value, onChange, num, context = '' }) => {
-  const ref = useRef();
-  const [uploading, setUploading] = useState(false);
-
-  const handleFile = async e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    e.target.value = '';
-
-    if (BACKEND_ENABLED) {
-      if (value && value.startsWith('blob:')) URL.revokeObjectURL(value);
-      setUploading(true);
-      try {
-        const url = await uploadFile(file, context);
-        onChange(url);
-      } catch {
-        alert('Ошибка загрузки видео. Попробуйте ещё раз.');
-      } finally {
-        setUploading(false);
-      }
-    } else {
-      if (value && value.startsWith('blob:')) URL.revokeObjectURL(value);
-      const url = URL.createObjectURL(file);
-      onChange(url);
-    }
-  };
-
-  const remove = () => {
-    if (value && value.startsWith('blob:')) URL.revokeObjectURL(value);
-    onChange('');
-  };
-
-  return (
-    <div className="tpe-vid">
-      <input ref={ref} type="file" accept="video/mp4,video/webm,video/*" hidden onChange={handleFile} />
-      {value ? (
-        <div className="tpe-vid__has">
-          <video src={value} controls className="tpe-vid__player" />
-          {!uploading && (
-            <div className="tpe-vid__actions">
-              <button type="button" onClick={() => ref.current.click()}>Заменить</button>
-              <button type="button" className="tpe-vid__del" onClick={remove}>Удалить</button>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="tpe-vid__empty" onClick={() => !uploading && ref.current.click()}>
-          <span className="tpe-vid__ic">{uploading ? '⏳' : '🎬'}</span>
-          <span className="tpe-vid__txt">{uploading ? 'Загружается...' : `Видео ${num}`}</span>
-          {!uploading && <span className="tpe-vid__hint">MP4, WEBM</span>}
-        </div>
-      )}
-    </div>
-  );
+  return { open, setOpen, toggle, isRendered };
 };
 
 // ─── Hero tab ─────────────────────────────────────────────────────────────────
@@ -166,6 +71,8 @@ const HeroTab = ({ data, setData }) => {
           shape="hero"
           placeholder="Загрузить фон главного экрана"
           context="hero-bg"
+          backendEnabled={BACKEND_ENABLED}
+          uploadFile={uploadFile}
         />
       </Field>
 
@@ -327,7 +234,8 @@ const TrainerMultiSelect = ({ value = [], onChange, trainers }) => {
 // ─── Sports tab ───────────────────────────────────────────────────────────────
 
 const SportsTab = ({ data, setData }) => {
-  const [open, setOpen] = useState(null);
+  const { open, setOpen, toggle, isRendered } = useAccordion();
+  const [confirmIdx, setConfirmIdx] = useState(null);
 
   const set = (i, field, val) =>
     setData(d => {
@@ -379,6 +287,7 @@ const SportsTab = ({ data, setData }) => {
   const remove = i => {
     setData(d => ({ ...d, sports: d.sports.filter((_, idx) => idx !== i) }));
     setOpen(null);
+    setConfirmIdx(null);
   };
 
   return (
@@ -390,7 +299,7 @@ const SportsTab = ({ data, setData }) => {
       <div className="tpe-list">
         {data.sports.map((sport, i) => (
           <div key={sport.id || i} className={`tpe-item${open === i ? ' tpe-item--open' : ''}`}>
-            <button type="button" className="tpe-item__head" onClick={() => setOpen(open === i ? null : i)}>
+            <button type="button" className="tpe-item__head" onClick={() => toggle(i)}>
               <span className="tpe-item__thumb-wrap">
                 {sport.photo
                   ? <img src={sport.photo} alt="" className="tpe-item__thumb-img" />
@@ -401,7 +310,7 @@ const SportsTab = ({ data, setData }) => {
               <span className="tpe-item__arrow">{open === i ? '▲' : '▼'}</span>
             </button>
 
-            {open === i && (
+            {isRendered(i) && (
               <div className="tpe-item__body">
                 <Field label="Название секции">
                   <input className="tpe-input" value={sport.name} onChange={e => set(i, 'name', e.target.value)} />
@@ -414,6 +323,8 @@ const SportsTab = ({ data, setData }) => {
                     shape="rect"
                     placeholder="Загрузить фото секции"
                     context="sport-photo"
+                    backendEnabled={BACKEND_ENABLED}
+                    uploadFile={uploadFile}
                   />
                 </Field>
 
@@ -484,6 +395,8 @@ const SportsTab = ({ data, setData }) => {
                         value={(sport.videos || [])[vi] || ''}
                         onChange={v => setVideo(i, vi, v)}
                         context="sport-video"
+                        backendEnabled={BACKEND_ENABLED}
+                        uploadFile={uploadFile}
                       />
                     ))}
                   </div>
@@ -494,14 +407,24 @@ const SportsTab = ({ data, setData }) => {
                   )}
                 </div>
 
-                <button className="tpe-delete-btn" type="button" onClick={() => remove(i)}>
-                  🗑 Удалить секцию
+                <button className="tpe-delete-btn" type="button" onClick={() => setConfirmIdx(i)}>
+                  <Trash2 size={14} strokeWidth={1.75} /> Удалить секцию
                 </button>
               </div>
             )}
           </div>
         ))}
       </div>
+      {confirmIdx !== null && (
+        <ConfirmModal
+          title={`Удалить секцию «${data.sports[confirmIdx]?.name}»?`}
+          message="Это действие нельзя отменить."
+          confirmText="Удалить"
+          onConfirm={() => remove(confirmIdx)}
+          onCancel={() => setConfirmIdx(null)}
+          danger
+        />
+      )}
     </div>
   );
 };
@@ -509,7 +432,8 @@ const SportsTab = ({ data, setData }) => {
 // ─── Trainers tab ─────────────────────────────────────────────────────────────
 
 const TrainersTab = ({ data, setData }) => {
-  const [open, setOpen] = useState(null);
+  const { open, setOpen, toggle, isRendered } = useAccordion();
+  const [confirmIdx, setConfirmIdx] = useState(null);
 
   const set = (i, field, val) =>
     setData(d => {
@@ -568,6 +492,7 @@ const TrainersTab = ({ data, setData }) => {
   const remove = i => {
     setData(d => ({ ...d, trainers: d.trainers.filter((_, idx) => idx !== i) }));
     setOpen(null);
+    setConfirmIdx(null);
   };
 
   return (
@@ -579,7 +504,7 @@ const TrainersTab = ({ data, setData }) => {
       <div className="tpe-list">
         {data.trainers.map((t, i) => (
           <div key={t.id || i} className={`tpe-item${open === i ? ' tpe-item--open' : ''}`}>
-            <button type="button" className="tpe-item__head" onClick={() => setOpen(open === i ? null : i)}>
+            <button type="button" className="tpe-item__head" onClick={() => toggle(i)}>
               <span className="tpe-item__ava-wrap">
                 {t.photo
                   ? <img src={t.photo} alt="" className="tpe-item__ava-img" />
@@ -593,7 +518,7 @@ const TrainersTab = ({ data, setData }) => {
               <span className="tpe-item__arrow">{open === i ? '▲' : '▼'}</span>
             </button>
 
-            {open === i && (
+            {isRendered(i) && (
               <div className="tpe-item__body">
                 <div className="tpe-two-col">
                   <Field label="Фото тренера">
@@ -603,6 +528,8 @@ const TrainersTab = ({ data, setData }) => {
                       shape="round"
                       placeholder="Фото тренера"
                       context="trainer-photo"
+                      backendEnabled={BACKEND_ENABLED}
+                      uploadFile={uploadFile}
                     />
                   </Field>
                   <div className="tpe-trainer-fields">
@@ -668,6 +595,8 @@ const TrainersTab = ({ data, setData }) => {
                         value={(t.videos || [])[vi] || ''}
                         onChange={v => setVideo(i, vi, v)}
                         context="trainer-video"
+                        backendEnabled={BACKEND_ENABLED}
+                        uploadFile={uploadFile}
                       />
                     ))}
                   </div>
@@ -678,14 +607,24 @@ const TrainersTab = ({ data, setData }) => {
                   )}
                 </div>
 
-                <button className="tpe-delete-btn" type="button" onClick={() => remove(i)}>
-                  🗑 Удалить тренера
+                <button className="tpe-delete-btn" type="button" onClick={() => setConfirmIdx(i)}>
+                  <Trash2 size={14} strokeWidth={1.75} /> Удалить тренера
                 </button>
               </div>
             )}
           </div>
         ))}
       </div>
+      {confirmIdx !== null && (
+        <ConfirmModal
+          title={`Удалить тренера «${data.trainers[confirmIdx]?.name}»?`}
+          message="Это действие нельзя отменить."
+          confirmText="Удалить"
+          onConfirm={() => remove(confirmIdx)}
+          onCancel={() => setConfirmIdx(null)}
+          danger
+        />
+      )}
     </div>
   );
 };
@@ -814,20 +753,35 @@ const TaplinkEditor = () => {
   const [saving,  setSaving]  = useState(false);
   const [saveErr, setSaveErr] = useState(null);
   const [loading, setLoading] = useState(BACKEND_ENABLED);
+  const [dirty,   setDirty]   = useState(false);
+  const skipDirtyRef = useRef(true);
   const navigate = useNavigate();
 
   // Load from API on mount (if backend is enabled and no fresh session data)
   useEffect(() => {
     if (!BACKEND_ENABLED) return;
     loadTaplinkDataAsync()
-      .then(d => { setData(d); setLoading(false); })
+      .then(d => { skipDirtyRef.current = true; setData(d); setLoading(false); })
       .catch(() => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep session store in sync so TaplinkPage can access blob: video URLs
   useEffect(() => {
     setSessionData(data);
+    if (skipDirtyRef.current) {
+      skipDirtyRef.current = false;
+      return;
+    }
+    setDirty(true);
   }, [data]);
+
+  // Warn before leaving the tab/closing it while there are unsaved changes
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = e => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [dirty]);
 
   const save = async () => {
     if (saving) return;
@@ -836,6 +790,7 @@ const TaplinkEditor = () => {
     try {
       await saveTaplinkDataAsync(data);
       setSaved(true);
+      setDirty(false);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
       setSaveErr(e?.response?.data?.error?.message || e?.message || 'Ошибка сохранения');
@@ -866,7 +821,7 @@ const TaplinkEditor = () => {
     <div className="tpe">
       <div className="tpe__top">
         <div className="tpe__top-left">
-          <img src="/rahman.png" alt="" className="tpe__logo" />
+          <img src="/rahman.png" alt="Рахман Ата" className="tpe__logo" />
           <div>
             <p className="tpe__title">Редактор Taplink</p>
             <p className="tpe__subtitle">Редактируйте все элементы публичной страницы</p>

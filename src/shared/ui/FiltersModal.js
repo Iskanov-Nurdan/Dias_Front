@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useModalEffect } from '../hooks/useModalEffect';
 import './FiltersModal.scss';
@@ -12,12 +12,13 @@ import './FiltersModal.scss';
  * @param {React.ReactNode} [footer] — нижняя панель (Сброс / Применить), липкая на мобиле
  */
 const FiltersModal = ({ open, onClose, title = 'Фильтры', children, footer }) => {
-  useModalEffect(open, onClose);
+  const panelRef = useRef(null);
+  useModalEffect(open, onClose, panelRef);
 
   if (!open) return null;
   const content = (
     <div className="filters-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="filters-modal-title">
-      <div className="filters-modal" onClick={(e) => e.stopPropagation()}>
+      <div ref={panelRef} className="filters-modal" onClick={(e) => e.stopPropagation()}>
         <div className="filters-modal__header">
           <h2 id="filters-modal-title" className="filters-modal__title">{title}</h2>
           <button type="button" className="filters-modal__close" onClick={onClose} aria-label="Закрыть">✕</button>

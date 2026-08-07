@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { login } from './api';
-import { getApiErrorMessage } from '../../shared/lib/apiError';
+import { getApiErrorMessage, isTooManyRequestsError } from '../../shared/lib/apiError';
 import './LoginPage.scss';
 
 const LoginPage = () => {
@@ -38,8 +38,7 @@ const LoginPage = () => {
         navigate(getFirstAvailableRoute(), { replace: true });
       }, 1800);
     } catch (err) {
-      const code = err?.response?.data?.error?.code;
-      if (code === 'too_many_requests') {
+      if (isTooManyRequestsError(err)) {
         const msg = err?.response?.data?.error?.message ?? '';
         const match = msg.match(/(\d+)\s*seconds?/i) || msg.match(/(\d+)/);
         const sec = Math.min(parseInt(match?.[1] || '60', 10) || 60, 120);

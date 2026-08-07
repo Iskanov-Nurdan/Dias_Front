@@ -5,7 +5,8 @@ import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
 import { ExpenseCategoryFormModal, ExpenseFormModal } from './components';
 import { ErrorState, EmptyState, ConfirmModal, Pagination, Badge, SkeletonTable, FilterBar } from '../../shared/ui';
-import { formatMoney } from '../../shared/constants/common';
+import { formatMoney, SEARCH_DEBOUNCE_MS } from '../../shared/constants/common';
+import { useDebounce } from '../../shared/hooks/useDebounce';
 import './ExpensesPage.scss';
 
 const ExpensesPage = () => {
@@ -13,7 +14,9 @@ const ExpensesPage = () => {
   const toast = useToast();
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [categorySearch, setCategorySearch] = useState('');
+  const debouncedCategorySearch = useDebounce(categorySearch, SEARCH_DEBOUNCE_MS);
   const [expensesSearch, setExpensesSearch] = useState('');
+  const debouncedExpensesSearch = useDebounce(expensesSearch, SEARCH_DEBOUNCE_MS);
   const [queryState, setQueryState] = useState({ page: 1, perPage: 20 });
   const [categoriesData, setCategoriesData] = useState([]);
   const [expensesData, setExpensesData] = useState(null);
@@ -41,7 +44,7 @@ const ExpensesPage = () => {
     setCategoriesLoading(true);
     setCategoriesError(null);
     try {
-      const data = await fetchExpenseCategories({ search: categorySearch || undefined }, categoriesControllerRef.current.signal);
+      const data = await fetchExpenseCategories({ search: debouncedCategorySearch || undefined }, categoriesControllerRef.current.signal);
       if (rid !== lastCategoriesRequestId.current) return;
       setCategoriesData(Array.isArray(data) ? data : data?.results ?? data?.items ?? []);
     } catch (err) {
@@ -50,10 +53,10 @@ const ExpensesPage = () => {
     } finally {
       if (rid === lastCategoriesRequestId.current) setCategoriesLoading(false);
     }
-  }, [categorySearch]);
+  }, [debouncedCategorySearch]);
 
   const fetchExpensesSafe = useCallback(async () => {
-    const q = { ...queryState, categoryId: selectedCategoryId || undefined, search: expensesSearch || undefined };
+    const q = { ...queryState, categoryId: selectedCategoryId || undefined, search: debouncedExpensesSearch || undefined };
     expensesControllerRef.current?.abort();
     expensesControllerRef.current = new AbortController();
     const rid = ++lastExpensesRequestId.current;
@@ -69,7 +72,7 @@ const ExpensesPage = () => {
     } finally {
       if (rid === lastExpensesRequestId.current) setExpensesLoading(false);
     }
-  }, [selectedCategoryId, queryState, expensesSearch]);
+  }, [selectedCategoryId, queryState, debouncedExpensesSearch]);
 
   useEffect(() => {
     fetchCategoriesSafe();
@@ -80,6 +83,10 @@ const ExpensesPage = () => {
     if (selectedCategoryId != null) fetchExpensesSafe();
     return () => expensesControllerRef.current?.abort();
   }, [selectedCategoryId, fetchExpensesSafe]);
+
+  useEffect(() => {
+    setQueryState((q) => (q.page === 1 ? q : { ...q, page: 1 }));
+  }, [selectedCategoryId, debouncedExpensesSearch]);
 
   const categoriesList = Array.isArray(categoriesData) ? categoriesData : [];
   const expensesItems = expensesData?.items ?? expensesData?.results ?? expensesData ?? [];

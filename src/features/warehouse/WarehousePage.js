@@ -16,7 +16,8 @@ import RestockModal from './components/RestockModal';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
 import { ErrorState, EmptyState, ConfirmModal, Select, Pagination, FiltersModal, Skeleton, FilterBar } from '../../shared/ui';
-import { formatMoney } from '../../shared/constants/common';
+import { formatMoney, SEARCH_DEBOUNCE_MS } from '../../shared/constants/common';
+import { useDebounce } from '../../shared/hooks/useDebounce';
 import './WarehousePage.scss';
 
 const TAB_PRODUCTS = 'products';
@@ -28,8 +29,12 @@ const WarehousePage = () => {
   const toast = useToast();
   const [activeTab, setActiveTab] = useState(TAB_PRODUCTS);
   const [queryState, setQueryState] = useState({ search: '', categoryId: '', page: 1, perPage: 20 });
+  const [productSearchInput, setProductSearchInput] = useState('');
+  const debouncedProductSearch = useDebounce(productSearchInput, SEARCH_DEBOUNCE_MS);
   const [categorySearch, setCategorySearch] = useState('');
+  const debouncedCategorySearch = useDebounce(categorySearch, SEARCH_DEBOUNCE_MS);
   const [historySearch, setHistorySearch] = useState('');
+  const debouncedHistorySearch = useDebounce(historySearch, SEARCH_DEBOUNCE_MS);
   const [productsData, setProductsData] = useState(null);
   const [categoriesData, setCategoriesData] = useState([]);
   const [restocksData, setRestocksData] = useState(null);
@@ -55,6 +60,10 @@ const WarehousePage = () => {
   const resetProductFilters = useCallback(() => {
     setQueryState((q) => ({ ...q, categoryId: '', page: 1 }));
   }, []);
+
+  useEffect(() => {
+    setQueryState((q) => (q.search === debouncedProductSearch ? q : { ...q, search: debouncedProductSearch, page: 1 }));
+  }, [debouncedProductSearch]);
   const productsControllerRef = useRef(null);
   const categoriesControllerRef = useRef(null);
   const restocksControllerRef = useRef(null);
@@ -87,7 +96,7 @@ const WarehousePage = () => {
     setCategoriesLoading(true);
     setCategoriesError(null);
     try {
-      const data = await fetchCategories({ search: categorySearch || undefined }, categoriesControllerRef.current.signal);
+      const data = await fetchCategories({ search: debouncedCategorySearch || undefined }, categoriesControllerRef.current.signal);
       if (rid !== lastCategoriesRequestId.current) return;
       setCategoriesData(Array.isArray(data) ? data : data?.results ?? data?.items ?? []);
     } catch (err) {
@@ -96,7 +105,7 @@ const WarehousePage = () => {
     } finally {
       if (rid === lastCategoriesRequestId.current) setCategoriesLoading(false);
     }
-  }, [categorySearch]);
+  }, [debouncedCategorySearch]);
 
   const fetchRestocksSafe = useCallback(async () => {
     restocksControllerRef.current?.abort();
@@ -105,7 +114,7 @@ const WarehousePage = () => {
     setRestocksLoading(true);
     setRestocksError(null);
     try {
-      const data = await fetchRestocks({ page: 1, perPage: 50, search: historySearch || undefined }, restocksControllerRef.current.signal);
+      const data = await fetchRestocks({ page: 1, perPage: 50, search: debouncedHistorySearch || undefined }, restocksControllerRef.current.signal);
       if (rid !== lastRestocksRequestId.current) return;
       setRestocksData(data);
     } catch (err) {
@@ -114,7 +123,7 @@ const WarehousePage = () => {
     } finally {
       if (rid === lastRestocksRequestId.current) setRestocksLoading(false);
     }
-  }, [historySearch]);
+  }, [debouncedHistorySearch]);
 
   useEffect(() => {
     if (activeTab === TAB_PRODUCTS) fetchProductsSafe();
@@ -236,7 +245,7 @@ const WarehousePage = () => {
         <>
           <FilterBar className="warehouse-page__filter-bar">
             <div className="warehouse-page__filters warehouse-page__filters--desktop">
-              <input type="text" placeholder="Поиск" value={queryState.search} onChange={(e) => setQueryState((q) => ({ ...q, search: e.target.value, page: 1 }))} className="warehouse-page__search" />
+              <input type="text" placeholder="Поиск" value={productSearchInput} onChange={(e) => setProductSearchInput(e.target.value)} className="warehouse-page__search" />
               <Select
                 value={queryState.categoryId}
                 onChange={(v) => setQueryState((q) => ({ ...q, categoryId: v, page: 1 }))}
@@ -247,7 +256,7 @@ const WarehousePage = () => {
               <button type="button" className="warehouse-page__add filter-bar__action" onClick={() => setFormProduct({})}>Добавить товар</button>
             </div>
             <div className="warehouse-page__toolbar-mobile">
-              <input type="text" placeholder="Поиск" value={queryState.search} onChange={(e) => setQueryState((q) => ({ ...q, search: e.target.value, page: 1 }))} className="warehouse-page__search warehouse-page__search--mobile" />
+              <input type="text" placeholder="Поиск" value={productSearchInput} onChange={(e) => setProductSearchInput(e.target.value)} className="warehouse-page__search warehouse-page__search--mobile" />
               <div className="warehouse-page__toolbar-mobile-actions">
                 <button type="button" className="warehouse-page__filters-btn" onClick={() => setFiltersModalOpen(true)}>Фильтры</button>
                 <button type="button" className="warehouse-page__add warehouse-page__add--mobile filter-bar__action" onClick={() => setFormProduct({})}>Добавить товар</button>

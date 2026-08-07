@@ -4,6 +4,7 @@ import { useToast } from '../../app/providers/ToastProvider';
 import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { ErrorState, EmptyState, Pagination, SkeletonTable } from '../../shared/ui';
 import Select from '../../shared/ui/Select';
+import { STATS_YEARS } from '../../shared/constants/common';
 
 // ─── Константы ────────────────────────────────────────────────────────────────
 
@@ -109,7 +110,7 @@ const TaplinkLeadsTab = () => {
     return new Date(filterYear || now.getFullYear(), filterMonth, 0).getDate();
   }, [filterYear, filterMonth]);
 
-  const years = [2026, 2027];
+  const years = STATS_YEARS;
 
   // ─── Загрузка таблицы ───────────────────────────────────────────────────────
 

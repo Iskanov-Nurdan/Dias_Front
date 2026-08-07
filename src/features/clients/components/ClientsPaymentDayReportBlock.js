@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { EmptyState } from '../../../shared/ui';
+import { EmptyState, Spinner } from '../../../shared/ui';
 import { formatMoney } from '../../../shared/constants/common';
 import { normalizeClientsPaymentDayReportResponse } from '../lib/paymentDayReportNormalize';
 import PaymentDayClientsModal from './PaymentDayClientsModal';
@@ -82,10 +82,7 @@ const ClientsPaymentDayReportBlock = ({
           оплаты»).
         </p>
         <div className="clients-payment-day-report__loading">
-          <span className="loading-inline">
-            <span className="loading-inline__spinner" aria-hidden />
-            Загрузка отчёта…
-          </span>
+          <Spinner label="Загрузка отчёта…" />
         </div>
       </div>
     );

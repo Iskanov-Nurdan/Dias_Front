@@ -15,7 +15,7 @@ import {
   freezeStatusLabel,
   getFreezeFromClient,
 } from '../lib/clientFreezeNormalize';
-import { ConfirmModal } from '../../../shared/ui';
+import { ConfirmModal, Spinner } from '../../../shared/ui';
 import ClientFreezeModal from './ClientFreezeModal';
 import './ClientCardModal.scss';
 
@@ -305,7 +305,7 @@ const ClientCardModal = ({
             <section className="ccm__section">
               <h3 className="ccm__section-title"><Camera size={13} />Фото для сверки</h3>
               {cardPhotosLoading ? (
-                <p className="ccm__muted">Загрузка…</p>
+                <Spinner />
               ) : (
                 <ul className="ccm__photos">
                   {cardPhotos.map((ph) => (

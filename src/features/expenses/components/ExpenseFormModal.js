@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { Select, SubmitButton } from '../../../shared/ui';
+import { Select, SubmitButton, MoneyInput } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './ExpenseFormModal.scss';
 
@@ -11,6 +11,12 @@ const ExpenseFormModal = ({ expense, categories = [], onSave, onClose, error, sa
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState('');
   const [comment, setComment] = useState('');
+  const [touched, setTouched] = useState({});
+  const markTouched = (field) => setTouched((t) => (t[field] ? t : { ...t, [field]: true }));
+
+  const nameError = touched.name && !name.trim() ? 'Укажите название' : null;
+  const amountError = touched.amount && !(amount !== '' && Number.isFinite(Number(amount)) && Number(amount) >= 0)
+    ? 'Укажите сумму' : null;
 
   useModalEffect(true, onClose);
 
@@ -53,7 +59,16 @@ const ExpenseFormModal = ({ expense, categories = [], onSave, onClose, error, sa
         <form onSubmit={handleSubmit} className="expense-form-modal__form">
           <label className="expense-form-modal__label">
             <span className="expense-form-modal__label-caption">Название <span className="form-label-required" aria-hidden="true">*</span></span>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="expense-form-modal__input" placeholder="Название" />
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={() => markTouched('name')}
+              required
+              className={`expense-form-modal__input${nameError ? ' expense-form-modal__input--invalid' : ''}`}
+              placeholder="Название"
+            />
+            {nameError && <span className="expense-form-modal__field-error">{nameError}</span>}
           </label>
           <label className="expense-form-modal__label">
             <span className="expense-form-modal__label-caption">Категория</span>
@@ -67,7 +82,16 @@ const ExpenseFormModal = ({ expense, categories = [], onSave, onClose, error, sa
           </label>
           <label className="expense-form-modal__label">
             <span className="expense-form-modal__label-caption">Сумма <span className="form-label-required" aria-hidden="true">*</span></span>
-            <input type="number" step="any" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} required className="expense-form-modal__input" placeholder="0" />
+            <MoneyInput
+              allowDecimals
+              value={amount}
+              onChange={setAmount}
+              onBlur={() => markTouched('amount')}
+              required
+              className={`expense-form-modal__input${amountError ? ' expense-form-modal__input--invalid' : ''}`}
+              placeholder="0"
+            />
+            {amountError && <span className="expense-form-modal__field-error">{amountError}</span>}
           </label>
           <label className="expense-form-modal__label">
             <span className="expense-form-modal__label-caption">Дата <span className="form-label-required" aria-hidden="true">*</span></span>

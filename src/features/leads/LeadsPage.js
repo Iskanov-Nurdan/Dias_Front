@@ -9,7 +9,7 @@ import { SEARCH_DEBOUNCE_MS } from '../../shared/constants/common';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
 import { LeadFormModal, LeadCardModal, FunnelBoard } from './components';
 import { Inbox, Link2, Filter } from 'lucide-react';
-import { ErrorState, EmptyState, ConfirmModal, Pagination, FilterBar, SkeletonTable } from '../../shared/ui';
+import { ErrorState, EmptyState, ConfirmModal, Pagination, FilterBar, SkeletonTable, Spinner } from '../../shared/ui';
 import TaplinkLeadsTab from './TaplinkLeadsTab';
 import './LeadsPage.scss';
 import './TaplinkLeadsTab.scss';
@@ -444,7 +444,7 @@ const LeadsPage = () => {
           </FilterBar>
           {stagesLoading ? (
             <div className="leads-page__loading-cell">
-              <span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span>
+              <Spinner />
             </div>
           ) : (
             <FunnelBoard

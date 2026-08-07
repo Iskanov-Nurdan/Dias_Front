@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { isForbiddenError } from '../lib/apiError';
 
 // --- Выбор API: меняй когда нужно ---
 // true  = запросы на локальный бэкенд (127.0.0.1:8000)
@@ -113,7 +114,7 @@ apiClient.interceptors.response.use(
       return Promise.reject(err);
     }
 
-    if (err.response?.status === 403) {
+    if (isForbiddenError(err)) {
       err.userMessage = err.response?.data?.error?.message ?? 'Нет доступа';
       return Promise.reject(err);
     }
@@ -156,35 +157,3 @@ apiClient.interceptors.response.use(
     return Promise.reject(err);
   }
 );
-
-/**
- * Abort-safe fetch: pass signal from AbortController.
- * On unmount or new request, abort previous. Use requestId to ignore stale responses.
- */
-export const createAbortSafeRequest = () => {
-  let controller = null;
-  let lastRequestId = 0;
-
-  const getSignal = () => {
-    if (controller) controller.abort();
-    controller = new AbortController();
-    return { signal: controller.signal, requestId: ++lastRequestId };
-  };
-
-  const request = async (fn) => {
-    const { signal, requestId } = getSignal();
-    try {
-      const result = await fn(signal);
-      return { result, requestId };
-    } catch (e) {
-      if (e.name === 'AbortError') return { aborted: true, requestId };
-      throw e;
-    }
-  };
-
-  const abort = () => {
-    if (controller) controller.abort();
-  };
-
-  return { request, getSignal, abort };
-};

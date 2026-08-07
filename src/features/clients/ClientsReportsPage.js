@@ -19,7 +19,7 @@ import { MONTHS, STATS_YEARS } from '../../shared/constants/common';
 import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiError';
 import { prepareClientSavePayload } from './lib/prepareClientSavePayload';
 import { UserX, BarChart2, CalendarDays } from 'lucide-react';
-import { Select, ConfirmModal, Pagination, FilterBar, EmptyState } from '../../shared/ui';
+import { Select, ConfirmModal, Pagination, FilterBar, EmptyState, Spinner } from '../../shared/ui';
 import {
   ClientsList,
   ClientCardModal,
@@ -50,8 +50,8 @@ const ClientsReportsPage = () => {
   const [notRenewedLoading, setNotRenewedLoading] = useState(false);
   const [notRenewedError, setNotRenewedError] = useState(null);
   const [nrYear, setNrYear] = useState(() => {
-    const y = new Date().getFullYear();
-    return y === 2026 || y === 2027 ? String(y) : '2026';
+    const y = String(new Date().getFullYear());
+    return STATS_YEARS.includes(y) ? y : STATS_YEARS[STATS_YEARS.length - 1];
   });
   const [nrMonth, setNrMonth] = useState(String(new Date().getMonth() + 1));
   const [nrPage, setNrPage] = useState(1);
@@ -464,7 +464,7 @@ const ClientsReportsPage = () => {
           </FilterBar>
 
           {statsLoading ? (
-            <div className="clients-page__dup-loading"><span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка статистики…</span></div>
+            <div className="clients-page__dup-loading"><Spinner label="Загрузка статистики…" /></div>
           ) : statsData ? (
             <>
               <div className="clients-page__stats-cards">

@@ -11,7 +11,9 @@ import {
 } from './api';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
+import { useDebounce } from '../../shared/hooks/useDebounce';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
+import { SEARCH_DEBOUNCE_MS } from '../../shared/constants/common';
 import { Trophy, UserCheck } from 'lucide-react';
 import { Select, Pagination, FilterBar, FiltersModal } from '../../shared/ui';
 import { SportsList, TrainersList, SportFormModal, TrainerFormModal, TrainerScheduleModal } from './components';
@@ -34,7 +36,9 @@ const SportsTrainersPage = () => {
     perPage: 20,
   });
   const [sportSearch, setSportSearch] = useState('');
+  const debouncedSportSearch = useDebounce(sportSearch, SEARCH_DEBOUNCE_MS);
   const [trainerSearch, setTrainerSearch] = useState('');
+  const debouncedTrainerSearch = useDebounce(trainerSearch, SEARCH_DEBOUNCE_MS);
   const [sportsData, setSportsData] = useState([]);
   const [trainersData, setTrainersData] = useState(null);
   const [sportsLoading, setSportsLoading] = useState(false);
@@ -58,7 +62,7 @@ const SportsTrainersPage = () => {
     setSportsLoading(true);
     setSportsError(null);
     try {
-      const data = await runSports((signal) => fetchSports({ search: sportSearch || undefined }, signal));
+      const data = await runSports((signal) => fetchSports({ search: debouncedSportSearch || undefined }, signal));
       if (data === null) return;
       setSportsData(Array.isArray(data) ? data : data?.results ?? data?.items ?? []);
     } catch (err) {
@@ -66,13 +70,13 @@ const SportsTrainersPage = () => {
     } finally {
       setSportsLoading(false);
     }
-  }, [runSports, sportSearch]);
+  }, [runSports, debouncedSportSearch]);
 
   const fetchTrainersSafe = useCallback(async () => {
     setTrainersLoading(true);
     setTrainersError(null);
     try {
-      const data = await runTrainers((signal) => fetchTrainers({ ...queryState, search: trainerSearch || undefined }, signal));
+      const data = await runTrainers((signal) => fetchTrainers({ ...queryState, search: debouncedTrainerSearch || undefined }, signal));
       if (data === null) return;
       setTrainersData(data);
     } catch (err) {
@@ -80,7 +84,7 @@ const SportsTrainersPage = () => {
     } finally {
       setTrainersLoading(false);
     }
-  }, [runTrainers, queryState, trainerSearch]);
+  }, [runTrainers, queryState, debouncedTrainerSearch]);
 
   useEffect(() => {
     if (activeTab === TAB_SPORTS || activeTab === TAB_TRAINERS) fetchSportsSafe();
@@ -89,6 +93,10 @@ const SportsTrainersPage = () => {
   useEffect(() => {
     if (activeTab === TAB_TRAINERS) fetchTrainersSafe();
   }, [activeTab, fetchTrainersSafe]);
+
+  useEffect(() => {
+    setQueryState((q) => (q.page === 1 ? q : { ...q, page: 1 }));
+  }, [debouncedTrainerSearch]);
 
   const trainersItems = trainersData?.items ?? trainersData?.results ?? trainersData ?? [];
 

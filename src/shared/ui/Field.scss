@@ -1,0 +1,14 @@
+.ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 12px;
+
+  &:last-child { margin-bottom: 0; }
+
+  &__label {
+    font-size: var(--input-label-size);
+    font-weight: var(--input-label-weight);
+    color: var(--input-label-color);
+  }
+}

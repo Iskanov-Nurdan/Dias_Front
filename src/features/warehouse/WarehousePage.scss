@@ -283,6 +283,9 @@
       letter-spacing: 0.05em;
       color: var(--color-text-secondary);
       border-bottom: 2px solid var(--color-border-strong);
+      position: sticky;
+      top: 0;
+      z-index: 1;
     }
 
     th.warehouse-page__th--group-start {

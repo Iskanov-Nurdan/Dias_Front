@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { Select, SubmitButton } from '../../../shared/ui';
+import { Select, SubmitButton, PhoneInput } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './LeadFormModal.scss';
 
@@ -54,7 +54,7 @@ const LeadFormModal = ({ lead, onSave, onClose, error, saving }) => {
           </label>
           <label className="lead-form-modal__label">
             <span className="lead-form-modal__label-text">Телефон</span>
-            <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="lead-form-modal__input" placeholder="+996 ..." />
+            <PhoneInput value={phone} onChange={setPhone} className="lead-form-modal__input" placeholder="+996 ..." />
           </label>
           <label className="lead-form-modal__label">
             <span className="lead-form-modal__label-text">Канал</span>

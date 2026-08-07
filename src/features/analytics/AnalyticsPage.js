@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { fetchIncomeDetail, fetchExpenseDetail, fetchProfitDetail } from './api';
 import { ErrorState, Select, DonutChart, Sparkline, Skeleton, SkeletonTable, FilterBar, EmptyState } from '../../shared/ui';
 import { MONTHS, MONTHS_SHORT, DONUT_COLORS, formatMoney } from '../../shared/constants/common';
@@ -23,7 +23,9 @@ const getExpenseName = (row) => {
 const now = new Date();
 const defaultQuery = { year: now.getFullYear(), month: now.getMonth() + 1, day: '' };
 
-const YEAR_OPTIONS = [2024, 2025, 2026, 2027, 2028].map((y) => ({ value: String(y), label: String(y) }));
+// Окно из 5 лет вокруг текущего года — не нужно вручную обновлять на будущее
+const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i)
+  .map((y) => ({ value: String(y), label: String(y) }));
 const DAY_OPTIONS = [
   { value: '', label: 'Все дни' },
   ...Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })),
@@ -37,7 +39,6 @@ const QUICK_NAV = [
   { id: 'analytics-kpi', label: 'Сводка' },
   { id: 'analytics-charts', label: 'Графики' },
   { id: 'analytics-leads', label: 'Лиды' },
-  { id: 'analytics-tables', label: 'Таблицы' },
 ];
 
 const AnalyticsPage = () => {
@@ -59,51 +60,39 @@ const AnalyticsPage = () => {
   const [detailModal, setDetailModal] = useState(null);
   const [detailData, setDetailData] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const detailRequestSeq = useRef(0);
 
   useEffect(() => {
     if (!detailModal) {
       setDetailData(null);
       return;
     }
+    const seq = ++detailRequestSeq.current;
     setDetailLoading(true);
     const q = queryState;
+    // Игнорируем устаревший ответ, если за это время открыли другой период/модалку —
+    // иначе более медленный старый запрос может перезаписать свежие данные.
+    const finish = (data) => {
+      if (detailRequestSeq.current !== seq) return;
+      setDetailData(data);
+      setDetailLoading(false);
+    };
     if (detailModal === 'expense') {
       fetchExpenseDetail(q, null)
-        .then((res) => {
-          const expenseData = res?.data ?? res;
-          setDetailData(expenseData);
-        })
-        .catch(() => setDetailData(null))
-        .finally(() => setDetailLoading(false));
+        .then((res) => finish(res?.data ?? res))
+        .catch(() => finish(null));
       return;
     }
     const fn = detailModal === 'income' ? fetchIncomeDetail : fetchProfitDetail;
     fn(q, null)
-      .then((r) => {
-        const d = r?.data ?? r;
-        setDetailData(d);
-      })
-      .catch(() => setDetailData(null))
-      .finally(() => setDetailLoading(false));
+      .then((r) => finish(r?.data ?? r))
+      .catch(() => finish(null));
   }, [detailModal, queryState.year, queryState.month, queryState.day]);
 
   const s = summary ?? {};
-  const rawIncome = s.income ?? 0;
+  const income = s.income ?? 0;
   const expense = s.expense ?? 0;
-  const rawProfit = s.profit;
-  // Только отображение на фронте: ручная корректировка прихода и прибыли
-  const displayIncomeProfitAdj =
-    Number(queryState.year) === 2026 && Number(queryState.month) === 2
-      ? 60000
-      : Number(queryState.year) === 2026 && Number(queryState.month) === 3
-        ? 70452
-        : 0;
-  const income =
-    displayIncomeProfitAdj > 0 ? Math.max(0, rawIncome - displayIncomeProfitAdj) : rawIncome;
-  const profit =
-    displayIncomeProfitAdj > 0 && rawProfit != null
-      ? Math.max(0, (rawProfit ?? 0) - displayIncomeProfitAdj)
-      : rawProfit;
+  const profit = s.profit;
   const paidCount = s.paidCount ?? null;
   const sportItems = clientsBySport?.items ?? [];
   const dailyItems = incomeExpenseDaily?.items ?? [];
@@ -137,17 +126,6 @@ const AnalyticsPage = () => {
   const leadsBySport = la.bySport ?? [];
   const leadsByTrainer = la.byTrainer ?? [];
   const leadsByTrialStatus = la.byTrialStatus ?? [];
-
-  const periodSummary = useMemo(() => {
-    const y = queryState.year;
-    const m = queryState.month;
-    const d = queryState.day;
-    if (y == null || y === '') return 'Период не выбран';
-    const parts = [String(y)];
-    if (m) parts.push(MONTHS[Number(m)] || String(m));
-    if (d !== '' && d != null) parts.push(`${d} число`);
-    return parts.join(' · ');
-  }, [queryState.year, queryState.month, queryState.day]);
 
   const donutLeadsChannelData = useMemo(() => leadsByChannel.map((x, i) => ({
     label: x.label ?? x.key,
@@ -792,7 +770,7 @@ const AnalyticsPage = () => {
                       <div className="analytics-page__modal-total-info">
                         <span className="analytics-page__modal-total-label">Итого приход</span>
                         <span className="analytics-page__modal-total-value analytics-page__modal-total-value--income">
-                          {formatMoney(displayIncomeProfitAdj > 0 ? Math.max(0, (totalFromApi ?? 0) - displayIncomeProfitAdj) : totalFromApi)}
+                          {formatMoney(totalFromApi)}
                         </span>
                       </div>
                       <button type="button" className="analytics-page__modal-close" onClick={() => setDetailModal(null)}>Закрыть</button>
@@ -817,7 +795,7 @@ const AnalyticsPage = () => {
                 return saved === true || saved === 'true';
               };
               const expenseItems = baseItems.filter(isRowSaved);
-              const expenseTotal = Number(detailData?.total) ?? 0;
+              const expenseTotal = Number(detailData?.total) || 0;
               if (expenseItems.length === 0) {
                 return (
                   <>
@@ -875,7 +853,7 @@ const AnalyticsPage = () => {
                   <div className="analytics-page__modal-profit-summary">
                     <span className="analytics-page__modal-profit-item">
                       <span className="analytics-page__modal-profit-label">Приходы</span>
-                      <span className="analytics-page__modal-profit-val analytics-page__modal-profit-val--income">{formatMoney(displayIncomeProfitAdj > 0 ? Math.max(0, (detailData.incomeTotal ?? 0) - displayIncomeProfitAdj) : detailData.incomeTotal)}</span>
+                      <span className="analytics-page__modal-profit-val analytics-page__modal-profit-val--income">{formatMoney(detailData.incomeTotal)}</span>
                     </span>
                     <span className="analytics-page__modal-profit-sep">·</span>
                     <span className="analytics-page__modal-profit-item">
@@ -885,7 +863,7 @@ const AnalyticsPage = () => {
                     <span className="analytics-page__modal-profit-sep">·</span>
                     <span className="analytics-page__modal-profit-item">
                       <span className="analytics-page__modal-profit-label">Прибыль</span>
-                      <span className="analytics-page__modal-profit-val analytics-page__modal-profit-val--profit">{formatMoney(displayIncomeProfitAdj > 0 ? Math.max(0, (detailData.profit ?? 0) - displayIncomeProfitAdj) : detailData.profit)}</span>
+                      <span className="analytics-page__modal-profit-val analytics-page__modal-profit-val--profit">{formatMoney(detailData.profit)}</span>
                     </span>
                   </div>
                   <button type="button" className="analytics-page__modal-close" onClick={() => setDetailModal(null)}>Закрыть</button>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, UserX } from 'lucide-react';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
-import { EmptyState } from '../../../shared/ui';
+import { EmptyState, Spinner } from '../../../shared/ui';
 import { fetchAllClientsNotRenewed } from '../api';
 import './StatsUnpaidModal.scss';
 import './NotRenewedListModal.scss';
@@ -58,10 +58,7 @@ const NotRenewedListModal = ({ open, year, month, onClose, onOpenClient, onExten
         <div className="sum__body">
           {loading && (
             <div className="sum__loading">
-              <span className="loading-inline">
-                <span className="loading-inline__spinner" aria-hidden />
-                Загрузка…
-              </span>
+              <Spinner />
             </div>
           )}
           {!loading && error && <p className="sum__error">{error}</p>}

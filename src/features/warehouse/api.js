@@ -35,11 +35,6 @@ export const fetchProducts = async (queryState, signal) => {
   return data;
 };
 
-export const fetchProduct = async (id, signal) => {
-  const { data } = await apiClient.get(`/warehouse/products/${id}/`, withSignal({}, signal));
-  return data;
-};
-
 export const createProduct = async (body, signal) => {
   const { data } = await apiClient.post('/warehouse/products/', body, withSignal({}, signal));
   return data;

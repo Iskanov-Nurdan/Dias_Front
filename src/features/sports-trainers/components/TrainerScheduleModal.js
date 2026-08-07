@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
-import { SubmitButton } from '../../../shared/ui';
+import { SubmitButton, Spinner } from '../../../shared/ui';
 import { fetchTrainerSchedule, updateTrainerSchedule } from '../api';
 import {
   WEEKDAYS,
@@ -180,7 +180,7 @@ const TrainerScheduleModal = ({ trainer, readOnly = false, onClose, onSaved }) =
           </p>
         )}
         {loading ? (
-          <div className="trainer-schedule-modal__loading">Загрузка…</div>
+          <div className="trainer-schedule-modal__loading"><Spinner /></div>
         ) : (
           <form className="trainer-schedule-modal__form" onSubmit={handleFormSubmit}>
             <div className="trainer-schedule-modal__days" role="group" aria-label="Дни недели">

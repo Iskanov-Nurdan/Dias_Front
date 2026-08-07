@@ -21,11 +21,6 @@ export const fetchEmployees = async (queryState, signal) => {
   return data;
 };
 
-export const fetchEmployee = async (id, signal) => {
-  const { data } = await apiClient.get(`/employees/${id}/`, withSignal({}, signal));
-  return data;
-};
-
 /** Тело POST/PATCH: login, fio, password (обязательны при создании), phone, roleId (опц.). roleId — число или null. */
 const toEmployeeBody = (payload, isCreate) => {
   const b = {};

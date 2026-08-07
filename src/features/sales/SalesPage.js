@@ -3,7 +3,7 @@ import { fetchSalesSummary, fetchSales, createSale, cancelSale } from './api';
 import { fetchProducts } from '../warehouse/api';
 import SaleFormModal from './components/SaleFormModal';
 import { useToast } from '../../app/providers/ToastProvider';
-import { ErrorState, EmptyState, Pagination, Badge, SkeletonTable, FilterBar, ConfirmModal } from '../../shared/ui';
+import { ErrorState, EmptyState, Pagination, Badge, SkeletonTable, FilterBar, ConfirmModal, Spinner } from '../../shared/ui';
 import { formatMoney } from '../../shared/constants/common';
 import { getApiErrorMessage, isCanceledError } from '../../shared/lib/apiError';
 import './SalesPage.scss';
@@ -126,11 +126,11 @@ const SalesPage = () => {
         <div className="sales-page__date-range">
           <label className="sales-page__date-label">
             <span className="sales-page__date-label-text">от</span>
-            <input type="date" value={queryState.dateFrom} onChange={(e) => setQueryState((q) => ({ ...q, dateFrom: e.target.value }))} className="sales-page__input" />
+            <input type="date" value={queryState.dateFrom} onChange={(e) => setQueryState((q) => ({ ...q, dateFrom: e.target.value, page: 1 }))} className="sales-page__input" />
           </label>
           <label className="sales-page__date-label">
             <span className="sales-page__date-label-text">до</span>
-            <input type="date" value={queryState.dateTo} onChange={(e) => setQueryState((q) => ({ ...q, dateTo: e.target.value }))} className="sales-page__input" />
+            <input type="date" value={queryState.dateTo} onChange={(e) => setQueryState((q) => ({ ...q, dateTo: e.target.value, page: 1 }))} className="sales-page__input" />
           </label>
         </div>
         <button type="button" className="sales-page__add filter-bar__action" onClick={() => setFormSaleOpen(true)}>Новая продажа</button>
@@ -139,7 +139,7 @@ const SalesPage = () => {
       <div className="sales-page__stats-row">
         <div className="sales-page__summary">
         {summaryLoading ? (
-          <span className="loading-inline"><span className="loading-inline__spinner" aria-hidden />Загрузка…</span>
+          <Spinner />
         ) : summaryData ? (
         <>
           <div className="sales-page__card"><span className="sales-page__card-label">Всего продаж</span><span className="sales-page__card-value">{summaryData.count ?? 0}</span></div>

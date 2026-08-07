@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, UserX } from 'lucide-react';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
-import { EmptyState } from '../../../shared/ui';
+import { EmptyState, Spinner } from '../../../shared/ui';
 import { fetchClients } from '../api';
 import './StatsUnpaidModal.scss';
 
@@ -56,10 +56,7 @@ const StatsUnpaidModal = ({ open, year, month, onClose, onOpenClient }) => {
         <div className="sum__body">
           {loading && (
             <div className="sum__loading">
-              <span className="loading-inline">
-                <span className="loading-inline__spinner" aria-hidden />
-                Загрузка…
-              </span>
+              <Spinner />
             </div>
           )}
           {!loading && error && <p className="sum__error">{error}</p>}
@@ -81,7 +78,24 @@ const StatsUnpaidModal = ({ open, year, month, onClose, onOpenClient }) => {
                 </thead>
                 <tbody>
                   {clients.map((c) => (
-                    <tr key={c.id} className={onOpenClient ? 'sum__row--clickable' : undefined}>
+                    <tr
+                      key={c.id}
+                      className={onOpenClient ? 'sum__row--clickable' : undefined}
+                      onClick={onOpenClient ? () => { onClose(); onOpenClient(c); } : undefined}
+                      role={onOpenClient ? 'button' : undefined}
+                      tabIndex={onOpenClient ? 0 : undefined}
+                      onKeyDown={
+                        onOpenClient
+                          ? (e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                onClose();
+                                onOpenClient(c);
+                              }
+                            }
+                          : undefined
+                      }
+                    >
                       <td className="sum__fio">{c.fio || '—'}</td>
                       <td className="sum__muted">{c.phone || '—'}</td>
                       <td className="sum__muted">{c.trainerName ?? c.trainer?.name ?? '—'}</td>
@@ -98,7 +112,11 @@ const StatsUnpaidModal = ({ open, year, month, onClose, onOpenClient }) => {
                       </td>
                       <td>
                         {onOpenClient && (
-                          <button type="button" className="sum__btn" onClick={() => { onClose(); onOpenClient(c); }}>
+                          <button
+                            type="button"
+                            className="sum__btn"
+                            onClick={(e) => { e.stopPropagation(); onClose(); onOpenClient(c); }}
+                          >
                             Подробнее
                           </button>
                         )}

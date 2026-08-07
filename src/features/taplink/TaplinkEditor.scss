@@ -518,6 +518,24 @@ select.tpe-select {
     padding: 0 16px 16px;
     border-top: 1px solid var(--color-border);
     padding-top: 16px;
+    max-height: 4000px;
+    opacity: 1;
+    overflow: hidden;
+    transition: max-height 0.28s ease, opacity 0.22s ease, padding-top 0.28s ease, padding-bottom 0.28s ease, border-color 0.28s ease;
+  }
+}
+
+.tpe-item:not(.tpe-item--open) .tpe-item__body {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-top-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tpe-item__body {
+    transition: none !important;
   }
 }
 
@@ -686,200 +704,6 @@ select.tpe-select {
     color: var(--color-text-muted);
     border-top: 1px solid var(--color-border);
     padding-top: 8px;
-  }
-}
-
-// ── Photo upload ──────────────────────────────────────────────────────────────
-
-.tpe-photo {
-  &--rect  { width: 100%; }
-  &--round { width: 140px; flex-shrink: 0; }
-  &--hero  { width: 100%; }
-
-  &__has {
-    position: relative;
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    border: 1px solid var(--color-border);
-
-    .tpe-photo--round & {
-      border-radius: 50%;
-      width: 120px;
-      height: 120px;
-    }
-
-    .tpe-photo--rect & {
-      height: 160px;
-    }
-
-    .tpe-photo--hero & {
-      height: 200px;
-    }
-  }
-
-  &__img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-
-  &__overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(0,0,0,0.55);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    opacity: 0;
-    transition: opacity 0.18s;
-
-    .tpe-photo__has:hover & { opacity: 1; }
-
-    button {
-      padding: 6px 14px;
-      border-radius: 20px;
-      border: 1px solid rgba(255,255,255,0.7);
-      background: rgba(255,255,255,0.12);
-      color: #fff;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.15s;
-
-      &:hover { background: rgba(255,255,255,0.25); }
-    }
-  }
-
-  &__del {
-    border-color: rgba(255,80,80,0.7) !important;
-    color: #fca5a5 !important;
-  }
-
-  &__empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    cursor: pointer;
-    border: 2px dashed var(--color-border);
-    border-radius: var(--radius-md);
-    transition: border-color 0.15s, background 0.15s;
-
-    .tpe-photo--rect & {
-      height: 140px;
-    }
-
-    .tpe-photo--round & {
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-    }
-
-    .tpe-photo--hero & {
-      height: 200px;
-    }
-
-    &:hover {
-      border-color: var(--color-primary);
-      background: var(--color-primary-soft);
-    }
-  }
-
-  &__ic { font-size: 24px; line-height: 1; }
-
-  &__txt {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--color-text-secondary);
-    text-align: center;
-  }
-
-  &__hint {
-    font-size: 11px;
-    color: var(--color-text-muted);
-    text-align: center;
-  }
-}
-
-// ── Video upload ──────────────────────────────────────────────────────────────
-
-.tpe-vid {
-  &__has {
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-  }
-
-  &__player {
-    width: 100%;
-    display: block;
-    max-height: 200px;
-    background: #000;
-  }
-
-  &__actions {
-    display: flex;
-    gap: 8px;
-    padding: 8px 10px;
-    background: var(--color-surface-secondary);
-    border-top: 1px solid var(--color-border);
-
-    button {
-      padding: 5px 12px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--color-border);
-      background: none;
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--color-text-secondary);
-      cursor: pointer;
-      transition: background 0.15s;
-
-      &:hover { background: var(--color-surface); color: var(--color-text); }
-    }
-  }
-
-  &__del {
-    color: var(--color-danger) !important;
-    border-color: var(--color-danger-soft) !important;
-
-    &:hover { background: var(--color-danger-soft) !important; }
-  }
-
-  &__empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    padding: 20px 16px;
-    border: 2px dashed var(--color-border);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    min-height: 100px;
-    transition: border-color 0.15s, background 0.15s;
-
-    &:hover {
-      border-color: var(--color-primary);
-      background: var(--color-primary-soft);
-    }
-  }
-
-  &__ic { font-size: 22px; line-height: 1; }
-
-  &__txt {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-text-secondary);
-  }
-
-  &__hint {
-    font-size: 11px;
-    color: var(--color-text-muted);
   }
 }
 

@@ -244,6 +244,15 @@
   justify-content: flex-start;
 }
 
+.client-form-modal__field-error {
+  font-size: 12px;
+  color: var(--color-danger);
+}
+
+.client-form-modal__input--invalid {
+  border-color: var(--color-danger) !important;
+}
+
 .client-form-modal__input {
   height: 40px;
   min-height: 40px;

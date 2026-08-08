@@ -5,6 +5,7 @@ import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { EmptyState, Spinner } from '../../../shared/ui';
 import { fetchClientsPaymentDayClients } from '../api';
 import { formatPaymentsThatDayCell, normalizePaymentDayClientsResponse } from '../lib/paymentDayClientsNormalize';
+import { getClientPaymentsForCard } from '../lib/clientActualPayments';
 import './PaymentDayClientsModal.scss';
 
 const fmtRuDate = (isoOrRaw) => {
@@ -191,7 +192,11 @@ const PaymentDayClientsModal = ({
                               }
                               return raw || <span className="payment-day-clients-modal__dash">—</span>;
                             })()
-                          : (fmtRuDate(r.actualPaymentDate) || <span className="payment-day-clients-modal__dash">—</span>)}
+                          : (() => {
+                              const dates = getClientPaymentsForCard(r).map((p) => p.date).filter(Boolean).sort();
+                              const latest = dates[dates.length - 1];
+                              return latest ? fmtRuDate(latest) : <span className="payment-day-clients-modal__dash">—</span>;
+                            })()}
                       </td>
                       <td className="payment-day-clients-modal__date">{r.phone || '—'}</td>
                       <td style={{ fontSize: 13, color: 'var(--color-text)' }}>{r.trainerName || '—'}</td>

@@ -23,7 +23,7 @@ const normalizePaymentsThatDay = (raw) => {
 
 /**
  * @param {unknown} raw
- * @returns {Array<{ id: string|number, fio: string, dateStart: string|null, actualPaymentDate: string|null, paymentsThatDay: Array<{ amount: number|null, date: string|null }>, phone: string, trainerName: string, sportName: string }>}
+ * @returns {Array<{ id: string|number, fio: string, dateStart: string|null, actualPaymentDate: string|null, actualPayments: Array|undefined, paymentsThatDay: Array<{ amount: number|null, date: string|null }>, phone: string, trainerName: string, sportName: string }>}
  */
 export function normalizePaymentDayClientsResponse(raw) {
   const list = raw?.items ?? raw?.results ?? raw?.clients ?? [];
@@ -35,12 +35,16 @@ export function normalizePaymentDayClientsResponse(raw) {
     if (id == null) return null;
     const ds = pick(row, 'dateStart', 'date_start');
     const ap = pick(row, 'actualPaymentDate', 'actual_payment_date');
+    // Стандартный Client[] с бэка может включать массив частичных оплат — берём как есть,
+    // чтобы «Факт. оплата» считалась так же, как везде в приложении (см. clientActualPayments.js).
+    const apArr = pick(row, 'actualPayments', 'actual_payments');
     const ptd = row.payments_that_day ?? row.paymentsThatDay;
     return {
       id,
       fio: row.fio != null ? String(row.fio) : '—',
       dateStart: ds != null && ds !== '' ? String(ds).slice(0, 10) : null,
       actualPaymentDate: ap != null && ap !== '' ? String(ap).slice(0, 10) : null,
+      actualPayments: Array.isArray(apArr) ? apArr : undefined,
       paymentsThatDay: normalizePaymentsThatDay(ptd),
       phone: row.phone != null ? String(row.phone) : '',
       trainerName:

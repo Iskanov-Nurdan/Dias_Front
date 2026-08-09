@@ -12,6 +12,7 @@ import {
   orderLineApiId,
 } from '../../../../shared/lib';
 import { resolveBatchUnitSalePrice } from '../../../production/lib/plasticProfilePricing';
+import { useProductLine, PRODUCT_LINE } from '../../../../shared/hooks';
 import {
   EmptyState,
   ErrorState,
@@ -22,6 +23,7 @@ import {
   Badge,
   useToast,
   ClientDateFilter,
+  ProductLineTabs,
 } from '../../../../shared/ui';
 import { useOperationalRefetch, WS_CASH } from '../../../../shared/realtime';
 import {
@@ -32,6 +34,7 @@ import {
   previewSale,
 } from '../../api/salesApi';
 import { getClients } from '../../../clients/api/clientsApi';
+import SalesFoamTab from '../SalesFoamTab/SalesFoamTab';
 import './SalesPage.scss';
 import './WaybillPreviewModal.scss';
 import { WAYBILL_DEFAULT_UNIT } from '../../config/waybillConfig';
@@ -828,6 +831,7 @@ const dedupeOrdersById = (list) => {
 };
 
 const SalesPage = () => {
+  const [line, setLine] = useProductLine();
   const [queryState, setQueryState] = useState({ page: 1, page_size: 20, payment_filter: '' });
   const [saleModalOpen, setSaleModalOpen] = useState(false);
   const [saleDetailsId, setSaleDetailsId] = useState(null);
@@ -851,8 +855,18 @@ const SalesPage = () => {
     );
   }, [items, clientDateFilter, saleDateFields]);
 
+  if (line === PRODUCT_LINE.FOAM) {
+    return (
+      <div className="page page--sales commercial-page">
+        <ProductLineTabs value={line} onChange={setLine} />
+        <SalesFoamTab />
+      </div>
+    );
+  }
+
   return (
     <div className="page page--sales commercial-page">
+      <ProductLineTabs value={line} onChange={setLine} />
       <div className="ds-toolbar commercial-toolbar">
         <div className="ds-toolbar__start commercial-toolbar__filters">
           <SearchableSelect

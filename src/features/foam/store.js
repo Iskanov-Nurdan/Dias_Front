@@ -5,6 +5,7 @@ import {
   FOAM_GP_STOCK,
   FOAM_GP_OPERATIONS,
   FOAM_DENSITY_GRADES,
+  FOAM_SALES,
   FOAM_WAREHOUSE_GP,
   foamSheetsPerCube,
   nextFoamId,
@@ -25,6 +26,7 @@ let state = {
   gpStock: FOAM_GP_STOCK.map((s) => ({ ...s })),
   gpOperations: FOAM_GP_OPERATIONS.map((o) => ({ ...o })),
   densityGrades: FOAM_DENSITY_GRADES.map((g) => ({ ...g })),
+  sales: FOAM_SALES.map((s) => ({ ...s, lines: s.lines.map((ln) => ({ ...ln })) })),
 };
 
 const listeners = new Set();
@@ -56,128 +58,66 @@ export function addDensityGrade(grade) {
   });
 }
 
+/** У гранул на продажу нет плотности/размера — все они лежат в одной строке склада. */
 const gpStockKeyFor = (run) =>
-  run.outputFormat === 'bag' ? `bag-${run.gradeCode}-${run.bagWeightKg}` : `cube-${run.gradeCode}`;
+  run.outputFormat === 'granule' ? 'granule' : `cube-${run.gradeCode}`;
 
-/** Списывает кг с лота и создаёт новую партию производства (статус ОТК — «на проверке»). */
-export function startProductionRun({ lotId, inputKg, gradeCode, outputFormat, outputQty, bagWeightKg, operator }) {
+/**
+ * Списывает кг с лота и создаёт новую партию производства. ОТК для линии
+ * пенопласта не нужен вообще — куб и гранулы сразу уходят на склад ГП.
+ */
+export function startProductionRun({ lotId, inputKg, gradeCode, outputFormat, outputQty, operator }) {
   setState((s) => {
     const lot = s.rawLots.find((l) => l.id === lotId);
     if (!lot) return {};
+    const producedAt = new Date().toISOString();
     const run = {
       id: nextFoamId('run'),
       lotId,
       lotNumber: lot.lotNumber,
-      gradeCode,
+      materialName: lot.materialName,
+      ...(outputFormat === 'cube' ? { gradeCode } : {}),
       inputKg,
       outputFormat,
-      ...(outputFormat === 'bag' ? { bagWeightKg } : {}),
       outputQty,
-      producedAt: new Date().toISOString(),
+      producedAt,
       operator: operator || 'Не указан',
-      otkStatus: 'pending',
-      measuredDensityKgM3: null,
-      defectPercent: null,
-      inspector: null,
-      checkedAt: null,
     };
-    return {
-      rawLots: s.rawLots.map((l) =>
-        l.id === lotId ? { ...l, remainingKg: Math.max(0, l.remainingKg - inputKg) } : l,
-      ),
-      productionRuns: [run, ...s.productionRuns],
-    };
-  });
-}
-
-/** Отменяет ещё не проверенную ОТК партию: возвращает кг обратно на лот сырья. */
-export function cancelProductionRun(runId) {
-  setState((s) => {
-    const run = s.productionRuns.find((r) => r.id === runId);
-    if (!run || run.otkStatus !== 'pending') return {};
-    return {
-      productionRuns: s.productionRuns.filter((r) => r.id !== runId),
-      rawLots: s.rawLots.map((l) =>
-        l.id === run.lotId ? { ...l, remainingKg: l.remainingKg + run.inputKg } : l,
-      ),
-    };
-  });
-}
-
-/** Возвращает забракованную партию на повторную проверку ОТК (не трогает склад/сырьё). */
-export function reopenOtkRun(runId) {
-  setState((s) => ({
-    productionRuns: s.productionRuns.map((r) =>
-      r.id === runId
-        ? { ...r, otkStatus: 'pending', measuredDensityKgM3: null, defectPercent: null, inspector: null, checkedAt: null }
-        : r,
-    ),
-  }));
-}
-
-/** Приёмка ОТК: принято → пополняет склад ГП (куб/мешок); брак → только запись в движениях. */
-export function resolveOtkRun(runId, { measuredDensityKgM3, defectPercent, otkStatus, inspector }) {
-  setState((s) => {
-    const run = s.productionRuns.find((r) => r.id === runId);
-    if (!run) return {};
-    const checkedAt = new Date().toISOString();
-    const productionRuns = s.productionRuns.map((r) =>
-      r.id === runId
-        ? { ...r, measuredDensityKgM3, defectPercent, otkStatus, inspector: inspector || 'Не указан', checkedAt }
-        : r,
+    const rawLots = s.rawLots.map((l) =>
+      l.id === lotId ? { ...l, remainingKg: Math.max(0, l.remainingKg - inputKg) } : l,
     );
-
-    if (otkStatus !== 'accepted') {
-      return {
-        productionRuns,
-        gpOperations: [
-          {
-            id: nextFoamId('gpop'),
-            kind: 'defect',
-            outputFormat: run.outputFormat,
-            gradeCode: run.gradeCode,
-            ...(run.outputFormat === 'bag' ? { bagWeightKg: run.bagWeightKg } : {}),
-            qty: -run.outputQty,
-            createdAt: checkedAt,
-            ref: `Брак партии ${run.lotNumber}`,
-          },
-          ...s.gpOperations,
-        ],
-      };
-    }
 
     const stockKey = gpStockKeyFor(run);
     let found = false;
     const gpStock = s.gpStock.map((row) => {
       if (row.key === stockKey) {
         found = true;
-        return { ...row, qty: row.qty + run.outputQty };
+        return { ...row, qty: row.qty + outputQty };
       }
       return row;
     });
     if (!found) {
       gpStock.push({
         key: stockKey,
-        outputFormat: run.outputFormat,
-        gradeCode: run.gradeCode,
-        ...(run.outputFormat === 'bag' ? { bagWeightKg: run.bagWeightKg } : {}),
-        qty: run.outputQty,
+        outputFormat,
+        ...(run.gradeCode ? { gradeCode: run.gradeCode } : {}),
+        qty: outputQty,
         warehouse: FOAM_WAREHOUSE_GP,
       });
     }
 
     return {
-      productionRuns,
+      rawLots,
+      productionRuns: [run, ...s.productionRuns],
       gpStock,
       gpOperations: [
         {
           id: nextFoamId('gpop'),
-          kind: 'otk_intake',
-          outputFormat: run.outputFormat,
-          gradeCode: run.gradeCode,
-          ...(run.outputFormat === 'bag' ? { bagWeightKg: run.bagWeightKg } : {}),
-          qty: run.outputQty,
-          createdAt: checkedAt,
+          kind: 'production_intake',
+          outputFormat,
+          ...(run.gradeCode ? { gradeCode: run.gradeCode } : {}),
+          qty: outputQty,
+          createdAt: producedAt,
           ref: run.id,
         },
         ...s.gpOperations,
@@ -201,9 +141,8 @@ export function recordWarehouseOperation({ row, qty, kind, ref }) {
           id: nextFoamId('gpop'),
           kind,
           outputFormat: row.outputFormat,
-          gradeCode: row.gradeCode,
+          ...(row.gradeCode ? { gradeCode: row.gradeCode } : {}),
           ...(row.thicknessCm ? { thicknessCm: row.thicknessCm } : {}),
-          ...(row.bagWeightKg ? { bagWeightKg: row.bagWeightKg } : {}),
           qty,
           createdAt: new Date().toISOString(),
           ref: ref || '',
@@ -272,5 +211,70 @@ export function cutCubeToSheets({ gradeCode, thicknessCm, cubesQty }) {
         ...s.gpOperations,
       ],
     };
+  });
+}
+
+/**
+ * Продажа готовой продукции клиенту: списывает кг/шт/листы с указанных строк
+ * склада и заводит запись о продаже (сумма/оплата/долг), плюс движения склада.
+ */
+export function createFoamSale({ client, saleDate, lines, paidAmount }) {
+  setState((s) => {
+    const cleanLines = (lines || [])
+      .map((ln) => {
+        const row = s.gpStock.find((r) => r.key === ln.key);
+        if (!row) return null;
+        const qty = Math.min(Number(ln.qty) || 0, row.qty);
+        const unitPrice = Math.max(0, Number(ln.unitPrice) || 0);
+        if (qty <= 0) return null;
+        return {
+          key: ln.key,
+          outputFormat: row.outputFormat,
+          ...(row.gradeCode ? { gradeCode: row.gradeCode } : {}),
+          ...(row.thicknessCm ? { thicknessCm: row.thicknessCm } : {}),
+          qty,
+          unitPrice,
+        };
+      })
+      .filter(Boolean);
+    if (!cleanLines.length) return {};
+
+    const totalAmount = Math.round(cleanLines.reduce((sum, ln) => sum + ln.qty * ln.unitPrice, 0) * 100) / 100;
+    const paid = Math.round(Math.min(Math.max(0, Number(paidAmount) || 0), totalAmount) * 100) / 100;
+    const debtAmount = Math.round((totalAmount - paid) * 100) / 100;
+    const paymentStatus = paid <= 0 ? 'debt' : (debtAmount > 0 ? 'partial' : 'paid');
+    const createdAt = saleDate ? new Date(saleDate).toISOString() : new Date().toISOString();
+
+    const sale = {
+      id: nextFoamId('sale'),
+      client: client || 'Клиент',
+      date: createdAt,
+      lines: cleanLines,
+      totalAmount,
+      paidAmount: paid,
+      debtAmount,
+      paymentStatus,
+    };
+
+    const gpStock = s.gpStock.map((row) => {
+      const line = cleanLines.find((ln) => ln.key === row.key);
+      return line ? { ...row, qty: Math.max(0, Math.round((row.qty - line.qty) * 100) / 100) } : row;
+    });
+
+    const gpOperations = [
+      ...cleanLines.map((ln) => ({
+        id: nextFoamId('gpop'),
+        kind: 'sale',
+        outputFormat: ln.outputFormat,
+        ...(ln.gradeCode ? { gradeCode: ln.gradeCode } : {}),
+        ...(ln.thicknessCm ? { thicknessCm: ln.thicknessCm } : {}),
+        qty: -ln.qty,
+        createdAt,
+        ref: `Продажа ${sale.id}`,
+      })),
+      ...s.gpOperations,
+    ];
+
+    return { gpStock, gpOperations, sales: [sale, ...s.sales] };
   });
 }

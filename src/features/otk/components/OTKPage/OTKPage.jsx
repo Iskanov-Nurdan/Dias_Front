@@ -9,9 +9,7 @@ import {
   Badge,
   RecordDetailsModal,
   DetailFields,
-  ProductLineTabs,
 } from '../../../../shared/ui';
-import { useProductLine, PRODUCT_LINE } from '../../../../shared/hooks';
 import {
   formatNumberForInput,
   pickFirstIsoDate,
@@ -20,7 +18,6 @@ import {
 import { getOtkBlankPool, getOtkAccountHistory } from '../../api/otkWorkshopApi';
 import OtkAccountModal from '../OtkAccountModal/OtkAccountModal';
 import '../OtkAccountModal/OtkAccountModal.scss';
-import OtkFoamTab from '../OtkFoamTab/OtkFoamTab';
 import './OTKPage.scss';
 
 const formatDateShort = (d) => {
@@ -43,7 +40,6 @@ const ACCOUNT_HISTORY_COLUMNS = [
 ];
 
 const OTKPage = () => {
-  const [line, setLine] = useProductLine();
   const [mainTab, setMainTab] = useState('pool');
   const [dateFilterIso, setDateFilterIso] = useState('');
   const [pool, setPool] = useState([]);
@@ -102,18 +98,8 @@ const OTKPage = () => {
     return '—';
   };
 
-  if (line === PRODUCT_LINE.FOAM) {
-    return (
-      <div className="page page--otk">
-        <ProductLineTabs value={line} onChange={setLine} />
-        <OtkFoamTab />
-      </div>
-    );
-  }
-
   return (
     <div className="page page--otk">
-      <ProductLineTabs value={line} onChange={setLine} />
       <div className="otk-page__tabs production-main-tabs" role="tablist" aria-label="Разделы ОТК">
         <button
           type="button"

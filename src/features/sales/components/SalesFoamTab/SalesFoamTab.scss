@@ -1,0 +1,79 @@
+@use '../../../../shared/styles/variables' as *;
+@use '../../../../shared/styles/mixins' as *;
+
+.sales-foam-tab {
+  &__lines {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+  }
+
+  &__line {
+    display: grid;
+    grid-template-columns: 2fr 0.8fr 1fr auto;
+    gap: var(--space-2);
+    align-items: center;
+    position: relative;
+  }
+
+  &__line-error {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+
+  &__add-line {
+    align-self: flex-start;
+    margin-bottom: var(--space-3);
+  }
+
+  &__total-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 0 var(--space-3);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--accent-muted);
+    border: 1px solid var(--border-subtle);
+    font-size: var(--font-label);
+    color: var(--text-secondary);
+
+    strong {
+      font-size: var(--font-h3);
+      color: var(--accent);
+    }
+  }
+
+  &__pay-tabs {
+    display: flex;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+
+  &__debt-hint {
+    margin: 0 0 var(--space-3);
+    font-size: var(--font-label);
+    color: var(--text-secondary);
+  }
+
+  &__detail-lines {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+
+  &__detail-line {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+    font-size: var(--font-label);
+  }
+}
+
+@include responsive-tables {
+  .sales-foam-tab__line {
+    grid-template-columns: 1fr;
+  }
+}

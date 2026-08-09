@@ -9,72 +9,21 @@ import {
   FOAM_WAREHOUSE_GP,
   FOAM_SHEET_THICKNESS_OPTIONS_CM,
   FOAM_OPERATION_KIND_LABEL,
+  FOAM_CUBE_VOLUME_M3,
   foamOutputFormatLabel,
   foamOutputUnitLabel,
   foamStockRowWeightKg,
   foamFormatParamsLabel,
   foamSheetsPerCube,
 } from '../../../foam/mockData';
-import { useFoamStore, recordWarehouseOperation, cutCubeToSheets } from '../../../foam/store';
+import { useFoamStore, cutCubeToSheets } from '../../../foam/store';
 import './WarehouseFoamTab.scss';
-
-const OPERATION_KINDS = [
-  { value: 'sale', label: 'Продажа', sign: -1 },
-  { value: 'defect', label: 'Брак / списание', sign: -1 },
-  { value: 'return', label: 'Возврат на склад', sign: 1 },
-];
 
 const formatDateTime = (iso) => {
   if (!iso) return '—';
   const s = String(iso);
   if (s.length >= 16) return `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)} ${s.slice(11, 16)}`;
   return s.slice(0, 10);
-};
-
-const StockOperationModal = ({ row, onClose, onSubmit }) => {
-  const [kind, setKind] = useState('sale');
-  const [qty, setQty] = useState('');
-  const [comment, setComment] = useState('');
-
-  const kindDef = OPERATION_KINDS.find((k) => k.value === kind);
-  const qtyNum = Number(qty) || 0;
-  const willExceedStock = kindDef?.sign === -1 && qtyNum > row.qty;
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (qtyNum <= 0 || willExceedStock) return;
-    onSubmit({ kind, qty: qtyNum * kindDef.sign, ref: comment.trim() });
-    onClose();
-  };
-
-  return (
-    <div className="modal-overlay" role="presentation" onClick={onClose}>
-      <div className="modal" onClick={(ev) => ev.stopPropagation()}>
-        <div className="modal__head">
-          <h3>Движение: {foamOutputFormatLabel(row.outputFormat)}, плотность {row.gradeCode}</h3>
-          <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
-        </div>
-        <form className="modal__body" onSubmit={handleSubmit}>
-          <p className="warehouse-foam-tab__hint">Сейчас на складе: {formatNumberForInput(row.qty)} {foamOutputUnitLabel(row.outputFormat)}</p>
-          <label>Операция</label>
-          <select value={kind} onChange={(ev) => setKind(ev.target.value)}>
-            {OPERATION_KINDS.map((k) => (
-              <option key={k.value} value={k.value}>{k.label}</option>
-            ))}
-          </select>
-          <label>Количество ({foamOutputUnitLabel(row.outputFormat)})</label>
-          <input type="number" min="1" step="1" value={qty} onChange={(ev) => setQty(ev.target.value)} required />
-          {willExceedStock && <p className="modal__error">На складе меньше, чем указано.</p>}
-          <label>Комментарий</label>
-          <input value={comment} onChange={(ev) => setComment(ev.target.value)} placeholder="Например, № продажи" autoComplete="off" />
-          <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary" disabled={qtyNum <= 0 || willExceedStock}>Сохранить</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
 };
 
 const CutCubeModal = ({ row, onClose, onSubmit }) => {
@@ -128,7 +77,6 @@ const CutCubeModal = ({ row, onClose, onSubmit }) => {
 const WarehouseFoamTab = () => {
   const { gpStock: stock, gpOperations: operations } = useFoamStore();
   const [mainTab, setMainTab] = useState('stock');
-  const [opTarget, setOpTarget] = useState(null);
   const [cutTarget, setCutTarget] = useState(null);
   const [dateFilterIso, setDateFilterIso] = useState('');
 
@@ -137,14 +85,18 @@ const WarehouseFoamTab = () => {
     [stock],
   );
 
+  const cubeTotals = useMemo(() => {
+    const qty = stock.filter((s) => s.outputFormat === 'cube').reduce((sum, s) => sum + s.qty, 0);
+    return {
+      qty: Math.round(qty * 10) / 10,
+      volumeM3: Math.round(qty * FOAM_CUBE_VOLUME_M3 * 100) / 100,
+    };
+  }, [stock]);
+
   const visibleOperations = useMemo(() => {
     if (!dateFilterIso) return operations;
     return operations.filter((op) => matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(op, ['createdAt'])));
   }, [operations, dateFilterIso]);
-
-  const handleOperationSubmit = (row, payload) => {
-    recordWarehouseOperation({ row, ...payload });
-  };
 
   const handleCutSubmit = (row, payload) => {
     cutCubeToSheets({ gradeCode: row.gradeCode, ...payload });
@@ -181,6 +133,7 @@ const WarehouseFoamTab = () => {
             <>
               <p className="warehouse-foam-tab__total-weight">
                 Итого на складе (оценочно): ≈ {formatNumberForInput(totalWeightKg)} кг
+                {cubeTotals.qty > 0 ? ` · кубов: ${formatNumberForInput(cubeTotals.qty)} шт (≈ ${formatNumberForInput(cubeTotals.volumeM3)} м³)` : ''}
               </p>
               <div className="chemistry-table-wrap">
                 <div className="chemistry-table warehouse-foam-tab__stock-table">
@@ -195,7 +148,7 @@ const WarehouseFoamTab = () => {
                   {stock.map((s) => (
                     <div key={s.key} className="chemistry-table__row">
                       <span className="chemistry-table__name">{foamOutputFormatLabel(s.outputFormat)}</span>
-                      <span className="chemistry-table__cell-clip">{s.gradeCode}</span>
+                      <span className="chemistry-table__cell-clip">{s.gradeCode || '—'}</span>
                       <span className="chemistry-table__cell-clip">{foamFormatParamsLabel(s)}</span>
                       <span className="chemistry-table__num">{formatNumberForInput(s.qty)} {foamOutputUnitLabel(s.outputFormat)}</span>
                       <span className="chemistry-table__num">{formatNumberForInput(foamStockRowWeightKg(s))} кг</span>
@@ -205,9 +158,6 @@ const WarehouseFoamTab = () => {
                             Нарезать на листы
                           </button>
                         )}
-                        <button type="button" className="btn btn--secondary btn--sm" onClick={() => setOpTarget(s)}>
-                          Движение
-                        </button>
                       </span>
                     </div>
                   ))}
@@ -247,9 +197,9 @@ const WarehouseFoamTab = () => {
                       <td className="data-table__cell--muted">{formatDateTime(op.createdAt)}</td>
                       <td>{FOAM_OPERATION_KIND_LABEL[op.kind] || op.kind}{op.ref ? ` — ${op.ref}` : ''}</td>
                       <td>
-                        {foamOutputFormatLabel(op.outputFormat)}, плотность {op.gradeCode}
+                        {foamOutputFormatLabel(op.outputFormat)}
+                        {op.gradeCode ? `, плотность ${op.gradeCode}` : ''}
                         {op.thicknessCm ? `, ${op.thicknessCm} см` : ''}
-                        {op.bagWeightKg ? `, ${op.bagWeightKg} кг/меш` : ''}
                       </td>
                       <td className={`data-table__cell--num warehouse-foam-tab__qty${op.qty < 0 ? ' warehouse-foam-tab__qty--out' : ' warehouse-foam-tab__qty--in'}`}>
                         {op.qty > 0 ? '+' : ''}{formatNumberForInput(op.qty)} {foamOutputUnitLabel(op.outputFormat)}
@@ -261,14 +211,6 @@ const WarehouseFoamTab = () => {
             </div>
           )}
         </section>
-      )}
-
-      {opTarget && (
-        <StockOperationModal
-          row={opTarget}
-          onClose={() => setOpTarget(null)}
-          onSubmit={(payload) => handleOperationSubmit(opTarget, payload)}
-        />
       )}
 
       {cutTarget && (

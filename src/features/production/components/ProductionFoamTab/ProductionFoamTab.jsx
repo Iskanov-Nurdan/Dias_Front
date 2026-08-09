@@ -4,7 +4,7 @@ import {
   pickFirstIsoDate,
   matchesClientDateFilter,
 } from '../../../../shared/lib';
-import { Badge, ClientDateFilter, ConfirmModal, EmptyState, useToast } from '../../../../shared/ui';
+import { ClientDateFilter, EmptyState, useToast } from '../../../../shared/ui';
 import { useAuth } from '../../../auth';
 import {
   FOAM_PRODUCTION_FORMATS,
@@ -14,10 +14,10 @@ import {
   foamOutputUnitLabel,
   foamApplyProductionLoss,
   foamCalcCubesFromKg,
-  foamCalcBagsFromKg,
+  foamCalcGranuleKgFromKg,
   foamFormatParamsLabel,
 } from '../../../foam/mockData';
-import { useFoamStore, startProductionRun, cancelProductionRun } from '../../../foam/store';
+import { useFoamStore, startProductionRun } from '../../../foam/store';
 import './ProductionFoamTab.scss';
 
 const formatDateTime = (iso) => {
@@ -27,35 +27,30 @@ const formatDateTime = (iso) => {
   return s.slice(0, 10);
 };
 
-const OTK_STATUS = {
-  pending: { variant: 'warning', label: 'На ОТК' },
-  accepted: { variant: 'success', label: 'Принято' },
-  rejected: { variant: 'danger', label: 'Брак' },
-};
-
 const StartRunModal = ({ lots, grades, onClose, onCreate }) => {
   const availableLots = lots.filter((l) => l.remainingKg > 0);
   const [lotId, setLotId] = useState(availableLots[0]?.id || '');
   const [inputKg, setInputKg] = useState('150');
   const [gradeCode, setGradeCode] = useState(grades[0]?.code || '');
   const [outputFormat, setOutputFormat] = useState(FOAM_PRODUCTION_FORMATS[0].value);
-  const [bagWeightKg, setBagWeightKg] = useState('25');
 
   const lot = availableLots.find((l) => l.id === lotId);
   const usableKg = useMemo(() => foamApplyProductionLoss(inputKg), [inputKg]);
   const outputQty = useMemo(() => {
     if (outputFormat === 'cube') return foamCalcCubesFromKg(gradeCode, inputKg, grades);
-    if (outputFormat === 'bag') return foamCalcBagsFromKg(inputKg, bagWeightKg);
+    if (outputFormat === 'granule') return foamCalcGranuleKgFromKg(inputKg);
     return null;
-  }, [outputFormat, gradeCode, inputKg, bagWeightKg, grades]);
+  }, [outputFormat, gradeCode, inputKg, grades]);
+
+  const needsGrade = outputFormat === 'cube';
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!lot || !gradeCode || !outputQty) return;
+    if (!lot || (needsGrade && !gradeCode) || !outputQty) return;
     const kg = Number(inputKg) || 0;
     if (kg <= 0 || kg > lot.remainingKg) return;
-    const payload = { lotId: lot.id, inputKg: kg, gradeCode, outputFormat, outputQty };
-    if (outputFormat === 'bag') payload.bagWeightKg = Number(bagWeightKg) || 0;
+    const payload = { lotId: lot.id, inputKg: kg, outputFormat, outputQty };
+    if (needsGrade) payload.gradeCode = gradeCode;
     onCreate(payload);
     onClose();
   };
@@ -68,12 +63,12 @@ const StartRunModal = ({ lots, grades, onClose, onCreate }) => {
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <form className="modal__body" onSubmit={handleSubmit}>
-          <label>Лот сырья</label>
+          <label>Сырьё</label>
           <select value={lotId} onChange={(ev) => setLotId(ev.target.value)}>
             {availableLots.length === 0 && <option value="">Нет сырья с остатком</option>}
             {availableLots.map((l) => (
               <option key={l.id} value={l.id}>
-                {l.lotNumber} ({formatNumberForInput(l.remainingKg)} кг)
+                {l.materialName} ({formatNumberForInput(l.remainingKg)} кг)
               </option>
             ))}
           </select>
@@ -89,13 +84,6 @@ const StartRunModal = ({ lots, grades, onClose, onCreate }) => {
           <p className="production-foam-tab__hint">
             С учётом потерь {FOAM_PRODUCTION_LOSS_PERCENT}%: в дело пойдёт ≈ {formatNumberForInput(usableKg)} кг
           </p>
-          <label>Плотность на выходе</label>
-          <select value={gradeCode} onChange={(ev) => setGradeCode(ev.target.value)}>
-            {grades.length === 0 && <option value="">Нет ни одной плотности в справочнике</option>}
-            {grades.map((g) => (
-              <option key={g.code} value={g.code}>{g.code}</option>
-            ))}
-          </select>
           <label>Формат на выходе</label>
           <select value={outputFormat} onChange={(ev) => setOutputFormat(ev.target.value)}>
             {FOAM_PRODUCTION_FORMATS.map((f) => (
@@ -104,23 +92,24 @@ const StartRunModal = ({ lots, grades, onClose, onCreate }) => {
           </select>
 
           {outputFormat === 'cube' && (
-            <p className="production-foam-tab__hint">
-              Куб всегда одного размера: {FOAM_CUBE_DIMS_CM.height}×{FOAM_CUBE_DIMS_CM.width}×{FOAM_CUBE_DIMS_CM.length} см. Меняется только вес.
-            </p>
+            <>
+              <label>Плотность на выходе</label>
+              <select value={gradeCode} onChange={(ev) => setGradeCode(ev.target.value)}>
+                {grades.length === 0 && <option value="">Нет ни одной плотности в справочнике</option>}
+                {grades.map((g) => (
+                  <option key={g.code} value={g.code}>{g.code}</option>
+                ))}
+              </select>
+              <p className="production-foam-tab__hint">
+                Куб всегда одного размера: {FOAM_CUBE_DIMS_CM.height}×{FOAM_CUBE_DIMS_CM.width}×{FOAM_CUBE_DIMS_CM.length} см. Меняется только вес.
+              </p>
+            </>
           )}
 
-          {outputFormat === 'bag' && (
-            <>
-              <label>1 мешок = сколько кг?</label>
-              <input
-                type="number"
-                min="0.1"
-                step="0.1"
-                value={bagWeightKg}
-                onChange={(ev) => setBagWeightKg(ev.target.value)}
-                required
-              />
-            </>
+          {outputFormat === 'granule' && (
+            <p className="production-foam-tab__hint">
+              Без деления на упаковки — считается напрямую в кг (с учётом потерь), у гранул на продажу нет плотности.
+            </p>
           )}
 
           <div className="production-foam-tab__calc-box">
@@ -132,7 +121,7 @@ const StartRunModal = ({ lots, grades, onClose, onCreate }) => {
 
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary" disabled={!lot || !gradeCode || !outputQty}>Запустить</button>
+            <button type="submit" className="btn btn--primary" disabled={!lot || (needsGrade && !gradeCode) || !outputQty}>Запустить</button>
           </div>
         </form>
       </div>
@@ -145,15 +134,22 @@ const ProductionFoamTab = () => {
   const { user } = useAuth();
   const { rawLots, productionRuns, densityGrades } = useFoamStore();
   const [startOpen, setStartOpen] = useState(false);
-  const [cancelTarget, setCancelTarget] = useState(null);
   const [dateFilterIso, setDateFilterIso] = useState('');
 
   const operatorName = user?.name || user?.role_name || 'Оператор';
 
   const stats = useMemo(() => {
-    const pending = productionRuns.filter((r) => r.otkStatus === 'pending').length;
-    const accepted = productionRuns.filter((r) => r.otkStatus === 'accepted').length;
-    return { total: productionRuns.length, pending, accepted };
+    const cubes = productionRuns
+      .filter((r) => r.outputFormat === 'cube')
+      .reduce((sum, r) => sum + r.outputQty, 0);
+    const granuleKg = productionRuns
+      .filter((r) => r.outputFormat === 'granule')
+      .reduce((sum, r) => sum + r.outputQty, 0);
+    return {
+      total: productionRuns.length,
+      cubes: Math.round(cubes * 10) / 10,
+      granuleKg: Math.round(granuleKg * 10) / 10,
+    };
   }, [productionRuns]);
 
   const visibleRuns = useMemo(() => {
@@ -163,14 +159,7 @@ const ProductionFoamTab = () => {
 
   const handleCreate = (payload) => {
     startProductionRun({ ...payload, operator: operatorName });
-    toast.success(`Производство запущено: ${formatNumberForInput(payload.inputKg)} кг → ${foamOutputFormatLabel(payload.outputFormat).toLowerCase()}`);
-  };
-
-  const handleCancel = () => {
-    if (!cancelTarget) return;
-    cancelProductionRun(cancelTarget.id);
-    toast.success(`Партия отменена, ${formatNumberForInput(cancelTarget.inputKg)} кг возвращены в остаток лота`);
-    setCancelTarget(null);
+    toast.success(`Производство запущено: ${formatNumberForInput(payload.inputKg)} кг → ${foamOutputFormatLabel(payload.outputFormat).toLowerCase()}, сразу на склад`);
   };
 
   return (
@@ -181,12 +170,12 @@ const ProductionFoamTab = () => {
           <span className="production-foam-tab__stat-label">Всего партий</span>
         </div>
         <div className="production-foam-tab__stat">
-          <span className="production-foam-tab__stat-value">{stats.pending}</span>
-          <span className="production-foam-tab__stat-label">На проверке ОТК</span>
+          <span className="production-foam-tab__stat-value">{stats.cubes}</span>
+          <span className="production-foam-tab__stat-label">Кубов выпущено</span>
         </div>
         <div className="production-foam-tab__stat">
-          <span className="production-foam-tab__stat-value">{stats.accepted}</span>
-          <span className="production-foam-tab__stat-label">Принято</span>
+          <span className="production-foam-tab__stat-value">{stats.granuleKg}</span>
+          <span className="production-foam-tab__stat-label">Гранул на продажу, кг</span>
         </div>
       </div>
 
@@ -208,46 +197,33 @@ const ProductionFoamTab = () => {
         </p>
 
         {visibleRuns.length === 0 ? (
-          <EmptyState title="Пока нет выпусков" description="Нажмите «Запустить производство» — сырьё уйдёт в обработку, партия попадёт в ОТК." />
+          <EmptyState title="Пока нет выпусков" description="Нажмите «Запустить производство» — сырьё уйдёт в обработку, готовая партия сразу попадёт на склад." />
         ) : (
           <div className="chemistry-table-wrap">
             <div className="chemistry-table production-foam-tab__runs-table">
               <div className="chemistry-table__header">
-                <span className="chemistry-table__th">Лот</span>
+                <span className="chemistry-table__th">Сырьё</span>
                 <span className="chemistry-table__th">Плотность</span>
                 <span className="chemistry-table__th chemistry-table__th--num">Загрузка</span>
                 <span className="chemistry-table__th">Формат</span>
                 <span className="chemistry-table__th chemistry-table__th--num">Выход</span>
                 <span className="chemistry-table__th">Оператор</span>
                 <span className="chemistry-table__th">Дата</span>
-                <span className="chemistry-table__th">ОТК</span>
-                <span className="chemistry-table__th chemistry-table__th--actions"> </span>
               </div>
-              {visibleRuns.map((r) => {
-                const status = OTK_STATUS[r.otkStatus] || OTK_STATUS.pending;
-                return (
-                  <div key={r.id} className="chemistry-table__row">
-                    <span className="chemistry-table__name chemistry-table__cell-clip">{r.lotNumber}</span>
-                    <span className="chemistry-table__cell-clip">{r.gradeCode}</span>
-                    <span className="chemistry-table__num">{formatNumberForInput(r.inputKg)} кг</span>
-                    <span className="chemistry-table__cell-clip">
-                      {foamOutputFormatLabel(r.outputFormat)}
-                      <span className="production-foam-tab__params">{foamFormatParamsLabel(r)}</span>
-                    </span>
-                    <span className="chemistry-table__num">{r.outputQty} {foamOutputUnitLabel(r.outputFormat)}</span>
-                    <span className="chemistry-table__cell-clip">{r.operator || '—'}</span>
-                    <span className="chemistry-table__status">{formatDateTime(r.producedAt)}</span>
-                    <span><Badge variant={status.variant} size="sm">{status.label}</Badge></span>
-                    <span className="chemistry-table__actions">
-                      {r.otkStatus === 'pending' && (
-                        <button type="button" className="btn btn--secondary btn--sm" onClick={() => setCancelTarget(r)}>
-                          Удалить
-                        </button>
-                      )}
-                    </span>
-                  </div>
-                );
-              })}
+              {visibleRuns.map((r) => (
+                <div key={r.id} className="chemistry-table__row">
+                  <span className="chemistry-table__name chemistry-table__cell-clip">{r.materialName}</span>
+                  <span className="chemistry-table__cell-clip">{r.gradeCode || '—'}</span>
+                  <span className="chemistry-table__num">{formatNumberForInput(r.inputKg)} кг</span>
+                  <span className="chemistry-table__cell-clip">
+                    {foamOutputFormatLabel(r.outputFormat)}
+                    <span className="production-foam-tab__params">{foamFormatParamsLabel(r)}</span>
+                  </span>
+                  <span className="chemistry-table__num">{r.outputQty} {foamOutputUnitLabel(r.outputFormat)}</span>
+                  <span className="chemistry-table__cell-clip">{r.operator || '—'}</span>
+                  <span className="chemistry-table__status">{formatDateTime(r.producedAt)}</span>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -256,15 +232,6 @@ const ProductionFoamTab = () => {
       {startOpen && (
         <StartRunModal lots={rawLots} grades={densityGrades} onClose={() => setStartOpen(false)} onCreate={handleCreate} />
       )}
-
-      <ConfirmModal
-        open={!!cancelTarget}
-        title="Удалить партию?"
-        message={cancelTarget ? `Партия ${cancelTarget.lotNumber} ещё не проверена ОТК. Удалить — ${formatNumberForInput(cancelTarget.inputKg)} кг вернутся в остаток лота.` : ''}
-        confirmText="Удалить"
-        onConfirm={handleCancel}
-        onCancel={() => setCancelTarget(null)}
-      />
     </div>
   );
 };

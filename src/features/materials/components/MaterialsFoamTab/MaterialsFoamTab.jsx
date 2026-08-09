@@ -31,17 +31,19 @@ const lotStatusOf = (lot) => {
 };
 
 const AddIntakeModal = ({ onClose, onCreate }) => {
+  const [materialName, setMaterialName] = useState('');
   const [supplier, setSupplier] = useState('Kingeps');
   const [bagWeightKg, setBagWeightKg] = useState('800');
-  const [lotNumber, setLotNumber] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const weight = Number(bagWeightKg) || 0;
-    if (weight <= 0) return;
+    const name = materialName.trim();
+    if (weight <= 0 || !name) return;
     onCreate({
       id: nextFoamId('lot'),
-      lotNumber: lotNumber.trim() || `KG-${Date.now().toString().slice(-6)}`,
+      lotNumber: `KG-${Date.now().toString().slice(-6)}`,
+      materialName: name,
       supplier: supplier.trim() || '—',
       bagWeightKg: weight,
       receivedKg: weight,
@@ -61,15 +63,15 @@ const AddIntakeModal = ({ onClose, onCreate }) => {
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <form className="modal__body" onSubmit={handleSubmit}>
+          <label>Название сырья</label>
+          <input value={materialName} onChange={(ev) => setMaterialName(ev.target.value)} placeholder="Например, Гранула EPS Kingeps HS" autoComplete="off" required />
           <label>Поставщик</label>
           <input value={supplier} onChange={(ev) => setSupplier(ev.target.value)} autoComplete="off" />
-          <label>№ лота (биг-бэга)</label>
-          <input value={lotNumber} onChange={(ev) => setLotNumber(ev.target.value)} placeholder="авто, если пусто" autoComplete="off" />
           <label>Вес, кг</label>
           <input type="number" min="1" value={bagWeightKg} onChange={(ev) => setBagWeightKg(ev.target.value)} required />
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary">Сохранить</button>
+            <button type="submit" className="btn btn--primary" disabled={!materialName.trim() || Number(bagWeightKg) <= 0}>Сохранить</button>
           </div>
         </form>
       </div>
@@ -143,14 +145,14 @@ const MaterialsFoamTab = () => {
       type: 'in',
       qtyKg: l.receivedKg,
       date: l.receivedAt,
-      note: `Приход — лот ${l.lotNumber} (${l.supplier})`,
+      note: `Приход — ${l.materialName} (${l.supplier})`,
     }));
     const outcome = productionRuns.map((r) => ({
       id: `out-${r.id}`,
       type: 'out',
       qtyKg: r.inputKg,
       date: r.producedAt,
-      note: `Списано в производство — лот ${r.lotNumber} (плотность на выходе: ${r.gradeCode})`,
+      note: `Списано в производство — ${r.materialName}${r.gradeCode ? ` (плотность на выходе: ${r.gradeCode})` : ''}`,
     }));
     return [...income, ...outcome].sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [lots, productionRuns]);
@@ -167,7 +169,7 @@ const MaterialsFoamTab = () => {
 
   const handleCreateLot = (lot) => {
     addRawLot(lot);
-    toast.success(`Приход добавлен: ${lot.lotNumber}, ${formatNumberForInput(lot.bagWeightKg)} кг`);
+    toast.success(`Приход добавлен: ${lot.materialName}, ${formatNumberForInput(lot.bagWeightKg)} кг`);
   };
 
   const handleCreateGrade = (grade) => {
@@ -231,7 +233,7 @@ const MaterialsFoamTab = () => {
             <div className="chemistry-table-wrap">
               <div className="chemistry-table materials-foam-tab__lots-table">
                 <div className="chemistry-table__header">
-                  <span className="chemistry-table__th">Лот</span>
+                  <span className="chemistry-table__th">Название сырья</span>
                   <span className="chemistry-table__th">Поставщик</span>
                   <span className="chemistry-table__th chemistry-table__th--num">Остаток</span>
                   <span className="chemistry-table__th">Приёмка</span>
@@ -242,7 +244,7 @@ const MaterialsFoamTab = () => {
                   const badge = LOT_STATUS_BADGE[status];
                   return (
                     <div key={lot.id} className="chemistry-table__row">
-                      <span className="chemistry-table__name chemistry-table__cell-clip">{lot.lotNumber}</span>
+                      <span className="chemistry-table__name chemistry-table__cell-clip">{lot.materialName}</span>
                       <span className="chemistry-table__cell-clip">{lot.supplier}</span>
                       <span className="chemistry-table__num">
                         {formatNumberForInput(lot.remainingKg)} / {formatNumberForInput(lot.receivedKg)} кг

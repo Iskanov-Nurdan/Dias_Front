@@ -4,8 +4,10 @@
  *
  * Реальный процесс (по описанию заказчика):
  * Сырьё (гранула) со склада сразу идёт в производство. Производство даёт
- * только 2 формата — Куб и Мешок. Лист получается позже, на Складе, нарезкой
- * готового куба. Плотность выбирается на производстве (не привязана к сырью).
+ * только 2 формата — Куб и Гранулы на продажу (обработанная гранула россыпью,
+ * считается напрямую в кг). Лист получается позже, на Складе, нарезкой готового
+ * куба. Плотность выбирается на производстве только для куба — у гранул на
+ * продажу плотности нет.
  */
 
 export const FOAM_WAREHOUSE_RAW = 'Склад сырья №2 — Пенополистирол';
@@ -32,9 +34,9 @@ export const foamGradeMidDensityKgM3 = (gradeCode, grades = FOAM_DENSITY_GRADES)
 
 /** Все форматы товара (для подписей/единиц измерения, в т.ч. на складе). */
 export const FOAM_OUTPUT_FORMATS = [
-  { value: 'cube', label: 'Куб', unitLabel: 'куб.' },
+  { value: 'cube', label: 'Куб', unitLabel: 'шт' },
   { value: 'sheet', label: 'Лист', unitLabel: 'листов' },
-  { value: 'bag', label: 'Мешок', unitLabel: 'мешков' },
+  { value: 'granule', label: 'Гранулы на продажу', unitLabel: 'кг' },
 ];
 
 /** Форматы, которые реально выходят из производства (лист — только на складе, нарезкой). */
@@ -78,13 +80,11 @@ export function foamCalcCubesFromKg(gradeCode, inputKg, grades = FOAM_DENSITY_GR
   return Math.round((usableKg / cubeWeight) * 10) / 10;
 }
 
-/** Сколько мешков выйдет из загрузки кг при заданном весе одного мешка (с учётом потерь 3.5%). */
-export function foamCalcBagsFromKg(inputKg, bagWeightKg) {
-  const bw = Number(bagWeightKg);
-  if (!Number.isFinite(bw) || bw <= 0) return null;
+/** Сколько кг гранул на продажу выйдет из загрузки (просто загрузка минус потери 3.5%). */
+export function foamCalcGranuleKgFromKg(inputKg) {
   const usableKg = foamApplyProductionLoss(inputKg);
   if (usableKg <= 0) return null;
-  return Math.floor(usableKg / bw);
+  return Math.round(usableKg * 10) / 10;
 }
 
 /** Сколько листов данной толщины получится из одного куба (по высоте куба 60см). */
@@ -103,12 +103,12 @@ export function foamSheetWeightKg(gradeCode, thicknessCm, grades = FOAM_DENSITY_
   return density * volumeM3;
 }
 
-/** Вес одной единицы товара на складе — с учётом формата (куб/лист/мешок). */
+/** Вес одной единицы товара на складе — с учётом формата (куб/лист/гранулы). Для гранул 1 единица = 1 кг. */
 export function foamUnitWeightKg(row, grades = FOAM_DENSITY_GRADES) {
   if (!row) return null;
   if (row.outputFormat === 'cube') return foamCubeWeightKg(row.gradeCode, grades);
   if (row.outputFormat === 'sheet') return foamSheetWeightKg(row.gradeCode, row.thicknessCm, grades);
-  if (row.outputFormat === 'bag') return row.bagWeightKg || null;
+  if (row.outputFormat === 'granule') return 1;
   return null;
 }
 
@@ -123,13 +123,13 @@ export function foamStockRowWeightKg(row, grades = FOAM_DENSITY_GRADES) {
 export function foamFormatParamsLabel(row) {
   if (!row) return '';
   if (row.outputFormat === 'cube') {
-    return `${FOAM_CUBE_DIMS_CM.height}×${FOAM_CUBE_DIMS_CM.width}×${FOAM_CUBE_DIMS_CM.length} см`;
+    return `${FOAM_CUBE_VOLUME_M3} м³`;
   }
   if (row.outputFormat === 'sheet') {
     return `${FOAM_CUBE_DIMS_CM.width}×${FOAM_CUBE_DIMS_CM.length} см, ${row.thicknessCm} см`;
   }
-  if (row.outputFormat === 'bag') {
-    return row.bagWeightKg ? `${row.bagWeightKg} кг/мешок` : '—';
+  if (row.outputFormat === 'granule') {
+    return 'россыпью, на развес';
   }
   return '';
 }
@@ -139,6 +139,7 @@ export const FOAM_RAW_LOTS = [
   {
     id: 'lot-1',
     lotNumber: 'KG-2607-01',
+    materialName: 'Гранула EPS Kingeps HS',
     supplier: 'Kingeps',
     bagWeightKg: 800,
     receivedKg: 800,
@@ -150,6 +151,7 @@ export const FOAM_RAW_LOTS = [
   {
     id: 'lot-2',
     lotNumber: 'KG-2607-02',
+    materialName: 'Гранула EPS Kingeps HS',
     supplier: 'Kingeps',
     bagWeightKg: 800,
     receivedKg: 800,
@@ -161,6 +163,7 @@ export const FOAM_RAW_LOTS = [
   {
     id: 'lot-3',
     lotNumber: 'KG-2607-03',
+    materialName: 'Гранула EPS Kingeps HP',
     supplier: 'Kingeps',
     bagWeightKg: 800,
     receivedKg: 800,
@@ -172,6 +175,7 @@ export const FOAM_RAW_LOTS = [
   {
     id: 'lot-4',
     lotNumber: 'SP-2607-11',
+    materialName: 'Гранула EPS СинтезПласт',
     supplier: 'СинтезПласт',
     bagWeightKg: 750,
     receivedKg: 750,
@@ -183,84 +187,69 @@ export const FOAM_RAW_LOTS = [
 ];
 
 /**
- * Выпуски производства: лот сырья → обработка → куб или мешок.
- * otkStatus держится тут же — партия сразу видна и в «Производстве», и в «ОТК».
- * bagWeightKg заполнен только для формата «мешок» (его вписывает оператор).
+ * Выпуски производства: лот сырья → обработка → куб или гранулы на продажу.
+ * ОТК для этой линии не нужен — партия сразу пополняет склад ГП.
+ * gradeCode заполнен только для куба (у гранул на продажу плотности нет).
  */
 export const FOAM_PRODUCTION_RUNS = [
   {
     id: 'run-1',
     lotId: 'lot-1',
     lotNumber: 'KG-2607-01',
-    gradeCode: '12',
+    materialName: 'Гранула EPS Kingeps HS',
     inputKg: 180,
-    outputFormat: 'bag',
-    bagWeightKg: 25,
-    outputQty: 6,
+    outputFormat: 'granule',
+    outputQty: 173.7,
     producedAt: '2026-07-25T10:00:00',
     operator: 'Азамат Р.',
-    otkStatus: 'accepted',
-    measuredDensityKgM3: 11.4,
-    defectPercent: 1.2,
-    inspector: 'Гульнара К.',
-    checkedAt: '2026-07-25T11:15:00',
   },
   {
     id: 'run-2',
     lotId: 'lot-3',
     lotNumber: 'KG-2607-03',
+    materialName: 'Гранула EPS Kingeps HP',
     gradeCode: '14-15',
     inputKg: 90,
     outputFormat: 'cube',
     outputQty: 5,
     producedAt: '2026-07-25T16:45:00',
     operator: 'Ербол С.',
-    otkStatus: 'accepted',
-    measuredDensityKgM3: 14.8,
-    defectPercent: 0.8,
-    inspector: 'Гульнара К.',
-    checkedAt: '2026-07-25T17:05:00',
   },
   {
     id: 'run-3',
     lotId: 'lot-2',
     lotNumber: 'KG-2607-02',
-    gradeCode: '6',
+    materialName: 'Гранула EPS Kingeps HS',
     inputKg: 120,
-    outputFormat: 'bag',
-    bagWeightKg: 20,
-    outputQty: 5,
+    outputFormat: 'granule',
+    outputQty: 115.8,
     producedAt: '2026-07-26T07:30:00',
     operator: 'Азамат Р.',
-    otkStatus: 'pending',
-    measuredDensityKgM3: null,
-    defectPercent: null,
   },
   {
     id: 'run-4',
     lotId: 'lot-1',
     lotNumber: 'KG-2607-01',
+    materialName: 'Гранула EPS Kingeps HS',
     gradeCode: '12',
     inputKg: 60,
     outputFormat: 'cube',
     outputQty: 4.4,
     producedAt: '2026-07-26T09:15:00',
     operator: 'Ербол С.',
-    otkStatus: 'pending',
-    measuredDensityKgM3: null,
-    defectPercent: null,
   },
 ];
 
-/** Остаток склада готовой продукции — по формату, плотности и параметрам (толщина/вес мешка). */
+/** Остаток склада готовой продукции — по формату и параметрам (плотность для куба/листа, кг для гранул). */
 export const FOAM_GP_STOCK = [
-  { key: 'bag-12-25', outputFormat: 'bag', gradeCode: '12', bagWeightKg: 25, qty: 5, warehouse: FOAM_WAREHOUSE_GP },
+  { key: 'granule', outputFormat: 'granule', qty: 150, warehouse: FOAM_WAREHOUSE_GP },
   { key: 'cube-14-15', outputFormat: 'cube', gradeCode: '14-15', qty: 5, warehouse: FOAM_WAREHOUSE_GP },
+  { key: 'cube-12', outputFormat: 'cube', gradeCode: '12', qty: 4.4, warehouse: FOAM_WAREHOUSE_GP },
   { key: 'sheet-12-3', outputFormat: 'sheet', gradeCode: '12', thicknessCm: 3, qty: 84, warehouse: FOAM_WAREHOUSE_GP },
 ];
 
 const OPERATION_KIND = {
-  OTK_INTAKE: 'otk_intake',
+  PRODUCTION_INTAKE: 'production_intake',
   SALE: 'sale',
   DEFECT: 'defect',
   RETURN: 'return',
@@ -269,7 +258,7 @@ const OPERATION_KIND = {
 };
 
 export const FOAM_OPERATION_KIND_LABEL = {
-  [OPERATION_KIND.OTK_INTAKE]: 'Приёмка из ОТК',
+  [OPERATION_KIND.PRODUCTION_INTAKE]: 'Поступление с производства',
   [OPERATION_KIND.SALE]: 'Продажа',
   [OPERATION_KIND.DEFECT]: 'Брак',
   [OPERATION_KIND.RETURN]: 'Возврат',
@@ -280,27 +269,23 @@ export const FOAM_OPERATION_KIND_LABEL = {
 export const FOAM_GP_OPERATIONS = [
   {
     id: 'gpop-1',
-    kind: OPERATION_KIND.OTK_INTAKE,
-    outputFormat: 'bag',
-    gradeCode: '12',
-    bagWeightKg: 25,
-    qty: 6,
+    kind: OPERATION_KIND.PRODUCTION_INTAKE,
+    outputFormat: 'granule',
+    qty: 173.7,
     createdAt: '2026-07-25T11:20:00',
     ref: 'run-1',
   },
   {
     id: 'gpop-2',
     kind: OPERATION_KIND.SALE,
-    outputFormat: 'bag',
-    gradeCode: '12',
-    bagWeightKg: 25,
-    qty: -1,
+    outputFormat: 'granule',
+    qty: -23.7,
     createdAt: '2026-07-25T19:45:00',
     ref: 'Продажа №4482',
   },
   {
     id: 'gpop-3',
-    kind: OPERATION_KIND.OTK_INTAKE,
+    kind: OPERATION_KIND.PRODUCTION_INTAKE,
     outputFormat: 'cube',
     gradeCode: '14-15',
     qty: 5,
@@ -316,6 +301,49 @@ export const FOAM_GP_OPERATIONS = [
     qty: 84,
     createdAt: '2026-07-24T12:00:00',
     ref: 'Нарезка (до внедрения учёта)',
+  },
+  {
+    id: 'gpop-5',
+    kind: OPERATION_KIND.PRODUCTION_INTAKE,
+    outputFormat: 'cube',
+    gradeCode: '12',
+    qty: 4.4,
+    createdAt: '2026-07-26T09:15:00',
+    ref: 'run-4',
+  },
+];
+
+/** Продажи ГП пенопласта — отдельно от gpOperations, т.к. несут клиента/сумму/оплату. */
+export const FOAM_SALE_PAYMENT_STATUS_LABEL = {
+  paid: 'Оплачено',
+  partial: 'Частично оплачено',
+  debt: 'Долг',
+};
+
+export const FOAM_SALE_PAYMENT_STATUS_VARIANT = {
+  paid: 'success',
+  partial: 'warning',
+  debt: 'danger',
+};
+
+/** Короткая подпись типа продажи по составу строк (форматы через запятую). */
+export function foamSaleTypeLabel(sale) {
+  const formats = [...new Set((sale?.lines || []).map((ln) => foamOutputFormatLabel(ln.outputFormat)))];
+  return formats.length ? formats.join(', ') : '—';
+}
+
+export const FOAM_SALES = [
+  {
+    id: 'sale-1',
+    client: 'ТОО СтройМир',
+    date: '2026-07-25T19:45:00',
+    lines: [
+      { outputFormat: 'granule', qty: 23.7, unitPrice: 45 },
+    ],
+    totalAmount: 1066.5,
+    paidAmount: 1066.5,
+    debtAmount: 0,
+    paymentStatus: 'paid',
   },
 ];
 

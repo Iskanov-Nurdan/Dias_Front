@@ -1,12 +1,20 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   formatNumberForInput,
   pickFirstIsoDate,
   matchesClientDateFilter,
+  getApiErrorMessage,
 } from '../../../../shared/lib';
-import { Badge, ClientDateFilter, EmptyState, useToast } from '../../../../shared/ui';
-import { FOAM_WAREHOUSE_RAW, nextFoamId } from '../../../foam/mockData';
-import { useFoamStore, addRawLot, addDensityGrade } from '../../../foam/store';
+import { Badge, ClientDateFilter, EmptyState, Loading, useToast } from '../../../../shared/ui';
+import { useOperationalRefetch, WS_FOAM_MATERIALS } from '../../../../shared/realtime';
+import { FOAM_WAREHOUSE_RAW } from '../../../foam/mockData';
+import {
+  getFoamRawLots,
+  createFoamRawLot,
+  getFoamDensityGrades,
+  createFoamDensityGrade,
+  getFoamProductionRuns,
+} from '../../../foam/api/foamApi';
 import './MaterialsFoamTab.scss';
 
 const SUB_TAB = { CATALOG: 'catalog', LOTS: 'lots', MOVEMENTS: 'movements' };
@@ -25,34 +33,31 @@ const LOT_STATUS_BADGE = {
 };
 
 const lotStatusOf = (lot) => {
-  if (lot.remainingKg <= 0) return 'empty';
-  if (lot.remainingKg <= lot.bagWeightKg * 0.15) return 'low';
+  const remaining = Number(lot.remaining_kg);
+  const bagWeight = Number(lot.bag_weight_kg);
+  if (remaining <= 0) return 'empty';
+  if (remaining <= bagWeight * 0.15) return 'low';
   return 'in_stock';
 };
 
-const AddIntakeModal = ({ onClose, onCreate }) => {
+const AddIntakeModal = ({ onClose, onCreate, saving }) => {
   const [materialName, setMaterialName] = useState('');
   const [supplier, setSupplier] = useState('Kingeps');
   const [bagWeightKg, setBagWeightKg] = useState('800');
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const weight = Number(bagWeightKg) || 0;
     const name = materialName.trim();
     if (weight <= 0 || !name) return;
-    onCreate({
-      id: nextFoamId('lot'),
-      lotNumber: `KG-${Date.now().toString().slice(-6)}`,
-      materialName: name,
-      supplier: supplier.trim() || '—',
-      bagWeightKg: weight,
-      receivedKg: weight,
-      remainingKg: weight,
-      receivedAt: new Date().toISOString(),
-      warehouse: FOAM_WAREHOUSE_RAW,
-      status: 'in_stock',
-    });
-    onClose();
+    setError('');
+    try {
+      await onCreate({ material_name: name, supplier: supplier.trim(), bag_weight_kg: String(weight) });
+      onClose();
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    }
   };
 
   return (
@@ -69,9 +74,12 @@ const AddIntakeModal = ({ onClose, onCreate }) => {
           <input value={supplier} onChange={(ev) => setSupplier(ev.target.value)} autoComplete="off" />
           <label>Вес, кг</label>
           <input type="number" min="1" value={bagWeightKg} onChange={(ev) => setBagWeightKg(ev.target.value)} required />
+          {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary" disabled={!materialName.trim() || Number(bagWeightKg) <= 0}>Сохранить</button>
+            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>Отмена</button>
+            <button type="submit" className="btn btn--primary" disabled={saving || !materialName.trim() || Number(bagWeightKg) <= 0}>
+              {saving ? 'Сохранение…' : 'Сохранить'}
+            </button>
           </div>
         </form>
       </div>
@@ -79,13 +87,13 @@ const AddIntakeModal = ({ onClose, onCreate }) => {
   );
 };
 
-const AddGradeModal = ({ existingCodes, onClose, onCreate }) => {
+const AddGradeModal = ({ existingCodes, onClose, onCreate, saving }) => {
   const [code, setCode] = useState('');
   const [minKgM3, setMinKgM3] = useState('');
   const [maxKgM3, setMaxKgM3] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const trimmed = code.trim();
     const min = Number(minKgM3);
@@ -96,8 +104,12 @@ const AddGradeModal = ({ existingCodes, onClose, onCreate }) => {
       setError('Проверьте диапазон кг/м³');
       return;
     }
-    onCreate({ code: trimmed, minKgM3: min, maxKgM3: max });
-    onClose();
+    try {
+      await onCreate({ code: trimmed, min_kg_m3: String(min), max_kg_m3: String(max) });
+      onClose();
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    }
   };
 
   return (
@@ -116,8 +128,10 @@ const AddGradeModal = ({ existingCodes, onClose, onCreate }) => {
           <input type="number" min="0" step="0.1" value={maxKgM3} onChange={(ev) => setMaxKgM3(ev.target.value)} required />
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary">Сохранить</button>
+            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>Отмена</button>
+            <button type="submit" className="btn btn--primary" disabled={saving}>
+              {saving ? 'Сохранение…' : 'Сохранить'}
+            </button>
           </div>
         </form>
       </div>
@@ -127,15 +141,44 @@ const AddGradeModal = ({ existingCodes, onClose, onCreate }) => {
 
 const MaterialsFoamTab = () => {
   const toast = useToast();
-  const { rawLots: lots, productionRuns, densityGrades } = useFoamStore();
+  const [lots, setLots] = useState([]);
+  const [productionRuns, setProductionRuns] = useState([]);
+  const [densityGrades, setDensityGrades] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [subTab, setSubTab] = useState(SUB_TAB.LOTS);
   const [addOpen, setAddOpen] = useState(false);
   const [addGradeOpen, setAddGradeOpen] = useState(false);
+  const [savingLot, setSavingLot] = useState(false);
+  const [savingGrade, setSavingGrade] = useState(false);
   const [dateFilterIso, setDateFilterIso] = useState('');
 
+  const fetchAll = useCallback(async () => {
+    try {
+      const [lotsRes, runsRes, gradesRes] = await Promise.all([
+        getFoamRawLots({ page_size: 500 }),
+        getFoamProductionRuns({ page_size: 500 }),
+        getFoamDensityGrades(),
+      ]);
+      setLots(lotsRes.data?.items || []);
+      setProductionRuns(runsRes.data?.items || []);
+      setDensityGrades(gradesRes.data?.items || []);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  useOperationalRefetch(WS_FOAM_MATERIALS, fetchAll, true);
+
   const stats = useMemo(() => {
-    const totalKg = lots.reduce((sum, l) => sum + l.remainingKg, 0);
-    const activeLots = lots.filter((l) => l.remainingKg > 0).length;
+    const totalKg = lots.reduce((sum, l) => sum + Number(l.remaining_kg), 0);
+    const activeLots = lots.filter((l) => Number(l.remaining_kg) > 0).length;
     return { totalKg, activeLots, gradesCount: densityGrades.length };
   }, [lots, densityGrades]);
 
@@ -143,23 +186,23 @@ const MaterialsFoamTab = () => {
     const income = lots.map((l) => ({
       id: `in-${l.id}`,
       type: 'in',
-      qtyKg: l.receivedKg,
-      date: l.receivedAt,
-      note: `Приход — ${l.materialName} (${l.supplier})`,
+      qtyKg: l.received_kg,
+      date: l.received_at,
+      note: `Приход — ${l.material_name} (${l.supplier || '—'})`,
     }));
     const outcome = productionRuns.map((r) => ({
       id: `out-${r.id}`,
       type: 'out',
-      qtyKg: r.inputKg,
-      date: r.producedAt,
-      note: `Списано в производство — ${r.materialName}${r.gradeCode ? ` (плотность на выходе: ${r.gradeCode})` : ''}`,
+      qtyKg: r.input_kg,
+      date: r.produced_at,
+      note: `Списано в производство — ${r.material_name}${r.grade_code ? ` (плотность на выходе: ${r.grade_code})` : ''}`,
     }));
     return [...income, ...outcome].sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [lots, productionRuns]);
 
   const visibleLots = useMemo(() => {
     if (!dateFilterIso) return lots;
-    return lots.filter((l) => matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(l, ['receivedAt'])));
+    return lots.filter((l) => matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(l, ['received_at'])));
   }, [lots, dateFilterIso]);
 
   const visibleMovements = useMemo(() => {
@@ -167,15 +210,29 @@ const MaterialsFoamTab = () => {
     return movements.filter((m) => matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(m, ['date'])));
   }, [movements, dateFilterIso]);
 
-  const handleCreateLot = (lot) => {
-    addRawLot(lot);
-    toast.success(`Приход добавлен: ${lot.materialName}, ${formatNumberForInput(lot.bagWeightKg)} кг`);
+  const handleCreateLot = async (payload) => {
+    setSavingLot(true);
+    try {
+      await createFoamRawLot(payload);
+      await fetchAll();
+      toast.success(`Приход добавлен: ${payload.material_name}, ${formatNumberForInput(payload.bag_weight_kg)} кг`);
+    } finally {
+      setSavingLot(false);
+    }
   };
 
-  const handleCreateGrade = (grade) => {
-    addDensityGrade(grade);
-    toast.success(`Плотность «${grade.code}» добавлена в справочник`);
+  const handleCreateGrade = async (payload) => {
+    setSavingGrade(true);
+    try {
+      await createFoamDensityGrade(payload);
+      await fetchAll();
+      toast.success(`Плотность «${payload.code}» добавлена в справочник`);
+    } finally {
+      setSavingGrade(false);
+    }
   };
+
+  if (loading) return <Loading />;
 
   return (
     <div className="materials-foam-tab">
@@ -244,12 +301,12 @@ const MaterialsFoamTab = () => {
                   const badge = LOT_STATUS_BADGE[status];
                   return (
                     <div key={lot.id} className="chemistry-table__row">
-                      <span className="chemistry-table__name chemistry-table__cell-clip">{lot.materialName}</span>
-                      <span className="chemistry-table__cell-clip">{lot.supplier}</span>
+                      <span className="chemistry-table__name chemistry-table__cell-clip">{lot.material_name}</span>
+                      <span className="chemistry-table__cell-clip">{lot.supplier || '—'}</span>
                       <span className="chemistry-table__num">
-                        {formatNumberForInput(lot.remainingKg)} / {formatNumberForInput(lot.receivedKg)} кг
+                        {formatNumberForInput(lot.remaining_kg)} / {formatNumberForInput(lot.received_kg)} кг
                       </span>
-                      <span className="chemistry-table__status">{formatDateTime(lot.receivedAt)}</span>
+                      <span className="chemistry-table__status">{formatDateTime(lot.received_at)}</span>
                       <span><Badge variant={badge.variant} size="sm">{badge.label}</Badge></span>
                     </div>
                   );
@@ -279,7 +336,7 @@ const MaterialsFoamTab = () => {
               {densityGrades.map((g) => (
                 <div key={g.code} className="chemistry-table__row">
                   <span className="chemistry-table__name">{g.code}</span>
-                  <span className="chemistry-table__num">{g.minKgM3}–{g.maxKgM3} кг/м³</span>
+                  <span className="chemistry-table__num">{g.min_kg_m3}–{g.max_kg_m3} кг/м³</span>
                 </div>
               ))}
             </div>
@@ -319,12 +376,13 @@ const MaterialsFoamTab = () => {
         </div>
       )}
 
-      {addOpen && <AddIntakeModal onClose={() => setAddOpen(false)} onCreate={handleCreateLot} />}
+      {addOpen && <AddIntakeModal onClose={() => setAddOpen(false)} onCreate={handleCreateLot} saving={savingLot} />}
       {addGradeOpen && (
         <AddGradeModal
           existingCodes={densityGrades.map((g) => g.code)}
           onClose={() => setAddGradeOpen(false)}
           onCreate={handleCreateGrade}
+          saving={savingGrade}
         />
       )}
     </div>

@@ -1,43 +1,58 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   formatNumberForInput,
   parseLocaleNumber,
   pickFirstIsoDate,
   matchesClientDateFilter,
+  getApiErrorMessage,
 } from '../../../../shared/lib';
-import { Badge, ClientDateFilter, EmptyState, useToast } from '../../../../shared/ui';
+import { Badge, ClientDateFilter, EmptyState, Loading, useToast } from '../../../../shared/ui';
+import { useOperationalRefetch, WS_FOAM_SALES } from '../../../../shared/realtime';
 import {
   FOAM_SALE_PAYMENT_STATUS_LABEL,
   FOAM_SALE_PAYMENT_STATUS_VARIANT,
   foamOutputFormatLabel,
   foamOutputUnitLabel,
   foamFormatParamsLabel,
-  foamSaleTypeLabel,
 } from '../../../foam/mockData';
-import { useFoamStore, createFoamSale } from '../../../foam/store';
+import { getFoamGpStock, getFoamSales, createFoamSale } from '../../../foam/api/foamApi';
 import './SalesFoamTab.scss';
 
 const formatDate = (v) => (v ? String(v).slice(0, 10) : '—');
 const toMoney = (v) => `${formatNumberForInput(v)} сом`;
 
-const stockRowLabel = (row) => {
-  const parts = [foamOutputFormatLabel(row.outputFormat)];
-  if (row.gradeCode) parts.push(`плотность ${row.gradeCode}`);
-  const params = foamFormatParamsLabel(row);
-  if (params) parts.push(params);
-  return `${parts.join(', ')} — остаток ${formatNumberForInput(row.qty)} ${foamOutputUnitLabel(row.outputFormat)}`;
+const toCalcRow = (row) => ({
+  outputFormat: row.output_format,
+  gradeCode: row.grade_code,
+  thicknessCm: row.thickness_cm,
+  qty: Number(row.qty),
+});
+
+/** Короткая подпись типа продажи по составу строк (форматы через запятую). */
+const foamSaleTypeLabel = (sale) => {
+  const formats = [...new Set((sale?.lines || []).map((ln) => foamOutputFormatLabel(ln.output_format)))];
+  return formats.length ? formats.join(', ') : '—';
 };
 
-const newEmptyLine = () => ({ key: '', qty: '', unitPrice: '' });
+const stockRowLabel = (row) => {
+  const parts = [foamOutputFormatLabel(row.output_format)];
+  if (row.grade_code) parts.push(`плотность ${row.grade_code}`);
+  const params = foamFormatParamsLabel(toCalcRow(row));
+  if (params) parts.push(params);
+  return `${parts.join(', ')} — остаток ${formatNumberForInput(row.qty)} ${foamOutputUnitLabel(row.output_format)}`;
+};
 
-const CreateFoamSaleModal = ({ stock, onClose, onCreate }) => {
+const newEmptyLine = () => ({ stockId: '', qty: '', unitPrice: '' });
+
+const CreateFoamSaleModal = ({ stock, onClose, onCreate, saving }) => {
   const [client, setClient] = useState('');
   const [saleDate, setSaleDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [lines, setLines] = useState([newEmptyLine()]);
   const [payTab, setPayTab] = useState('paid');
   const [paidAmountStr, setPaidAmountStr] = useState('');
+  const [error, setError] = useState('');
 
-  const availableStock = stock.filter((r) => r.qty > 0);
+  const availableStock = stock.filter((r) => Number(r.qty) > 0);
 
   const lineTotals = useMemo(
     () => lines.map((ln) => (parseLocaleNumber(ln.qty) || 0) * (parseLocaleNumber(ln.unitPrice) || 0)),
@@ -55,27 +70,36 @@ const CreateFoamSaleModal = ({ stock, onClose, onCreate }) => {
   const removeLine = (idx) => setLines((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
 
   const hasValidLines = lines.some((ln) => {
-    const row = stock.find((r) => r.key === ln.key);
+    const row = stock.find((r) => String(r.id) === String(ln.stockId));
     const qty = parseLocaleNumber(ln.qty);
     const price = parseLocaleNumber(ln.unitPrice);
-    return row && qty > 0 && qty <= row.qty && Number.isFinite(price) && price >= 0;
+    return row && qty > 0 && qty <= Number(row.qty) && Number.isFinite(price) && price >= 0;
   });
 
   const canSubmit = client.trim() && hasValidLines && total > 0
     && (payTab !== 'partial' || (paidAmount > 0 && paidAmount < total));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!canSubmit) return;
-    onCreate({
-      client: client.trim(),
-      saleDate,
-      lines: lines
-        .filter((ln) => ln.key && parseLocaleNumber(ln.qty) > 0)
-        .map((ln) => ({ key: ln.key, qty: parseLocaleNumber(ln.qty), unitPrice: parseLocaleNumber(ln.unitPrice) || 0 })),
-      paidAmount,
-    });
-    onClose();
+    setError('');
+    try {
+      await onCreate({
+        client: client.trim(),
+        sale_date: saleDate,
+        lines: lines
+          .filter((ln) => ln.stockId && parseLocaleNumber(ln.qty) > 0)
+          .map((ln) => ({
+            stock_id: Number(ln.stockId),
+            qty: String(parseLocaleNumber(ln.qty)),
+            unit_price: String(parseLocaleNumber(ln.unitPrice) || 0),
+          })),
+        paid_amount: String(paidAmount),
+      });
+      onClose();
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    }
   };
 
   return (
@@ -94,15 +118,15 @@ const CreateFoamSaleModal = ({ stock, onClose, onCreate }) => {
           <label>Позиции</label>
           <div className="sales-foam-tab__lines">
             {lines.map((ln, idx) => {
-              const row = stock.find((r) => r.key === ln.key);
+              const row = stock.find((r) => String(r.id) === String(ln.stockId));
               const qtyNum = parseLocaleNumber(ln.qty);
-              const overStock = row && qtyNum > row.qty;
+              const overStock = row && qtyNum > Number(row.qty);
               return (
                 <div key={idx} className="sales-foam-tab__line">
-                  <select value={ln.key} onChange={(ev) => updateLine(idx, { key: ev.target.value })}>
+                  <select value={ln.stockId} onChange={(ev) => updateLine(idx, { stockId: ev.target.value })}>
                     <option value="">Выберите товар</option>
                     {availableStock.map((r) => (
-                      <option key={r.key} value={r.key}>{stockRowLabel(r)}</option>
+                      <option key={r.id} value={r.id}>{stockRowLabel(r)}</option>
                     ))}
                   </select>
                   <input
@@ -153,10 +177,13 @@ const CreateFoamSaleModal = ({ stock, onClose, onCreate }) => {
           <p className="sales-foam-tab__debt-hint">
             Оплачено: {toMoney(paidAmount)} · Долг: {toMoney(debtAmount)}
           </p>
+          {error && <p className="modal__error">{error}</p>}
 
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary" disabled={!canSubmit}>Создать продажу</button>
+            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>Отмена</button>
+            <button type="submit" className="btn btn--primary" disabled={saving || !canSubmit}>
+              {saving ? 'Сохранение…' : 'Создать продажу'}
+            </button>
           </div>
         </form>
       </div>
@@ -176,16 +203,16 @@ const SaleDetailsModal = ({ sale, onClose }) => (
           {sale.lines.map((ln, idx) => (
             <div key={idx} className="sales-foam-tab__detail-line">
               <span>
-                {foamOutputFormatLabel(ln.outputFormat)}
-                {ln.gradeCode ? `, плотность ${ln.gradeCode}` : ''}
-                {ln.thicknessCm ? `, ${ln.thicknessCm} см` : ''}
+                {foamOutputFormatLabel(ln.output_format)}
+                {ln.grade_code ? `, плотность ${ln.grade_code}` : ''}
+                {ln.thickness_cm ? `, ${ln.thickness_cm} см` : ''}
               </span>
-              <span>{formatNumberForInput(ln.qty)} {foamOutputUnitLabel(ln.outputFormat)} × {toMoney(ln.unitPrice)}</span>
+              <span>{formatNumberForInput(ln.qty)} {foamOutputUnitLabel(ln.output_format)} × {toMoney(ln.unit_price)}</span>
             </div>
           ))}
         </div>
         <p className="sales-foam-tab__debt-hint">
-          Итого: {toMoney(sale.totalAmount)} · Оплачено: {toMoney(sale.paidAmount)} · Долг: {toMoney(sale.debtAmount)}
+          Итого: {toMoney(sale.total_amount)} · Оплачено: {toMoney(sale.paid_amount)} · Долг: {toMoney(sale.debt_amount)}
         </p>
         <div className="modal__actions">
           <button type="button" className="btn btn--secondary" onClick={onClose}>Закрыть</button>
@@ -197,20 +224,53 @@ const SaleDetailsModal = ({ sale, onClose }) => (
 
 const SalesFoamTab = () => {
   const toast = useToast();
-  const { gpStock, sales } = useFoamStore();
+  const [gpStock, setGpStock] = useState([]);
+  const [sales, setSales] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [detailsSale, setDetailsSale] = useState(null);
   const [dateFilterIso, setDateFilterIso] = useState('');
+
+  const fetchAll = useCallback(async () => {
+    try {
+      const [stockRes, salesRes] = await Promise.all([
+        getFoamGpStock(),
+        getFoamSales({ page_size: 500 }),
+      ]);
+      setGpStock(stockRes.data?.items || []);
+      setSales(salesRes.data?.items || []);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  useOperationalRefetch(WS_FOAM_SALES, fetchAll, true);
 
   const visibleSales = useMemo(() => {
     if (!dateFilterIso) return sales;
     return sales.filter((s) => matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(s, ['date'])));
   }, [sales, dateFilterIso]);
 
-  const handleCreate = (payload) => {
-    createFoamSale(payload);
-    toast.success(`Продажа создана: ${payload.client}`);
+  const handleCreate = async (payload) => {
+    setSaving(true);
+    try {
+      await createFoamSale(payload);
+      await fetchAll();
+      toast.success(`Продажа создана: ${payload.client}`);
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) return <Loading />;
 
   return (
     <div className="sales-foam-tab">
@@ -248,10 +308,10 @@ const SalesFoamTab = () => {
                   <td>{s.client}</td>
                   <td>{formatDate(s.date)}</td>
                   <td>{foamSaleTypeLabel(s)}</td>
-                  <td className="data-table__cell--num">{toMoney(s.totalAmount)}</td>
-                  <td className="data-table__cell--num">{toMoney(s.paidAmount)}</td>
-                  <td className="data-table__cell--num">{toMoney(s.debtAmount)}</td>
-                  <td><Badge variant={FOAM_SALE_PAYMENT_STATUS_VARIANT[s.paymentStatus]}>{FOAM_SALE_PAYMENT_STATUS_LABEL[s.paymentStatus]}</Badge></td>
+                  <td className="data-table__cell--num">{toMoney(s.total_amount)}</td>
+                  <td className="data-table__cell--num">{toMoney(s.paid_amount)}</td>
+                  <td className="data-table__cell--num">{toMoney(s.debt_amount)}</td>
+                  <td><Badge variant={FOAM_SALE_PAYMENT_STATUS_VARIANT[s.payment_status]}>{FOAM_SALE_PAYMENT_STATUS_LABEL[s.payment_status]}</Badge></td>
                   <td>
                     <button type="button" className="btn btn--secondary btn--sm" onClick={() => setDetailsSale(s)}>
                       Открыть
@@ -265,7 +325,7 @@ const SalesFoamTab = () => {
       )}
 
       {createOpen && (
-        <CreateFoamSaleModal stock={gpStock} onClose={() => setCreateOpen(false)} onCreate={handleCreate} />
+        <CreateFoamSaleModal stock={gpStock} onClose={() => setCreateOpen(false)} onCreate={handleCreate} saving={saving} />
       )}
 
       {detailsSale && (

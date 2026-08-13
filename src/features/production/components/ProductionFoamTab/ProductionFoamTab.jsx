@@ -1,11 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   formatNumberForInput,
   pickFirstIsoDate,
   matchesClientDateFilter,
+  getApiErrorMessage,
 } from '../../../../shared/lib';
-import { ClientDateFilter, EmptyState, useToast } from '../../../../shared/ui';
-import { useAuth } from '../../../auth';
+import { ClientDateFilter, EmptyState, Loading, useToast } from '../../../../shared/ui';
+import { useOperationalRefetch, WS_FOAM_PRODUCTION } from '../../../../shared/realtime';
 import {
   FOAM_PRODUCTION_FORMATS,
   FOAM_PRODUCTION_LOSS_PERCENT,
@@ -17,7 +18,7 @@ import {
   foamCalcGranuleKgFromKg,
   foamFormatParamsLabel,
 } from '../../../foam/mockData';
-import { useFoamStore, startProductionRun } from '../../../foam/store';
+import { getFoamRawLots, getFoamDensityGrades, getFoamProductionRuns, createFoamProductionRun } from '../../../foam/api/foamApi';
 import './ProductionFoamTab.scss';
 
 const formatDateTime = (iso) => {
@@ -27,32 +28,43 @@ const formatDateTime = (iso) => {
   return s.slice(0, 10);
 };
 
-const StartRunModal = ({ lots, grades, onClose, onCreate }) => {
-  const availableLots = lots.filter((l) => l.remainingKg > 0);
-  const [lotId, setLotId] = useState(availableLots[0]?.id || '');
+/** Плотности стора имеют вид { code, min_kg_m3, max_kg_m3 } — расчётные хелперы mockData.js ждут camelCase. */
+const toCalcGrades = (grades) =>
+  grades.map((g) => ({ code: g.code, minKgM3: Number(g.min_kg_m3), maxKgM3: Number(g.max_kg_m3) }));
+
+const StartRunModal = ({ lots, grades, onClose, onCreate, saving }) => {
+  const availableLots = lots.filter((l) => Number(l.remaining_kg) > 0);
+  const [lotId, setLotId] = useState(availableLots[0]?.id ?? '');
   const [inputKg, setInputKg] = useState('150');
   const [gradeCode, setGradeCode] = useState(grades[0]?.code || '');
   const [outputFormat, setOutputFormat] = useState(FOAM_PRODUCTION_FORMATS[0].value);
+  const [error, setError] = useState('');
 
+  const calcGrades = useMemo(() => toCalcGrades(grades), [grades]);
   const lot = availableLots.find((l) => l.id === lotId);
   const usableKg = useMemo(() => foamApplyProductionLoss(inputKg), [inputKg]);
   const outputQty = useMemo(() => {
-    if (outputFormat === 'cube') return foamCalcCubesFromKg(gradeCode, inputKg, grades);
+    if (outputFormat === 'cube') return foamCalcCubesFromKg(gradeCode, inputKg, calcGrades);
     if (outputFormat === 'granule') return foamCalcGranuleKgFromKg(inputKg);
     return null;
-  }, [outputFormat, gradeCode, inputKg, grades]);
+  }, [outputFormat, gradeCode, inputKg, calcGrades]);
 
   const needsGrade = outputFormat === 'cube';
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!lot || (needsGrade && !gradeCode) || !outputQty) return;
+    if (!lot || (needsGrade && !gradeCode)) return;
     const kg = Number(inputKg) || 0;
-    if (kg <= 0 || kg > lot.remainingKg) return;
-    const payload = { lotId: lot.id, inputKg: kg, outputFormat, outputQty };
-    if (needsGrade) payload.gradeCode = gradeCode;
-    onCreate(payload);
-    onClose();
+    if (kg <= 0 || kg > Number(lot.remaining_kg)) return;
+    const payload = { lot_id: lot.id, input_kg: String(kg), output_format: outputFormat };
+    if (needsGrade) payload.grade_code = gradeCode;
+    setError('');
+    try {
+      await onCreate(payload);
+      onClose();
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    }
   };
 
   return (
@@ -64,11 +76,11 @@ const StartRunModal = ({ lots, grades, onClose, onCreate }) => {
         </div>
         <form className="modal__body" onSubmit={handleSubmit}>
           <label>Сырьё</label>
-          <select value={lotId} onChange={(ev) => setLotId(ev.target.value)}>
+          <select value={lotId} onChange={(ev) => setLotId(Number(ev.target.value))}>
             {availableLots.length === 0 && <option value="">Нет сырья с остатком</option>}
             {availableLots.map((l) => (
               <option key={l.id} value={l.id}>
-                {l.materialName} ({formatNumberForInput(l.remainingKg)} кг)
+                {l.material_name} ({formatNumberForInput(l.remaining_kg)} кг)
               </option>
             ))}
           </select>
@@ -76,7 +88,7 @@ const StartRunModal = ({ lots, grades, onClose, onCreate }) => {
           <input
             type="number"
             min="1"
-            max={lot?.remainingKg || undefined}
+            max={lot?.remaining_kg || undefined}
             value={inputKg}
             onChange={(ev) => setInputKg(ev.target.value)}
             required
@@ -113,15 +125,18 @@ const StartRunModal = ({ lots, grades, onClose, onCreate }) => {
           )}
 
           <div className="production-foam-tab__calc-box">
-            <span className="production-foam-tab__calc-label">Количество на выходе</span>
+            <span className="production-foam-tab__calc-label">Количество на выходе (предпросмотр)</span>
             <span className="production-foam-tab__calc-value">
-              {outputQty != null ? `${outputQty} ${foamOutputUnitLabel(outputFormat)}` : '—'}
+              {outputQty != null ? `≈ ${outputQty} ${foamOutputUnitLabel(outputFormat)}` : '—'}
             </span>
           </div>
+          {error && <p className="modal__error">{error}</p>}
 
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary" disabled={!lot || (needsGrade && !gradeCode) || !outputQty}>Запустить</button>
+            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>Отмена</button>
+            <button type="submit" className="btn btn--primary" disabled={saving || !lot || (needsGrade && !gradeCode)}>
+              {saving ? 'Запуск…' : 'Запустить'}
+            </button>
           </div>
         </form>
       </div>
@@ -131,20 +146,45 @@ const StartRunModal = ({ lots, grades, onClose, onCreate }) => {
 
 const ProductionFoamTab = () => {
   const toast = useToast();
-  const { user } = useAuth();
-  const { rawLots, productionRuns, densityGrades } = useFoamStore();
+  const [rawLots, setRawLots] = useState([]);
+  const [productionRuns, setProductionRuns] = useState([]);
+  const [densityGrades, setDensityGrades] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [startOpen, setStartOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [dateFilterIso, setDateFilterIso] = useState('');
 
-  const operatorName = user?.name || user?.role_name || 'Оператор';
+  const fetchAll = useCallback(async () => {
+    try {
+      const [lotsRes, runsRes, gradesRes] = await Promise.all([
+        getFoamRawLots({ page_size: 500 }),
+        getFoamProductionRuns({ page_size: 500 }),
+        getFoamDensityGrades(),
+      ]);
+      setRawLots(lotsRes.data?.items || []);
+      setProductionRuns(runsRes.data?.items || []);
+      setDensityGrades(gradesRes.data?.items || []);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  useOperationalRefetch(WS_FOAM_PRODUCTION, fetchAll, true);
 
   const stats = useMemo(() => {
     const cubes = productionRuns
-      .filter((r) => r.outputFormat === 'cube')
-      .reduce((sum, r) => sum + r.outputQty, 0);
+      .filter((r) => r.output_format === 'cube')
+      .reduce((sum, r) => sum + Number(r.output_qty), 0);
     const granuleKg = productionRuns
-      .filter((r) => r.outputFormat === 'granule')
-      .reduce((sum, r) => sum + r.outputQty, 0);
+      .filter((r) => r.output_format === 'granule')
+      .reduce((sum, r) => sum + Number(r.output_qty), 0);
     return {
       total: productionRuns.length,
       cubes: Math.round(cubes * 10) / 10,
@@ -154,13 +194,21 @@ const ProductionFoamTab = () => {
 
   const visibleRuns = useMemo(() => {
     if (!dateFilterIso) return productionRuns;
-    return productionRuns.filter((r) => matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(r, ['producedAt'])));
+    return productionRuns.filter((r) => matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(r, ['produced_at'])));
   }, [productionRuns, dateFilterIso]);
 
-  const handleCreate = (payload) => {
-    startProductionRun({ ...payload, operator: operatorName });
-    toast.success(`Производство запущено: ${formatNumberForInput(payload.inputKg)} кг → ${foamOutputFormatLabel(payload.outputFormat).toLowerCase()}, сразу на склад`);
+  const handleCreate = async (payload) => {
+    setSaving(true);
+    try {
+      await createFoamProductionRun(payload);
+      await fetchAll();
+      toast.success(`Производство запущено: ${formatNumberForInput(payload.input_kg)} кг → ${foamOutputFormatLabel(payload.output_format).toLowerCase()}, сразу на склад`);
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) return <Loading />;
 
   return (
     <div className="production-foam-tab">
@@ -212,16 +260,16 @@ const ProductionFoamTab = () => {
               </div>
               {visibleRuns.map((r) => (
                 <div key={r.id} className="chemistry-table__row">
-                  <span className="chemistry-table__name chemistry-table__cell-clip">{r.materialName}</span>
-                  <span className="chemistry-table__cell-clip">{r.gradeCode || '—'}</span>
-                  <span className="chemistry-table__num">{formatNumberForInput(r.inputKg)} кг</span>
+                  <span className="chemistry-table__name chemistry-table__cell-clip">{r.material_name}</span>
+                  <span className="chemistry-table__cell-clip">{r.grade_code || '—'}</span>
+                  <span className="chemistry-table__num">{formatNumberForInput(r.input_kg)} кг</span>
                   <span className="chemistry-table__cell-clip">
-                    {foamOutputFormatLabel(r.outputFormat)}
-                    <span className="production-foam-tab__params">{foamFormatParamsLabel(r)}</span>
+                    {foamOutputFormatLabel(r.output_format)}
+                    <span className="production-foam-tab__params">{foamFormatParamsLabel({ outputFormat: r.output_format, gradeCode: r.grade_code })}</span>
                   </span>
-                  <span className="chemistry-table__num">{r.outputQty} {foamOutputUnitLabel(r.outputFormat)}</span>
+                  <span className="chemistry-table__num">{r.output_qty} {foamOutputUnitLabel(r.output_format)}</span>
                   <span className="chemistry-table__cell-clip">{r.operator || '—'}</span>
-                  <span className="chemistry-table__status">{formatDateTime(r.producedAt)}</span>
+                  <span className="chemistry-table__status">{formatDateTime(r.produced_at)}</span>
                 </div>
               ))}
             </div>
@@ -230,7 +278,7 @@ const ProductionFoamTab = () => {
       </div>
 
       {startOpen && (
-        <StartRunModal lots={rawLots} grades={densityGrades} onClose={() => setStartOpen(false)} onCreate={handleCreate} />
+        <StartRunModal lots={rawLots} grades={densityGrades} onClose={() => setStartOpen(false)} onCreate={handleCreate} saving={saving} />
       )}
     </div>
   );

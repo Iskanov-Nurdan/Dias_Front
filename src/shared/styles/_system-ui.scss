@@ -1,7 +1,7 @@
 @use 'variables' as *;
 @use 'mixins' as *;
 
-/* ── ERP: вкладки — полная ширина, равные доли (как «Смены»), активная: фон + полоса accent ── */
+/* ── ERP: вкладки — компактные слева, активная: только подчёркивание под текстом ── */
 
 .users-page__tabs-wrap {
   width: 100%;
@@ -21,7 +21,8 @@
   display: flex;
   align-items: stretch;
   flex-wrap: nowrap;
-  gap: 0;
+  justify-content: flex-start;
+  gap: var(--space-6);
   width: 100%;
   min-height: var(--ds-tab-bar-height);
   margin: 0 0 var(--ds-tab-bar-margin-bottom);
@@ -45,7 +46,7 @@
 .page--users .page__tab {
   position: relative;
   display: inline-flex;
-  flex: 1 1 0;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
@@ -62,7 +63,7 @@
   line-height: var(--leading-tight);
   color: var(--text-muted);
   cursor: pointer;
-  white-space: normal;
+  white-space: nowrap;
   text-align: center;
   box-sizing: border-box;
   box-shadow: none;
@@ -91,6 +92,12 @@
   }
 }
 
+/*
+ * Активная под-вкладка — только подчёркивание, без заливки фона. Это осознанно
+ * «легче», чем сегмент-контрол `.product-line-tabs` (см. ProductLineTabs.scss) —
+ * там, где обе вкладки на странице (линия продукта сверху + этот стиль снизу),
+ * разница в весе визуально показывает иерархию.
+ */
 .materials-tabs__tab--active,
 .otk-tabs__tab--active,
 .chemistry-tabs__tab--active,
@@ -102,7 +109,7 @@
 .page--users .page__tab--active {
   color: var(--text);
   font-weight: var(--weight-semibold);
-  background: color-mix(in srgb, var(--text) 7%, transparent);
+  background: transparent;
   box-shadow: none;
 
   &::after {
@@ -111,13 +118,13 @@
     left: 0;
     right: 0;
     bottom: 0;
-    height: 3px;
+    height: 2px;
     background: var(--accent);
     border-radius: 2px 2px 0 0;
   }
 
   &:hover {
-    background: color-mix(in srgb, var(--text) 9%, transparent);
+    background: color-mix(in srgb, var(--text) 4%, transparent);
   }
 }
 

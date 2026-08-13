@@ -8,7 +8,7 @@ import {
   formatQuantityDisplay,
   parseLocaleNumber,
 } from '../../../../shared/lib';
-import { Loading, EmptyState, ErrorState, ConfirmModal, useToast, DecimalInput, Select, ProductLineTabs } from '../../../../shared/ui';
+import { ActionMenu, Loading, EmptyState, ErrorState, ConfirmModal, useToast, DecimalInput, Select, ProductLineTabs } from '../../../../shared/ui';
 import {
   createIncoming,
   createRawMaterial,
@@ -481,23 +481,19 @@ const MaterialsPage = () => {
                             >
                               Оформить приход
                             </button>
-                            <button
-                              type="button"
-                              className="btn btn--secondary btn--sm"
-                              onClick={() => setEditModal(b)}
-                              disabled={mid == null}
-                            >
-                              Редактировать
-                            </button>
-                            {canDeleteMaterial(b) && (
-                              <button
-                                type="button"
-                                className="btn btn--danger btn--sm"
-                                onClick={() => mid != null && setDeleteTarget({ id: mid, name: displayName(b) })}
-                              >
-                                Удалить
-                              </button>
-                            )}
+                            <ActionMenu
+                              ariaLabel="Действия"
+                              items={[
+                                { label: 'Редактировать', disabled: mid == null, onClick: () => setEditModal(b) },
+                                ...(canDeleteMaterial(b)
+                                  ? [{
+                                      label: 'Удалить',
+                                      danger: true,
+                                      onClick: () => mid != null && setDeleteTarget({ id: mid, name: displayName(b) }),
+                                    }]
+                                  : []),
+                              ]}
+                            />
                           </div>
                         </div>
                       );

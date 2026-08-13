@@ -4,6 +4,7 @@ import {
   formatNumberForInput,
 } from '../../../../shared/lib';
 import {
+  ActionMenu,
   ConfirmModal,
   EmptyState,
   ErrorState,
@@ -361,24 +362,17 @@ const ChemistryPage = () => {
                       <button
                         type="button"
                         className="btn btn--secondary btn--sm"
-                        onClick={() => setEditTarget(row)}
-                      >
-                        Редактировать
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn--secondary btn--sm"
                         onClick={() => setCompositionTarget(row)}
                       >
                         Состав
                       </button>
-                      <button
-                        type="button"
-                        className="btn btn--danger btn--sm"
-                        onClick={() => setDeleteTarget({ id: row.id, name: row.name })}
-                      >
-                        Удалить
-                      </button>
+                      <ActionMenu
+                        ariaLabel="Действия"
+                        items={[
+                          { label: 'Редактировать', onClick: () => setEditTarget(row) },
+                          { label: 'Удалить', danger: true, onClick: () => setDeleteTarget({ id: row.id, name: row.name }) },
+                        ]}
+                      />
                     </div>
                   </div>
                 ))}

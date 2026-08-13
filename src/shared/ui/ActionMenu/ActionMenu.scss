@@ -38,7 +38,8 @@
     color var(--transition-fast),
     border-color var(--transition-fast);
 
-  &:hover:not(:disabled) {
+  &:hover:not(:disabled),
+  &--open {
     background: var(--bg-hover) !important;
     color: var(--text) !important;
     border-color: var(--border-subtle) !important;
@@ -103,16 +104,23 @@
     box-shadow:
       0 -12px 40px color-mix(in srgb, var(--bg) 75%, transparent),
       0 0 0 1px var(--card-border);
+
+    /* На тач-устройствах (нижний лист) пункты остаются крупными — компактность только для desktop-дропдауна. */
+    .action-menu__item {
+      padding: var(--space-3) var(--space-3) !important;
+      min-height: 48px !important;
+    }
   }
 }
 
 .action-menu__item {
   display: flex;
   align-items: center;
+  gap: var(--space-2);
   width: 100%;
   text-align: left;
-  padding: var(--space-3) var(--space-3) !important;
-  min-height: 48px !important;
+  padding: var(--space-2) var(--space-3) !important;
+  min-height: 40px !important;
   margin: 0 !important;
   border: none !important;
   border-radius: var(--radius-sm) !important;
@@ -139,4 +147,21 @@
     opacity: 0.45;
     cursor: not-allowed !important;
   }
+}
+
+.action-menu__item-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  color: currentColor;
+  opacity: 0.85;
+}
+
+.action-menu__divider {
+  height: 1px;
+  margin: var(--space-1) var(--space-2);
+  background: var(--border-subtle);
+  list-style: none;
 }

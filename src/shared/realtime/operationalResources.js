@@ -34,7 +34,17 @@ export const OPERATIONAL_RESOURCES_ALL = [
   'defect_record',
   'rework_request',
   'chemistry*',
+  'foam_raw_lot',
+  'foam_density_grade',
+  'foam_production_run',
+  'foam_gp_stock',
+  'foam_sale',
 ];
+
+export const WS_FOAM_MATERIALS = ['foam_raw_lot', 'foam_density_grade', 'foam_production_run'];
+export const WS_FOAM_PRODUCTION = ['foam_raw_lot', 'foam_density_grade', 'foam_production_run', 'foam_gp_stock'];
+export const WS_FOAM_WAREHOUSE = ['foam_gp_stock'];
+export const WS_FOAM_SALES = ['foam_gp_stock', 'foam_sale'];
 
 export const WS_SHIFT = ['shift', 'shift_note', 'shift_complaint', 'activity'];
 

@@ -1,36 +1,13 @@
 /**
- * Демо-данные линии «Пенополистирол».
- * Только фронтенд-прототип: без API, без persist.
- *
- * Реальный процесс (по описанию заказчика):
- * Сырьё (гранула) со склада сразу идёт в производство. Производство даёт
- * только 2 формата — Куб и Гранулы на продажу (обработанная гранула россыпью,
- * считается напрямую в кг). Лист получается позже, на Складе, нарезкой готового
- * куба. Плотность выбирается на производстве только для куба — у гранул на
- * продажу плотности нет.
+ * Константы и расчётные хелперы линии «Пенополистирол».
+ * Данные — реальные, с бэка (`src/features/foam/api/foamApi.js`); этот файл
+ * содержит только бизнес-константы и чистые функции форматирования/предпросчёта,
+ * которые используются в формах ДО отправки на сервер (сервер — источник истины
+ * для итоговых чисел).
  */
 
 export const FOAM_WAREHOUSE_RAW = 'Склад сырья №2 — Пенополистирол';
 export const FOAM_WAREHOUSE_GP = 'Склад ГП — Пенопласт';
-
-/** Плотность гранулы/продукции — свои цифры завода, а не ГОСТ-марки. */
-export const FOAM_DENSITY_GRADES = [
-  { code: '6', minKgM3: 5, maxKgM3: 7 },
-  { code: '12', minKgM3: 10, maxKgM3: 12 },
-  { code: '14-15', minKgM3: 13, maxKgM3: 15.5 },
-];
-
-/** grades — необязательный, живой список из стора (если добавляли свои плотности). */
-export const foamDensityToleranceFor = (gradeCode, grades = FOAM_DENSITY_GRADES) => {
-  const grade = grades.find((g) => g.code === gradeCode);
-  return grade ? { min: grade.minKgM3, max: grade.maxKgM3 } : { min: 0, max: 999 };
-};
-
-/** Средняя плотность по грейду, кг/м³. */
-export const foamGradeMidDensityKgM3 = (gradeCode, grades = FOAM_DENSITY_GRADES) => {
-  const g = grades.find((x) => x.code === gradeCode);
-  return g ? (g.minKgM3 + g.maxKgM3) / 2 : null;
-};
 
 /** Все форматы товара (для подписей/единиц измерения, в т.ч. на складе). */
 export const FOAM_OUTPUT_FORMATS = [
@@ -56,7 +33,7 @@ export const FOAM_CUBE_VOLUME_M3 =
 /** Толщины, на которые куб режут на листы уже на складе. */
 export const FOAM_SHEET_THICKNESS_OPTIONS_CM = [2, 3, 4];
 
-/** Технологические потери при обработке сырья в производстве. */
+/** Технологические потери при обработке сырья в производстве (те же, что считает бэк). */
 export const FOAM_PRODUCTION_LOSS_PERCENT = 3.5;
 
 export function foamApplyProductionLoss(inputKg) {
@@ -65,14 +42,23 @@ export function foamApplyProductionLoss(inputKg) {
   return kg * (1 - FOAM_PRODUCTION_LOSS_PERCENT / 100);
 }
 
+/** Средняя плотность по грейду, кг/м³. grades — справочник с бэка ({code,minKgM3,maxKgM3}). */
+export function foamGradeMidDensityKgM3(gradeCode, grades = []) {
+  const g = grades.find((x) => x.code === gradeCode);
+  return g ? (g.minKgM3 + g.maxKgM3) / 2 : null;
+}
+
 /** Вес одного куба при заданной плотности. */
-export function foamCubeWeightKg(gradeCode, grades = FOAM_DENSITY_GRADES) {
+export function foamCubeWeightKg(gradeCode, grades = []) {
   const density = foamGradeMidDensityKgM3(gradeCode, grades);
   return density ? density * FOAM_CUBE_VOLUME_M3 : null;
 }
 
-/** Сколько кубов выйдет из загрузки кг (с учётом потерь 3.5%). Дробное значение — норм, льют по объёму. */
-export function foamCalcCubesFromKg(gradeCode, inputKg, grades = FOAM_DENSITY_GRADES) {
+/**
+ * Сколько кубов выйдет из загрузки кг (с учётом потерь 3.5%) — предпросмотр в форме до отправки.
+ * Авторитетное значение считает бэк (`POST foam/production-runs/` → `output_qty`).
+ */
+export function foamCalcCubesFromKg(gradeCode, inputKg, grades = []) {
   const cubeWeight = foamCubeWeightKg(gradeCode, grades);
   if (!cubeWeight) return null;
   const usableKg = foamApplyProductionLoss(inputKg);
@@ -80,7 +66,7 @@ export function foamCalcCubesFromKg(gradeCode, inputKg, grades = FOAM_DENSITY_GR
   return Math.round((usableKg / cubeWeight) * 10) / 10;
 }
 
-/** Сколько кг гранул на продажу выйдет из загрузки (просто загрузка минус потери 3.5%). */
+/** Сколько кг гранул на продажу выйдет из загрузки — предпросмотр (авторитетно считает бэк). */
 export function foamCalcGranuleKgFromKg(inputKg) {
   const usableKg = foamApplyProductionLoss(inputKg);
   if (usableKg <= 0) return null;
@@ -95,7 +81,7 @@ export function foamSheetsPerCube(thicknessCm) {
 }
 
 /** Вес одного листа данной толщины и плотности. */
-export function foamSheetWeightKg(gradeCode, thicknessCm, grades = FOAM_DENSITY_GRADES) {
+export function foamSheetWeightKg(gradeCode, thicknessCm, grades = []) {
   const density = foamGradeMidDensityKgM3(gradeCode, grades);
   const t = Number(thicknessCm);
   if (!density || !Number.isFinite(t) || t <= 0) return null;
@@ -104,7 +90,7 @@ export function foamSheetWeightKg(gradeCode, thicknessCm, grades = FOAM_DENSITY_
 }
 
 /** Вес одной единицы товара на складе — с учётом формата (куб/лист/гранулы). Для гранул 1 единица = 1 кг. */
-export function foamUnitWeightKg(row, grades = FOAM_DENSITY_GRADES) {
+export function foamUnitWeightKg(row, grades = []) {
   if (!row) return null;
   if (row.outputFormat === 'cube') return foamCubeWeightKg(row.gradeCode, grades);
   if (row.outputFormat === 'sheet') return foamSheetWeightKg(row.gradeCode, row.thicknessCm, grades);
@@ -113,7 +99,7 @@ export function foamUnitWeightKg(row, grades = FOAM_DENSITY_GRADES) {
 }
 
 /** Оценочный вес остатка склада (qty × вес единицы), округлённо. */
-export function foamStockRowWeightKg(row, grades = FOAM_DENSITY_GRADES) {
+export function foamStockRowWeightKg(row, grades = []) {
   const unitWeight = foamUnitWeightKg(row, grades);
   if (unitWeight == null) return null;
   return Math.round(unitWeight * row.qty * 10) / 10;
@@ -134,186 +120,15 @@ export function foamFormatParamsLabel(row) {
   return '';
 }
 
-/** Лоты сырья — биг-бэги гранулы на складе (плотности у сырья нет — она выбирается в производстве). */
-export const FOAM_RAW_LOTS = [
-  {
-    id: 'lot-1',
-    lotNumber: 'KG-2607-01',
-    materialName: 'Гранула EPS Kingeps HS',
-    supplier: 'Kingeps',
-    bagWeightKg: 800,
-    receivedKg: 800,
-    remainingKg: 560,
-    receivedAt: '2026-07-24T09:10:00',
-    warehouse: FOAM_WAREHOUSE_RAW,
-    status: 'in_stock',
-  },
-  {
-    id: 'lot-2',
-    lotNumber: 'KG-2607-02',
-    materialName: 'Гранула EPS Kingeps HS',
-    supplier: 'Kingeps',
-    bagWeightKg: 800,
-    receivedKg: 800,
-    remainingKg: 680,
-    receivedAt: '2026-07-25T14:40:00',
-    warehouse: FOAM_WAREHOUSE_RAW,
-    status: 'in_stock',
-  },
-  {
-    id: 'lot-3',
-    lotNumber: 'KG-2607-03',
-    materialName: 'Гранула EPS Kingeps HP',
-    supplier: 'Kingeps',
-    bagWeightKg: 800,
-    receivedKg: 800,
-    remainingKg: 96,
-    receivedAt: '2026-07-20T11:00:00',
-    warehouse: FOAM_WAREHOUSE_RAW,
-    status: 'low',
-  },
-  {
-    id: 'lot-4',
-    lotNumber: 'SP-2607-11',
-    materialName: 'Гранула EPS СинтезПласт',
-    supplier: 'СинтезПласт',
-    bagWeightKg: 750,
-    receivedKg: 750,
-    remainingKg: 0,
-    receivedAt: '2026-07-18T08:20:00',
-    warehouse: FOAM_WAREHOUSE_RAW,
-    status: 'empty',
-  },
-];
-
-/**
- * Выпуски производства: лот сырья → обработка → куб или гранулы на продажу.
- * ОТК для этой линии не нужен — партия сразу пополняет склад ГП.
- * gradeCode заполнен только для куба (у гранул на продажу плотности нет).
- */
-export const FOAM_PRODUCTION_RUNS = [
-  {
-    id: 'run-1',
-    lotId: 'lot-1',
-    lotNumber: 'KG-2607-01',
-    materialName: 'Гранула EPS Kingeps HS',
-    inputKg: 180,
-    outputFormat: 'granule',
-    outputQty: 173.7,
-    producedAt: '2026-07-25T10:00:00',
-    operator: 'Азамат Р.',
-  },
-  {
-    id: 'run-2',
-    lotId: 'lot-3',
-    lotNumber: 'KG-2607-03',
-    materialName: 'Гранула EPS Kingeps HP',
-    gradeCode: '14-15',
-    inputKg: 90,
-    outputFormat: 'cube',
-    outputQty: 5,
-    producedAt: '2026-07-25T16:45:00',
-    operator: 'Ербол С.',
-  },
-  {
-    id: 'run-3',
-    lotId: 'lot-2',
-    lotNumber: 'KG-2607-02',
-    materialName: 'Гранула EPS Kingeps HS',
-    inputKg: 120,
-    outputFormat: 'granule',
-    outputQty: 115.8,
-    producedAt: '2026-07-26T07:30:00',
-    operator: 'Азамат Р.',
-  },
-  {
-    id: 'run-4',
-    lotId: 'lot-1',
-    lotNumber: 'KG-2607-01',
-    materialName: 'Гранула EPS Kingeps HS',
-    gradeCode: '12',
-    inputKg: 60,
-    outputFormat: 'cube',
-    outputQty: 4.4,
-    producedAt: '2026-07-26T09:15:00',
-    operator: 'Ербол С.',
-  },
-];
-
-/** Остаток склада готовой продукции — по формату и параметрам (плотность для куба/листа, кг для гранул). */
-export const FOAM_GP_STOCK = [
-  { key: 'granule', outputFormat: 'granule', qty: 150, warehouse: FOAM_WAREHOUSE_GP },
-  { key: 'cube-14-15', outputFormat: 'cube', gradeCode: '14-15', qty: 5, warehouse: FOAM_WAREHOUSE_GP },
-  { key: 'cube-12', outputFormat: 'cube', gradeCode: '12', qty: 4.4, warehouse: FOAM_WAREHOUSE_GP },
-  { key: 'sheet-12-3', outputFormat: 'sheet', gradeCode: '12', thicknessCm: 3, qty: 84, warehouse: FOAM_WAREHOUSE_GP },
-];
-
-const OPERATION_KIND = {
-  PRODUCTION_INTAKE: 'production_intake',
-  SALE: 'sale',
-  DEFECT: 'defect',
-  RETURN: 'return',
-  CUT_IN: 'cut_in',
-  CUT_OUT: 'cut_out',
-};
-
 export const FOAM_OPERATION_KIND_LABEL = {
-  [OPERATION_KIND.PRODUCTION_INTAKE]: 'Поступление с производства',
-  [OPERATION_KIND.SALE]: 'Продажа',
-  [OPERATION_KIND.DEFECT]: 'Брак',
-  [OPERATION_KIND.RETURN]: 'Возврат',
-  [OPERATION_KIND.CUT_IN]: 'Нарезка листов (получено)',
-  [OPERATION_KIND.CUT_OUT]: 'Нарезка листов (списан куб)',
+  production_intake: 'Поступление с производства',
+  sale: 'Продажа',
+  defect: 'Брак',
+  return: 'Возврат',
+  cut_in: 'Нарезка листов (получено)',
+  cut_out: 'Нарезка листов (списан куб)',
 };
 
-export const FOAM_GP_OPERATIONS = [
-  {
-    id: 'gpop-1',
-    kind: OPERATION_KIND.PRODUCTION_INTAKE,
-    outputFormat: 'granule',
-    qty: 173.7,
-    createdAt: '2026-07-25T11:20:00',
-    ref: 'run-1',
-  },
-  {
-    id: 'gpop-2',
-    kind: OPERATION_KIND.SALE,
-    outputFormat: 'granule',
-    qty: -23.7,
-    createdAt: '2026-07-25T19:45:00',
-    ref: 'Продажа №4482',
-  },
-  {
-    id: 'gpop-3',
-    kind: OPERATION_KIND.PRODUCTION_INTAKE,
-    outputFormat: 'cube',
-    gradeCode: '14-15',
-    qty: 5,
-    createdAt: '2026-07-25T17:10:00',
-    ref: 'run-2',
-  },
-  {
-    id: 'gpop-4',
-    kind: OPERATION_KIND.CUT_IN,
-    outputFormat: 'sheet',
-    gradeCode: '12',
-    thicknessCm: 3,
-    qty: 84,
-    createdAt: '2026-07-24T12:00:00',
-    ref: 'Нарезка (до внедрения учёта)',
-  },
-  {
-    id: 'gpop-5',
-    kind: OPERATION_KIND.PRODUCTION_INTAKE,
-    outputFormat: 'cube',
-    gradeCode: '12',
-    qty: 4.4,
-    createdAt: '2026-07-26T09:15:00',
-    ref: 'run-4',
-  },
-];
-
-/** Продажи ГП пенопласта — отдельно от gpOperations, т.к. несут клиента/сумму/оплату. */
 export const FOAM_SALE_PAYMENT_STATUS_LABEL = {
   paid: 'Оплачено',
   partial: 'Частично оплачено',
@@ -325,27 +140,3 @@ export const FOAM_SALE_PAYMENT_STATUS_VARIANT = {
   partial: 'warning',
   debt: 'danger',
 };
-
-/** Короткая подпись типа продажи по составу строк (форматы через запятую). */
-export function foamSaleTypeLabel(sale) {
-  const formats = [...new Set((sale?.lines || []).map((ln) => foamOutputFormatLabel(ln.outputFormat)))];
-  return formats.length ? formats.join(', ') : '—';
-}
-
-export const FOAM_SALES = [
-  {
-    id: 'sale-1',
-    client: 'ТОО СтройМир',
-    date: '2026-07-25T19:45:00',
-    lines: [
-      { outputFormat: 'granule', qty: 23.7, unitPrice: 45 },
-    ],
-    totalAmount: 1066.5,
-    paidAmount: 1066.5,
-    debtAmount: 0,
-    paymentStatus: 'paid',
-  },
-];
-
-let localIdCounter = 1000;
-export const nextFoamId = (prefix) => `${prefix}-${(localIdCounter += 1)}`;

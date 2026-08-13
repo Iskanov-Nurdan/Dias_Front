@@ -1,7 +1,61 @@
-.product-line-tabs {
-  margin-bottom: var(--space-4);
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
 
-  .chemistry-tabs__tab svg {
-    flex-shrink: 0;
+/**
+ * Переключатель линии продукта — визуально «тяжелее» всех вложенных под-вкладок
+ * страницы (Остатки/История, Каталог марок и т.п.): сегмент-контрол с заливкой
+ * активной кнопки, а не общий стиль ERP-вкладок (._system-ui.scss) с подчёркиванием.
+ */
+.product-line-tabs {
+  display: inline-flex;
+  width: auto;
+  min-height: auto;
+  margin: 0 0 var(--space-4);
+  padding: 3px;
+  border: none;
+  border-bottom: none;
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  box-sizing: border-box;
+
+  .chemistry-tabs__tab {
+    flex: 0 0 auto;
+    min-height: 34px;
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    font-weight: var(--weight-medium);
+
+    &:hover {
+      background: color-mix(in srgb, var(--text) 5%, transparent);
+    }
+
+    svg {
+      flex-shrink: 0;
+    }
+  }
+
+  .chemistry-tabs__tab--active {
+    background: var(--surface);
+    color: var(--text);
+    font-weight: var(--weight-semibold);
+    box-shadow: var(--shadow-sm);
+
+    &::after {
+      display: none;
+    }
+
+    &:hover {
+      background: var(--surface);
+    }
+  }
+}
+
+@include mobile {
+  .product-line-tabs {
+    width: 100%;
+
+    .chemistry-tabs__tab {
+      flex: 1 1 0;
+    }
   }
 }

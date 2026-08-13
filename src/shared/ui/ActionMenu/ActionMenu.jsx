@@ -1,9 +1,27 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { FiEye, FiEdit3, FiTrash2, FiPlus, FiSlash, FiSquare } from 'react-icons/fi';
 import './ActionMenu.scss';
 
 const MENU_Z = 1100;
 const SHEET_MAX = 768;
+
+/** Иконка по тексту пункта — угадывается по подстроке, чтобы не трогать все места вызова ActionMenu. */
+const LABEL_ICON_RULES = [
+  [/удал/i, FiTrash2],
+  [/^создать/i, FiPlus],
+  [/деактивир|^активир/i, FiSlash],
+  [/закрыть смену|остановит/i, FiSquare],
+  [/редактир/i, FiEdit3],
+  [/^открыть$/i, FiEye],
+];
+
+const resolveItemIcon = (item) => {
+  if (item.icon) return item.icon;
+  const label = String(item.label || '');
+  const rule = LABEL_ICON_RULES.find(([re]) => re.test(label));
+  return rule ? rule[1] : null;
+};
 
 const safePad = () => {
   if (typeof window === 'undefined') return 12;
@@ -51,7 +69,7 @@ const ActionMenu = ({ items, align = 'right', ariaLabel = 'Действия' }) 
     setSheet(useSheet);
 
     const rect = trigger.getBoundingClientRect();
-    const gap = 6;
+    const gap = 4;
     const fallbackW = Math.min(220, vw - 2 * pad);
 
     if (useSheet) {
@@ -175,23 +193,33 @@ const ActionMenu = ({ items, align = 'right', ariaLabel = 'Действия' }) 
 
   const dropdown = open ? (
     <ul ref={dropdownRef} className={dropdownClass} style={menuStyle} role="menu">
-      {items.map((item, i) => (
-        <li key={i} role="none">
-          <button
-            type="button"
-            role="menuitem"
-            className={`action-menu__item${item.danger ? ' action-menu__item--danger' : ''}`}
-            disabled={item.disabled}
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpen(false);
-              item.onClick?.();
-            }}
-          >
-            {item.label}
-          </button>
-        </li>
-      ))}
+      {items.map((item, i) => {
+        const Icon = resolveItemIcon(item);
+        const showDivider = i > 0 && Boolean(item.danger) !== Boolean(items[i - 1].danger);
+        return (
+          <React.Fragment key={i}>
+            {showDivider && <li role="separator" className="action-menu__divider" />}
+            <li role="none">
+              <button
+                type="button"
+                role="menuitem"
+                className={`action-menu__item${item.danger ? ' action-menu__item--danger' : ''}`}
+                disabled={item.disabled}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpen(false);
+                  item.onClick?.();
+                }}
+              >
+                <span className="action-menu__item-icon" aria-hidden>
+                  {Icon && <Icon size={16} strokeWidth={2} />}
+                </span>
+                {item.label}
+              </button>
+            </li>
+          </React.Fragment>
+        );
+      })}
     </ul>
   ) : null;
 
@@ -199,7 +227,7 @@ const ActionMenu = ({ items, align = 'right', ariaLabel = 'Действия' }) 
     <div className="action-menu" ref={rootRef} onClick={(e) => e.stopPropagation()}>
       <button
         type="button"
-        className="action-menu__trigger"
+        className={`action-menu__trigger${open ? ' action-menu__trigger--open' : ''}`}
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label={ariaLabel}

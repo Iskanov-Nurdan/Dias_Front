@@ -1,10 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   formatNumberForInput,
   pickFirstIsoDate,
   matchesClientDateFilter,
+  getApiErrorMessage,
 } from '../../../../shared/lib';
-import { ClientDateFilter, EmptyState } from '../../../../shared/ui';
+import { ClientDateFilter, EmptyState, Loading, useToast } from '../../../../shared/ui';
+import { useOperationalRefetch, WS_FOAM_WAREHOUSE } from '../../../../shared/realtime';
 import {
   FOAM_WAREHOUSE_GP,
   FOAM_SHEET_THICKNESS_OPTIONS_CM,
@@ -16,7 +18,7 @@ import {
   foamFormatParamsLabel,
   foamSheetsPerCube,
 } from '../../../foam/mockData';
-import { useFoamStore, cutCubeToSheets } from '../../../foam/store';
+import { getFoamGpStock, getFoamGpOperations, cutFoamGpStock, getFoamDensityGrades } from '../../../foam/api/foamApi';
 import './WarehouseFoamTab.scss';
 
 const formatDateTime = (iso) => {
@@ -26,27 +28,43 @@ const formatDateTime = (iso) => {
   return s.slice(0, 10);
 };
 
-const CutCubeModal = ({ row, onClose, onSubmit }) => {
+/** Мапит строку остатка/операции с бэка (snake_case) в форму, которую ждут расчётные хелперы mockData.js. */
+const toCalcRow = (row) => ({
+  outputFormat: row.output_format,
+  gradeCode: row.grade_code,
+  thicknessCm: row.thickness_cm,
+  qty: Number(row.qty),
+});
+const toCalcGrades = (grades) =>
+  grades.map((g) => ({ code: g.code, minKgM3: Number(g.min_kg_m3), maxKgM3: Number(g.max_kg_m3) }));
+
+const CutCubeModal = ({ row, onClose, onSubmit, saving }) => {
   const [thicknessCm, setThicknessCm] = useState(String(FOAM_SHEET_THICKNESS_OPTIONS_CM[0]));
   const [cubesQty, setCubesQty] = useState('1');
+  const [error, setError] = useState('');
 
   const qtyNum = Number(cubesQty) || 0;
   const sheetsPerCube = foamSheetsPerCube(thicknessCm);
   const sheetsTotal = Math.floor(sheetsPerCube * qtyNum);
-  const willExceedStock = qtyNum > row.qty;
+  const willExceedStock = qtyNum > Number(row.qty);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (qtyNum <= 0 || willExceedStock) return;
-    onSubmit({ thicknessCm: Number(thicknessCm), cubesQty: qtyNum });
-    onClose();
+    setError('');
+    try {
+      await onSubmit({ cube_stock_id: row.id, thickness_cm: Number(thicknessCm), cubes_qty: String(qtyNum) });
+      onClose();
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    }
   };
 
   return (
     <div className="modal-overlay" role="presentation" onClick={onClose}>
       <div className="modal" onClick={(ev) => ev.stopPropagation()}>
         <div className="modal__head">
-          <h3>Нарезать куб на листы, плотность {row.gradeCode}</h3>
+          <h3>Нарезать куб на листы, плотность {row.grade_code}</h3>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <form className="modal__body" onSubmit={handleSubmit}>
@@ -64,9 +82,12 @@ const CutCubeModal = ({ row, onClose, onSubmit }) => {
             <span>Из 1 куба выходит {sheetsPerCube} листов ({thicknessCm} см). Итого получится:</span>
             <strong>{sheetsTotal} листов</strong>
           </div>
+          {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary" disabled={qtyNum <= 0 || willExceedStock}>Нарезать</button>
+            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>Отмена</button>
+            <button type="submit" className="btn btn--primary" disabled={saving || qtyNum <= 0 || willExceedStock}>
+              {saving ? 'Нарезка…' : 'Нарезать'}
+            </button>
           </div>
         </form>
       </div>
@@ -75,18 +96,49 @@ const CutCubeModal = ({ row, onClose, onSubmit }) => {
 };
 
 const WarehouseFoamTab = () => {
-  const { gpStock: stock, gpOperations: operations } = useFoamStore();
+  const toast = useToast();
+  const [stock, setStock] = useState([]);
+  const [operations, setOperations] = useState([]);
+  const [densityGrades, setDensityGrades] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [mainTab, setMainTab] = useState('stock');
   const [cutTarget, setCutTarget] = useState(null);
+  const [cutting, setCutting] = useState(false);
   const [dateFilterIso, setDateFilterIso] = useState('');
 
+  const fetchAll = useCallback(async () => {
+    try {
+      const [stockRes, opsRes, gradesRes] = await Promise.all([
+        getFoamGpStock(),
+        getFoamGpOperations({ page_size: 500 }),
+        getFoamDensityGrades(),
+      ]);
+      setStock(stockRes.data?.items || []);
+      setOperations(opsRes.data?.items || []);
+      setDensityGrades(gradesRes.data?.items || []);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  useOperationalRefetch(WS_FOAM_WAREHOUSE, fetchAll, true);
+
+  const calcGrades = useMemo(() => toCalcGrades(densityGrades), [densityGrades]);
+
   const totalWeightKg = useMemo(
-    () => Math.round(stock.reduce((sum, s) => sum + (foamStockRowWeightKg(s) || 0), 0) * 10) / 10,
-    [stock],
+    () => Math.round(stock.reduce((sum, s) => sum + (foamStockRowWeightKg(toCalcRow(s), calcGrades) || 0), 0) * 10) / 10,
+    [stock, calcGrades],
   );
 
   const cubeTotals = useMemo(() => {
-    const qty = stock.filter((s) => s.outputFormat === 'cube').reduce((sum, s) => sum + s.qty, 0);
+    const qty = stock.filter((s) => s.output_format === 'cube').reduce((sum, s) => sum + Number(s.qty), 0);
     return {
       qty: Math.round(qty * 10) / 10,
       volumeM3: Math.round(qty * FOAM_CUBE_VOLUME_M3 * 100) / 100,
@@ -95,12 +147,20 @@ const WarehouseFoamTab = () => {
 
   const visibleOperations = useMemo(() => {
     if (!dateFilterIso) return operations;
-    return operations.filter((op) => matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(op, ['createdAt'])));
+    return operations.filter((op) => matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(op, ['created_at'])));
   }, [operations, dateFilterIso]);
 
-  const handleCutSubmit = (row, payload) => {
-    cutCubeToSheets({ gradeCode: row.gradeCode, ...payload });
+  const handleCutSubmit = async (payload) => {
+    setCutting(true);
+    try {
+      await cutFoamGpStock(payload);
+      await fetchAll();
+    } finally {
+      setCutting(false);
+    }
   };
+
+  if (loading) return <Loading />;
 
   return (
     <div className="warehouse-gp warehouse-gp--stock warehouse-foam-tab">
@@ -128,7 +188,7 @@ const WarehouseFoamTab = () => {
             Готовая продукция <span className="warehouse-foam-tab__warehouse-badge">{FOAM_WAREHOUSE_GP}</span>
           </h2>
           {stock.length === 0 ? (
-            <EmptyState title="Склад пуст" description="Товар попадает сюда после приёмки в «ОТК»." />
+            <EmptyState title="Склад пуст" description="Товар попадает сюда сразу после выпуска в «Производстве»." />
           ) : (
             <>
               <p className="warehouse-foam-tab__total-weight">
@@ -146,14 +206,14 @@ const WarehouseFoamTab = () => {
                     <span className="chemistry-table__th chemistry-table__th--actions"> </span>
                   </div>
                   {stock.map((s) => (
-                    <div key={s.key} className="chemistry-table__row">
-                      <span className="chemistry-table__name">{foamOutputFormatLabel(s.outputFormat)}</span>
-                      <span className="chemistry-table__cell-clip">{s.gradeCode || '—'}</span>
-                      <span className="chemistry-table__cell-clip">{foamFormatParamsLabel(s)}</span>
-                      <span className="chemistry-table__num">{formatNumberForInput(s.qty)} {foamOutputUnitLabel(s.outputFormat)}</span>
-                      <span className="chemistry-table__num">{formatNumberForInput(foamStockRowWeightKg(s))} кг</span>
+                    <div key={s.id} className="chemistry-table__row">
+                      <span className="chemistry-table__name">{foamOutputFormatLabel(s.output_format)}</span>
+                      <span className="chemistry-table__cell-clip">{s.grade_code || '—'}</span>
+                      <span className="chemistry-table__cell-clip">{foamFormatParamsLabel(toCalcRow(s))}</span>
+                      <span className="chemistry-table__num">{formatNumberForInput(s.qty)} {foamOutputUnitLabel(s.output_format)}</span>
+                      <span className="chemistry-table__num">{formatNumberForInput(foamStockRowWeightKg(toCalcRow(s), calcGrades))} кг</span>
                       <span className="chemistry-table__actions chemistry-table__actions--wrap">
-                        {s.outputFormat === 'cube' && (
+                        {s.output_format === 'cube' && (
                           <button type="button" className="btn btn--secondary btn--sm" onClick={() => setCutTarget(s)}>
                             Нарезать на листы
                           </button>
@@ -194,15 +254,15 @@ const WarehouseFoamTab = () => {
                 <tbody>
                   {visibleOperations.map((op) => (
                     <tr key={op.id}>
-                      <td className="data-table__cell--muted">{formatDateTime(op.createdAt)}</td>
+                      <td className="data-table__cell--muted">{formatDateTime(op.created_at)}</td>
                       <td>{FOAM_OPERATION_KIND_LABEL[op.kind] || op.kind}{op.ref ? ` — ${op.ref}` : ''}</td>
                       <td>
-                        {foamOutputFormatLabel(op.outputFormat)}
-                        {op.gradeCode ? `, плотность ${op.gradeCode}` : ''}
-                        {op.thicknessCm ? `, ${op.thicknessCm} см` : ''}
+                        {foamOutputFormatLabel(op.output_format)}
+                        {op.grade_code ? `, плотность ${op.grade_code}` : ''}
+                        {op.thickness_cm ? `, ${op.thickness_cm} см` : ''}
                       </td>
-                      <td className={`data-table__cell--num warehouse-foam-tab__qty${op.qty < 0 ? ' warehouse-foam-tab__qty--out' : ' warehouse-foam-tab__qty--in'}`}>
-                        {op.qty > 0 ? '+' : ''}{formatNumberForInput(op.qty)} {foamOutputUnitLabel(op.outputFormat)}
+                      <td className={`data-table__cell--num warehouse-foam-tab__qty${Number(op.qty) < 0 ? ' warehouse-foam-tab__qty--out' : ' warehouse-foam-tab__qty--in'}`}>
+                        {Number(op.qty) > 0 ? '+' : ''}{formatNumberForInput(op.qty)} {foamOutputUnitLabel(op.output_format)}
                       </td>
                     </tr>
                   ))}
@@ -217,7 +277,8 @@ const WarehouseFoamTab = () => {
         <CutCubeModal
           row={cutTarget}
           onClose={() => setCutTarget(null)}
-          onSubmit={(payload) => handleCutSubmit(cutTarget, payload)}
+          onSubmit={handleCutSubmit}
+          saving={cutting}
         />
       )}
     </div>

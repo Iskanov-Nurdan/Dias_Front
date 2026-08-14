@@ -183,10 +183,14 @@ const WarehouseFoamTab = () => {
       </div>
 
       {mainTab === 'stock' && (
-        <section className="warehouse-gp__block">
-          <h2 className="warehouse-gp__title">
-            Готовая продукция <span className="warehouse-foam-tab__warehouse-badge">{FOAM_WAREHOUSE_GP}</span>
-          </h2>
+        <div className="ds-list-card">
+          <div className="ds-list-card__head ds-toolbar ds-toolbar--in-card">
+            <div className="ds-toolbar__start">
+              <h2 className="ds-list-card__title">
+                Готовая продукция <span className="warehouse-foam-tab__warehouse-badge">{FOAM_WAREHOUSE_GP}</span>
+              </h2>
+            </div>
+          </div>
           {stock.length === 0 ? (
             <EmptyState title="Склад пуст" description="Товар попадает сюда сразу после выпуска в «Производстве»." />
           ) : (
@@ -225,14 +229,14 @@ const WarehouseFoamTab = () => {
               </div>
             </>
           )}
-        </section>
+        </div>
       )}
 
       {mainTab === 'history' && (
-        <section className="warehouse-gp__block">
-          <div className="ds-toolbar ds-toolbar--in-card">
+        <div className="ds-list-card">
+          <div className="ds-list-card__head ds-toolbar ds-toolbar--in-card">
             <div className="ds-toolbar__start">
-              <h2 className="warehouse-gp__title">Движения склада</h2>
+              <h2 className="ds-list-card__title">Движения склада</h2>
             </div>
             <div className="ds-toolbar__end">
               <ClientDateFilter value={dateFilterIso} onChange={setDateFilterIso} id="warehouse-foam-history-date" />
@@ -270,7 +274,7 @@ const WarehouseFoamTab = () => {
               </table>
             </div>
           )}
-        </section>
+        </div>
       )}
 
       {cutTarget && (

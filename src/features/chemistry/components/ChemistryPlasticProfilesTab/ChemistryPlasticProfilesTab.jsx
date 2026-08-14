@@ -400,7 +400,9 @@ const ChemistryPlasticProfilesTab = () => {
   return (
     <div className="chemistry-card">
       <div className="chemistry-card__head ds-toolbar ds-toolbar--in-card">
-        <div className="ds-toolbar__start" />
+        <div className="ds-toolbar__start">
+          <h2 className="chemistry-card__title">Профили</h2>
+        </div>
         <div className="ds-toolbar__end chemistry-card__toolbar-actions">
           <button type="button" className="btn btn--primary" onClick={() => setFormModal({ mode: 'add' })}>
             Добавить товар

@@ -274,6 +274,7 @@ const MaterialsFoamTab = () => {
         <div className="chemistry-card">
           <div className="chemistry-card__head ds-toolbar ds-toolbar--in-card">
             <div className="ds-toolbar__start">
+              <h2 className="chemistry-card__title">Остатки по лотам</h2>
               <span className="materials-foam-tab__warehouse-badge">{FOAM_WAREHOUSE_RAW}</span>
               <ClientDateFilter value={dateFilterIso} onChange={setDateFilterIso} id="materials-foam-lots-date" />
             </div>
@@ -320,7 +321,9 @@ const MaterialsFoamTab = () => {
       {subTab === SUB_TAB.CATALOG && (
         <div className="chemistry-card">
           <div className="chemistry-card__head ds-toolbar ds-toolbar--in-card">
-            <div className="ds-toolbar__start" />
+            <div className="ds-toolbar__start">
+              <h2 className="chemistry-card__title">Каталог марок</h2>
+            </div>
             <div className="ds-toolbar__end">
               <button type="button" className="btn btn--primary" onClick={() => setAddGradeOpen(true)}>
                 Добавить плотность
@@ -348,6 +351,7 @@ const MaterialsFoamTab = () => {
         <div className="chemistry-card">
           <div className="chemistry-card__head ds-toolbar ds-toolbar--in-card">
             <div className="ds-toolbar__start">
+              <h2 className="chemistry-card__title">Движения</h2>
               <ClientDateFilter value={dateFilterIso} onChange={setDateFilterIso} id="materials-foam-movements-date" />
             </div>
           </div>

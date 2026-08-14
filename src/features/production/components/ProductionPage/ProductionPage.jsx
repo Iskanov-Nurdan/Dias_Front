@@ -82,13 +82,6 @@ const ProductionPage = () => {
   return (
     <div className="page page--production">
       <ProductLineTabs value={line} onChange={setLine} />
-      <div className="production-page__date-row">
-        <ClientDateFilter
-          value={clientDateFilter}
-          onChange={setClientDateFilter}
-          id="production-page-date-filter"
-        />
-      </div>
 
       <div className="production-card production-card--produced">
         <div className="production-card__head ds-toolbar ds-toolbar--in-card">
@@ -96,6 +89,11 @@ const ProductionPage = () => {
             <h2 className="production-card__title">Выпуски заготовки</h2>
           </div>
           <div className="ds-toolbar__end production-card__toolbar-actions">
+            <ClientDateFilter
+              value={clientDateFilter}
+              onChange={setClientDateFilter}
+              id="production-page-date-filter"
+            />
             <button
               type="button"
               className="btn btn--primary"

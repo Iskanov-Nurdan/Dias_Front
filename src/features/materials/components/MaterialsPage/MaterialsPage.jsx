@@ -386,6 +386,7 @@ const MaterialsPage = () => {
       <div className="materials-card">
         <div className="materials-card__head ds-toolbar ds-toolbar--in-card">
           <div className="ds-toolbar__start materials-card__head-main">
+            <h2 className="materials-card__title">Сырьё</h2>
             {mainTab === MAIN_TAB.CATALOG && (
               <>
                 <Select

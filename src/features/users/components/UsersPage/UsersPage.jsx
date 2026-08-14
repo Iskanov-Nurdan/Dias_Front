@@ -233,6 +233,7 @@ const UsersPage = () => {
       </div>
 
       {activeTab === 'roles' && (
+        <div className="ds-list-card">
         <ServerList
           loading={rolesLoading}
           error={rolesError}
@@ -241,6 +242,7 @@ const UsersPage = () => {
           onRetry={refetchRoles}
           renderFilters={() => (
             <div className="users-page__filters users-page__filters--row users-page__filters--action-only">
+              <h2 className="ds-list-card__title">Роли</h2>
               <div className="users-page__filters-action ds-hide-mobile">
                 <button type="button" className="btn btn--primary" onClick={() => setRoleModal({})}>
                   Создать роль
@@ -294,9 +296,11 @@ const UsersPage = () => {
             </table>
           )}
         />
+        </div>
       )}
 
       {activeTab === 'users' && (
+        <div className="ds-list-card">
         <ServerList
           loading={loading}
           error={error}
@@ -305,6 +309,7 @@ const UsersPage = () => {
           onRetry={refetch}
           renderFilters={() => (
             <div className={`users-page__filters users-page__filters--row${isMobile ? ' users-page__filters--mobile' : ''}`}>
+              <h2 className="ds-list-card__title">Сотрудники</h2>
               <div className="users-page__filters-fields">
                 <FilterBar
                   variant="row"
@@ -363,6 +368,14 @@ const UsersPage = () => {
                       >
                         Подробнее
                       </button>
+                      <ActionMenu
+                        ariaLabel="Действия"
+                        items={[
+                          { label: 'Редактировать', onClick: () => setUserModal(u) },
+                          { label: 'Доступы', onClick: () => setAccessModal(u) },
+                          { label: 'Удалить', danger: true, onClick: () => setDeleteTarget({ type: 'user', id: u.id, name: u.name }) },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -380,6 +393,7 @@ const UsersPage = () => {
             />
           )}
         />
+        </div>
       )}
 
       {userDetail && (

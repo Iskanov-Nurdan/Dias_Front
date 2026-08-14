@@ -1,6 +1,36 @@
 @use 'variables' as *;
 @use 'mixins' as *;
 
+/*
+ * ── ERP: единая карточка списка ──
+ * Заголовок слева + фильтры + основная кнопка справа в одной строке, таблица/список сразу под ней.
+ * Используется на страницах без собственной "карточной" обвязки (Склад и т.п.); страницы со
+ * своей давно устоявшейся `*-card` версией (chemistry-card, otk-card, materials-card) не трогаем.
+ */
+.ds-list-card {
+  @include card-soft;
+  padding: var(--card-padding);
+}
+
+.ds-list-card__head {
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.ds-list-card__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+/* Таблица/список внутри карточки — своя рамка/тень не нужна, её уже даёт .ds-list-card. */
+.ds-list-card .data-table,
+.ds-list-card .compact-list {
+  box-shadow: none;
+  border-radius: 0;
+}
+
 /* ── ERP: вкладки — компактные слева, активная: только подчёркивание под текстом ── */
 
 .users-page__tabs-wrap {

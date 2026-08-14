@@ -386,8 +386,10 @@ const OrdersPage = () => {
 
   return (
     <div className="page commercial-page orders-rq-page">
+      <div className="ds-list-card">
       <div className="ds-toolbar commercial-toolbar">
         <div className="ds-toolbar__start commercial-toolbar__filters">
+          <h2 className="ds-list-card__title">Заявки</h2>
           <SearchableSelect
             value={queryState.request_status}
             onChange={(v) => setQueryState((p) => ({ ...p, request_status: v, page: 1 }))}
@@ -457,6 +459,7 @@ const OrdersPage = () => {
       {!loading && (!error || error.status === 404) && (
         <Pagination meta={meta} onPageChange={(nextPage) => setQueryState((p) => ({ ...p, page: nextPage }))} />
       )}
+      </div>
 
       {createOpen && (
         <CreateOrderModal

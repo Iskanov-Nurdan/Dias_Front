@@ -112,6 +112,10 @@
   text-align: left;
 }
 
+.shifts-report__title {
+  margin-bottom: var(--space-3);
+}
+
 .shifts-report__filters {
   display: flex;
   gap: var(--space-3);

@@ -867,8 +867,10 @@ const SalesPage = () => {
   return (
     <div className="page page--sales commercial-page">
       <ProductLineTabs value={line} onChange={setLine} />
+      <div className="ds-list-card">
       <div className="ds-toolbar commercial-toolbar">
         <div className="ds-toolbar__start commercial-toolbar__filters">
+          <h2 className="ds-list-card__title">Продажи</h2>
           <SearchableSelect
             value={queryState.payment_filter}
             onChange={(v) => setQueryState((p) => ({ ...p, payment_filter: v, page: 1 }))}
@@ -940,6 +942,7 @@ const SalesPage = () => {
       {!loading && (!error || error.status === 404) && (
         <Pagination meta={meta} onPageChange={(nextPage) => setQueryState((p) => ({ ...p, page: nextPage }))} />
       )}
+      </div>
 
       {saleModalOpen && (
         <CreateSaleModal

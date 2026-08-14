@@ -324,7 +324,9 @@ const ChemistryPage = () => {
       {stockTab === 'blanks' ? (
         <div className="chemistry-card">
           <div className="chemistry-card__head ds-toolbar ds-toolbar--in-card">
-            <div className="ds-toolbar__start" />
+            <div className="ds-toolbar__start">
+              <h2 className="chemistry-card__title">Заготовки</h2>
+            </div>
             <div className="ds-toolbar__end chemistry-card__toolbar-actions">
               <button
                 type="button"

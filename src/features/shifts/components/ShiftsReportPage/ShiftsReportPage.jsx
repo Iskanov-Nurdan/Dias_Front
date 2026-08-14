@@ -256,6 +256,8 @@ const ShiftsReportPage = () => {
         </div>
       </div>
 
+      <div className="ds-list-card">
+      <h2 className="ds-list-card__title shifts-report__title">Смены</h2>
       <div className="shifts-report__filters">
         <div className="shifts-report__filter-group">
           <label className="shifts-report__filter-label">Дата</label>
@@ -371,6 +373,7 @@ const ShiftsReportPage = () => {
             </tbody>
           </table>
         )}
+      </div>
       </div>
         </>
       )}

@@ -817,18 +817,6 @@
   }
 
   .compact-list--warehouse-stock {
-    gap: var(--space-1);
-
-    .compact-list__head {
-      padding-bottom: var(--space-1);
-    }
-
-    .compact-list__row {
-      padding: var(--space-3) var(--space-4);
-      font-size: var(--font-body);
-      font-weight: var(--weight-medium);
-    }
-
     .compact-list__cell:first-child {
       white-space: normal;
     }

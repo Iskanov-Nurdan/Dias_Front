@@ -82,3 +82,60 @@
     min-width: 0 !important;
   }
 }
+
+/*
+ * Тот же плотный вид, что у остальных таблиц приложения (см. ChemistryPage.scss --prep-list):
+ * общая рамка/тень на весь список, шапка на table-header-bg, строки — только тонкая
+ * линия-разделитель, без скруглений/тени на каждой строке.
+ */
+.materials-foam-tab__lots-table,
+.materials-foam-tab__catalog-table,
+.materials-foam-tab__movements-table {
+  gap: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--card);
+  box-shadow:
+    var(--shadow-sm),
+    0 0 0 1px var(--card-border);
+
+  .chemistry-table__header {
+    padding: 10px var(--space-3);
+    background: var(--table-header-bg);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .chemistry-table__row {
+    padding: 10px var(--space-3);
+    background: transparent;
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid var(--border-subtle);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background: var(--bg-hover);
+    }
+  }
+}
+
+/* Тот же брейкпоинт, что у `.data-table` (src/app/index.scss) — единый размер шрифта на широком экране. */
+@media (min-width: 1201px) {
+  .materials-foam-tab__lots-table .chemistry-table__header,
+  .materials-foam-tab__catalog-table .chemistry-table__header,
+  .materials-foam-tab__movements-table .chemistry-table__header {
+    font-size: 10px;
+    letter-spacing: 0.04em;
+  }
+
+  .materials-foam-tab__lots-table .chemistry-table__row,
+  .materials-foam-tab__catalog-table .chemistry-table__row,
+  .materials-foam-tab__movements-table .chemistry-table__row {
+    min-height: 44px;
+    font-size: var(--font-caption);
+    box-sizing: border-box;
+  }
+}

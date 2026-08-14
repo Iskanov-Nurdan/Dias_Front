@@ -1,6 +1,7 @@
 import React, { useCallback, useState, useMemo, useEffect } from 'react';
 import { useServerQuery, getApiErrorMessage, parseLocaleNumber, formatQuantityDisplay } from '../../../../shared/lib';
 import {
+  ActionMenu,
   EmptyState,
   ErrorState,
   Loading,
@@ -211,8 +212,10 @@ const ClientsPage = () => {
 
   return (
     <div className="page page--clients commercial-page">
+      <div className="ds-list-card">
       <div className="ds-toolbar ds-toolbar--stack-mobile commercial-toolbar">
         <div className="ds-toolbar__start clients-toolbar__start">
+          <h2 className="ds-list-card__title">Клиенты</h2>
           <input
             type="text"
             className="ds-toolbar__search ds-toolbar__search--full"
@@ -274,6 +277,16 @@ const ClientsPage = () => {
                     >
                       Подробнее
                     </button>
+                    <ActionMenu
+                      ariaLabel="Действия"
+                      items={[
+                        { label: 'Редактировать', onClick: () => setModalClient(c) },
+                        { label: 'Карточка', onClick: () => setProfileClientId(c.id) },
+                        ...(clientIsActive(c)
+                          ? [{ label: 'Деактивировать', danger: true, onClick: () => handleDeactivate(c) }]
+                          : []),
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}
@@ -284,6 +297,7 @@ const ClientsPage = () => {
       {!loading && (!error || error.status === 404) && (
         <Pagination meta={listMeta} onPageChange={(nextPage) => setQueryState((p) => ({ ...p, page: nextPage }))} />
       )}
+      </div>
 
       {viewClient ? (
         <RecordDetailsModal

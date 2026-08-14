@@ -1,11 +1,21 @@
 @use '../../styles/variables' as *;
 
+/*
+ * Плотная таблица-список — единый визуальный язык с `.data-table` (см. src/app/index.scss):
+ * один общий контейнер с рамкой/тенью, заголовок на table-header-bg, строки разделены
+ * тонкой линией без скруглений/тени на каждой отдельной строке.
+ */
 .compact-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
   width: 100%;
   min-width: 0;
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    var(--shadow-sm),
+    0 0 0 1px var(--card-border);
+  overflow: hidden;
 }
 
 .compact-list__head,
@@ -18,37 +28,40 @@
 }
 
 .compact-list__head {
-  padding: 0 var(--space-3) var(--space-2);
-  font-size: var(--font-xs);
-  font-weight: var(--weight-semibold);
+  padding: 10px var(--space-3);
+  background: var(--table-header-bg);
+  font-size: var(--font-caption);
+  font-weight: var(--weight-medium);
   letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .compact-list__row {
-  padding: var(--space-2) var(--space-3);
-  background: var(--card);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
-  font-size: var(--font-sm);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  padding: 10px var(--space-3);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: 0;
+  font-size: var(--font-label);
+  min-height: 44px;
+  box-sizing: border-box;
+  transition: background var(--transition-fast);
+
+  &:last-child {
+    border-bottom: none;
+  }
 
   &:hover {
-    border-color: var(--border);
-    box-shadow: var(--shadow-sm);
+    background: var(--bg-hover);
   }
 
   &--attention {
-    border-color: color-mix(in srgb, var(--warning) 45%, var(--card-border));
-    background: color-mix(in srgb, var(--warning) 8%, var(--card));
+    background: color-mix(in srgb, var(--warning) 8%, transparent);
     box-shadow: inset 3px 0 0 var(--warning);
 
     &:hover {
-      border-color: color-mix(in srgb, var(--warning) 55%, var(--border));
-      box-shadow:
-        var(--shadow-sm),
-        inset 3px 0 0 var(--warning);
+      background: color-mix(in srgb, var(--warning) 12%, transparent);
     }
   }
 }
@@ -93,12 +106,35 @@
   white-space: nowrap;
 }
 
+/* Тот же брейкпоинт, что у `.data-table` (src/app/index.scss) — иначе на широком экране
+   шрифт списка остаётся крупнее, чем у обычных таблиц, и высота строк не совпадает. */
+@media (min-width: 1201px) {
+  .compact-list__head {
+    padding: 10px var(--space-3);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+  }
+
+  .compact-list__row {
+    padding: 10px var(--space-3);
+    min-height: 44px;
+    font-size: var(--font-caption);
+  }
+}
+
 .compact-list__muted {
   color: var(--text-muted);
   text-align: right;
 }
 
 @media (max-width: 720px) {
+  .compact-list {
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    gap: var(--space-2);
+  }
+
   .compact-list__head {
     display: none;
   }
@@ -109,6 +145,16 @@
     gap: var(--space-2);
     padding: var(--space-3) var(--space-4);
     align-items: start;
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    box-shadow:
+      var(--shadow-sm),
+      0 0 0 1px var(--card-border);
+    border-bottom: none;
+
+    &:hover {
+      background: var(--card);
+    }
   }
 
   .compact-list__cell:nth-child(1) {

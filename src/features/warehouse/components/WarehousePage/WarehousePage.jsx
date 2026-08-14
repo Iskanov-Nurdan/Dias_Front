@@ -39,7 +39,10 @@ const mapGpStockRowFromApi = (row) => {
   };
 };
 
-const STOCK_COLUMNS = [{ key: 'line', label: 'Остаток', width: '1fr' }];
+const STOCK_COLUMNS = [
+  { key: 'product', label: 'Товар', width: '1fr' },
+  { key: 'pieces', label: 'Шт', width: '0.5fr', className: 'compact-list__cell--num' },
+];
 
 const aggregateStockByProduct = (rows) => {
   const map = new Map();
@@ -139,21 +142,24 @@ const WarehouseStockPanel = () => {
         </button>
       </div>
 
-      <div className="warehouse-gp__toolbar">
-        <ClientDateFilter
-          value={dateFilterIso}
-          onChange={setDateFilterIso}
-          id="warehouse-gp-date-filter"
-          className="warehouse-gp__date-filter"
-        />
-      </div>
-
       {loading && <Loading />}
       {error && <ErrorState error={error} onRetry={load} />}
 
       {!loading && !error && mainTab === 'stock' && (
-        <section className="warehouse-gp__block">
-          <h2 className="warehouse-gp__title">Готовая продукция</h2>
+        <div className="ds-list-card">
+          <div className="ds-list-card__head ds-toolbar ds-toolbar--in-card">
+            <div className="ds-toolbar__start">
+              <h2 className="ds-list-card__title">Готовая продукция</h2>
+            </div>
+            <div className="ds-toolbar__end">
+              <ClientDateFilter
+                value={dateFilterIso}
+                onChange={setDateFilterIso}
+                id="warehouse-gp-date-filter"
+                className="warehouse-gp__date-filter"
+              />
+            </div>
+          </div>
           {aggregatedStock.length === 0 ? (
             <EmptyState title="Склад пуст" description="Товар попадает сюда после учёта в ОТК." />
           ) : (
@@ -163,21 +169,32 @@ const WarehouseStockPanel = () => {
               items={aggregatedStock}
               getRowKey={(row) => row.key}
               renderCell={(row, key) => {
-                if (key === 'line') {
-                  return `${row.productName} ${formatNumberForInput(row.pieces)} шт`;
-                }
+                if (key === 'product') return row.productName;
+                if (key === 'pieces') return formatNumberForInput(row.pieces);
                 return '—';
               }}
               detailsLabel="Подробнее"
               onDetails={(row) => setDetailRow(row)}
             />
           )}
-        </section>
+        </div>
       )}
 
       {!loading && !error && mainTab === 'history' && (
-        <section className="warehouse-gp__block">
-          <h2 className="warehouse-gp__title">Движения склада</h2>
+        <div className="ds-list-card">
+          <div className="ds-list-card__head ds-toolbar ds-toolbar--in-card">
+            <div className="ds-toolbar__start">
+              <h2 className="ds-list-card__title">Движения склада</h2>
+            </div>
+            <div className="ds-toolbar__end">
+              <ClientDateFilter
+                value={dateFilterIso}
+                onChange={setDateFilterIso}
+                id="warehouse-gp-history-date-filter"
+                className="warehouse-gp__date-filter"
+              />
+            </div>
+          </div>
           {filteredOps.length === 0 ? (
             <EmptyState title="Записей нет" />
           ) : (
@@ -208,7 +225,7 @@ const WarehouseStockPanel = () => {
               </table>
             </div>
           )}
-        </section>
+        </div>
       )}
 
       {detailRow ? (

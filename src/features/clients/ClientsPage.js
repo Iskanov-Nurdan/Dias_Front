@@ -11,7 +11,7 @@ import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiErr
 import { filterClientsByPeriod, getExactDuplicates, getSimilarGroups } from '../../shared/lib/duplicates';
 import { prepareClientSavePayload } from './lib/prepareClientSavePayload';
 import { getClientCorrectionReasons, clientNeedsCorrection } from './lib/needsCorrection';
-import { UsersRound, Copy, Ticket, Wrench } from 'lucide-react';
+import { UsersRound, Copy, Ticket, Wrench, Search } from 'lucide-react';
 import { Select, ConfirmModal, Pagination, FiltersModal, FilterBar, EmptyState, Spinner } from '../../shared/ui';
 import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal, DuplicateGroup } from './components';
 import './ClientsPage.scss';
@@ -362,13 +362,13 @@ const ClientsPage = () => {
       
 
       {/* Главные табы */}
-      <div className="clients-page__tabs">
-        <button type="button" className={`clients-page__tab${activeTab === TAB_LIST ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_LIST)}><UsersRound size={15} /> Клиенты</button>
-        <button type="button" className={`clients-page__tab${activeTab === TAB_DUPS ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_DUPS)}><Copy size={15} /> Дубликаты</button>
-        <button type="button" className={`clients-page__tab${activeTab === TAB_ONETIME ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_ONETIME)}><Ticket size={15} /> Разовый</button>
-        <button type="button" className={`clients-page__tab${activeTab === TAB_FIX ? ' clients-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_FIX)}>
+      <div className="ui-tabs">
+        <button type="button" className={`ui-tabs__tab${activeTab === TAB_LIST ? ' ui-tabs__tab--active' : ''}`} onClick={() => setActiveTab(TAB_LIST)}><UsersRound size={15} /> Клиенты</button>
+        <button type="button" className={`ui-tabs__tab${activeTab === TAB_DUPS ? ' ui-tabs__tab--active' : ''}`} onClick={() => setActiveTab(TAB_DUPS)}><Copy size={15} /> Дубликаты</button>
+        <button type="button" className={`ui-tabs__tab${activeTab === TAB_ONETIME ? ' ui-tabs__tab--active' : ''}`} onClick={() => setActiveTab(TAB_ONETIME)}><Ticket size={15} /> Разовый</button>
+        <button type="button" className={`ui-tabs__tab${activeTab === TAB_FIX ? ' ui-tabs__tab--active' : ''}`} onClick={() => setActiveTab(TAB_FIX)}>
           <Wrench size={15} /> Исправление
-          {fixClients.length > 0 && <span className="clients-page__tab-badge">{fixClients.length}</span>}
+          {fixClients.length > 0 && <span className="ui-tabs__badge">{fixClients.length}</span>}
         </button>
       </div>
 
@@ -378,7 +378,10 @@ const ClientsPage = () => {
           <FilterBar className="clients-page__filter-bar">
             <div className="clients-page__filters clients-page__filters--desktop">
               <div className="clients-page__filters-row clients-page__filters-row--main">
-                <input type="text" placeholder="Поиск" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="clients-page__search" />
+                <div className="ui-search clients-page__search">
+                  <Search size={15} className="ui-search__icon" />
+                  <input type="text" placeholder="Поиск" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="ui-search__input" />
+                </div>
 
                 {/* Кнопка Фильтры с дропдауном */}
                 <div className="clients-page__filter-drop-wrap" ref={filtersDropRef}>
@@ -440,7 +443,10 @@ const ClientsPage = () => {
               </div>
             </div>
             <div className="clients-page__toolbar-mobile clients-page__toolbar-mobile--filter-bar">
-              <input type="text" placeholder="Поиск" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="clients-page__search clients-page__search--mobile" />
+              <div className="ui-search clients-page__search clients-page__search--mobile">
+                <Search size={15} className="ui-search__icon" />
+                <input type="text" placeholder="Поиск" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="ui-search__input" />
+              </div>
               <div className="clients-page__toolbar-mobile-actions">
                 <button type="button" className="clients-page__filters-btn" onClick={() => setFiltersModalOpen(true)}>Фильтры</button>
                 <button type="button" className="clients-page__add filter-bar__action" onClick={() => setFormClient({})}>Добавить</button>
@@ -555,13 +561,16 @@ const ClientsPage = () => {
       {activeTab === TAB_ONETIME && (
         <div className="clients-page__onetime-section">
           <FilterBar className="clients-page__onetime-toolbar">
-            <input
-              type="text"
-              placeholder="Поиск по имени"
-              value={oneTimeSearch}
-              onChange={(e) => setOneTimeSearch(e.target.value)}
-              className="clients-page__onetime-search"
-            />
+            <div className="ui-search clients-page__onetime-search">
+              <Search size={15} className="ui-search__icon" />
+              <input
+                type="text"
+                placeholder="Поиск по имени"
+                value={oneTimeSearch}
+                onChange={(e) => setOneTimeSearch(e.target.value)}
+                className="ui-search__input"
+              />
+            </div>
             <Select
               value={oneTimeYear}
               onChange={setOneTimeYear}
@@ -588,8 +597,8 @@ const ClientsPage = () => {
             <div className="clients-page__dup-loading"><Spinner /></div>
           ) : (
             <>
-              <div className="clients-page__onetime-block">
-                <table className="clients-page__onetime-table">
+              <div className="ui-list__table-wrap clients-page__onetime-block">
+                <table className="ui-list__table clients-page__onetime-table">
                   <thead>
                     <tr>
                       <th>Имя</th>
@@ -601,7 +610,7 @@ const ClientsPage = () => {
                   <tbody>
                     {!(oneTimeData?.items ?? oneTimeData?.results ?? []).length ? (
                       <tr>
-                        <td colSpan={4} className="clients-page__stats-empty">
+                        <td colSpan={4} className="ui-list__empty-cell clients-page__stats-empty">
                           <EmptyState
                             compact
                             tableCell
@@ -727,8 +736,8 @@ const ClientsPage = () => {
                 <span className="clients-page__dup-stats-sep">·</span>
                 <span>Требуют исправления: <strong>{fixClients.length}</strong></span>
               </div>
-              <div className="clients-page__onetime-block">
-                <table className="clients-page__fix-table">
+              <div className="ui-list__table-wrap clients-page__onetime-block">
+                <table className="ui-list__table clients-page__fix-table">
                   <thead>
                     <tr>
                       <th>ФИО</th>

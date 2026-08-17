@@ -458,51 +458,8 @@
   flex-shrink: 0;
 }
 
-.ccm__btn {
-  height: 38px;
-  padding: 0 16px;
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: 10px;
-  border: 1px solid var(--color-border);
-  background: transparent;
-  color: var(--color-text);
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-  white-space: nowrap;
-
-  &:hover {
-    background: var(--color-bg);
-    border-color: var(--color-text-muted);
-  }
-
-  &--primary {
-    background: var(--color-primary, #ef4444);
-    border-color: var(--color-primary, #ef4444);
-    color: #fff;
-
-    &:hover {
-      opacity: 0.88;
-      background: var(--color-primary, #ef4444);
-      border-color: var(--color-primary, #ef4444);
-      color: #fff;
-    }
-  }
-
-  &--danger {
-    margin-left: auto;
-    background: transparent;
-    border-color: rgba(239, 68, 68, 0.4);
-    color: #dc2626;
-
-    [data-theme='dark'] & {
-      color: #f87171;
-      border-color: rgba(239, 68, 68, 0.35);
-    }
-
-    &:hover {
-      background: rgba(239, 68, 68, 0.1);
-      border-color: rgba(239, 68, 68, 0.6);
-    }
-  }
+// Кнопки — общие .ui-modal-btn/--primary/--danger, см. shared/styles/index.scss.
+// Кнопка "Закрыть" — последняя в ряду, отделяется вправо от остальных.
+.ccm__actions .ui-modal-btn:last-child {
+  margin-left: auto;
 }

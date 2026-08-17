@@ -284,44 +284,4 @@
   flex-shrink: 0;
 }
 
-.trainer-schedule-modal__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 40px;
-  padding: 0 20px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-
-  &--cancel {
-    background: transparent;
-    border: 1.5px solid var(--color-border);
-    color: var(--color-text-secondary);
-
-    &:hover {
-      background: var(--color-bg);
-      border-color: var(--color-text-muted);
-      color: var(--color-text);
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-  }
-
-  &--submit {
-    background: var(--color-primary);
-    border: 1.5px solid var(--color-primary);
-    color: #fff;
-    min-width: 110px;
-
-    &:hover {
-      background: var(--color-primary-hover);
-      border-color: var(--color-primary-hover);
-    }
-  }
-}
+// Кнопки — общие .ui-modal-btn/.ui-modal-btn--primary, см. shared/styles/index.scss.

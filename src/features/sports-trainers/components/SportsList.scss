@@ -1,64 +1,9 @@
 @use '../../../shared/styles/mixins';
 
 .sports-list {
-  &__table-wrap {
-    overflow-x: auto;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--color-border);
-    box-shadow: var(--shadow-card);
-    background: var(--color-bg-card);
-    @include mixins.scrollbar;
-    min-width: 0;
-
-    @include mixins.mobile {
-      overflow-x: hidden;
-      border: none;
-      box-shadow: none;
-      background: transparent;
-    }
-  }
-
+  // Обёртка/таблица/аватар/название/кнопки — общие .ui-list__*/.ui-avatar/.ui-list-btn,
+  // см. shared/styles/index.scss. Тут только мобильная раскладка.
   &__table {
-    width: 100%;
-    border-collapse: collapse;
-    background: var(--color-bg-card);
-
-    th {
-      padding: 10px 20px;
-      text-align: left;
-      font-weight: 700;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--color-text);
-      opacity: 0.45;
-      border-bottom: 1px solid var(--color-border);
-    }
-
-    tbody td {
-      padding: 0 20px;
-      height: 64px;
-      vertical-align: middle;
-      border-bottom: 1px solid var(--color-border);
-    }
-
-    tbody tr {
-      transition: background 0.15s;
-    }
-
-    tbody tr:hover {
-      background: rgba(239, 68, 68, 0.04);
-    }
-
-    tbody tr:last-child td {
-      border-bottom: none;
-    }
-
-    th:last-child,
-    td:last-child {
-      text-align: right;
-    }
-
     @include mixins.mobile {
       display: block;
       background: transparent;
@@ -101,9 +46,9 @@
           flex-shrink: 0;
         }
 
-        &.sports-list__actions {
+        &.ui-list__actions {
           flex-wrap: wrap;
-          justify-content: flex-end;
+          justify-content: stretch;
           padding-top: var(--space-3);
           margin-top: var(--space-2);
           border-top: 1px solid var(--color-border);
@@ -111,120 +56,12 @@
           &::before {
             display: none;
           }
+
+          .ui-list-btn {
+            flex: 1 1 auto;
+            min-height: 44px;
+          }
         }
-      }
-    }
-  }
-
-  &__loading-cell,
-  &__empty-cell {
-    text-align: center;
-    padding: 32px 16px;
-    vertical-align: middle;
-  }
-
-  &__skeleton-cell {
-    padding: 0 !important;
-    border-bottom: none;
-    vertical-align: top;
-
-    .skeleton-table {
-      width: 100%;
-    }
-  }
-
-  // ── Name cell ───────────────────────────────────────────
-  &__name-cell {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  &__icon-wrap {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--color-primary, #ef4444);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-
-    [data-theme='dark'] & {
-      background: rgba(239, 68, 68, 0.14);
-    }
-  }
-
-  &__name {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-text);
-  }
-
-  // ── Actions ─────────────────────────────────────────────
-  &__actions {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-    align-items: center;
-    flex-wrap: wrap;
-
-    @include mixins.mobile {
-      width: 100%;
-      justify-content: stretch;
-
-      .sports-list__btn {
-        flex: 1 1 auto;
-        min-height: 44px;
-        justify-content: center;
-      }
-    }
-  }
-
-  // ── Buttons ─────────────────────────────────────────────
-  &__btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 32px;
-    padding: 0 14px;
-    font-size: 13px;
-    font-weight: 500;
-    border-radius: var(--radius-sm);
-    white-space: nowrap;
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
-
-    &--edit {
-      background: transparent;
-      border: 1px solid rgba(59, 130, 246, 0.4);
-      color: #2563eb;
-
-      [data-theme='dark'] & {
-        border-color: rgba(96, 165, 250, 0.35);
-        color: #60a5fa;
-      }
-
-      &:hover {
-        background: rgba(59, 130, 246, 0.08);
-        border-color: rgba(59, 130, 246, 0.6);
-      }
-    }
-
-    &--danger {
-      background: transparent;
-      border: 1px solid rgba(239, 68, 68, 0.35);
-      color: #dc2626;
-
-      [data-theme='dark'] & {
-        border-color: rgba(248, 113, 113, 0.35);
-        color: #f87171;
-      }
-
-      &:hover {
-        background: rgba(239, 68, 68, 0.08);
-        border-color: rgba(239, 68, 68, 0.55);
       }
     }
   }

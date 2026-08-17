@@ -55,10 +55,10 @@ const RoleFormModal = ({ role, onSave, onClose, error, saving }) => {
           </div>
 
           <div className="rfm__actions">
-            <button type="button" className="rfm__btn rfm__btn--cancel" onClick={onClose} disabled={saving}>
+            <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving}>
               Отмена
             </button>
-            <SubmitButton loading={saving} className="rfm__btn rfm__btn--submit">
+            <SubmitButton loading={saving} className="ui-modal-btn ui-modal-btn--primary">
               {isEdit ? 'Сохранить' : 'Добавить'}
             </SubmitButton>
           </div>

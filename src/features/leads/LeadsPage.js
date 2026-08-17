@@ -8,7 +8,7 @@ import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { SEARCH_DEBOUNCE_MS } from '../../shared/constants/common';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
 import { LeadFormModal, LeadCardModal, FunnelBoard } from './components';
-import { Inbox, Link2, Filter } from 'lucide-react';
+import { Inbox, Link2, Filter, Check, X as XIcon, Pencil, Trash2, Search } from 'lucide-react';
 import { ErrorState, EmptyState, ConfirmModal, Pagination, FilterBar, SkeletonTable, Spinner } from '../../shared/ui';
 import TaplinkLeadsTab from './TaplinkLeadsTab';
 import './LeadsPage.scss';
@@ -23,6 +23,9 @@ const getStatusLabel = (status) => {
 };
 
 const hasFinalStatus = (lead) => lead?.status === 'accepted' || lead?.status === 'rejected';
+
+const getInitials = (name) =>
+  (name || '').split(' ').slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
 
 const TAB_LEADS   = 'leads';
 const TAB_TAPLINK = 'taplink';
@@ -260,24 +263,24 @@ const LeadsPage = () => {
       
 
       {/* Табы */}
-      <div className="leads-page__tabs">
+      <div className="ui-tabs">
         <button
           type="button"
-          className={`leads-page__tab ${activeTab === TAB_LEADS ? 'leads-page__tab--active' : ''}`}
+          className={`ui-tabs__tab ${activeTab === TAB_LEADS ? 'ui-tabs__tab--active' : ''}`}
           onClick={() => setActiveTab(TAB_LEADS)}
         >
           <Inbox size={15} /> Заявки
         </button>
         <button
           type="button"
-          className={`leads-page__tab ${activeTab === TAB_TAPLINK ? 'leads-page__tab--active' : ''}`}
+          className={`ui-tabs__tab ${activeTab === TAB_TAPLINK ? 'ui-tabs__tab--active' : ''}`}
           onClick={() => setActiveTab(TAB_TAPLINK)}
         >
           <Link2 size={15} /> С Таплинка
         </button>
         <button
           type="button"
-          className={`leads-page__tab ${activeTab === TAB_FUNNEL ? 'leads-page__tab--active' : ''}`}
+          className={`ui-tabs__tab ${activeTab === TAB_FUNNEL ? 'ui-tabs__tab--active' : ''}`}
           onClick={() => setActiveTab(TAB_FUNNEL)}
         >
           <Filter size={15} /> Воронка лидов
@@ -288,20 +291,23 @@ const LeadsPage = () => {
       {activeTab === TAB_LEADS && (
         <>
           <FilterBar className="leads-page__filter-bar">
-            <input
-              type="text"
-              placeholder="Поиск"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="leads-page__search"
-            />
+            <div className="ui-search leads-page__search">
+              <Search size={15} className="ui-search__icon" />
+              <input
+                type="text"
+                placeholder="Поиск"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="ui-search__input"
+              />
+            </div>
             <button type="button" className="leads-page__add filter-bar__action" onClick={() => (isAdmin ? setFormLead({}) : showAccessDenied())}>
               Новая заявка
             </button>
           </FilterBar>
           {error && <ErrorState message={error} onRetry={fetchSafe} />}
-          <div className="leads-page__table-wrap">
-            <table className="leads-page__table">
+          <div className="ui-list__table-wrap leads-page__table-wrap">
+            <table className="ui-list__table leads-page__table">
               <thead>
                 <tr>
                   <th>Имя</th>
@@ -314,26 +320,31 @@ const LeadsPage = () => {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="leads-page__skeleton-cell">
+                    <td colSpan={5} className="ui-list__skeleton-cell leads-page__skeleton-cell">
                       <SkeletonTable rows={6} cols={5} />
                     </td>
                   </tr>
                 ) : items.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="leads-page__empty-cell">
+                    <td colSpan={5} className="ui-list__empty-cell leads-page__empty-cell">
                       <EmptyState compact tableCell message="Нет заявок" />
                     </td>
                   </tr>
                 ) : (
                   items.map((lead) => (
                     <tr key={lead.id} role="row" aria-label={`Заявка: ${lead.name ?? '—'}, ${lead.phone ?? '—'}`}>
-                      <td role="cell" data-label="Имя"><span className="leads-page__cell-value">{lead.name ?? '—'}</span></td>
-                      <td role="cell" data-label="Телефон"><span className="leads-page__cell-value">{lead.phone ?? '—'}</span></td>
-                      <td role="cell" data-label="Канал"><span className="leads-page__cell-value">{CHANNEL_LABELS[(lead.channel ?? '').toLowerCase()] ?? lead.channel ?? '—'}</span></td>
+                      <td role="cell" data-label="Имя">
+                        <div className="ui-list__name-cell">
+                          <span className="ui-avatar">{getInitials(lead.name)}</span>
+                          <span className="ui-list__title">{lead.name ?? '—'}</span>
+                        </div>
+                      </td>
+                      <td role="cell" data-label="Телефон"><span className="ui-list__muted">{lead.phone ?? '—'}</span></td>
+                      <td role="cell" data-label="Канал"><span className="ui-list__muted">{CHANNEL_LABELS[(lead.channel ?? '').toLowerCase()] ?? lead.channel ?? '—'}</span></td>
                       <td role="cell" data-label="Статус">
-                        <span className="leads-page__cell-value">
+                        <span className="ui-list__muted">
                           {hasFinalStatus(lead) ? (
-                            <span className={`leads-page__status-badge leads-page__status-badge--${lead.status}`}>
+                            <span className={`ui-pill leads-page__status-badge leads-page__status-badge--${lead.status}`}>
                               {getStatusLabel(lead.status)}
                             </span>
                           ) : (
@@ -346,56 +357,56 @@ const LeadsPage = () => {
                           <div className="leads-page__action-group">
                             <button
                               type="button"
-                              className="leads-page__action leads-page__action--primary"
+                              className="ui-list-btn ui-list-btn--primary"
                               disabled={statusSaving === lead.id}
                               onClick={() => (isAdmin ? handleSetStatus(lead, 'accepted') : showAccessDenied())}
                               aria-label={`Принять заявку ${lead.name ?? ''}`}
                             >
-                              Принять
+                              <Check size={13} /> Принять
                             </button>
                             <button
                               type="button"
-                              className="leads-page__action leads-page__action--secondary"
+                              className="ui-list-btn ui-list-btn--danger"
                               disabled={statusSaving === lead.id}
                               onClick={() => (isAdmin ? handleSetStatus(lead, 'rejected') : showAccessDenied())}
                               aria-label={`Отказать в заявке ${lead.name ?? ''}`}
                             >
-                              Отказать
+                              <XIcon size={13} /> Отказать
                             </button>
                             <button
                               type="button"
-                              className="leads-page__action leads-page__action--tertiary"
+                              className="ui-list-btn ui-list-btn--edit"
                               onClick={() => (isAdmin ? setFormLead(lead) : showAccessDenied())}
                               aria-label={`Изменить заявку ${lead.name ?? ''}`}
                             >
-                              Изменить
+                              <Pencil size={13} /> Изменить
                             </button>
                             <button
                               type="button"
-                              className="leads-page__action leads-page__action--ghost"
+                              className="ui-list-btn ui-list-btn--danger"
                               onClick={() => (isAdmin ? setConfirmDelete(lead) : showAccessDenied())}
                               aria-label={`Удалить заявку ${lead.name ?? ''}`}
                             >
-                              Удалить
+                              <Trash2 size={13} /> Удалить
                             </button>
                           </div>
                         ) : (
                           <div className="leads-page__action-group">
                             <button
                               type="button"
-                              className="leads-page__action leads-page__action--tertiary"
+                              className="ui-list-btn ui-list-btn--edit"
                               onClick={() => (isAdmin ? setFormLead(lead) : showAccessDenied())}
                               aria-label={`Изменить заявку ${lead.name ?? ''}`}
                             >
-                              Изменить
+                              <Pencil size={13} /> Изменить
                             </button>
                             <button
                               type="button"
-                              className="leads-page__action leads-page__action--ghost"
+                              className="ui-list-btn ui-list-btn--danger"
                               onClick={() => (isAdmin ? setConfirmDelete(lead) : showAccessDenied())}
                               aria-label={`Удалить заявку ${lead.name ?? ''}`}
                             >
-                              Удалить
+                              <Trash2 size={13} /> Удалить
                             </button>
                           </div>
                         )}
@@ -427,13 +438,16 @@ const LeadsPage = () => {
             {stagesForBoard.length > 4 && (
               <span className="leads-page__scroll-hint">Прокрутите вправо →</span>
             )}
-            <input
-              type="text"
-              placeholder="Поиск"
-              value={funnelSearch}
-              onChange={(e) => setFunnelSearch(e.target.value)}
-              className="leads-page__search leads-page__search--funnel"
-            />
+            <div className="ui-search leads-page__search leads-page__search--funnel">
+              <Search size={15} className="ui-search__icon" />
+              <input
+                type="text"
+                placeholder="Поиск"
+                value={funnelSearch}
+                onChange={(e) => setFunnelSearch(e.target.value)}
+                className="ui-search__input"
+              />
+            </div>
             <button
               type="button"
               className="leads-page__refresh-btn filter-bar__action"

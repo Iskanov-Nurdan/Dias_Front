@@ -1135,8 +1135,8 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
           </details>
           </div>
           <div className="client-form-modal__actions">
-            <button type="button" className="client-form-modal__btn client-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
-            <SubmitButton loading={saving} className="client-form-modal__btn client-form-modal__btn--submit">
+            <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving}>Отмена</button>
+            <SubmitButton loading={saving} className="ui-modal-btn ui-modal-btn--primary">
               Сохранить
             </SubmitButton>
           </div>

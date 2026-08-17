@@ -6,48 +6,8 @@
   min-width: 0;
   overflow-x: hidden;
 
-  &__title {
+  > .ui-tabs {
     margin: 0 0 20px;
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: -0.03em;
-    color: var(--color-text);
-    line-height: 1.2;
-  }
-
-  &__tabs {
-    display: flex;
-    gap: 4px;
-    margin: 0 0 20px;
-    border-bottom: 2px solid var(--color-border);
-    @include mixins.page-tabs-row;
-  }
-
-  &__tab {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 20px;
-    border: none;
-    background: transparent;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-text-muted);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
-    transition: color 0.15s, border-color 0.15s;
-
-    &:hover {
-      color: var(--color-text);
-    }
-
-    &--active {
-      color: var(--color-primary);
-      border-bottom-color: var(--color-primary);
-      font-weight: 600;
-    }
   }
 
   &__filter-bar {
@@ -185,29 +145,11 @@
     min-width: 0;
   }
 
+  // Стили — общие .ui-search/.ui-search__input, см. shared/styles/index.scss.
   &__search {
-    height: 40px;
-    padding: 0 14px;
-    border: 1px solid var(--input-border);
-    border-radius: var(--input-radius);
-    font-size: 14px;
     min-width: 240px;
-    background: var(--color-bg-card);
-    color: var(--color-text);
-    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-
-    &::placeholder {
-      color: var(--color-text-muted);
-    }
-
-    &:focus {
-      outline: none;
-      border-color: var(--color-primary);
-      box-shadow: var(--input-shadow-focus);
-    }
 
     @include mixins.mobile {
-      font-size: 16px;
       min-width: 0;
       width: 100%;
       flex: 1 1 100%;

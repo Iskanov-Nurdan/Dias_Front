@@ -1,4 +1,5 @@
 import React from 'react';
+import { Eye, RefreshCw } from 'lucide-react';
 import { ErrorState, EmptyState, SkeletonTable } from '../../../shared/ui';
 import { isClientPaid } from '../../../shared/constants/common';
 import { composeClientDataRowClass } from '../lib/clientRowHighlight';
@@ -31,8 +32,8 @@ const ClientsList = ({
 
   return (
     <div className="clients-list">
-      <div className="clients-list__table-wrap">
-        <table className="clients-list__table">
+      <div className="ui-list__table-wrap clients-list__table-wrap">
+        <table className="ui-list__table clients-list__table">
           <thead>
             <tr>
               <th>ФИО</th>
@@ -45,13 +46,13 @@ const ClientsList = ({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="clients-list__skeleton-cell">
+                <td colSpan={5} className="ui-list__skeleton-cell clients-list__skeleton-cell">
                   <SkeletonTable rows={8} cols={5} />
                 </td>
               </tr>
             ) : !list.length ? (
               <tr>
-                <td colSpan={5} className="clients-list__empty-cell">
+                <td colSpan={5} className="ui-list__empty-cell clients-list__empty-cell">
                   <EmptyState
                     compact
                     tableCell
@@ -71,33 +72,33 @@ const ClientsList = ({
               return (
                 <tr key={c.id} className={rowClass}>
                   <td data-label="ФИО">
-                    <div className="clients-list__name-cell">
-                      <span className="clients-list__avatar">{initials}</span>
-                      <div className="clients-list__name-info">
-                        <span className="clients-list__fio">{c.fio || '—'}</span>
+                    <div className="ui-list__name-cell clients-list__name-cell">
+                      <span className="ui-avatar">{initials}</span>
+                      <div className="ui-list__name-info clients-list__name-info">
+                        <span className="ui-list__title">{c.fio || '—'}</span>
                         {typeInfo && (
-                          <span className={`clients-list__type-badge ${typeInfo.cls}`}>{typeInfo.label}</span>
+                          <span className={`ui-pill clients-list__type-badge ${typeInfo.cls}`}>{typeInfo.label}</span>
                         )}
                       </div>
                     </div>
                   </td>
-                  <td data-label="Дата начала" className="clients-list__cell--muted">
+                  <td data-label="Дата начала" className="ui-list__muted">
                     {dateStart ? new Date(dateStart).toLocaleDateString('ru-RU') : '—'}
                   </td>
                   <td data-label="Вид спорта" title={sportName || undefined}>
                     <span className="clients-list__sport">{sportName ?? '—'}</span>
                   </td>
                   <td data-label="Оплата">
-                    <span className={`clients-list__paid-badge ${paid ? 'clients-list__paid-badge--yes' : 'clients-list__paid-badge--no'}`}>
+                    <span className={`ui-pill ${paid ? 'ui-pill--success' : 'ui-pill--danger'}`}>
                       {paid ? 'Оплачено' : 'Не оплачено'}
                     </span>
                   </td>
-                  <td className="clients-list__actions" data-label="">
-                    <button type="button" className="clients-list__btn clients-list__btn--details" onClick={() => onDetails(c)}>
-                      Подробнее
+                  <td className="ui-list__actions" data-label="">
+                    <button type="button" className="ui-list-btn clients-list__btn" onClick={() => onDetails(c)}>
+                      <Eye size={13} /> Подробнее
                     </button>
-                    <button type="button" className="clients-list__btn clients-list__btn--extend" onClick={() => onExtend(c)}>
-                      Продлить
+                    <button type="button" className="ui-list-btn ui-list-btn--primary clients-list__btn" onClick={() => onExtend(c)}>
+                      <RefreshCw size={13} /> Продлить
                     </button>
                   </td>
                 </tr>

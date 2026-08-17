@@ -16,32 +16,14 @@
     }
   }
 
+  // Стили — общие .ui-search/.ui-search__input, см. shared/styles/index.scss.
   &__search {
-    height: 40px;
-    padding: 0 14px;
-    border: 1.5px solid var(--color-border);
-    border-radius: 10px;
-    background: var(--color-surface);
-    color: var(--color-text);
-    font-size: 14px;
     min-width: 220px;
-    transition: border-color 0.15s, box-shadow 0.15s;
-
-    &::placeholder {
-      color: var(--color-text-muted);
-    }
-
-    &:focus {
-      outline: none;
-      border-color: var(--color-primary);
-      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-    }
 
     @include mixins.mobile {
       min-width: 0;
       width: 100%;
       flex: 1 1 100%;
-      font-size: 16px;
     }
   }
 
@@ -101,64 +83,15 @@
     letter-spacing: -0.01em;
   }
 
-  // ── Table wrap ───────────────────────────────────────────
+  // Базовые стили обёртки/таблицы — общие .ui-list__table-wrap/.ui-list__table,
+  // см. shared/styles/index.scss. Тут только уникальное для расходов.
   &__table-wrap {
-    overflow-x: auto;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--color-border);
-    box-shadow: var(--shadow-card);
-    background: var(--color-bg-card);
-    @include mixins.scrollbar;
-
     @include mixins.mobile {
       overflow-x: visible;
-      border: none;
-      box-shadow: none;
-      background: transparent;
     }
   }
 
   &__table {
-    width: 100%;
-    border-collapse: collapse;
-    background: var(--color-bg-card);
-
-    th {
-      padding: 10px 20px;
-      text-align: left;
-      font-weight: 700;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--color-text);
-      opacity: 0.45;
-      border-bottom: 1px solid var(--color-border);
-      position: sticky;
-      top: 0;
-      z-index: 1;
-      background: var(--color-bg-card);
-    }
-
-    tbody td {
-      padding: 0 20px;
-      height: 64px;
-      vertical-align: middle;
-      border-bottom: 1px solid var(--color-border);
-      font-size: 14px;
-    }
-
-    tbody tr {
-      transition: background 0.15s;
-    }
-
-    tbody tr:hover {
-      background: rgba(239, 68, 68, 0.04);
-    }
-
-    tbody tr:last-child td {
-      border-bottom: none;
-    }
-
     th:last-child,
     td.expenses-page__actions {
       text-align: right;
@@ -190,9 +123,11 @@
         align-items: flex-start;
         justify-content: space-between;
         gap: var(--space-3);
+        padding: var(--space-2) 0 !important;
+        border: none !important;
+        border-radius: 0 !important;
         height: auto !important;
-        padding: var(--space-2) 0;
-        border-bottom: none;
+        background: transparent !important;
 
         &::before {
           content: attr(data-label);
@@ -213,13 +148,10 @@
 
           &::before { display: none; }
 
-          .expenses-page__action,
-          .expenses-page__save-btn {
+          .ui-list-btn {
             width: 100%;
             min-height: 44px;
             justify-content: center;
-            display: inline-flex;
-            align-items: center;
           }
         }
 
@@ -309,97 +241,13 @@
     .skeleton-table { width: 100%; }
   }
 
-  // ── Cell value ──────────────────────────────────────────
-  &__cell-value {
-    font-size: 14px;
-    color: var(--color-text);
-  }
-
-  // ── Actions ─────────────────────────────────────────────
+  // Значения ячеек/кнопки — общие .ui-list__muted/.ui-list-btn, см. shared/styles/index.scss.
   &__actions {
     display: flex;
     flex-wrap: nowrap;
     gap: 8px;
     align-items: center;
     justify-content: flex-end;
-  }
-
-  &__save-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 32px;
-    padding: 0 16px;
-    font-size: 13px;
-    font-weight: 600;
-    background: var(--color-primary);
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background 0.15s;
-
-    &:hover:not(:disabled) {
-      background: var(--color-primary-hover);
-    }
-  }
-
-  &__action {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 32px;
-    padding: 0 14px;
-    font-size: 13px;
-    font-weight: 500;
-    border-radius: 8px;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
-
-    &--edit {
-      background: transparent;
-      border: 1.5px solid rgba(59, 130, 246, 0.4);
-      color: #2563eb;
-
-      [data-theme='dark'] & {
-        border-color: rgba(96, 165, 250, 0.35);
-        color: #60a5fa;
-      }
-
-      &:hover {
-        background: rgba(59, 130, 246, 0.08);
-        border-color: rgba(59, 130, 246, 0.6);
-      }
-    }
-
-    &--secondary {
-      background: transparent;
-      border: 1.5px solid var(--color-border);
-      color: var(--color-text-secondary);
-
-      &:hover {
-        border-color: var(--color-text-muted);
-        color: var(--color-text);
-      }
-    }
-
-    &--delete {
-      background: transparent;
-      border: 1.5px solid rgba(239, 68, 68, 0.35);
-      color: #dc2626;
-
-      [data-theme='dark'] & {
-        border-color: rgba(248, 113, 113, 0.35);
-        color: #f87171;
-      }
-
-      &:hover {
-        background: rgba(239, 68, 68, 0.08);
-        border-color: rgba(239, 68, 68, 0.55);
-      }
-    }
   }
 }
 

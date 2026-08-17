@@ -202,30 +202,6 @@
   flex-wrap: wrap;
 }
 
-.analytics-page__header-text {
-  min-width: 0;
-}
-
-.analytics-page__title {
-  margin: 0 0 var(--space-1);
-  font-size: var(--font-page-title);
-  font-weight: var(--font-weight-page-title);
-  line-height: 1.2;
-  color: var(--color-text);
-  letter-spacing: -0.02em;
-
-  @include mixins.xs {
-    font-size: 18px;
-  }
-}
-
-.analytics-page__subtitle {
-  margin: 0;
-  font-size: 14px;
-  color: var(--color-text-muted);
-}
-
-
 .analytics-page__filter {
   display: flex;
   flex-direction: column;
@@ -1295,98 +1271,10 @@
   margin-bottom: 0;
 }
 
-// ——— Табы (стиль как у Лидов/Клиентов: подчёркивание, без pill) ———
-.analytics-page__tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 16px;
-  border-bottom: 2px solid var(--color-border);
-  @include mixins.page-tabs-row;
-}
-
-.analytics-page__tab {
-  flex-shrink: 0;
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 500;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-}
-
-.analytics-page__tab:hover {
-  color: var(--color-text);
-}
-
-.analytics-page__tab--active {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
+// ——— Таблицы — общие .ui-list__table-wrap/.ui-list__table, см. shared/styles/index.scss ———
+.analytics-page__table-td--positive,
+.analytics-page__table-td--negative {
   font-weight: 600;
-}
-
-// ——— Таблицы ———
-.analytics-page__table-wrap {
-  overflow-x: auto;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  @include mixins.scrollbar;
-}
-
-.analytics-page__modal-table-wrap {
-  border-radius: 0 !important;
-  border: none !important;
-}
-
-.analytics-page__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.analytics-page__table th,
-.analytics-page__table td {
-  padding: 14px 18px;
-  text-align: left;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.analytics-page__table th {
-  background: var(--color-bg);
-  font-weight: 700;
-  font-size: 11px;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-
-.analytics-page__table tbody tr {
-  transition: background var(--transition-fast);
-}
-
-.analytics-page__table tbody tr:nth-child(even) {
-  background: rgba(0, 0, 0, 0.02);
-}
-
-.analytics-page__table tbody tr:hover {
-  background: var(--color-bg);
-}
-
-.analytics-page__table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.analytics-page__table-empty-cell {
-  padding: 0 !important;
-  vertical-align: middle;
-  text-align: center;
-  border-bottom: none !important;
 }
 
 // ——— Badge (оплачено/не оплачено) ———

@@ -37,8 +37,8 @@ const CategoryFormModal = ({ category, onSave, onClose, error, saving }) => {
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="warehouse-form-modal__input" placeholder="Название" />
           </label>
           <div className="warehouse-form-modal__actions">
-            <button type="button" className="warehouse-form-modal__btn warehouse-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
-            <SubmitButton loading={saving} className="warehouse-form-modal__btn warehouse-form-modal__btn--submit">
+            <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving}>Отмена</button>
+            <SubmitButton loading={saving} className="ui-modal-btn ui-modal-btn--primary">
               Сохранить
             </SubmitButton>
           </div>

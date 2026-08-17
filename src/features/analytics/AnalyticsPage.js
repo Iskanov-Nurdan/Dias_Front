@@ -752,8 +752,8 @@ const AnalyticsPage = () => {
               if (hasItems) {
                 return (
                   <>
-                    <div className="analytics-page__table-wrap analytics-page__modal-table-wrap">
-                      <table className="analytics-page__table">
+                    <div className="ui-list__table-wrap analytics-page__table-wrap analytics-page__modal-table-wrap">
+                      <table className="ui-list__table analytics-page__table">
                         <thead><tr><th>Источник</th><th>Описание</th><th>Сумма</th></tr></thead>
                         <tbody>
                           {incomeItems.map((row, i) => (
@@ -808,8 +808,8 @@ const AnalyticsPage = () => {
               }
               return (
                 <>
-                  <div className="analytics-page__table-wrap analytics-page__modal-table-wrap">
-                    <table className="analytics-page__table">
+                  <div className="ui-list__table-wrap analytics-page__table-wrap analytics-page__modal-table-wrap">
+                    <table className="ui-list__table analytics-page__table">
                       <thead><tr><th>Категория</th><th>Название</th><th>Дата</th><th>Сумма</th></tr></thead>
                       <tbody>
                         {expenseItems.map((row, i) => (
@@ -835,8 +835,8 @@ const AnalyticsPage = () => {
             })()}
             {!detailLoading && detailModal === 'profit' && detailData?.items?.length > 0 && (
               <>
-                <div className="analytics-page__table-wrap analytics-page__modal-table-wrap">
-                  <table className="analytics-page__table">
+                <div className="ui-list__table-wrap analytics-page__table-wrap analytics-page__modal-table-wrap">
+                  <table className="ui-list__table analytics-page__table">
                     <thead><tr><th>Тип</th><th>Описание</th><th>Сумма</th></tr></thead>
                     <tbody>
                       {detailData.items.map((row, i) => (

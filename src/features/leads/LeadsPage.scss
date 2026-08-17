@@ -1,43 +1,8 @@
 @use '../../shared/styles/mixins';
 
 .leads-page {
-  &__title {
-    margin: 0 0 8px;
-    font-size: 26px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    color: var(--color-text);
-  }
-
-  &__tabs {
-    display: flex;
-    gap: 4px;
+  > .ui-tabs {
     margin-bottom: 20px;
-    border-bottom: 2px solid var(--color-border);
-    @include mixins.page-tabs-row;
-  }
-
-  &__tab {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 20px;
-    border: none;
-    background: transparent;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-text-muted);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
-    transition: color 0.15s, border-color 0.15s;
-    &:hover { color: var(--color-text); }
-    &--active {
-      color: var(--color-primary);
-      border-bottom-color: var(--color-primary);
-      font-weight: 600;
-    }
   }
 
   &__funnel-toolbar {
@@ -115,25 +80,14 @@
     }
   }
 
+  // Стили — общие .ui-search/.ui-search__input, см. shared/styles/index.scss.
   &__search {
-    height: 40px;
-    padding: 0 12px;
-    border: 1px solid var(--input-border);
-    border-radius: var(--input-radius);
-    background: var(--color-surface);
-    font-size: 14px;
     min-width: 220px;
-    &:focus {
-      outline: none;
-      border-color: var(--color-primary);
-      box-shadow: var(--input-shadow-focus);
-    }
 
     @include mixins.mobile {
       min-width: 0;
       width: 100%;
       flex: 1 1 100%;
-      font-size: 16px;
     }
   }
 
@@ -158,67 +112,15 @@
     }
   }
 
+  // Базовые стили обёртки/таблицы — общие .ui-list__table-wrap/.ui-list__table,
+  // см. shared/styles/index.scss. Тут только мобильная раскладка карточками.
   &__table-wrap {
-    overflow-x: auto;
-    border-radius: var(--block-radius);
-    border: 1px solid var(--block-border);
-    box-shadow: var(--shadow-card);
-    background: var(--color-bg-card);
-    @include mixins.scrollbar;
-
     @include mixins.mobile {
       overflow-x: visible;
-      border: none;
-      box-shadow: none;
-      background: transparent;
     }
-  }
-
-  &__cell-value {
-    min-width: 0;
-    flex: 1 1 auto;
-    text-align: right;
-    overflow-wrap: anywhere;
-    word-break: break-word;
   }
 
   &__table {
-    width: 100%;
-    border-collapse: collapse;
-    background: var(--color-bg-card);
-
-    th,
-    td {
-      padding: 14px 18px;
-      text-align: left;
-      border-bottom: 1px solid var(--color-border);
-    }
-
-    th {
-      background: var(--color-bg);
-      font-weight: 600;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--color-text-muted);
-      position: sticky;
-      top: 0;
-      z-index: 1;
-    }
-
-    tbody tr {
-      transition: background var(--transition-fast);
-    }
-    tbody tr:nth-child(even) {
-      background: rgba(0, 0, 0, 0.02);
-    }
-    tbody tr:hover {
-      background: var(--color-primary-light);
-    }
-    tbody tr:last-child td {
-      border-bottom: none;
-    }
-
     @include mixins.mobile {
       display: block;
       background: transparent;
@@ -236,9 +138,9 @@
       tr {
         display: block;
         padding: var(--space-4);
-        background: var(--color-bg-card);
-        border: 1px solid var(--block-border);
-        border-radius: var(--block-radius);
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: 12px;
         box-shadow: var(--shadow-card);
       }
 
@@ -247,8 +149,11 @@
         align-items: flex-start;
         justify-content: space-between;
         gap: var(--space-3);
-        padding: var(--space-2) 0;
-        border-bottom: none;
+        padding: var(--space-2) 0 !important;
+        border: none !important;
+        border-radius: 0 !important;
+        height: auto !important;
+        background: transparent !important;
 
         &::before {
           content: attr(data-label);
@@ -318,12 +223,10 @@
       flex-direction: column;
       align-items: stretch;
 
-      .leads-page__action {
+      .ui-list-btn {
         width: 100%;
         min-height: 44px;
         justify-content: center;
-        display: inline-flex;
-        align-items: center;
         box-sizing: border-box;
       }
     }
@@ -334,63 +237,8 @@
     font-size: 14px;
   }
 
-  &__action {
-    padding: 6px 12px;
-    font-size: 13px;
-    font-weight: 500;
-    border-radius: var(--radius-sm);
-    border: 1px solid transparent;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    &--primary {
-      background: var(--color-primary);
-      color: #fff;
-      border-color: var(--color-primary);
-      &:hover:not(:disabled) {
-        background: var(--color-primary-hover);
-        border-color: var(--color-primary-hover);
-      }
-    }
-    &--secondary {
-      background: transparent;
-      border-color: var(--color-border); color: var(--color-text-secondary);
-      &:hover:not(:disabled) {
-        border-color: var(--color-border-strong);
-        color: var(--color-text);
-      }
-    }
-    &--tertiary {
-      background: transparent;
-      border-color: var(--color-border);
-      color: var(--color-text-muted);
-      &:hover:not(:disabled) {
-        border-color: var(--color-primary);
-        color: var(--color-primary);
-      }
-    }
-    &--ghost {
-      background: transparent;
-      border: none;
-      color: var(--color-text-muted);
-      padding: 6px 8px;
-      font-size: 12px;
-      &:hover:not(:disabled) {
-        color: var(--color-danger);
-      }
-    }
-  }
-
+  // Кнопки — общие .ui-list-btn/--primary/--danger, см. shared/styles/index.scss.
   &__status-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
     &--accepted {
       background: var(--color-success-soft);
       color: var(--color-success);

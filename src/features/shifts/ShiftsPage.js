@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Clock, Plus, Banknote, CreditCard, TrendingUp, TrendingDown, Coins, ImagePlus, X as XIcon, Camera, FileText, Filter, Pencil, History } from 'lucide-react';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { fetchShifts, closeShift, updateShift, fetchPhotoReports, addPhotoReport } from './api';
-import { Select, Spinner } from '../../shared/ui';
+import { Select, Spinner, EmptyState, ErrorState } from '../../shared/ui';
 import { STATS_YEARS, formatMoney } from '../../shared/constants/common';
+import { getApiErrorMessage } from '../../shared/lib/apiError';
 import './ShiftsPage.scss';
 
 const YEAR_OPTIONS = [{ value: '', label: 'Год' }, ...STATS_YEARS.map((y) => ({ value: y, label: y }))];
@@ -403,6 +404,8 @@ const ShiftsPage = () => {
   const [photoReports, setPhotoReports] = useState([]);
   const [shiftsLoading, setShiftsLoading] = useState(true);
   const [photosLoading, setPhotosLoading] = useState(true);
+  const [shiftsError, setShiftsError] = useState(null);
+  const [photosError, setPhotosError] = useState(null);
 
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [shiftModalOpen, setShiftModalOpen] = useState(false);
@@ -428,12 +431,15 @@ const ShiftsPage = () => {
     const { signal } = photosControllerRef.current;
     const seq = ++photosRequestSeq.current;
     setPhotosLoading(true);
+    setPhotosError(null);
     try {
       const data = await fetchPhotoReports({ year: pYear, month: pMonth, day: pDay || undefined }, signal);
       if (photosRequestSeq.current !== seq) return;
       setPhotoReports(data);
     } catch (err) {
       if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
+      if (photosRequestSeq.current !== seq) return;
+      setPhotosError(getApiErrorMessage(err));
     } finally {
       if (photosRequestSeq.current === seq) setPhotosLoading(false);
     }
@@ -447,12 +453,15 @@ const ShiftsPage = () => {
     const { signal } = shiftsControllerRef.current;
     const seq = ++shiftsRequestSeq.current;
     setShiftsLoading(true);
+    setShiftsError(null);
     try {
       const data = await fetchShifts({ year: sYear, month: sMonth, day: sDay || undefined }, signal);
       if (shiftsRequestSeq.current !== seq) return;
       setShifts(data);
     } catch (err) {
       if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
+      if (shiftsRequestSeq.current !== seq) return;
+      setShiftsError(getApiErrorMessage(err));
     } finally {
       if (shiftsRequestSeq.current === seq) setShiftsLoading(false);
     }
@@ -481,21 +490,21 @@ const ShiftsPage = () => {
 
       {/* ── Табы ─────────────────────────────────────────────── */}
       <div className="shifts-tabs">
-        <div className="shifts-tabs__nav">
+        <div className="ui-tabs shifts-tabs__nav">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               type="button"
-              className={`shifts-tabs__btn${activeTab === id ? ' shifts-tabs__btn--active' : ''}`}
+              className={`ui-tabs__tab${activeTab === id ? ' ui-tabs__tab--active' : ''}`}
               onClick={() => setActiveTab(id)}
             >
               <Icon size={16} />
               {label}
               {id === 'photos' && photoReports.length > 0 && (
-                <span className="shifts-tabs__badge">{photoReports.length}</span>
+                <span className="ui-tabs__badge">{photoReports.length}</span>
               )}
               {id === 'shifts' && shifts.length > 0 && (
-                <span className="shifts-tabs__badge shifts-tabs__badge--shift">{shifts.length}</span>
+                <span className="ui-tabs__badge shifts-tabs__badge--alert">{shifts.length}</span>
               )}
             </button>
           ))}
@@ -527,12 +536,10 @@ const ShiftsPage = () => {
 
           {photosLoading ? (
             <div className="shifts-page__loading"><Spinner /></div>
+          ) : photosError ? (
+            <ErrorState compact message={photosError} onRetry={loadPhotos} />
           ) : photoReports.length === 0 ? (
-            <div className="shifts-section__empty">
-              <Camera size={40} strokeWidth={1} className="shifts-page__empty-icon" />
-              <p>Фото отчётов пока нет</p>
-              <span>Нажмите «Добавить фото» чтобы загрузить первый отчёт</span>
-            </div>
+            <EmptyState compact message="Фото отчётов пока нет — нажмите «Добавить фото», чтобы загрузить первый отчёт" />
           ) : (
             <div className="photo-reports">
               {photoReports.map((r) => (
@@ -590,12 +597,10 @@ const ShiftsPage = () => {
 
           {shiftsLoading ? (
             <div className="shifts-page__loading"><Spinner /></div>
+          ) : shiftsError ? (
+            <ErrorState compact message={shiftsError} onRetry={loadShifts} />
           ) : shifts.length === 0 ? (
-            <div className="shifts-section__empty">
-              <Clock size={40} strokeWidth={1} className="shifts-page__empty-icon" />
-              <p>Смен пока нет</p>
-              <span>Нажмите «Завершить смену» чтобы добавить первую запись</span>
-            </div>
+            <EmptyState compact message="Смен пока нет — нажмите «Завершить смену», чтобы добавить первую запись" />
           ) : (
             <div className="shifts-page__list">
               {shifts.map((s) => (

@@ -1,51 +1,9 @@
 @use '../../../shared/styles/mixins';
 
 .roles-list {
-  &__table-wrap {
-    overflow-x: auto;
-    border-radius: 12px;
-    border: 1px solid var(--color-border);
-    box-shadow: var(--shadow-card);
-    background: var(--color-surface);
-    @include mixins.scrollbar;
-    min-width: 0;
-
-    @include mixins.mobile {
-      overflow-x: hidden;
-      border: none;
-      box-shadow: none;
-      background: transparent;
-    }
-  }
-
+  // Обёртка/таблица/аватар/название/кнопки — общие .ui-list__*/.ui-avatar/.ui-pill/.ui-list-btn,
+  // см. shared/styles/index.scss. Тут только уникальное для ролей.
   &__table {
-    width: 100%;
-    border-collapse: collapse;
-    background: var(--color-surface);
-
-    th, td {
-      padding: 12px 18px;
-      text-align: left;
-      border-bottom: 1px solid var(--color-border);
-      vertical-align: middle;
-    }
-
-    th {
-      background: var(--color-surface);
-      font-weight: 600;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--color-text-muted);
-      border-bottom: 1px solid var(--color-border);
-    }
-
-    th:first-child, td:first-child { min-width: 220px; }
-
-    tbody tr { transition: background 0.12s; }
-    tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
-    tbody tr:last-child td { border-bottom: none; }
-
     @include mixins.mobile {
       display: block;
       background: transparent;
@@ -71,9 +29,9 @@
 
       td {
         padding: 0;
-        border-bottom: none;
+        border: none;
 
-        &.roles-list__actions {
+        &.ui-list__actions {
           flex-shrink: 0;
         }
       }
@@ -87,13 +45,6 @@
     &:hover { background: transparent !important; }
   }
 
-  // ── Name cell ─────────────────────────────────────────────
-  &__name-cell {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
   &__dot {
     width: 8px;
     height: 8px;
@@ -102,109 +53,10 @@
     flex-shrink: 0;
   }
 
-  &__system-icon {
-    display: flex;
-    align-items: center;
-    color: var(--color-text-muted);
-    opacity: 0.6;
-    flex-shrink: 0;
-  }
-
-  &__name {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-text);
-  }
-
-  &__system-badge {
-    font-size: 11px;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 20px;
-    background: rgba(156, 163, 175, 0.1);
-    color: var(--color-text-muted);
-    white-space: nowrap;
-  }
-
   &__system-note {
     font-size: 12px;
     color: var(--color-text-muted);
     opacity: 0.6;
     font-style: italic;
-  }
-
-  // ── Actions ───────────────────────────────────────────────
-  &__loading-cell,
-  &__empty-cell {
-    text-align: center;
-    padding: 32px 16px;
-    vertical-align: middle;
-  }
-
-  &__skeleton-cell {
-    padding: 0 !important;
-    border-bottom: none;
-    vertical-align: top;
-  }
-
-  &__actions {
-    display: flex;
-    gap: 6px;
-    justify-content: flex-end;
-    align-items: center;
-    text-align: right;
-  }
-
-  &__btn {
-    height: 30px;
-    padding: 0 12px;
-    font-size: 12px;
-    font-weight: 600;
-    border-radius: 8px;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background 0.15s, border-color 0.15s;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-
-    &--edit {
-      border: 1px solid rgba(59, 130, 246, 0.3);
-      color: #1d4ed8;
-      background: rgba(59, 130, 246, 0.06);
-
-      [data-theme='dark'] & {
-        color: #60a5fa;
-        border-color: rgba(96, 165, 250, 0.25);
-        background: rgba(96, 165, 250, 0.08);
-      }
-
-      &:hover {
-        background: rgba(59, 130, 246, 0.12);
-        border-color: rgba(59, 130, 246, 0.5);
-      }
-    }
-
-    &--danger {
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #dc2626;
-      background: transparent;
-
-      [data-theme='dark'] & {
-        color: #f87171;
-        border-color: rgba(239, 68, 68, 0.25);
-      }
-
-      &:hover {
-        background: rgba(239, 68, 68, 0.08);
-        border-color: rgba(239, 68, 68, 0.5);
-      }
-    }
-
-    @include mixins.mobile {
-      height: 36px;
-      padding: 0 14px;
-      font-size: 13px;
-    }
   }
 }

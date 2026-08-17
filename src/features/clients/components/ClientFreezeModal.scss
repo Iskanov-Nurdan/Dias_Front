@@ -150,32 +150,7 @@
   border-radius: 0 0 var(--radius-xl) var(--radius-xl);
 }
 
-.client-freeze-modal__btn {
-  min-height: 40px;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
-
-  &:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-  }
-
-  &--cancel {
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
-    color: var(--color-text);
-  }
-
-  &--submit {
-    background: var(--color-primary);
-    color: #fff;
-    border: 1px solid var(--color-primary);
-  }
-}
+// Кнопки — общие .ui-modal-btn/.ui-modal-btn--primary, см. shared/styles/index.scss.
 
 @include mixins.mobile {
   .client-freeze-modal__backdrop.client-freeze-modal__backdrop--fullscreen {

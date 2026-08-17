@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Pencil, PackagePlus, Trash2, Package, Tag, Search } from 'lucide-react';
 import {
   fetchCategories,
   fetchProducts,
@@ -236,16 +237,19 @@ const WarehousePage = () => {
   return (
     <div className="warehouse-page">
       
-      <div className="warehouse-page__tabs">
-        <button type="button" className={`warehouse-page__tab ${activeTab === TAB_PRODUCTS ? 'warehouse-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_PRODUCTS)}>Товары</button>
-        <button type="button" className={`warehouse-page__tab ${activeTab === TAB_CATEGORIES ? 'warehouse-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_CATEGORIES)}>Категории</button>
-        <button type="button" className={`warehouse-page__tab ${activeTab === TAB_HISTORY ? 'warehouse-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_HISTORY)}>История</button>
+      <div className="ui-tabs">
+        <button type="button" className={`ui-tabs__tab ${activeTab === TAB_PRODUCTS ? 'ui-tabs__tab--active' : ''}`} onClick={() => setActiveTab(TAB_PRODUCTS)}>Товары</button>
+        <button type="button" className={`ui-tabs__tab ${activeTab === TAB_CATEGORIES ? 'ui-tabs__tab--active' : ''}`} onClick={() => setActiveTab(TAB_CATEGORIES)}>Категории</button>
+        <button type="button" className={`ui-tabs__tab ${activeTab === TAB_HISTORY ? 'ui-tabs__tab--active' : ''}`} onClick={() => setActiveTab(TAB_HISTORY)}>История</button>
       </div>
       {activeTab === TAB_PRODUCTS && (
         <>
           <FilterBar className="warehouse-page__filter-bar">
             <div className="warehouse-page__filters warehouse-page__filters--desktop">
-              <input type="text" placeholder="Поиск" value={productSearchInput} onChange={(e) => setProductSearchInput(e.target.value)} className="warehouse-page__search" />
+              <div className="ui-search warehouse-page__search">
+                <Search size={15} className="ui-search__icon" />
+                <input type="text" placeholder="Поиск" value={productSearchInput} onChange={(e) => setProductSearchInput(e.target.value)} className="ui-search__input" />
+              </div>
               <Select
                 value={queryState.categoryId}
                 onChange={(v) => setQueryState((q) => ({ ...q, categoryId: v, page: 1 }))}
@@ -256,7 +260,10 @@ const WarehousePage = () => {
               <button type="button" className="warehouse-page__add filter-bar__action" onClick={() => setFormProduct({})}>Добавить товар</button>
             </div>
             <div className="warehouse-page__toolbar-mobile">
-              <input type="text" placeholder="Поиск" value={productSearchInput} onChange={(e) => setProductSearchInput(e.target.value)} className="warehouse-page__search warehouse-page__search--mobile" />
+              <div className="ui-search warehouse-page__search warehouse-page__search--mobile">
+                <Search size={15} className="ui-search__icon" />
+                <input type="text" placeholder="Поиск" value={productSearchInput} onChange={(e) => setProductSearchInput(e.target.value)} className="ui-search__input" />
+              </div>
               <div className="warehouse-page__toolbar-mobile-actions">
                 <button type="button" className="warehouse-page__filters-btn" onClick={() => setFiltersModalOpen(true)}>Фильтры</button>
                 <button type="button" className="warehouse-page__add warehouse-page__add--mobile filter-bar__action" onClick={() => setFormProduct({})}>Добавить товар</button>
@@ -288,8 +295,8 @@ const WarehousePage = () => {
             </div>
           </FiltersModal>
           {productsError && <ErrorState message={productsError} onRetry={fetchProductsSafe} />}
-          <div className="warehouse-page__table-wrap">
-            <table className="warehouse-page__table">
+          <div className="ui-list__table-wrap warehouse-page__table-wrap">
+            <table className="ui-list__table warehouse-page__table">
               <thead><tr>
                   <th className="warehouse-page__th--group-start">Название</th><th>Категория</th>
                   <th className="warehouse-page__th--group-start">Кол-во</th><th>Закупка</th><th>Продажа</th><th>Мин. остаток</th>
@@ -306,14 +313,19 @@ const WarehousePage = () => {
                     </tr>
                   ))
                 ) : productsItems.length === 0 ? (
-                  <tr><td colSpan={8} className="warehouse-page__empty-cell"><EmptyState compact tableCell message="Нет товаров" /></td></tr>
+                  <tr><td colSpan={8} className="ui-list__empty-cell warehouse-page__empty-cell"><EmptyState compact tableCell message="Нет товаров" /></td></tr>
                 ) : productsItems.map((p) => {
                     const qty = Number(p.qty ?? p.quantity ?? 0);
                     const minQtyVal = Number(p.minQty ?? p.min_quantity);
                     const isAtMin = !Number.isNaN(minQtyVal) && qty <= minQtyVal;
                     return (
                     <tr key={p.id} className={`warehouse-page__product-row${isAtMin ? ' warehouse-page__product-row--at-min' : ''}`}>
-                      <td data-label="Название">{p.name}</td>
+                      <td data-label="Название">
+                        <div className="ui-list__name-cell">
+                          <span className="ui-avatar ui-avatar--icon"><Package size={16} /></span>
+                          <span className="ui-list__title">{p.name}</span>
+                        </div>
+                      </td>
                       <td data-label="Категория">{p.categoryName ?? p.category?.name ?? '—'}</td>
                       <td data-label="Кол-во">{p.qty ?? p.quantity ?? 0}</td>
                       <td data-label="Закупка">{formatMoney(p.purchasePrice)}</td>
@@ -321,9 +333,9 @@ const WarehousePage = () => {
                       <td data-label="Мин. остаток">{p.minQty ?? p.min_quantity ?? '—'}</td>
                       <td data-label="Добавлено">{(p.createdAt ?? p.created_at) ? new Date(p.createdAt ?? p.created_at).toLocaleDateString('ru-RU') : '—'}</td>
                       <td className="warehouse-page__actions" data-label="">
-                        <button type="button" className="warehouse-page__action warehouse-page__action--primary" onClick={() => (isAdmin ? setFormProduct(p) : showAccessDenied())} title="Редактировать">Редактировать</button>
-                        <button type="button" className="warehouse-page__action warehouse-page__action--secondary" onClick={() => setRestockProductItem(p)} title="Пополнить">Пополнить</button>
-                        <button type="button" className="warehouse-page__action warehouse-page__action--ghost" onClick={() => (isAdmin ? setConfirmDeleteProduct(p) : showAccessDenied())} title="Удалить">Удалить</button>
+                        <button type="button" className="ui-list-btn ui-list-btn--edit" onClick={() => (isAdmin ? setFormProduct(p) : showAccessDenied())} title="Редактировать"><Pencil size={13} /> Редактировать</button>
+                        <button type="button" className="ui-list-btn" onClick={() => setRestockProductItem(p)} title="Пополнить"><PackagePlus size={13} /> Пополнить</button>
+                        <button type="button" className="ui-list-btn ui-list-btn--danger" onClick={() => (isAdmin ? setConfirmDeleteProduct(p) : showAccessDenied())} title="Удалить"><Trash2 size={13} /> Удалить</button>
                       </td>
                     </tr>
                 ); })}
@@ -343,17 +355,23 @@ const WarehousePage = () => {
         <>
           <FilterBar className="warehouse-page__filter-bar">
             <div className="warehouse-page__filters warehouse-page__filters--desktop">
-              <input type="text" placeholder="Поиск" value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="warehouse-page__search" />
+              <div className="ui-search warehouse-page__search">
+                <Search size={15} className="ui-search__icon" />
+                <input type="text" placeholder="Поиск" value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="ui-search__input" />
+              </div>
               <button type="button" className="warehouse-page__add filter-bar__action" onClick={() => setFormCategory({})}>Добавить категорию</button>
             </div>
             <div className="warehouse-page__toolbar-mobile">
-              <input type="text" placeholder="Поиск" value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="warehouse-page__search warehouse-page__search--mobile" />
+              <div className="ui-search warehouse-page__search warehouse-page__search--mobile">
+                <Search size={15} className="ui-search__icon" />
+                <input type="text" placeholder="Поиск" value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="ui-search__input" />
+              </div>
               <button type="button" className="warehouse-page__add warehouse-page__add--mobile filter-bar__action" onClick={() => setFormCategory({})}>Добавить категорию</button>
             </div>
           </FilterBar>
           {categoriesError && <ErrorState message={categoriesError} onRetry={fetchCategoriesSafe} />}
-          <div className="warehouse-page__table-wrap">
-            <table className="warehouse-page__table">
+          <div className="ui-list__table-wrap warehouse-page__table-wrap">
+            <table className="ui-list__table warehouse-page__table">
               <thead><tr><th>Название</th><th>Действия</th></tr></thead>
               <tbody>
                 {categoriesLoading ? (
@@ -365,7 +383,7 @@ const WarehousePage = () => {
                     </tr>
                   ))
                 ) : categoriesList.length === 0 ? (
-                  <tr><td colSpan={2} className="warehouse-page__empty-cell"><EmptyState compact tableCell message="Нет категорий" /></td></tr>
+                  <tr><td colSpan={2} className="ui-list__empty-cell warehouse-page__empty-cell"><EmptyState compact tableCell message="Нет категорий" /></td></tr>
                 ) : (
                   <>
                     {categoriesList.length < 4 && (
@@ -373,10 +391,15 @@ const WarehousePage = () => {
                     )}
                     {categoriesList.map((c) => (
                       <tr key={c.id} className="warehouse-page__product-row">
-                        <td data-label="Название">{c.name}</td>
+                        <td data-label="Название">
+                          <div className="ui-list__name-cell">
+                            <span className="ui-avatar ui-avatar--icon"><Tag size={16} /></span>
+                            <span className="ui-list__title">{c.name}</span>
+                          </div>
+                        </td>
                         <td className="warehouse-page__actions" data-label="">
-                          <button type="button" className="warehouse-page__action warehouse-page__action--primary" onClick={() => (isAdmin ? setFormCategory(c) : showAccessDenied())} title="Редактировать">Редактировать</button>
-                          <button type="button" className="warehouse-page__action warehouse-page__action--ghost" onClick={() => (isAdmin ? setConfirmDeleteCategory(c) : showAccessDenied())} title="Удалить">Удалить</button>
+                          <button type="button" className="ui-list-btn ui-list-btn--edit" onClick={() => (isAdmin ? setFormCategory(c) : showAccessDenied())} title="Редактировать"><Pencil size={13} /> Редактировать</button>
+                          <button type="button" className="ui-list-btn ui-list-btn--danger" onClick={() => (isAdmin ? setConfirmDeleteCategory(c) : showAccessDenied())} title="Удалить"><Trash2 size={13} /> Удалить</button>
                         </td>
                       </tr>
                     ))}
@@ -439,10 +462,16 @@ const WarehousePage = () => {
         <>
           <FilterBar className="warehouse-page__filter-bar">
             <div className="warehouse-page__filters warehouse-page__filters--desktop">
-              <input type="text" placeholder="Поиск" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} className="warehouse-page__search" />
+              <div className="ui-search warehouse-page__search">
+                <Search size={15} className="ui-search__icon" />
+                <input type="text" placeholder="Поиск" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} className="ui-search__input" />
+              </div>
             </div>
             <div className="warehouse-page__toolbar-mobile">
-              <input type="text" placeholder="Поиск" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} className="warehouse-page__search warehouse-page__search--mobile" />
+              <div className="ui-search warehouse-page__search warehouse-page__search--mobile">
+                <Search size={15} className="ui-search__icon" />
+                <input type="text" placeholder="Поиск" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} className="ui-search__input" />
+              </div>
             </div>
           </FilterBar>
           <header className="warehouse-page__history-header">
@@ -450,8 +479,8 @@ const WarehousePage = () => {
             <p className="warehouse-page__history-hint">Журнал операций пополнения склада</p>
           </header>
           {restocksError && <ErrorState message={restocksError} onRetry={fetchRestocksSafe} />}
-          <div className="warehouse-page__table-wrap warehouse-page__table-wrap--history">
-            <table className="warehouse-page__table">
+          <div className="ui-list__table-wrap warehouse-page__table-wrap warehouse-page__table-wrap--history">
+            <table className="ui-list__table warehouse-page__table">
               <thead><tr><th className="warehouse-page__th--group-start">Товар</th><th>Кол-во</th><th>Дата</th></tr></thead>
               <tbody>
                 {restocksLoading ? (
@@ -463,7 +492,7 @@ const WarehousePage = () => {
                     </tr>
                   ))
                 ) : restocksItems.length === 0 ? (
-                  <tr><td colSpan={3} className="warehouse-page__empty-cell"><EmptyState compact tableCell message="Нет пополнений" /></td></tr>
+                  <tr><td colSpan={3} className="ui-list__empty-cell warehouse-page__empty-cell"><EmptyState compact tableCell message="Нет пополнений" /></td></tr>
                 ) : restocksItems.map((r) => (
                   <tr key={r.id} className="warehouse-page__product-row">
                     <td data-label="Товар">{r.productName ?? r.product?.name ?? '—'}</td>

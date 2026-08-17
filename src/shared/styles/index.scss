@@ -159,6 +159,341 @@ textarea {
   to { transform: rotate(360deg); }
 }
 
+// ── Единая система списков: карточные строки, аватары, бейджи, кнопки-контуры ──
+// Общий визуальный язык для всех списков в приложении (клиенты, сотрудники,
+// роли, виды спорта, тренеры и т.д.) — чтобы не дублировать один и тот же CSS
+// в каждой фиче отдельно.
+
+.ui-list {
+  &__table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    @include mixins.scrollbar;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 6px;
+    background: transparent;
+
+    th {
+      padding: 8px 16px 10px;
+      text-align: left;
+      vertical-align: middle;
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-text-muted);
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--color-bg);
+    }
+
+    td {
+      height: 60px;
+      padding: 8px 16px;
+      vertical-align: middle;
+      background: var(--color-surface);
+      border-top: 1px solid var(--color-border);
+      border-bottom: 1px solid var(--color-border);
+      color: var(--color-text);
+      font-size: 14px;
+      transition: background var(--transition-fast);
+    }
+
+    td:first-child {
+      border-left: 1px solid var(--color-border);
+      border-radius: 10px 0 0 10px;
+    }
+    td:last-child {
+      border-right: 1px solid var(--color-border);
+      border-radius: 0 10px 10px 0;
+    }
+
+    tbody tr:hover td {
+      background: var(--color-surface-secondary);
+    }
+  }
+
+  &__name-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  &__name-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  &__title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__muted {
+    color: var(--color-text-secondary);
+    font-size: 13px;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+    white-space: nowrap;
+  }
+
+  &__skeleton-cell,
+  &__empty-cell {
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+  }
+}
+
+.ui-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+  line-height: 1;
+
+  &--lg {
+    width: 44px;
+    height: 44px;
+    font-size: 14px;
+  }
+
+  &--icon {
+    background: var(--color-surface-secondary);
+    color: var(--color-text-secondary);
+  }
+}
+
+.ui-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+
+  &--success { background: var(--color-success-soft); color: var(--color-success); }
+  &--danger  { background: var(--color-danger-soft); color: var(--color-danger); }
+  &--info    { background: var(--color-info-soft); color: var(--color-info); }
+  &--primary { background: var(--color-primary-soft); color: var(--color-primary); }
+}
+
+.ui-list-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  svg {
+    display: block;
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    background: var(--color-surface-secondary);
+    border-color: var(--color-text-muted);
+    color: var(--color-text);
+  }
+
+  // Правка — синий, отдельно от фирменного красного (--primary), чтобы не путать с удалением
+  &--edit {
+    border-color: #2563eb;
+    color: #2563eb;
+    [data-theme='dark'] & { border-color: #60a5fa; color: #60a5fa; }
+    &:hover { background: rgba(37, 99, 235, 0.08); }
+  }
+
+  &--primary {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    &:hover { background: var(--color-primary-soft); }
+  }
+
+  &--danger {
+    border-color: var(--color-danger);
+    color: var(--color-danger);
+    &:hover { background: var(--color-danger-soft); }
+  }
+
+  &--icon-only {
+    width: 30px;
+    padding: 0;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    &:hover { background: transparent; border-color: var(--color-border-strong); color: var(--color-text-secondary); }
+  }
+}
+
+// ── Единая система табов: подчёркивание снизу, с горизонтальным скроллом ──
+.ui-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--color-border);
+  @include mixins.page-tabs-row;
+
+  &__tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+
+    &:hover {
+      color: var(--color-text);
+    }
+
+    &--active {
+      color: var(--color-primary);
+      font-weight: 600;
+      border-bottom-color: var(--color-primary);
+    }
+  }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 20px;
+    background: var(--color-surface-secondary);
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  &__tab--active &__badge,
+  &__badge--active {
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+  }
+}
+
+// ── Единое поле поиска: иконка-лупа слева, стандартные размеры инпута ──
+.ui-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 200px;
+  flex: 1 1 auto;
+
+  &__icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-muted);
+    pointer-events: none;
+    display: flex;
+  }
+
+  &__input {
+    width: 100%;
+    padding-left: 38px !important;
+  }
+}
+
+// ── Единая система кнопок в футере модалок (Отмена/Сохранить/Удалить) ──
+.ui-modal-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 20px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+
+  &:hover {
+    background: var(--color-surface-secondary);
+    border-color: var(--color-text-muted);
+  }
+
+  &--primary {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff;
+    &:hover { background: var(--color-primary-hover); }
+  }
+
+  &--danger {
+    border-color: var(--color-danger);
+    color: var(--color-danger);
+    &:hover { background: var(--color-danger-soft); }
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    &:hover { background: transparent; border-color: var(--color-border); }
+  }
+
+  @include mixins.mobile {
+    min-height: 44px;
+  }
+}
+
 .access-denied-overlay {
   position: fixed;
   inset: 0;
@@ -198,24 +533,6 @@ textarea {
   &:hover {
     background: var(--color-primary-hover);
   }
-}
-
-/* Иерархия заголовков (подключайте класс на h1/h2 страниц) */
-.ui-page-title {
-  margin: 0 0 var(--space-5);
-  font-size: var(--font-page-title);
-  font-weight: var(--font-weight-page-title);
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-  color: var(--color-text);
-}
-
-.ui-section-title {
-  margin: 0 0 var(--space-3);
-  font-size: var(--font-section-title);
-  font-weight: var(--font-weight-section-title);
-  line-height: 1.3;
-  color: var(--color-text);
 }
 
 @media (prefers-reduced-motion: reduce) {

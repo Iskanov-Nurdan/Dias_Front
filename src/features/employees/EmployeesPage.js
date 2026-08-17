@@ -14,7 +14,7 @@ import {
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
 import { useDebounce } from '../../shared/hooks/useDebounce';
-import { Users, ShieldCheck } from 'lucide-react';
+import { Users, ShieldCheck, Search } from 'lucide-react';
 import { Select, Pagination, FilterBar, FiltersModal } from '../../shared/ui';
 import { EmployeesList, RolesList, EmployeeFormModal, RoleFormModal, AccessModal } from './components';
 import './EmployeesPage.scss';
@@ -231,17 +231,17 @@ const EmployeesPage = () => {
   return (
     <div className="employees-page">
       
-      <div className="employees-page__tabs">
+      <div className="ui-tabs">
         <button
           type="button"
-          className={`employees-page__tab ${activeTab === TAB_EMPLOYEES ? 'employees-page__tab--active' : ''}`}
+          className={`ui-tabs__tab ${activeTab === TAB_EMPLOYEES ? 'ui-tabs__tab--active' : ''}`}
           onClick={() => setActiveTab(TAB_EMPLOYEES)}
         >
           <Users size={15} /> Сотрудники
         </button>
         <button
           type="button"
-          className={`employees-page__tab ${activeTab === TAB_ROLES ? 'employees-page__tab--active' : ''}`}
+          className={`ui-tabs__tab ${activeTab === TAB_ROLES ? 'ui-tabs__tab--active' : ''}`}
           onClick={() => setActiveTab(TAB_ROLES)}
         >
           <ShieldCheck size={15} /> Роли
@@ -251,13 +251,16 @@ const EmployeesPage = () => {
       {activeTab === TAB_EMPLOYEES && (
         <>
           <FilterBar className="employees-page__filter-bar">
-            <input
-              type="text"
-              placeholder="Поиск"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="employees-page__search employees-page__search--full"
-            />
+            <div className="ui-search employees-page__search employees-page__search--full">
+              <Search size={15} className="ui-search__icon" />
+              <input
+                type="text"
+                placeholder="Поиск"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="ui-search__input"
+              />
+            </div>
             <div className="employees-page__filters-desktop">
               <Select
                 value={queryState.roleId}
@@ -331,13 +334,16 @@ const EmployeesPage = () => {
       {activeTab === TAB_ROLES && (
         <>
           <FilterBar className="employees-page__filter-bar">
-            <input
-              type="text"
-              placeholder="Поиск"
-              value={roleSearch}
-              onChange={(e) => setRoleSearch(e.target.value)}
-              className="employees-page__search"
-            />
+            <div className="ui-search employees-page__search">
+              <Search size={15} className="ui-search__icon" />
+              <input
+                type="text"
+                placeholder="Поиск"
+                value={roleSearch}
+                onChange={(e) => setRoleSearch(e.target.value)}
+                className="ui-search__input"
+              />
+            </div>
             <button type="button" className="employees-page__add filter-bar__action" onClick={() => setFormRole({})}>
               Добавить роль
             </button>

@@ -176,26 +176,4 @@
   border-radius: 0 0 14px 14px;
 }
 
-.lead-card-modal__btn {
-  padding: 10px 24px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s;
-  &:disabled { opacity: 0.7; cursor: not-allowed; }
-}
-
-.lead-card-modal__btn--cancel {
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  color: var(--color-text);
-  &:hover:not(:disabled) { background: var(--color-border); }
-}
-
-.lead-card-modal__btn--submit {
-  background: var(--color-primary);
-  color: #fff;
-  border: none;
-  &:hover:not(:disabled) { background: var(--color-primary-hover, #c53030); }
-}
+// Кнопки — общие .ui-modal-btn/.ui-modal-btn--primary, см. shared/styles/index.scss.

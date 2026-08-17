@@ -14,7 +14,7 @@ import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { useDebounce } from '../../shared/hooks/useDebounce';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
 import { SEARCH_DEBOUNCE_MS } from '../../shared/constants/common';
-import { Trophy, UserCheck } from 'lucide-react';
+import { Trophy, UserCheck, Search } from 'lucide-react';
 import { Select, Pagination, FilterBar, FiltersModal } from '../../shared/ui';
 import { SportsList, TrainersList, SportFormModal, TrainerFormModal, TrainerScheduleModal } from './components';
 import { WEEKDAYS } from './scheduleConstants';
@@ -174,20 +174,23 @@ const SportsTrainersPage = () => {
   return (
     <div className="sports-trainers-page">
       
-      <div className="sports-trainers-page__tabs">
-        <button type="button" className={`sports-trainers-page__tab ${activeTab === TAB_SPORTS ? 'sports-trainers-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_SPORTS)}><Trophy size={15} /> Виды спорта</button>
-        <button type="button" className={`sports-trainers-page__tab ${activeTab === TAB_TRAINERS ? 'sports-trainers-page__tab--active' : ''}`} onClick={() => setActiveTab(TAB_TRAINERS)}><UserCheck size={15} /> Тренеры</button>
+      <div className="ui-tabs">
+        <button type="button" className={`ui-tabs__tab ${activeTab === TAB_SPORTS ? 'ui-tabs__tab--active' : ''}`} onClick={() => setActiveTab(TAB_SPORTS)}><Trophy size={15} /> Виды спорта</button>
+        <button type="button" className={`ui-tabs__tab ${activeTab === TAB_TRAINERS ? 'ui-tabs__tab--active' : ''}`} onClick={() => setActiveTab(TAB_TRAINERS)}><UserCheck size={15} /> Тренеры</button>
       </div>
       {activeTab === TAB_SPORTS && (
         <div className="sports-trainers-page__content sports-trainers-page__content--tab">
           <FilterBar className="sports-trainers-page__filter-bar sports-trainers-page__filter-bar--sports">
-            <input
-              type="text"
-              placeholder="Поиск"
-              value={sportSearch}
-              onChange={(e) => setSportSearch(e.target.value)}
-              className="sports-trainers-page__search sports-trainers-page__search--full"
-            />
+            <div className="ui-search sports-trainers-page__search sports-trainers-page__search--full">
+              <Search size={15} className="ui-search__icon" />
+              <input
+                type="text"
+                placeholder="Поиск"
+                value={sportSearch}
+                onChange={(e) => setSportSearch(e.target.value)}
+                className="ui-search__input"
+              />
+            </div>
             <button type="button" className="sports-trainers-page__add filter-bar__action" onClick={() => setFormSport({})}>
               Добавить
             </button>
@@ -210,13 +213,16 @@ const SportsTrainersPage = () => {
       {activeTab === TAB_TRAINERS && (
         <div className="sports-trainers-page__content sports-trainers-page__content--tab">
           <FilterBar className="sports-trainers-page__filter-bar sports-trainers-page__filter-bar--trainers">
-          <input
-            type="text"
-            placeholder="Поиск"
-            value={trainerSearch}
-            onChange={(e) => setTrainerSearch(e.target.value)}
-            className="sports-trainers-page__search sports-trainers-page__search--full"
-          />
+          <div className="ui-search sports-trainers-page__search sports-trainers-page__search--full">
+            <Search size={15} className="ui-search__icon" />
+            <input
+              type="text"
+              placeholder="Поиск"
+              value={trainerSearch}
+              onChange={(e) => setTrainerSearch(e.target.value)}
+              className="ui-search__input"
+            />
+          </div>
           <div className="sports-trainers-page__filters-desktop">
             <Select
               value={queryState.sportId}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Tag, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Tag, ChevronRight, ArrowLeft, Check, Pencil, Trash2, Receipt, Search } from 'lucide-react';
 import { fetchExpenseCategories, fetchExpenses, saveExpense, createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, updateExpense, deleteExpense } from './api';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
@@ -166,22 +166,25 @@ const ExpensesPage = () => {
       {selectedCategoryId == null ? (
         <>
           <FilterBar className="expenses-page__filter-bar">
-            <input type="text" placeholder="Поиск" value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="expenses-page__search" />
+            <div className="ui-search expenses-page__search">
+              <Search size={15} className="ui-search__icon" />
+              <input type="text" placeholder="Поиск" value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="ui-search__input" />
+            </div>
             <button type="button" className="expenses-page__add filter-bar__action" onClick={() => setFormCategory({})}>Добавить</button>
           </FilterBar>
           {categoriesError && <ErrorState message={categoriesError} onRetry={fetchCategoriesSafe} />}
-          <div className="expenses-page__table-wrap">
-            <table className="expenses-page__table">
+          <div className="ui-list__table-wrap expenses-page__table-wrap">
+            <table className="ui-list__table expenses-page__table">
               <thead><tr><th>Название</th><th>Действия</th></tr></thead>
               <tbody>
                 {categoriesLoading ? (
                   <tr>
-                    <td colSpan={2} className="expenses-page__skeleton-cell">
+                    <td colSpan={2} className="ui-list__skeleton-cell expenses-page__skeleton-cell">
                       <SkeletonTable rows={6} cols={2} />
                     </td>
                   </tr>
                 ) : categoriesList.length === 0 ? (
-                  <tr><td colSpan={2} className="expenses-page__empty-cell"><EmptyState compact tableCell message="Нет категорий" /></td></tr>
+                  <tr><td colSpan={2} className="ui-list__empty-cell expenses-page__empty-cell"><EmptyState compact tableCell message="Нет категорий" /></td></tr>
                 ) : (
                   <>
                     {categoriesList.length < 4 && (
@@ -202,8 +205,8 @@ const ExpensesPage = () => {
                       </button>
                     </td>
                     <td className="expenses-page__actions" data-label="">
-                      <button type="button" className="expenses-page__action expenses-page__action--edit" onClick={() => (isAdmin ? setFormCategory(c) : showAccessDenied())}>Изменить</button>
-                      <button type="button" className="expenses-page__action expenses-page__action--delete" onClick={() => (isAdmin ? setConfirmDeleteCategory(c) : showAccessDenied())}>Удалить</button>
+                      <button type="button" className="ui-list-btn ui-list-btn--edit" onClick={() => (isAdmin ? setFormCategory(c) : showAccessDenied())}><Pencil size={13} /> Изменить</button>
+                      <button type="button" className="ui-list-btn ui-list-btn--danger" onClick={() => (isAdmin ? setConfirmDeleteCategory(c) : showAccessDenied())}><Trash2 size={13} /> Удалить</button>
                     </td>
                   </tr>
                     ))}
@@ -220,36 +223,44 @@ const ExpensesPage = () => {
               <ArrowLeft size={14} />
               К категориям
             </button>
-            <input type="text" placeholder="Поиск" value={expensesSearch} onChange={(e) => setExpensesSearch(e.target.value)} className="expenses-page__search" />
+            <div className="ui-search expenses-page__search">
+              <Search size={15} className="ui-search__icon" />
+              <input type="text" placeholder="Поиск" value={expensesSearch} onChange={(e) => setExpensesSearch(e.target.value)} className="ui-search__input" />
+            </div>
             <button type="button" className="expenses-page__add filter-bar__action" onClick={() => setFormExpense({ categoryId: selectedCategoryId })}>Добавить расход</button>
           </FilterBar>
           <h3 className="expenses-page__section">{selectedCategory?.name ?? 'Расходы по категории'}</h3>
           {expensesError && <ErrorState message={expensesError} onRetry={fetchExpensesSafe} />}
-          <div className="expenses-page__table-wrap">
-            <table className="expenses-page__table">
+          <div className="ui-list__table-wrap expenses-page__table-wrap">
+            <table className="ui-list__table expenses-page__table">
               <thead><tr><th>Название</th><th>Категория</th><th>Сумма</th><th>Дата</th><th>Сохранён</th><th>Действия</th></tr></thead>
               <tbody>
                 {expensesLoading ? (
                   <tr>
-                    <td colSpan={6} className="expenses-page__skeleton-cell">
+                    <td colSpan={6} className="ui-list__skeleton-cell expenses-page__skeleton-cell">
                       <SkeletonTable rows={6} cols={6} />
                     </td>
                   </tr>
                 ) : expensesItems.length === 0 ? (
-                  <tr><td colSpan={6} className="expenses-page__empty-cell"><EmptyState compact tableCell message="Нет расходов" /></td></tr>
+                  <tr><td colSpan={6} className="ui-list__empty-cell expenses-page__empty-cell"><EmptyState compact tableCell message="Нет расходов" /></td></tr>
                 ) : expensesItems.map((e) => (
                     <tr key={e.id}>
-                      <td data-label="Название"><span className="expenses-page__cell-value">{e.name ?? '—'}</span></td>
-                      <td data-label="Категория"><span className="expenses-page__cell-value">{e.categoryName ?? e.category?.name ?? '—'}</span></td>
-                      <td data-label="Сумма"><span className="expenses-page__cell-value">{formatMoney(e.amount)}</span></td>
-                      <td data-label="Дата"><span className="expenses-page__cell-value">{e.date ? new Date(e.date).toLocaleDateString() : '—'}</span></td>
-                      <td data-label="Статус"><span className="expenses-page__cell-value"><Badge variant={e.saved ? 'success' : 'warning'}>{e.saved ? 'Сохранён' : 'Черновик'}</Badge></span></td>
+                      <td data-label="Название">
+                        <div className="ui-list__name-cell">
+                          <span className="ui-avatar ui-avatar--icon"><Receipt size={16} /></span>
+                          <span className="ui-list__muted">{e.name ?? '—'}</span>
+                        </div>
+                      </td>
+                      <td data-label="Категория"><span className="ui-list__muted">{e.categoryName ?? e.category?.name ?? '—'}</span></td>
+                      <td data-label="Сумма"><span className="ui-list__muted">{formatMoney(e.amount)}</span></td>
+                      <td data-label="Дата"><span className="ui-list__muted">{e.date ? new Date(e.date).toLocaleDateString() : '—'}</span></td>
+                      <td data-label="Статус"><span className="ui-list__muted"><Badge variant={e.saved ? 'success' : 'warning'}>{e.saved ? 'Сохранён' : 'Черновик'}</Badge></span></td>
                       <td className="expenses-page__actions" data-label="">
                         {!e.saved && (
                           <>
-                            <button type="button" className="expenses-page__save-btn" onClick={() => handleSaveExpense(e.id)}>Сохранить</button>
-                            <button type="button" className="expenses-page__action expenses-page__action--secondary" onClick={() => (isAdmin ? setFormExpense(e) : showAccessDenied())}>Изменить</button>
-                            <button type="button" className="expenses-page__action expenses-page__action--delete" onClick={() => (isAdmin ? setConfirmDeleteExpense(e) : showAccessDenied())}>Удалить</button>
+                            <button type="button" className="ui-list-btn ui-list-btn--primary" onClick={() => handleSaveExpense(e.id)}><Check size={13} /> Сохранить</button>
+                            <button type="button" className="ui-list-btn ui-list-btn--edit" onClick={() => (isAdmin ? setFormExpense(e) : showAccessDenied())}><Pencil size={13} /> Изменить</button>
+                            <button type="button" className="ui-list-btn ui-list-btn--danger" onClick={() => (isAdmin ? setConfirmDeleteExpense(e) : showAccessDenied())}><Trash2 size={13} /> Удалить</button>
                           </>
                         )}
                       </td>

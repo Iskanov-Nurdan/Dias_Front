@@ -31,4 +31,25 @@
       border-color: var(--color-primary-hover);
     }
   }
+
+  &--compact {
+    padding: 20px 12px;
+    gap: var(--space-3);
+    min-height: 0;
+
+    .feedback-visual {
+      width: 56px;
+      height: 56px;
+    }
+
+    .feedback-visual__icon {
+      width: 26px;
+      height: 26px;
+    }
+
+    .error-state__message {
+      font-size: 14px;
+      max-width: none;
+    }
+  }
 }

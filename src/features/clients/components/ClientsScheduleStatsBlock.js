@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { EmptyState, Spinner } from '../../../shared/ui';
+import { EmptyState, ErrorState, Spinner } from '../../../shared/ui';
 import {
   normalizeClientsScheduleStatsResponse,
   sortScheduleSlots,
@@ -26,6 +26,7 @@ const ClientsScheduleStatsBlock = ({
   errorMessage,
   endpointMissing,
   onTrainerRowClick,
+  onRetry,
 }) => {
   const [expandedTrainerId, setExpandedTrainerId] = useState(null);
   const { trainers } = useMemo(
@@ -91,9 +92,7 @@ const ClientsScheduleStatsBlock = ({
     return (
       <div className="clients-schedule-stats">
         <h3 className="clients-schedule-stats__title">По графику тренеров</h3>
-        <p className="clients-schedule-stats__error" role="alert">
-          {errorMessage}
-        </p>
+        <ErrorState compact message={errorMessage} onRetry={onRetry} />
       </div>
     );
   }

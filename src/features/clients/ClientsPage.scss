@@ -4,88 +4,23 @@
   min-width: 0;
   overflow-x: hidden;
 
-  &__title {
-    margin: 0 0 var(--space-5);
-    font-size: var(--font-page-title);
-    font-weight: var(--font-weight-page-title);
-    letter-spacing: -0.02em;
-    line-height: 1.2;
-    color: var(--color-text);
-
-    @include mixins.mobile {
-      font-size: 22px;
-    }
-
-    @include mixins.xs {
-      font-size: 18px;
-      margin-bottom: var(--space-2);
-    }
-  }
-
-  &__tabs {
-    display: flex;
-    gap: 4px;
+  > .ui-tabs {
     margin-bottom: 20px;
-    border-bottom: 1px solid var(--color-border);
-    overflow-x: auto;
-    @include mixins.scrollbar;
-    -webkit-overflow-scrolling: touch;
 
     @include mixins.xs {
       margin-bottom: 12px;
-    }
-  }
 
-  &__tab {
-    flex-shrink: 0;
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 20px;
-    font-size: 14px;
-    font-weight: 500;
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    color: var(--color-text-muted);
-    cursor: pointer;
-    transition: color var(--transition-fast);
-    white-space: nowrap;
-
-    &:hover { color: var(--color-text); }
-
-    @include mixins.xs {
-      padding: 8px 14px;
-      font-size: 13px;
-    }
-
-    &--active {
-      color: var(--color-primary);
-      &::after {
-        content: '';
-        position: absolute;
-        left: 0; right: 0; bottom: -1px;
-        height: 2px;
-        background: var(--color-primary);
-        border-radius: 2px 2px 0 0;
+      .ui-tabs__tab {
+        padding: 8px 14px;
+        font-size: 13px;
       }
     }
-  }
 
-  &__tab-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 5px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 700;
-    background: rgba(239, 68, 68, 0.15);
-    color: var(--color-primary, #ef4444);
+    // Счётчик "Исправление" — тревожный красный, а не нейтральный
+    .ui-tabs__badge {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--color-primary, #ef4444);
+    }
   }
 
   &__not-renewed-toolbar {
@@ -100,12 +35,14 @@
     width: 100%;
   }
 
-  &__not-renewed-toolbar-label {
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--color-text-muted);
+  &__not-renewed-search {
+    min-width: 220px;
+    flex: 1 1 220px;
+
+    @include mixins.mobile {
+      min-width: 0;
+      flex: 1 1 100%;
+    }
   }
 
   &__not-renewed-select {
@@ -558,27 +495,13 @@
     margin-bottom: 16px;
   }
 
+  // Стили — общие .ui-search/.ui-search__input, см. shared/styles/index.scss.
   &__onetime-search {
-    padding: 9px 14px;
-    height: 38px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    font-size: 14px;
     min-width: 220px;
-    background: var(--color-surface);
-    color: var(--color-text);
-    flex: 1;
-    max-width: 300px;
-
-    &:focus {
-      outline: none;
-      border-color: var(--color-primary);
-      box-shadow: 0 0 0 3px var(--color-primary-light);
-    }
 
     @include mixins.mobile {
       min-width: 0;
-      max-width: 100%;
+      flex: 1 1 100%;
     }
   }
 
@@ -586,69 +509,20 @@
     min-width: 130px;
   }
 
-  &__onetime-block {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
-    overflow-x: auto;
-  }
-
+  // Базовые стили обёртки/таблицы — общие .ui-list__table-wrap/.ui-list__table,
+  // см. shared/styles/index.scss. Тут только уникальная ширина колонок.
   &__onetime-table {
-    width: 100%;
-    border-collapse: collapse;
     table-layout: fixed;
-
-    th, td {
-      padding: 11px 16px;
-      text-align: left;
-      border-bottom: 1px solid var(--color-border);
-      vertical-align: middle;
-    }
-
-    th {
-      background: var(--color-surface-secondary);
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--color-text-muted);
-      border-bottom: 1px solid var(--color-border);
-      white-space: nowrap;
-    }
 
     th:nth-child(1) { width: 34%; }
     th:nth-child(2) { width: 18%; }
     th:nth-child(3) { width: 16%; }
     th:nth-child(4) { width: 32%; }
-
-    tbody tr:last-child td { border-bottom: none; }
-    tbody tr:hover { background: var(--color-hover, rgba(255,255,255,0.03)); }
   }
 
   // ── Исправление: клиенты с неполными данными ──
   &__fix-table {
-    width: 100%;
-    border-collapse: collapse;
     table-layout: fixed;
-
-    th, td {
-      padding: 11px 16px;
-      text-align: left;
-      border-bottom: 1px solid var(--color-border);
-      vertical-align: middle;
-    }
-
-    th {
-      background: var(--color-surface-secondary);
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--color-text-muted);
-      border-bottom: 1px solid var(--color-border);
-      white-space: nowrap;
-    }
 
     th:nth-child(1) { width: 22%; }
     th:nth-child(2) { width: 13%; }
@@ -656,9 +530,6 @@
     th:nth-child(4) { width: 12%; }
     th:nth-child(5) { width: 26%; }
     th:nth-child(6) { width: 12%; }
-
-    tbody tr:last-child td { border-bottom: none; }
-    tbody tr:hover { background: var(--color-hover, rgba(255,255,255,0.03)); }
   }
 
   &__fix-paid {
@@ -1080,29 +951,11 @@
     }
   }
 
+  // Стили — общие .ui-search/.ui-search__input, см. shared/styles/index.scss.
   &__search {
-    height: 40px;
-    padding: 0 12px;
-    border: 1px solid var(--input-border);
-    border-radius: var(--input-radius);
-    font-size: 14px;
-    min-width: 200px;
-    background: var(--color-surface);
-    color: var(--color-text);
-    &:focus {
-      outline: none;
-      border-color: var(--color-primary);
-      box-shadow: var(--input-shadow-focus);
-    }
-
     @include mixins.mobile {
-      font-size: 16px;
       min-width: 0;
       flex: 1 1 100%;
-    }
-
-    @include mixins.xs {
-      padding: 10px 14px;
     }
   }
 
@@ -1180,28 +1033,13 @@
 }
 
 .dup-group {
+  // Таблица/аватар/название/бейджи/кнопки — общие .ui-list__*/.ui-pill/.ui-list-btn,
+  // см. shared/styles/index.scss. Тут только уникальное для группы дубликатов.
   margin-bottom: 16px;
   border: 1px solid var(--color-border);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: var(--shadow-card);
-
-  &__table-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    max-width: 100%;
-  }
-
-  &__cell-value {
-    font-size: 13px;
-    color: var(--color-text);
-  }
-
-  &__name {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-text);
-  }
 
   &__header {
     display: flex;
@@ -1231,45 +1069,7 @@
     white-space: nowrap;
   }
 
-  &__paid-badge {
-    display: inline-flex;
-    align-items: center;
-    font-size: 12px;
-    font-weight: 600;
-    padding: 3px 8px;
-    border-radius: 20px;
-    white-space: nowrap;
-
-    &--yes {
-      background: rgba(34, 197, 94, 0.12);
-      color: #16a34a;
-
-      [data-theme='dark'] & {
-        background: rgba(34, 197, 94, 0.16);
-        color: #4ade80;
-      }
-    }
-
-    &--no {
-      background: rgba(239, 68, 68, 0.1);
-      color: #dc2626;
-
-      [data-theme='dark'] & {
-        background: rgba(239, 68, 68, 0.14);
-        color: #f87171;
-      }
-    }
-  }
-
   &__type-badge {
-    display: inline-flex;
-    align-items: center;
-    font-size: 12px;
-    font-weight: 600;
-    padding: 3px 8px;
-    border-radius: 20px;
-    white-space: nowrap;
-
     &--individual {
       background: rgba(124, 58, 237, 0.12);
       color: #6d28d9;
@@ -1302,27 +1102,6 @@
   }
 
   &__table {
-    width: 100%;
-    border-collapse: collapse;
-    background: var(--color-surface);
-
-    th, td {
-      padding: 10px 16px;
-      text-align: left;
-      border-bottom: 1px solid var(--color-border);
-      vertical-align: middle;
-    }
-
-    th {
-      background: var(--color-surface);
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--color-text-muted);
-      border-bottom: 1px solid var(--color-border);
-    }
-
     @include mixins.mobile {
       display: block;
       background: transparent;
@@ -1362,7 +1141,7 @@
           flex-shrink: 0;
         }
 
-        &.dup-group__actions {
+        &.ui-list__actions {
           flex-wrap: wrap;
           justify-content: stretch;
           padding-top: var(--space-3);
@@ -1371,13 +1150,10 @@
 
           &::before { display: none; }
 
-          .dup-group__btn { width: 100%; min-height: 44px; }
+          .ui-list-btn { width: 100%; min-height: 44px; }
         }
       }
     }
-
-    tbody tr:last-child td { border-bottom: none; }
-    tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
 
     tbody tr.dup-group__row--subscription-expired,
     tbody tr.dup-group__row--subscription-expired:nth-child(even) {
@@ -1401,29 +1177,5 @@
     tbody tr.dup-group__row--individual { background: rgba(109, 40, 217, 0.08); border-left: 3px solid rgba(109, 40, 217, 0.3); }
     tbody tr.dup-group__row--individual:nth-child(even) { background: rgba(109, 40, 217, 0.12); }
     tbody tr.dup-group__row--individual:hover { background: rgba(109, 40, 217, 0.16); }
-  }
-
-  &__actions {
-    text-align: right;
-  }
-
-  &__btn {
-    height: 32px;
-    padding: 0 14px;
-    font-size: 13px;
-    font-weight: 600;
-    background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    color: var(--color-text-muted);
-    cursor: pointer;
-    white-space: nowrap;
-    transition: border-color 0.15s, color 0.15s, background 0.15s;
-
-    &:hover {
-      border-color: var(--color-primary);
-      color: var(--color-primary);
-      background: rgba(239, 68, 68, 0.06);
-    }
   }
 }

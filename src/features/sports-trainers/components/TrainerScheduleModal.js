@@ -262,14 +262,14 @@ const TrainerScheduleModal = ({ trainer, readOnly = false, onClose, onSaved }) =
             <div className="trainer-schedule-modal__actions">
               <button
                 type="button"
-                className="trainer-schedule-modal__btn trainer-schedule-modal__btn--cancel"
+                className="ui-modal-btn"
                 onClick={onClose}
                 disabled={saving}
               >
                 {readOnly ? 'Закрыть' : 'Отмена'}
               </button>
               {!readOnly && (
-                <SubmitButton loading={saving} className="trainer-schedule-modal__btn trainer-schedule-modal__btn--submit">
+                <SubmitButton loading={saving} className="ui-modal-btn ui-modal-btn--primary">
                   Сохранить
                 </SubmitButton>
               )}

@@ -46,8 +46,8 @@ const RestockModal = ({ product, onSave, onClose, error, saving }) => {
             </label>
           </section>
           <div className="warehouse-form-modal__actions">
-            <button type="button" className="warehouse-form-modal__btn warehouse-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
-            <SubmitButton loading={saving} loadingLabel="Пополнение…" className="warehouse-form-modal__btn warehouse-form-modal__btn--submit">
+            <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving}>Отмена</button>
+            <SubmitButton loading={saving} loadingLabel="Пополнение…" className="ui-modal-btn ui-modal-btn--primary">
               Пополнить
             </SubmitButton>
           </div>

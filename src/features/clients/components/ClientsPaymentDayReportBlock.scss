@@ -44,40 +44,9 @@
   border: 1px solid var(--color-border);
 }
 
-.clients-payment-day-report__error {
-  margin: 0;
-  padding: 16px 18px 20px;
-  font-size: 14px;
-  color: var(--color-danger);
-}
-
-.clients-payment-day-report__table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
+// Общие стили таблицы — .ui-list__table-wrap/.ui-list__table, см. shared/styles/index.scss.
 .clients-payment-day-report__table {
-  width: 100%;
   min-width: 440px;
-  border-collapse: collapse;
-
-  th,
-  td {
-    padding: 11px 18px;
-    text-align: left;
-    border-bottom: 1px solid var(--color-border);
-    vertical-align: middle;
-  }
-
-  th {
-    background: var(--color-bg);
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--color-text-muted);
-    white-space: nowrap;
-  }
 
   // Day column
   th:nth-child(1),

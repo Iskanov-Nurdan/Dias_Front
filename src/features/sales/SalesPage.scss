@@ -1,15 +1,6 @@
 @use '../../shared/styles/mixins';
 
 .sales-page {
-  &__title {
-    margin: 0 0 var(--space-5);
-    font-size: var(--font-page-title);
-    font-weight: var(--font-weight-page-title);
-    letter-spacing: -0.02em;
-    line-height: 1.2;
-    color: var(--color-text);
-  }
-
   &__filter-bar {
     margin-bottom: var(--space-5);
 
@@ -145,66 +136,15 @@
     color: var(--color-text);
   }
 
-  &__cell-value {
-    min-width: 0;
-    flex: 1 1 auto;
-    text-align: right;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
-
+  // Базовые стили обёртки/таблицы — общие .ui-list__table-wrap/.ui-list__table,
+  // см. shared/styles/index.scss. Тут только уникальное для продаж.
   &__table-wrap {
-    overflow-x: auto;
-    border-radius: var(--radius-xl);
-    border: 1px solid rgba(226, 232, 240, 0.6);
-    box-shadow: var(--shadow-sm);
-    background: var(--color-surface);
-    @include mixins.scrollbar;
-
     @include mixins.mobile {
       overflow-x: visible;
-      border: none;
-      box-shadow: none;
-      background: transparent;
     }
   }
 
   &__table {
-    width: 100%;
-    border-collapse: collapse;
-    background: var(--color-surface);
-    table-layout: auto;
-
-    th,
-    td {
-      padding: 12px 14px;
-      text-align: left;
-      border-bottom: 1px solid rgba(226, 232, 240, 0.6);
-      height: 48px;
-      vertical-align: middle;
-    }
-
-    th {
-      background: var(--color-bg);
-      font-weight: 600;
-      font-size: 12px;
-      letter-spacing: 0.04em;
-      color: var(--color-text-muted);
-      position: sticky;
-      top: 0;
-      z-index: 1;
-    }
-
-    tbody tr {
-      transition: background var(--transition-fast);
-    }
-    tbody tr:hover {
-      background: var(--color-bg);
-    }
-    tbody tr:last-child td {
-      border-bottom: none;
-    }
-
     @include mixins.mobile {
       display: block;
       background: transparent;
@@ -233,8 +173,11 @@
         align-items: flex-start;
         justify-content: space-between;
         gap: var(--space-3);
-        padding: var(--space-2) 0;
-        border-bottom: none;
+        padding: var(--space-2) 0 !important;
+        border: none !important;
+        border-radius: 0 !important;
+        height: auto !important;
+        background: transparent !important;
 
         &::before {
           content: attr(data-label);
@@ -257,7 +200,7 @@
             display: none;
           }
 
-          .sales-page__cancel-btn {
+          .ui-list-btn {
             width: 100%;
             min-height: 44px;
           }
@@ -275,39 +218,13 @@
     }
   }
 
-  &__row--cancelled {
+  &__table tbody tr.sales-page__row--cancelled td {
     background: rgba(0, 0, 0, 0.02);
-    border-left: 3px solid var(--color-text-muted);
-    td {
-      color: var(--color-text-muted);
-      text-decoration: line-through;
-    }
-  }
-  &__table tbody tr.sales-page__row--cancelled:nth-child(even) {
-    background: rgba(0, 0, 0, 0.03);
-  }
-  &__table tbody tr.sales-page__row--cancelled:hover {
-    background: rgba(0, 0, 0, 0.04);
-  }
-
-  &__cancel-btn {
-    height: 32px;
-    padding: 0 12px;
-    font-size: 13px;
-    background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
     color: var(--color-text-muted);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    &:hover:not(:disabled) {
-      border-color: var(--color-danger);
-      color: var(--color-danger);
-    }
-    &:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
+    text-decoration: line-through;
+  }
+  &__table tbody tr.sales-page__row--cancelled:hover td {
+    background: rgba(0, 0, 0, 0.04);
   }
 
   &__loading-cell,

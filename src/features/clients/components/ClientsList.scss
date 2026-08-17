@@ -1,64 +1,16 @@
 @use '../../../shared/styles/mixins';
 
 .clients-list {
+  // Базовые стили обёртки/таблицы/шапки/ячеек — общие для всех списков,
+  // см. .ui-list в shared/styles/index.scss. Здесь только то, что уникально
+  // для клиентов: подсветка строк по статусу и мобильная раскладка карточками.
   &__table-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    @include mixins.scrollbar;
-
     @include mixins.mobile {
       overflow-x: visible;
     }
   }
 
   &__table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0 4px;
-    background: transparent;
-
-    th {
-      padding: 8px 16px 12px;
-      text-align: left;
-      vertical-align: middle;
-      font-weight: 700;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: var(--color-text);
-      opacity: 0.5;
-      white-space: nowrap;
-      position: sticky;
-      top: 0;
-      z-index: 1;
-      background: var(--color-bg);
-    }
-
-    // ── Card rows ───────────────────────────────────────────
-    tbody td {
-      height: 70px;
-      padding: 12px 16px;
-      vertical-align: middle;
-      background: var(--color-surface);
-      border-top: 1px solid var(--color-border);
-      border-bottom: 1px solid var(--color-border);
-      transition: background 0.15s;
-    }
-
-    tbody td:first-child {
-      border-left: 1px solid var(--color-border);
-      border-radius: 10px 0 0 10px;
-    }
-
-    tbody td:last-child {
-      border-right: 1px solid var(--color-border);
-      border-radius: 0 10px 10px 0;
-    }
-
-    tbody tr:hover td {
-      background: var(--color-bg);
-    }
-
     // ── Row states ──────────────────────────────────────────
     tbody tr.clients-list__row--unpaid td {
       background: rgba(197, 48, 48, 0.06);
@@ -221,23 +173,8 @@
     }
   }
 
-  // ── Avatar ──────────────────────────────────────────────
-  &__avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--color-primary, #ef4444);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 700;
-    flex-shrink: 0;
-    letter-spacing: 0.02em;
-  }
-
-  // ── Name cell ───────────────────────────────────────────
+  // ── Name/sport cell — только уникальное для клиентов; аватар/название/приглушённый
+  // текст берутся из общих .ui-avatar/.ui-list__title/.ui-list__muted ──
   &__name-cell {
     display: flex;
     align-items: center;
@@ -251,18 +188,6 @@
     min-width: 0;
   }
 
-  &__fio {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-text);
-    @include mixins.text-ellipsis;
-  }
-
-  &__cell--muted {
-    font-size: 13px;
-    color: var(--color-text-muted);
-  }
-
   &__sport {
     font-size: 13px;
     color: var(--color-text);
@@ -271,16 +196,8 @@
     max-width: 220px;
   }
 
-  // ── Type badges ─────────────────────────────────────────
+  // ── Type badges — размер/форма из .ui-pill, тут только уникальные цвета ──
   &__type-badge {
-    display: inline-flex;
-    align-items: center;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 1px 7px;
-    border-radius: 20px;
-    white-space: nowrap;
-
     &--individual {
       background: rgba(124, 58, 237, 0.1);
       color: #7c3aed;
@@ -300,109 +217,4 @@
     }
   }
 
-  // ── Paid badge ──────────────────────────────────────────
-  &__paid-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 3px 9px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    white-space: nowrap;
-
-    &--yes {
-      background: rgba(34, 197, 94, 0.12);
-      color: #16a34a;
-      [data-theme='dark'] & { background: rgba(34, 197, 94, 0.16); color: #4ade80; }
-    }
-
-    &--no {
-      background: rgba(239, 68, 68, 0.1);
-      color: #dc2626;
-      [data-theme='dark'] & { background: rgba(239, 68, 68, 0.14); color: #f87171; }
-    }
-  }
-
-  // ── Actions ─────────────────────────────────────────────
-  &__loading-cell,
-  &__empty-cell {
-    text-align: center;
-    padding: 32px 16px;
-    vertical-align: middle;
-  }
-
-  &__skeleton-cell {
-    padding: 0 !important;
-    border: none !important;
-    border-radius: 0 !important;
-    vertical-align: top;
-
-    .skeleton-table { width: 100%; }
-  }
-
-  &__actions {
-    display: flex;
-    gap: 6px;
-    flex-wrap: nowrap;
-    justify-content: flex-end;
-    align-items: center;
-  }
-
-  &__table th:last-child,
-  &__table td.clients-list__actions {
-    text-align: right;
-  }
-
-  // ── Buttons ─────────────────────────────────────────────
-  &__btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 30px;
-    padding: 0 12px;
-    font-size: 12px;
-    font-weight: 600;
-    border-radius: 8px;
-    white-space: nowrap;
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
-
-    &--details {
-      background: transparent;
-      border: 1px solid var(--color-border);
-      color: var(--color-text-muted);
-
-      &:hover {
-        background: var(--color-bg);
-        border-color: var(--color-text-muted);
-        color: var(--color-text);
-      }
-    }
-
-    &--extend {
-      background: rgba(34, 197, 94, 0.1);
-      border: 1px solid rgba(34, 197, 94, 0.3);
-      color: #16a34a;
-
-      [data-theme='dark'] & {
-        background: rgba(74, 222, 128, 0.1);
-        border-color: rgba(74, 222, 128, 0.25);
-        color: #4ade80;
-      }
-
-      &:hover {
-        background: rgba(34, 197, 94, 0.18);
-        border-color: rgba(34, 197, 94, 0.5);
-      }
-    }
-
-    &--danger {
-      border: 1px solid rgba(239, 68, 68, 0.35);
-      color: #dc2626;
-      background: transparent;
-      [data-theme='dark'] & { color: #f87171; }
-
-      &:hover { background: rgba(239, 68, 68, 0.08); }
-    }
-  }
 }

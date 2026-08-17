@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock } from 'lucide-react';
+import { Lock, Pencil, Trash2 } from 'lucide-react';
 import { ErrorState, EmptyState, ConfirmModal, SkeletonTable } from '../../../shared/ui';
 import './RolesList.scss';
 
@@ -33,8 +33,8 @@ const RolesList = ({
   return (
     <>
       <div className="roles-list">
-        <div className="roles-list__table-wrap">
-          <table className="roles-list__table">
+        <div className="ui-list__table-wrap">
+          <table className="ui-list__table">
             <thead>
               <tr>
                 <th>Название</th>
@@ -44,13 +44,13 @@ const RolesList = ({
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={2} className="roles-list__skeleton-cell">
+                  <td colSpan={2} className="ui-list__skeleton-cell">
                     <SkeletonTable rows={4} cols={2} />
                   </td>
                 </tr>
               ) : !list.length ? (
                 <tr>
-                  <td colSpan={2} className="roles-list__empty-cell">
+                  <td colSpan={2} className="ui-list__empty-cell">
                     <EmptyState compact tableCell message="Нет ролей" />
                   </td>
                 </tr>
@@ -59,24 +59,24 @@ const RolesList = ({
                 return (
                   <tr key={role.id} className={system ? 'roles-list__row--system' : ''}>
                     <td>
-                      <div className="roles-list__name-cell">
+                      <div className="ui-list__name-cell">
                         {system ? (
-                          <span className="roles-list__system-icon"><Lock size={14} /></span>
+                          <span className="ui-avatar ui-avatar--icon"><Lock size={14} /></span>
                         ) : (
                           <span className="roles-list__dot" />
                         )}
-                        <span className="roles-list__name">{role.name || '—'}</span>
-                        {system && <span className="roles-list__system-badge">Системная</span>}
+                        <span className="ui-list__title">{role.name || '—'}</span>
+                        {system && <span className="ui-pill">Системная</span>}
                       </div>
                     </td>
-                    <td className="roles-list__actions">
+                    <td className="ui-list__actions">
                       {!system ? (
                         <>
-                          <button type="button" className="roles-list__btn roles-list__btn--edit" onClick={() => handleEdit(role)}>
-                            Изменить
+                          <button type="button" className="ui-list-btn ui-list-btn--edit" onClick={() => handleEdit(role)}>
+                            <Pencil size={13} /> Изменить
                           </button>
-                          <button type="button" className="roles-list__btn roles-list__btn--danger" onClick={() => handleDelete(role)}>
-                            Удалить
+                          <button type="button" className="ui-list-btn ui-list-btn--danger" onClick={() => handleDelete(role)}>
+                            <Trash2 size={13} /> Удалить
                           </button>
                         </>
                       ) : (

@@ -148,10 +148,10 @@ const EmployeeFormModal = ({ employee, roles, onSave, onClose, error, saving }) 
           </div>
 
           <div className="efm__actions">
-            <button type="button" className="efm__btn efm__btn--cancel" onClick={onClose} disabled={saving}>
+            <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving}>
               Отмена
             </button>
-            <SubmitButton loading={saving} className="efm__btn efm__btn--submit">
+            <SubmitButton loading={saving} className="ui-modal-btn ui-modal-btn--primary">
               {isEdit ? 'Сохранить' : 'Добавить'}
             </SubmitButton>
           </div>

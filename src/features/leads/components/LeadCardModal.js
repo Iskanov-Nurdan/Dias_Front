@@ -274,8 +274,8 @@ const LeadCardModal = ({ lead, stages = [], sports = [], trainers = [], onSave, 
           </section>
 
           <div className="lead-card-modal__actions">
-            <button type="button" className="lead-card-modal__btn lead-card-modal__btn--cancel" onClick={onClose} disabled={saving}>Закрыть</button>
-            <SubmitButton loading={saving} className="lead-card-modal__btn lead-card-modal__btn--submit">
+            <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving}>Закрыть</button>
+            <SubmitButton loading={saving} className="ui-modal-btn ui-modal-btn--primary">
               Сохранить
             </SubmitButton>
           </div>

@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Phone, Calendar, User, Dumbbell, Clock, CreditCard, Camera, MessageSquare, Snowflake } from 'lucide-react';
+import { X, Phone, Calendar, User, Dumbbell, Clock, CreditCard, Camera, MessageSquare, Snowflake, Pencil, Trash2 } from 'lucide-react';
 import { formatMoney, isClientPaid } from '../../../shared/constants/common';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { useToast } from '../../../app/providers/ToastProvider';
@@ -333,13 +333,13 @@ const ClientCardModal = ({
 
         {/* ── Кнопки ── */}
         <div className="ccm__actions">
-          <button type="button" className="ccm__btn ccm__btn--primary" onClick={() => { onEdit(client); onClose(); }}>
-            Редактировать
+          <button type="button" className="ui-modal-btn ui-modal-btn--primary" onClick={() => { onEdit(client); onClose(); }}>
+            <Pencil size={15} /> Редактировать
           </button>
-          <button type="button" className="ccm__btn" onClick={onClose}>Закрыть</button>
-          <button type="button" className="ccm__btn ccm__btn--danger" onClick={() => { onDelete(client); onClose(); }}>
-            Удалить
+          <button type="button" className="ui-modal-btn ui-modal-btn--danger" onClick={() => { onDelete(client); onClose(); }}>
+            <Trash2 size={15} /> Удалить
           </button>
+          <button type="button" className="ui-modal-btn" onClick={onClose}><X size={15} /> Закрыть</button>
         </div>
       </div>
 

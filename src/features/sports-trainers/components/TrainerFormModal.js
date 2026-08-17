@@ -55,8 +55,8 @@ const TrainerFormModal = ({ trainer, sports, onSave, onClose, error, saving }) =
           </div>
           </div>
           <div className="trainer-form-modal__actions">
-            <button type="button" className="trainer-form-modal__btn trainer-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
-            <SubmitButton loading={saving} className="trainer-form-modal__btn trainer-form-modal__btn--submit">
+            <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving}>Отмена</button>
+            <SubmitButton loading={saving} className="ui-modal-btn ui-modal-btn--primary">
               Сохранить
             </SubmitButton>
           </div>

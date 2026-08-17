@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, UserX } from 'lucide-react';
+import { X, UserX, Eye } from 'lucide-react';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
-import { EmptyState, Spinner } from '../../../shared/ui';
+import { EmptyState, ErrorState, Spinner } from '../../../shared/ui';
 import { fetchClients } from '../api';
 import './StatsUnpaidModal.scss';
 
 const MONTH_NAMES = ['', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+
+const getInitials = (fio) =>
+  (fio || '').split(' ').slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
 
 const StatsUnpaidModal = ({ open, year, month, onClose, onOpenClient }) => {
   useModalEffect(open, onClose);
@@ -14,6 +17,7 @@ const StatsUnpaidModal = ({ open, year, month, onClose, onOpenClient }) => {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [reloadSeq, setReloadSeq] = useState(0);
 
   useEffect(() => {
     if (!open) return;
@@ -32,7 +36,7 @@ const StatsUnpaidModal = ({ open, year, month, onClose, onOpenClient }) => {
       })
       .finally(() => setLoading(false));
     return () => ctrl.abort();
-  }, [open, year, month]);
+  }, [open, year, month, reloadSeq]);
 
   if (!open) return null;
 
@@ -59,13 +63,13 @@ const StatsUnpaidModal = ({ open, year, month, onClose, onOpenClient }) => {
               <Spinner />
             </div>
           )}
-          {!loading && error && <p className="sum__error">{error}</p>}
+          {!loading && error && <ErrorState compact message={error} onRetry={() => setReloadSeq((s) => s + 1)} />}
           {!loading && !error && clients.length === 0 && (
             <EmptyState compact message="Все клиенты оплатили за выбранный период" />
           )}
           {!loading && !error && clients.length > 0 && (
-            <div className="sum__table-wrap">
-              <table className="sum__table">
+            <div className="ui-list__table-wrap sum__table-wrap">
+              <table className="ui-list__table sum__table">
                 <thead>
                   <tr>
                     <th>ФИО</th>
@@ -96,28 +100,33 @@ const StatsUnpaidModal = ({ open, year, month, onClose, onOpenClient }) => {
                           : undefined
                       }
                     >
-                      <td className="sum__fio">{c.fio || '—'}</td>
-                      <td className="sum__muted">{c.phone || '—'}</td>
-                      <td className="sum__muted">{c.trainerName ?? c.trainer?.name ?? '—'}</td>
-                      <td className="sum__muted">{c.sportName ?? c.sport?.name ?? '—'}</td>
+                      <td>
+                        <div className="ui-list__name-cell">
+                          <span className="ui-avatar">{getInitials(c.fio)}</span>
+                          <span className="ui-list__title">{c.fio || '—'}</span>
+                        </div>
+                      </td>
+                      <td className="ui-list__muted">{c.phone || '—'}</td>
+                      <td className="ui-list__muted">{c.trainerName ?? c.trainer?.name ?? '—'}</td>
+                      <td className="ui-list__muted">{c.sportName ?? c.sport?.name ?? '—'}</td>
                       <td>
                         {c.clientType
-                          ? <span className={`sum__type-badge sum__type-badge--${c.clientType}`}>{
+                          ? <span className={`ui-pill sum__type-badge sum__type-badge--${c.clientType}`}>{
                               c.clientType === 'individual' ? 'Индивид.'
                               : c.clientType === 'regular' ? 'Регуляр'
                               : c.clientType === 'one-time' ? 'Разовый'
                               : c.clientType
                             }</span>
-                          : <span className="sum__muted">—</span>}
+                          : <span className="ui-list__muted">—</span>}
                       </td>
                       <td>
                         {onOpenClient && (
                           <button
                             type="button"
-                            className="sum__btn"
+                            className="ui-list-btn"
                             onClick={(e) => { e.stopPropagation(); onClose(); onOpenClient(c); }}
                           >
-                            Подробнее
+                            <Eye size={13} /> Подробнее
                           </button>
                         )}
                       </td>
@@ -130,7 +139,7 @@ const StatsUnpaidModal = ({ open, year, month, onClose, onOpenClient }) => {
         </div>
 
         <div className="sum__footer">
-          <button type="button" className="sum__btn sum__btn--cancel" onClick={onClose}>Закрыть</button>
+          <button type="button" className="ui-modal-btn" onClick={onClose}>Закрыть</button>
         </div>
       </div>
     </div>

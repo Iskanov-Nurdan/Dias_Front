@@ -92,36 +92,5 @@
     border-top: 1px solid var(--color-border);
   }
 
-  &__btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 34px !important;
-    min-height: 34px !important;
-    padding: 0 16px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-
-    // override SubmitButton global min-height
-    &.submit-button { min-height: 34px !important; }
-
-    &--cancel {
-      background: transparent;
-      border: 1px solid var(--color-border);
-      color: var(--color-text-secondary);
-      &:hover { background: var(--color-surface-secondary); color: var(--color-text); }
-      &:disabled { opacity: 0.5; cursor: not-allowed; }
-    }
-
-    &--submit {
-      background: var(--color-primary);
-      border: 1px solid var(--color-primary);
-      color: #fff;
-      min-width: 90px;
-      &:hover { background: var(--color-primary-hover); }
-    }
-  }
+  // Кнопки — общие .ui-modal-btn/.ui-modal-btn--primary, см. shared/styles/index.scss.
 }

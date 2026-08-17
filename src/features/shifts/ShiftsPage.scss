@@ -14,56 +14,14 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-.shifts-tabs__nav {
-  display: flex;
-  gap: 2px;
+.shifts-tabs__nav.ui-tabs {
+  border-bottom: none;
 }
 
-.shifts-tabs__btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  height: 42px;
-  padding: 0 18px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-  white-space: nowrap;
-
-  &:hover { color: var(--color-text); }
-
-  &--active {
-    color: var(--color-text);
-    border-bottom-color: var(--color-primary, #ef4444);
-    font-weight: 600;
-  }
-}
-
-.shifts-tabs__badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 700;
-  background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
-  [data-theme='light'] & { background: rgba(37, 99, 235, 0.1); color: #2563eb; }
-
-  &--shift {
-    background: rgba(239, 68, 68, 0.12);
-    color: #f87171;
-    [data-theme='light'] & { background: rgba(220, 38, 38, 0.08); color: #dc2626; }
-  }
+.shifts-tabs__badge--alert {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  [data-theme='light'] & { background: rgba(220, 38, 38, 0.08); color: #dc2626; }
 }
 
 .shifts-tabs__action {
@@ -157,20 +115,6 @@
   color: var(--color-text-muted);
 }
 
-.shifts-section__empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 32px 20px;
-  background: var(--color-surface);
-  border: 1px dashed var(--color-border);
-  border-radius: 12px;
-  text-align: center;
-  font-size: 13px;
-  color: var(--color-text-muted);
-}
-
 // ── Buttons ───────────────────────────────────────────────────
 .shifts-page__add-btn {
   display: inline-flex;
@@ -208,11 +152,6 @@
 .shifts-page__loading {
   padding: 20px 0;
   text-align: center;
-}
-
-.shifts-page__empty-icon {
-  color: var(--color-text-muted);
-  opacity: 0.25;
 }
 
 // ── Photo reports ─────────────────────────────────────────────

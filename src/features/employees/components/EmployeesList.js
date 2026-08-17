@@ -1,5 +1,6 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { List } from 'react-window';
+import { KeyRound, Pencil, Trash2 } from 'lucide-react';
 import { ErrorState, EmptyState, ConfirmModal, SkeletonTable } from '../../../shared/ui';
 import './EmployeesList.scss';
 
@@ -47,20 +48,20 @@ const EmployeesList = ({
       return (
         <div className="employees-list__virtual-row" style={style} role="row">
           <div className="employees-list__virtual-cell employees-list__cell--name">
-            <span className="employees-list__avatar">{initials}</span>
-            <span className="employees-list__fio">{emp.fio || '—'}</span>
+            <span className="ui-avatar">{initials}</span>
+            <span className="ui-list__title">{emp.fio || '—'}</span>
           </div>
           <div className="employees-list__virtual-cell">{emp.login || '—'}</div>
           <div className="employees-list__virtual-cell">{emp.phone || '—'}</div>
           <div className="employees-list__virtual-cell">
             {(emp.roleName ?? emp.role?.name) ? (
-              <span className="employees-list__role-badge">{emp.roleName ?? emp.role?.name}</span>
+              <span className="ui-pill ui-pill--info">{emp.roleName ?? emp.role?.name}</span>
             ) : '—'}
           </div>
-          <div className="employees-list__virtual-cell employees-list__actions">
-            <button type="button" className="employees-list__btn" onClick={() => onAccess(emp)}>Доступы</button>
-            <button type="button" className="employees-list__btn employees-list__btn--edit" onClick={() => onEdit(emp)}>Изменить</button>
-            <button type="button" className="employees-list__btn employees-list__btn--danger" onClick={() => onDelete(emp)}>Удалить</button>
+          <div className="employees-list__virtual-cell ui-list__actions">
+            <button type="button" className="ui-list-btn" onClick={() => onAccess(emp)}><KeyRound size={13} /> Доступы</button>
+            <button type="button" className="ui-list-btn ui-list-btn--edit" onClick={() => onEdit(emp)}><Pencil size={13} /> Изменить</button>
+            <button type="button" className="ui-list-btn ui-list-btn--danger" onClick={() => onDelete(emp)}><Trash2 size={13} /> Удалить</button>
           </div>
         </div>
       );
@@ -78,10 +79,10 @@ const EmployeesList = ({
         return (
           <article key={emp.id} className="employees-list__card">
             <div className="employees-list__card-head">
-              <span className="employees-list__avatar employees-list__avatar--lg">{initials}</span>
+              <span className="ui-avatar ui-avatar--lg">{initials}</span>
               <div>
                 <div className="employees-list__card-name">{emp.fio || '—'}</div>
-                {roleName && <span className="employees-list__role-badge">{roleName}</span>}
+                {roleName && <span className="ui-pill ui-pill--info">{roleName}</span>}
               </div>
             </div>
             <dl className="employees-list__card-dl">
@@ -97,12 +98,12 @@ const EmployeesList = ({
               )}
             </dl>
             <div className="employees-list__card-actions">
-              <button type="button" className="employees-list__card-btn employees-list__card-btn--edit" onClick={() => onEdit(emp)}>Изменить</button>
+              <button type="button" className="ui-list-btn ui-list-btn--edit employees-list__card-btn" onClick={() => onEdit(emp)}><Pencil size={13} /> Изменить</button>
               <details className="employees-list__card-more">
                 <summary className="employees-list__card-more-summary">Ещё</summary>
                 <div className="employees-list__card-more-body">
-                  <button type="button" className="employees-list__card-btn employees-list__card-btn--secondary" onClick={() => onAccess(emp)}>Доступы</button>
-                  <button type="button" className="employees-list__card-btn employees-list__card-btn--danger" onClick={() => onDelete(emp)}>Удалить</button>
+                  <button type="button" className="ui-list-btn employees-list__card-btn" onClick={() => onAccess(emp)}><KeyRound size={13} /> Доступы</button>
+                  <button type="button" className="ui-list-btn ui-list-btn--danger employees-list__card-btn" onClick={() => onDelete(emp)}><Trash2 size={13} /> Удалить</button>
                 </div>
               </details>
             </div>
@@ -115,7 +116,7 @@ const EmployeesList = ({
   return (
     <>
       <div className="employees-list">
-        <div className="employees-list__table-wrap">
+        <div className="ui-list__table-wrap employees-list__table-wrap">
           {loading ? (
             <SkeletonTable rows={8} cols={5} />
           ) : !list.length ? (
@@ -144,7 +145,7 @@ const EmployeesList = ({
               </List>
             </>
           ) : (
-            <table className="employees-list__table">
+            <table className="ui-list__table employees-list__table">
               <thead>
                 <tr>
                   <th>ФИО</th>
@@ -161,22 +162,22 @@ const EmployeesList = ({
                   return (
                     <tr key={emp.id}>
                       <td>
-                        <div className="employees-list__cell--name">
-                          <span className="employees-list__avatar">{initials}</span>
-                          <span className="employees-list__fio">{emp.fio || '—'}</span>
+                        <div className="ui-list__name-cell">
+                          <span className="ui-avatar">{initials}</span>
+                          <span className="ui-list__title">{emp.fio || '—'}</span>
                         </div>
                       </td>
-                      <td className="employees-list__cell--muted">{emp.login || '—'}</td>
-                      <td className="employees-list__cell--muted">{emp.phone || '—'}</td>
+                      <td className="ui-list__muted">{emp.login || '—'}</td>
+                      <td className="ui-list__muted">{emp.phone || '—'}</td>
                       <td>
                         {roleName ? (
-                          <span className="employees-list__role-badge">{roleName}</span>
+                          <span className="ui-pill ui-pill--info">{roleName}</span>
                         ) : '—'}
                       </td>
-                      <td className="employees-list__actions">
-                        <button type="button" className="employees-list__btn" onClick={() => onAccess(emp)}>Доступы</button>
-                        <button type="button" className="employees-list__btn employees-list__btn--edit" onClick={() => onEdit(emp)}>Изменить</button>
-                        <button type="button" className="employees-list__btn employees-list__btn--danger" onClick={() => onDelete(emp)}>Удалить</button>
+                      <td className="ui-list__actions">
+                        <button type="button" className="ui-list-btn" onClick={() => onAccess(emp)}><KeyRound size={13} /> Доступы</button>
+                        <button type="button" className="ui-list-btn ui-list-btn--edit" onClick={() => onEdit(emp)}><Pencil size={13} /> Изменить</button>
+                        <button type="button" className="ui-list-btn ui-list-btn--danger" onClick={() => onDelete(emp)}><Trash2 size={13} /> Удалить</button>
                       </td>
                     </tr>
                   );

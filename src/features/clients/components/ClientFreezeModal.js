@@ -112,10 +112,10 @@ const ClientFreezeModal = ({
             </label>
           </div>
           <div className="client-freeze-modal__actions">
-            <button type="button" className="client-freeze-modal__btn client-freeze-modal__btn--cancel" onClick={onClose} disabled={saving}>
+            <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving}>
               Отмена
             </button>
-            <SubmitButton loading={saving} loadingLabel="Сохранение…" className="client-freeze-modal__btn client-freeze-modal__btn--submit">
+            <SubmitButton loading={saving} loadingLabel="Сохранение…" className="ui-modal-btn ui-modal-btn--primary">
               Сохранить
             </SubmitButton>
           </div>

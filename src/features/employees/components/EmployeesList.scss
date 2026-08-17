@@ -1,174 +1,26 @@
 @use '../../../shared/styles/mixins';
 
 .employees-list {
+  // Аватар/название/бейдж роли/кнопки — общие .ui-avatar/.ui-list__title/.ui-pill/.ui-list-btn,
+  // см. shared/styles/index.scss. Тут только уникальное для сотрудников: виртуализация и мобильные карточки.
   &__table-wrap {
-    overflow-x: auto;
-    border-radius: 12px;
-    border: 1px solid var(--color-border);
-    box-shadow: var(--shadow-card);
-    background: var(--color-surface);
     @include mixins.scrollbar;
-    min-width: 0;
 
     @include mixins.mobile {
       overflow-x: hidden;
-      border: none;
-      box-shadow: none;
-      background: transparent;
     }
   }
 
-  // ── Avatar ────────────────────────────────────────────────
-  &__avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: rgba(239, 68, 68, 0.12);
-    color: var(--color-primary, #ef4444);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    font-weight: 700;
-    flex-shrink: 0;
-    letter-spacing: 0.02em;
-
-    &--lg {
-      width: 42px;
-      height: 42px;
-      font-size: 16px;
-    }
-  }
-
-  // ── Name cell ─────────────────────────────────────────────
+  // ── Name cell (только в виртуальном режиме) ────────────────
   &__cell--name {
     display: flex;
     align-items: center;
     gap: 10px;
   }
 
-  &__fio {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-text);
-  }
-
-  &__cell--muted {
-    font-size: 13px;
-    color: var(--color-text-muted);
-  }
-
-  // ── Role badge ────────────────────────────────────────────
-  &__role-badge {
-    display: inline-flex;
-    align-items: center;
-    font-size: 12px;
-    font-weight: 600;
-    padding: 3px 9px;
-    border-radius: 20px;
-    background: rgba(59, 130, 246, 0.1);
-    color: #1d4ed8;
-    white-space: nowrap;
-
-    [data-theme='dark'] & {
-      background: rgba(96, 165, 250, 0.14);
-      color: #60a5fa;
-    }
-  }
-
-  // ── Table ─────────────────────────────────────────────────
   &__empty-wrap {
     padding: 32px 16px;
     text-align: center;
-  }
-
-  &__table {
-    width: 100%;
-    border-collapse: collapse;
-    background: var(--color-surface);
-
-    th, td {
-      padding: 12px 18px;
-      text-align: left;
-      border-bottom: 1px solid var(--color-border);
-      vertical-align: middle;
-    }
-
-    th {
-      background: var(--color-surface);
-      font-weight: 600;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--color-text-muted);
-      border-bottom: 1px solid var(--color-border);
-    }
-
-    tbody tr { transition: background 0.12s; }
-    tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
-    tbody tr:last-child td { border-bottom: none; }
-  }
-
-  // ── Actions ───────────────────────────────────────────────
-  &__actions {
-    display: flex;
-    gap: 6px;
-    justify-content: flex-end;
-    align-items: center;
-  }
-
-  &__btn {
-    height: 30px;
-    padding: 0 12px;
-    font-size: 12px;
-    font-weight: 600;
-    border-radius: 8px;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
-
-    background: transparent;
-    border: 1px solid var(--color-border);
-    color: var(--color-text-muted);
-
-    &:hover {
-      background: var(--color-bg);
-      border-color: var(--color-text-muted);
-      color: var(--color-text);
-    }
-
-    &--edit {
-      border-color: rgba(59, 130, 246, 0.3);
-      color: #1d4ed8;
-      background: rgba(59, 130, 246, 0.06);
-
-      [data-theme='dark'] & {
-        color: #60a5fa;
-        border-color: rgba(96, 165, 250, 0.25);
-        background: rgba(96, 165, 250, 0.08);
-      }
-
-      &:hover {
-        background: rgba(59, 130, 246, 0.12);
-        border-color: rgba(59, 130, 246, 0.5);
-      }
-    }
-
-    &--danger {
-      border-color: rgba(239, 68, 68, 0.3);
-      color: #dc2626;
-      background: transparent;
-
-      [data-theme='dark'] & {
-        color: #f87171;
-        border-color: rgba(239, 68, 68, 0.25);
-      }
-
-      &:hover {
-        background: rgba(239, 68, 68, 0.08);
-        border-color: rgba(239, 68, 68, 0.5);
-      }
-    }
   }
 
   // ── Virtual list ──────────────────────────────────────────
@@ -285,46 +137,16 @@
 
   &__card-actions {
     display: flex;
+    align-items: center;
     gap: 8px;
     padding-top: 12px;
     border-top: 1px solid var(--color-border);
   }
 
+  // Цвет/рамка — из .ui-list-btn, тут только размер под мобильную карточку.
   &__card-btn {
     flex: 1;
     min-height: 40px;
-    padding: 0 12px;
-    font-size: 13px;
-    font-weight: 600;
-    border-radius: 10px;
-    border: 1px solid transparent;
-    cursor: pointer;
-    transition: background 0.15s, opacity 0.15s;
-
-    &--edit {
-      background: rgba(59, 130, 246, 0.1);
-      border-color: rgba(59, 130, 246, 0.25);
-      color: #1d4ed8;
-
-      [data-theme='dark'] & {
-        color: #60a5fa;
-        border-color: rgba(96, 165, 250, 0.25);
-      }
-    }
-
-    &--secondary {
-      background: transparent;
-      border-color: var(--color-border);
-      color: var(--color-text-muted);
-    }
-
-    &--danger {
-      background: transparent;
-      border-color: rgba(239, 68, 68, 0.3);
-      color: #dc2626;
-
-      [data-theme='dark'] & { color: #f87171; }
-    }
   }
 
   &__card-more {

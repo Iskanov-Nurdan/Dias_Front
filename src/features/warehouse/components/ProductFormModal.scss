@@ -20,6 +20,4 @@
 .warehouse-form-modal__input { padding: 0 12px; height: 40px; border: 1px solid var(--input-border); border-radius: var(--input-radius); background: var(--input-bg); color: var(--color-text); font-size: 14px; &:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--input-shadow-focus); } }
 .warehouse-form-modal__select { width: 100%; }
 .warehouse-form-modal__actions { display: flex; gap: 12px; justify-content: flex-end; margin: 24px calc(-1 * var(--space-6)) calc(-1 * var(--space-6)); padding: 16px var(--space-6); border-top: 1px solid var(--color-border); background: transparent; border-radius: 0 0 var(--radius-xl) var(--radius-xl); }
-.warehouse-form-modal__btn { padding: 8px 16px; border-radius: 6px; font-size: 14px; }
-.warehouse-form-modal__btn--cancel { background: var(--color-bg); border: 1px solid var(--color-border); color: var(--color-text); }
-.warehouse-form-modal__btn--submit { background: var(--color-primary); color: #fff; border: none; }
+// Кнопки — общие .ui-modal-btn/.ui-modal-btn--primary, см. shared/styles/index.scss.

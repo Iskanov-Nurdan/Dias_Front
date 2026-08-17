@@ -67,8 +67,8 @@ const LeadFormModal = ({ lead, onSave, onClose, error, saving }) => {
             />
           </label>
           <div className="lead-form-modal__actions">
-            <button type="button" className="lead-form-modal__btn lead-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
-            <SubmitButton loading={saving} className="lead-form-modal__btn lead-form-modal__btn--submit">
+            <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving}>Отмена</button>
+            <SubmitButton loading={saving} className="ui-modal-btn ui-modal-btn--primary">
               Сохранить
             </SubmitButton>
           </div>

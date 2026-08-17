@@ -101,8 +101,8 @@ const ProductFormModal = ({ product, categories = [], onSave, onClose, error, sa
             </div>
           </section>
           <div className="warehouse-form-modal__actions">
-            <button type="button" className="warehouse-form-modal__btn warehouse-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
-            <SubmitButton loading={saving} className="warehouse-form-modal__btn warehouse-form-modal__btn--submit">
+            <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving}>Отмена</button>
+            <SubmitButton loading={saving} className="ui-modal-btn ui-modal-btn--primary">
               Сохранить
             </SubmitButton>
           </div>

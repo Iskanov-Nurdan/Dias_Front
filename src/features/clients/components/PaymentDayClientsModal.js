@@ -2,11 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
-import { EmptyState, Spinner } from '../../../shared/ui';
+import { EmptyState, ErrorState, Spinner } from '../../../shared/ui';
 import { fetchClientsPaymentDayClients } from '../api';
 import { formatPaymentsThatDayCell, normalizePaymentDayClientsResponse } from '../lib/paymentDayClientsNormalize';
 import { getClientPaymentsForCard } from '../lib/clientActualPayments';
 import './PaymentDayClientsModal.scss';
+
+const getInitials = (fio) =>
+  (fio || '').split(' ').slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
 
 const fmtRuDate = (isoOrRaw) => {
   if (isoOrRaw == null || isoOrRaw === '') return '—';
@@ -48,6 +51,7 @@ const PaymentDayClientsModal = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [missing, setMissing] = useState(false);
+  const [reloadSeq, setReloadSeq] = useState(0);
   const ctrlRef = useRef(null);
 
   useEffect(() => {
@@ -83,7 +87,7 @@ const PaymentDayClientsModal = ({
     return () => {
       ctrlRef.current?.abort();
     };
-  }, [open, year, month, dayIso, kind]);
+  }, [open, year, month, dayIso, kind, reloadSeq]);
 
   if (!open) return null;
 
@@ -132,16 +136,14 @@ const PaymentDayClientsModal = ({
             </p>
           )}
           {!loading && !missing && error && (
-            <p className="payment-day-clients-modal__error" role="alert">
-              {error}
-            </p>
+            <ErrorState compact message={error} onRetry={() => setReloadSeq((s) => s + 1)} />
           )}
           {!loading && !missing && !error && !rows.length && (
             <EmptyState compact message="Нет клиентов в этой выборке" />
           )}
           {!loading && !missing && !error && rows.length > 0 && (
-            <div className="payment-day-clients-modal__table-wrap">
-              <table className="payment-day-clients-modal__table">
+            <div className="ui-list__table-wrap payment-day-clients-modal__table-wrap">
+              <table className="ui-list__table payment-day-clients-modal__table">
                 <thead>
                   <tr>
                     <th>ФИО</th>
@@ -175,7 +177,12 @@ const PaymentDayClientsModal = ({
                           : undefined
                       }
                     >
-                      <td className="payment-day-clients-modal__fio">{r.fio}</td>
+                      <td className="payment-day-clients-modal__fio">
+                        <div className="ui-list__name-cell">
+                          <span className="ui-avatar">{getInitials(r.fio)}</span>
+                          <span className="ui-list__title">{r.fio}</span>
+                        </div>
+                      </td>
                       <td className="payment-day-clients-modal__date">{fmtRuDate(r.dateStart)}</td>
                       <td className="payment-day-clients-modal__payments-cell">
                         {kind === 'paid'
@@ -202,7 +209,7 @@ const PaymentDayClientsModal = ({
                       <td style={{ fontSize: 13, color: 'var(--color-text)' }}>{r.trainerName || '—'}</td>
                       <td>
                         {r.sportName
-                          ? <span className="payment-day-clients-modal__sport">{r.sportName}</span>
+                          ? <span className="ui-pill">{r.sportName}</span>
                           : <span className="payment-day-clients-modal__dash">—</span>}
                       </td>
                     </tr>
@@ -214,7 +221,7 @@ const PaymentDayClientsModal = ({
         </div>
 
         <div className="payment-day-clients-modal__actions">
-          <button type="button" className="payment-day-clients-modal__btn" onClick={onClose}>
+          <button type="button" className="ui-modal-btn" onClick={onClose}>
             Закрыть
           </button>
         </div>

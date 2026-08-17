@@ -119,10 +119,10 @@ const ExtendModal = ({ client, onSave, onClose, error, saving, fullscreen = fals
           </div>
 
           <div className="extend-modal__actions">
-            <button type="button" className="extend-modal__btn extend-modal__btn--cancel" onClick={onClose} disabled={saving}>
+            <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving}>
               Отмена
             </button>
-            <SubmitButton loading={saving} loadingLabel="Продление…" className="extend-modal__btn extend-modal__btn--submit">
+            <SubmitButton loading={saving} loadingLabel="Продление…" className="ui-modal-btn ui-modal-btn--primary">
               Продлить на {pluralMonths(months)}
             </SubmitButton>
           </div>

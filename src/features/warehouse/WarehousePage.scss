@@ -4,49 +4,8 @@
   min-width: 0;
   overflow-x: hidden;
 
-  &__title {
-    margin: 0 0 8px;
-    font-size: 26px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    color: var(--color-text);
-  }
-
-  &__tabs {
-    display: flex;
-    gap: 4px;
+  > .ui-tabs {
     margin-bottom: 24px;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  &__tab {
-    position: relative;
-    padding: 12px 20px;
-    font-size: 14px;
-    font-weight: 500;
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    color: var(--color-text-muted);
-    cursor: pointer;
-    transition: color var(--transition-fast);
-    &:hover {
-      color: var(--color-text);
-    }
-    &--active {
-      color: var(--color-primary);
-      &::after {
-        content: '';
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: -1px;
-        height: 2px;
-        background: var(--color-primary);
-        border-radius: 2px 2px 0 0;
-      }
-    }
   }
 
   &__filter-bar {
@@ -192,20 +151,11 @@
     flex-wrap: wrap;
   }
 
+  // Стили — общие .ui-search/.ui-search__input, см. shared/styles/index.scss.
   &__search {
-    padding: 10px 14px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    font-size: 14px;
     min-width: 220px;
-    &:focus {
-      outline: none;
-      border-color: var(--color-primary);
-      box-shadow: 0 0 0 3px var(--color-primary-light);
-    }
 
     @include mixins.mobile {
-      font-size: 16px;
       min-width: 0;
     }
   }
@@ -246,74 +196,26 @@
     color: var(--color-text);
   }
 
+  // Базовые стили обёртки/таблицы — общие .ui-list__table-wrap/.ui-list__table,
+  // см. shared/styles/index.scss. Тут только уникальное для склада.
   &__table-wrap {
-    overflow-x: auto;
-    border-radius: var(--block-radius);
-    border: 1px solid rgba(226, 232, 240, 0.6);
-    box-shadow: var(--shadow-sm);
-    background: var(--color-bg-card);
-    @include mixins.scrollbar;
-
     @include mixins.mobile {
       overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      border: none;
-      box-shadow: none;
-      background: transparent;
     }
   }
 
   &__table {
-    width: 100%;
-    border-collapse: collapse;
-    background: var(--color-bg-card);
-
-    th,
-    td {
-      padding: var(--table-cell-padding);
-      text-align: left;
-      border-bottom: 1px solid rgba(226, 232, 240, 0.6);
-    }
-
-    th {
-      background: var(--color-surface-secondary);
-      font-weight: 600;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--color-text-secondary);
-      border-bottom: 2px solid var(--color-border-strong);
-      position: sticky;
-      top: 0;
-      z-index: 1;
-    }
-
     th.warehouse-page__th--group-start {
       border-left: 1px solid var(--color-border);
       padding-left: 20px;
     }
 
-    tbody tr {
-      transition: background var(--transition-fast);
-    }
-    tbody tr:nth-child(even) {
-      background: rgba(0, 0, 0, 0.02);
-    }
-    tbody tr:hover {
-      background: var(--color-primary-light);
-    }
-    tbody tr.warehouse-page__product-row--at-min {
+    tbody tr.warehouse-page__product-row--at-min td {
       background: rgba(217, 119, 6, 0.06);
-      border-left: 3px solid var(--color-warning);
+      border-color: rgba(217, 119, 6, 0.25);
     }
-    tbody tr.warehouse-page__product-row--at-min:nth-child(even) {
-      background: rgba(217, 119, 6, 0.08);
-    }
-    tbody tr.warehouse-page__product-row--at-min:hover {
+    tbody tr.warehouse-page__product-row--at-min:hover td {
       background: rgba(217, 119, 6, 0.1);
-    }
-    tbody tr:last-child td {
-      border-bottom: none;
     }
 
     @include mixins.mobile {
@@ -348,8 +250,11 @@
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        padding: 6px 0;
-        border-bottom: none;
+        padding: 6px 0 !important;
+        border: none !important;
+        border-radius: 0 !important;
+        height: auto !important;
+        background: transparent !important;
 
         &::before {
           content: attr(data-label);
@@ -399,45 +304,8 @@
     justify-content: flex-end;
   }
 
-  &__action {
-    padding: 6px 12px;
-    font-size: 13px;
-    font-weight: 500;
-    border-radius: var(--radius-sm);
-    border: 1px solid transparent;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
-    &:disabled { opacity: 0.5; cursor: not-allowed; }
-    &--primary {
-      background: var(--color-primary);
-      color: #fff;
-      border-color: var(--color-primary);
-      &:hover:not(:disabled) {
-        background: var(--color-primary-hover);
-        border-color: var(--color-primary-hover);
-      }
-    }
-    &--secondary {
-      background: transparent;
-      border-color: var(--color-border);
-      color: var(--color-text-secondary);
-      &:hover:not(:disabled) {
-        border-color: var(--color-primary);
-        color: var(--color-primary);
-      }
-    }
-    &--ghost {
-      background: transparent;
-      border: none;
-      color: var(--color-text-muted);
-      padding: 6px 8px;
-      font-size: 12px;
-      &:hover:not(:disabled) {
-        color: var(--color-danger);
-      }
-    }
-  }
+  // Кнопки действий — общие .ui-list-btn/.ui-list-btn--primary/--danger,
+  // см. shared/styles/index.scss.
 
   &__history-header {
     margin-bottom: 16px;

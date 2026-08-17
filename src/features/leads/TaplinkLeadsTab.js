@@ -274,8 +274,8 @@ const TaplinkLeadsTab = () => {
       {error && <ErrorState message={error} onRetry={load} />}
 
       {/* ── Таблица ──────────────────────────────────────────────────────── */}
-      <div className="tlt__table-wrap">
-        <table className="tlt__table">
+      <div className="ui-list__table-wrap tlt__table-wrap">
+        <table className="ui-list__table tlt__table">
           <thead>
             <tr>
               <th>ФИО</th>
@@ -292,13 +292,13 @@ const TaplinkLeadsTab = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9} className="tlt__skeleton-cell">
+                <td colSpan={9} className="ui-list__skeleton-cell tlt__skeleton-cell">
                   <SkeletonTable rows={6} cols={9} />
                 </td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={9} className="tlt__empty-cell">
+                <td colSpan={9} className="ui-list__empty-cell tlt__empty-cell">
                   <EmptyState compact tableCell message="Нет заявок" />
                 </td>
               </tr>

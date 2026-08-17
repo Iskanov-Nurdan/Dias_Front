@@ -1,4 +1,5 @@
 import React from 'react';
+import { CalendarClock, Pencil, Trash2 } from 'lucide-react';
 import { ErrorState, EmptyState, ConfirmModal, SkeletonTable } from '../../../shared/ui';
 import './TrainersList.scss';
 
@@ -35,8 +36,8 @@ const TrainersList = ({
   return (
     <>
       <div className="trainers-list">
-        <div className="trainers-list__table-wrap">
-          <table className="trainers-list__table">
+        <div className="ui-list__table-wrap">
+          <table className="ui-list__table">
             <thead>
               <tr>
                 <th>ФИО</th>
@@ -47,13 +48,13 @@ const TrainersList = ({
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={3} className="trainers-list__skeleton-cell">
+                  <td colSpan={3} className="ui-list__skeleton-cell">
                     <SkeletonTable rows={8} cols={3} />
                   </td>
                 </tr>
               ) : !list.length ? (
                 <tr>
-                  <td colSpan={3} className="trainers-list__empty-cell">
+                  <td colSpan={3} className="ui-list__empty-cell">
                     <EmptyState
                       compact
                       tableCell
@@ -68,24 +69,24 @@ const TrainersList = ({
                 return (
                   <tr key={t.id}>
                     <td data-label="ФИО">
-                      <div className="trainers-list__name-cell">
-                        <span className="trainers-list__avatar">{getInitials(t.fio)}</span>
-                        <span className="trainers-list__fio">{t.fio || '—'}</span>
+                      <div className="ui-list__name-cell">
+                        <span className="ui-avatar">{getInitials(t.fio)}</span>
+                        <span className="ui-list__title">{t.fio || '—'}</span>
                       </div>
                     </td>
                     <td data-label="Виды спорта">
                       <div className="trainers-list__sports-cell">
                         {sportNames.length ? sportNames.map((name, i) => (
-                          <span key={i} className="trainers-list__sport-badge">{name}</span>
+                          <span key={i} className="ui-pill ui-pill--info">{name}</span>
                         )) : <span className="trainers-list__no-sports">—</span>}
                       </div>
                     </td>
-                    <td className="trainers-list__actions" data-label="">
+                    <td className="ui-list__actions" data-label="">
                       {onSchedule && (
-                        <button type="button" className="trainers-list__btn trainers-list__btn--schedule" onClick={() => onSchedule(t)}>График</button>
+                        <button type="button" className="ui-list-btn" onClick={() => onSchedule(t)}><CalendarClock size={13} /> График</button>
                       )}
-                      <button type="button" className="trainers-list__btn trainers-list__btn--edit" onClick={() => onEdit(t)}>Изменить</button>
-                      <button type="button" className="trainers-list__btn trainers-list__btn--danger" onClick={() => onDelete(t)}>Удалить</button>
+                      <button type="button" className="ui-list-btn ui-list-btn--edit" onClick={() => onEdit(t)}><Pencil size={13} /> Изменить</button>
+                      <button type="button" className="ui-list-btn ui-list-btn--danger" onClick={() => onDelete(t)}><Trash2 size={13} /> Удалить</button>
                     </td>
                   </tr>
                 );

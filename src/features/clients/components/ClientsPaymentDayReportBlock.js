@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { EmptyState, Spinner } from '../../../shared/ui';
+import { EmptyState, ErrorState, Spinner } from '../../../shared/ui';
 import { formatMoney } from '../../../shared/constants/common';
 import { normalizeClientsPaymentDayReportResponse } from '../lib/paymentDayReportNormalize';
 import PaymentDayClientsModal from './PaymentDayClientsModal';
@@ -23,6 +23,7 @@ const ClientsPaymentDayReportBlock = ({
   year,
   month,
   onOpenClient,
+  onRetry,
 }) => {
   const { rows } = useMemo(
     () =>
@@ -109,9 +110,7 @@ const ClientsPaymentDayReportBlock = ({
     return (
       <div className="clients-payment-day-report">
         <h3 className="clients-payment-day-report__title">Записи и оплаты по дням</h3>
-        <p className="clients-payment-day-report__error" role="alert">
-          {errorMessage}
-        </p>
+        <ErrorState compact message={errorMessage} onRetry={onRetry} />
       </div>
     );
   }
@@ -139,8 +138,8 @@ const ClientsPaymentDayReportBlock = ({
         </div>
       )}
 
-      <div className="clients-payment-day-report__table-wrap">
-        <table className="clients-payment-day-report__table">
+      <div className="ui-list__table-wrap clients-payment-day-report__table-wrap">
+        <table className="ui-list__table clients-payment-day-report__table">
           <thead>
             <tr>
               <th>День</th>

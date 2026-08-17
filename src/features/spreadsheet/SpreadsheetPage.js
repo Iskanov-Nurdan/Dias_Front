@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, X, Trash2, Pencil, Table2, ArrowLeft, Sigma, Loader } from 'lucide-react';
+import { Plus, X, Trash2, Pencil, ArrowLeft, Sigma, Loader } from 'lucide-react';
 import { useToast } from '../../app/providers/ToastProvider';
-import { ConfirmModal } from '../../shared/ui';
+import { ConfirmModal, Select, EmptyState, ErrorState, Spinner } from '../../shared/ui';
 import * as api from './api';
 import './SpreadsheetPage.scss';
 
@@ -66,21 +66,27 @@ function CreateModal({ onClose, onCreate, saving }) {
           <div className="sp-modal__row">
             <label className="sp-modal__label sp-modal__label--half">
               Год
-              <select className="sp-modal__select" value={year} onChange={(e) => setYear(Number(e.target.value))} disabled={saving}>
-                {YEAR_OPTS.map((y) => <option key={y} value={y}>{y}</option>)}
-              </select>
+              <Select
+                value={String(year)}
+                onChange={(v) => setYear(Number(v))}
+                options={YEAR_OPTS.map((y) => ({ value: String(y), label: String(y) }))}
+                disabled={saving}
+              />
             </label>
             <label className="sp-modal__label sp-modal__label--half">
               Месяц
-              <select className="sp-modal__select" value={month} onChange={(e) => setMonth(Number(e.target.value))} disabled={saving}>
-                {MONTHS_RU.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
-              </select>
+              <Select
+                value={String(month)}
+                onChange={(v) => setMonth(Number(v))}
+                options={MONTHS_RU.map((m, i) => ({ value: String(i + 1), label: m }))}
+                disabled={saving}
+              />
             </label>
           </div>
         </div>
         <div className="sp-modal__footer">
-          <button className="sp-modal__btn sp-modal__btn--secondary" onClick={onClose} disabled={saving}>Отмена</button>
-          <button className="sp-modal__btn sp-modal__btn--primary" onClick={submit} disabled={saving || !name.trim()}>
+          <button className="ui-modal-btn" onClick={onClose} disabled={saving}>Отмена</button>
+          <button className="ui-modal-btn ui-modal-btn--primary" onClick={submit} disabled={saving || !name.trim()}>
             {saving && <Loader size={13} className="sp__spin" />}
             Создать
           </button>
@@ -93,12 +99,10 @@ function CreateModal({ onClose, onCreate, saving }) {
 // ─────────────────────────────────────────────────────────
 //  Gallery
 // ─────────────────────────────────────────────────────────
-function Gallery({ blocks, loading, opening, error, onOpen, onDelete, onCreateClick }) {
+function Gallery({ blocks, loading, opening, error, onOpen, onDelete, onCreateClick, onRetry }) {
   return (
     <div className="sp-gallery">
       <div className="sp-gallery__header">
-        <Table2 size={22} className="sp-gallery__icon" />
-        <h1 className="sp-gallery__title">Таблицы</h1>
         <button className="sp-gallery__create-btn" onClick={onCreateClick} disabled={loading || opening}>
           <Plus size={14} /> Создать таблицу
         </button>
@@ -106,25 +110,21 @@ function Gallery({ blocks, loading, opening, error, onOpen, onDelete, onCreateCl
 
       {loading && (
         <div className="sp-gallery__empty">
-          <Loader size={28} className="sp__spin sp-gallery__empty-icon" />
-          <p className="sp-gallery__empty-text">Загрузка...</p>
+          <Spinner label="Загрузка…" />
         </div>
       )}
 
       {!loading && error && (
-        <div className="sp-gallery__empty">
-          <p className="sp-gallery__empty-text" style={{ color: 'var(--color-danger)' }}>{error}</p>
-        </div>
+        <ErrorState compact message={error} onRetry={onRetry} />
       )}
 
       {!loading && !error && blocks.length === 0 && (
-        <div className="sp-gallery__empty">
-          <Table2 size={40} className="sp-gallery__empty-icon" />
-          <p className="sp-gallery__empty-text">Нет таблиц — создайте первую</p>
-          <button className="sp-gallery__create-btn sp-gallery__create-btn--big" onClick={onCreateClick}>
-            <Plus size={14} /> Создать таблицу
-          </button>
-        </div>
+        <EmptyState
+          compact
+          message="Нет таблиц — создайте первую"
+          actionLabel="Создать таблицу"
+          onAction={onCreateClick}
+        />
       )}
 
       {!loading && !error && blocks.length > 0 && (
@@ -562,8 +562,7 @@ export default function SpreadsheetPage() {
   const [createSaving, setCreateSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null); // { id, name }
 
-  // Load block list on mount
-  useEffect(() => {
+  const fetchBlocks = useCallback(() => {
     setListLoading(true);
     setListError(null);
     api.fetchSpreadsheets()
@@ -574,6 +573,11 @@ export default function SpreadsheetPage() {
       .catch((e) => setListError(apiErr(e) || 'Ошибка загрузки'))
       .finally(() => setListLoading(false));
   }, []);
+
+  // Load block list on mount
+  useEffect(() => {
+    fetchBlocks();
+  }, [fetchBlocks]);
 
   const openBlock = async (id) => {
     setBlockOpening(true);
@@ -631,6 +635,7 @@ export default function SpreadsheetPage() {
           onOpen={openBlock}
           onDelete={(b) => setConfirmDelete({ id: b.id, name: b.name })}
           onCreateClick={() => setShowCreate(true)}
+          onRetry={fetchBlocks}
         />
       )}
 

@@ -1,6 +1,10 @@
 import React from 'react';
+import { Eye } from 'lucide-react';
 import { isClientPaid } from '../../../shared/constants/common';
 import { composeClientDataRowClass } from '../lib/clientRowHighlight';
+
+const getInitials = (fio) =>
+  (fio || '').split(' ').slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
 
 const TYPE_MAP = {
   individual: { label: 'Индивид.',  cls: 'dup-group__type-badge--individual' },
@@ -14,8 +18,8 @@ const DuplicateGroup = ({ group, label, onDetails }) => (
       <span className="dup-group__label">{label}</span>
       <span className="dup-group__count">{group.length} клиента</span>
     </div>
-    <div className="dup-group__table-wrap">
-      <table className="dup-group__table">
+    <div className="ui-list__table-wrap">
+      <table className="ui-list__table dup-group__table">
         <thead>
           <tr>
             <th>ФИО</th>
@@ -33,29 +37,32 @@ const DuplicateGroup = ({ group, label, onDetails }) => (
             return (
               <tr key={c.id} className={composeClientDataRowClass(c, 'dup-group__row')}>
                 <td data-label="ФИО">
-                  <span className="dup-group__name">{c.fio || '—'}</span>
+                  <div className="ui-list__name-cell">
+                    <span className="ui-avatar">{getInitials(c.fio)}</span>
+                    <span className="ui-list__title">{c.fio || '—'}</span>
+                  </div>
                 </td>
                 <td data-label="Телефон">
-                  <span className="dup-group__cell-value">{c.phone || '—'}</span>
+                  <span className="ui-list__muted">{c.phone || '—'}</span>
                 </td>
                 <td data-label="Вид спорта">
-                  <span className="dup-group__cell-value">{c.sportName ?? c.sport?.name ?? '—'}</span>
+                  <span className="ui-list__muted">{c.sportName ?? c.sport?.name ?? '—'}</span>
                 </td>
                 <td data-label="Оплата">
-                  <span className={`dup-group__paid-badge ${paid ? 'dup-group__paid-badge--yes' : 'dup-group__paid-badge--no'}`}>
+                  <span className={`ui-pill ${paid ? 'ui-pill--success' : 'ui-pill--danger'}`}>
                     {paid ? 'Оплачено' : 'Не оплачено'}
                   </span>
                 </td>
                 <td data-label="Тип">
                   {typeInfo ? (
-                    <span className={`dup-group__type-badge ${typeInfo.cls}`}>{typeInfo.label}</span>
+                    <span className={`ui-pill dup-group__type-badge ${typeInfo.cls}`}>{typeInfo.label}</span>
                   ) : (
-                    <span className="dup-group__cell-value">{c.clientType || '—'}</span>
+                    <span className="ui-list__muted">{c.clientType || '—'}</span>
                   )}
                 </td>
-                <td className="dup-group__actions" data-label="">
-                  <button type="button" className="dup-group__btn" onClick={() => onDetails(c)}>
-                    Подробнее
+                <td className="ui-list__actions" data-label="">
+                  <button type="button" className="ui-list-btn" onClick={() => onDetails(c)}>
+                    <Eye size={13} /> Подробнее
                   </button>
                 </td>
               </tr>

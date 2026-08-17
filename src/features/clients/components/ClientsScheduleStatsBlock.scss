@@ -46,13 +46,6 @@
   border: 1px solid var(--color-border);
 }
 
-.clients-schedule-stats__error {
-  margin: 0;
-  padding: 16px 18px 20px;
-  font-size: 14px;
-  color: var(--color-danger, #dc2626);
-}
-
 .clients-schedule-stats__table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;

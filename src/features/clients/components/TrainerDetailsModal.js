@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, Eye } from 'lucide-react';
 import { isClientPaid } from '../../../shared/constants/common';
 import { composeClientDataRowClass } from '../lib/clientRowHighlight';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
@@ -11,6 +11,9 @@ import { filterClientsByTrainingSlot, hasTrainingSlotFilter } from '../lib/filte
 import './TrainerDetailsModal.scss';
 
 const MONTH_NAMES = ['', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+
+const getInitials = (fio) =>
+  (fio || '').split(' ').slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
 
 const TYPE_MAP = {
   individual: { label: 'Индивид.',  cls: 'tdm__type-badge--individual' },
@@ -92,8 +95,8 @@ const TrainerDetailsModal = ({
             <Spinner label="Загрузка учеников…" />
           </div>
         ) : (
-          <div className="tdm__table-wrap">
-            <table className="tdm__table">
+          <div className="ui-list__table-wrap tdm__table-wrap">
+            <table className="ui-list__table tdm__table">
               <thead>
                 <tr>
                   <th>ФИО</th>
@@ -107,7 +110,7 @@ const TrainerDetailsModal = ({
               <tbody>
                 {students.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="tdm__empty">
+                    <td colSpan={6} className="ui-list__empty-cell tdm__empty">
                       <EmptyState compact tableCell message="Нет учеников" />
                     </td>
                   </tr>
@@ -117,22 +120,27 @@ const TrainerDetailsModal = ({
                     const typeInfo = TYPE_MAP[c.clientType];
                     return (
                       <tr key={c.id} className={composeClientDataRowClass(c, 'tdm__row')}>
-                        <td className="tdm__fio">{c.fio || '—'}</td>
-                        <td className="tdm__muted">{c.phone || '—'}</td>
-                        <td className="tdm__muted">{c.sportName ?? c.sport?.name ?? '—'}</td>
                         <td>
-                          <span className={`tdm__paid-badge tdm__paid-badge--${paid ? 'yes' : 'no'}`}>
+                          <div className="ui-list__name-cell">
+                            <span className="ui-avatar">{getInitials(c.fio)}</span>
+                            <span className="ui-list__title">{c.fio || '—'}</span>
+                          </div>
+                        </td>
+                        <td className="ui-list__muted">{c.phone || '—'}</td>
+                        <td className="ui-list__muted">{c.sportName ?? c.sport?.name ?? '—'}</td>
+                        <td>
+                          <span className={`ui-pill ${paid ? 'ui-pill--success' : 'ui-pill--danger'}`}>
                             {paid ? 'Оплачено' : 'Не оплачено'}
                           </span>
                         </td>
                         <td>
                           {typeInfo
-                            ? <span className={`tdm__type-badge ${typeInfo.cls}`}>{typeInfo.label}</span>
-                            : <span className="tdm__muted">{c.clientType || '—'}</span>
+                            ? <span className={`ui-pill tdm__type-badge ${typeInfo.cls}`}>{typeInfo.label}</span>
+                            : <span className="ui-list__muted">{c.clientType || '—'}</span>
                           }
                         </td>
                         <td>
-                          <button type="button" className="tdm__btn" onClick={() => onDetails?.(c)}>Подробнее</button>
+                          <button type="button" className="ui-list-btn" onClick={() => onDetails?.(c)}><Eye size={13} /> Подробнее</button>
                         </td>
                       </tr>
                     );
@@ -144,7 +152,7 @@ const TrainerDetailsModal = ({
         )}
 
         <div className="tdm__footer">
-          <button type="button" className="tdm__btn tdm__btn--cancel" onClick={onClose}>Закрыть</button>
+          <button type="button" className="ui-modal-btn" onClick={onClose}>Закрыть</button>
         </div>
       </div>
     </div>

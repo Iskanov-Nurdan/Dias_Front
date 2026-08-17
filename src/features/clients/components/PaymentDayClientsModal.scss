@@ -62,15 +62,12 @@
 }
 
 .payment-day-clients-modal__loading,
-.payment-day-clients-modal__error,
 .payment-day-clients-modal__placeholder {
   margin: 0;
   padding: 24px 20px;
   font-size: 14px;
   color: var(--color-text-muted);
 }
-
-.payment-day-clients-modal__error { color: var(--color-danger); }
 
 .payment-day-clients-modal__placeholder code {
   font-size: 12px;
@@ -80,16 +77,9 @@
   border: 1px solid var(--color-border);
 }
 
-// ── Table ───────────────────────────────────────────────────
-.payment-day-clients-modal__table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
+// ── Table — общие .ui-list__table-wrap/.ui-list__table, см. shared/styles/index.scss ──
 .payment-day-clients-modal__table {
-  width: 100%;
   min-width: 680px;
-  border-collapse: collapse;
   table-layout: fixed;
 
   th:nth-child(1), td:nth-child(1) { width: 22%; }
@@ -100,40 +90,13 @@
   th:nth-child(6), td:nth-child(6) { width: 16%; }
 
   th, td {
-    padding: 10px 14px;
-    text-align: left;
-    border-bottom: 1px solid var(--color-border);
-    vertical-align: middle;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  th {
-    background: var(--color-bg);
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--color-text-muted);
-    white-space: nowrap;
-    position: sticky;
-    top: 0;
-    z-index: 1;
-  }
-
-  tbody tr:last-child td { border-bottom: none; }
-
   tbody tr:hover td {
     background: rgba(255, 255, 255, 0.04);
-  }
-
-  // Left accent bar on every row
-  tbody td:first-child {
-    box-shadow: inset 3px 0 0 rgba(59, 130, 246, 0.25);
-  }
-  tbody tr:hover td:first-child {
-    box-shadow: inset 3px 0 0 rgba(59, 130, 246, 0.55);
   }
 }
 
@@ -194,22 +157,6 @@
   opacity: 0.4;
 }
 
-// ── Sport badge ─────────────────────────────────────────────
-.payment-day-clients-modal__sport {
-  display: inline-block;
-  padding: 1px 8px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 500;
-  background: rgba(156, 163, 175, 0.1);
-  color: var(--color-text-muted);
-  border: 1px solid rgba(156, 163, 175, 0.15);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
 // ── Footer ───────────────────────────────────────────────────
 .payment-day-clients-modal__actions {
   padding: 14px 20px;
@@ -218,23 +165,4 @@
   background: var(--color-bg);
 }
 
-.payment-day-clients-modal__btn {
-  display: inline-flex;
-  align-items: center;
-  height: 36px;
-  padding: 0 20px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  border: 1px solid var(--color-border);
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-
-  &:hover {
-    background: var(--color-surface);
-    border-color: var(--color-text-muted);
-    color: var(--color-text);
-  }
-}
+// Кнопка "Закрыть" в футере — общая .ui-modal-btn, см. shared/styles/index.scss.

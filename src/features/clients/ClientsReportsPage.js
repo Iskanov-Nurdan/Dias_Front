@@ -18,7 +18,7 @@ import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { MONTHS, STATS_YEARS } from '../../shared/constants/common';
 import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiError';
 import { prepareClientSavePayload } from './lib/prepareClientSavePayload';
-import { UserX, BarChart2, CalendarDays } from 'lucide-react';
+import { UserX, BarChart2, CalendarDays, Search } from 'lucide-react';
 import { Select, ConfirmModal, Pagination, FilterBar, EmptyState, Spinner } from '../../shared/ui';
 import {
   ClientsList,
@@ -54,6 +54,7 @@ const ClientsReportsPage = () => {
     return STATS_YEARS.includes(y) ? y : STATS_YEARS[STATS_YEARS.length - 1];
   });
   const [nrMonth, setNrMonth] = useState(String(new Date().getMonth() + 1));
+  const [nrSearch, setNrSearch] = useState('');
   const [nrPage, setNrPage] = useState(1);
   const { run: runNotRenewed } = useAbortSafeFetch();
 
@@ -224,7 +225,10 @@ const ClientsReportsPage = () => {
       });
   }, [toast]);
 
-  const notRenewedItems = notRenewedData?.items ?? notRenewedData?.results ?? (Array.isArray(notRenewedData) ? notRenewedData : []) ?? [];
+  const notRenewedItemsRaw = notRenewedData?.items ?? notRenewedData?.results ?? (Array.isArray(notRenewedData) ? notRenewedData : []) ?? [];
+  const notRenewedItems = nrSearch.trim()
+    ? notRenewedItemsRaw.filter((c) => (c.fio ?? '').toLowerCase().includes(nrSearch.trim().toLowerCase()))
+    : notRenewedItemsRaw;
 
   const nrNextPeriod = useMemo(() => {
     if (!nrYear || !nrMonth) return null;
@@ -341,24 +345,24 @@ const ClientsReportsPage = () => {
     <div className="clients-page">
       
 
-      <div className="clients-page__tabs">
+      <div className="ui-tabs">
         <button
           type="button"
-          className={`clients-page__tab${activeTab === TAB_NOT_RENEWED ? ' clients-page__tab--active' : ''}`}
+          className={`ui-tabs__tab${activeTab === TAB_NOT_RENEWED ? ' ui-tabs__tab--active' : ''}`}
           onClick={() => setActiveTab(TAB_NOT_RENEWED)}
         >
           <UserX size={15} /> Не продлили
         </button>
         <button
           type="button"
-          className={`clients-page__tab${activeTab === TAB_STATS ? ' clients-page__tab--active' : ''}`}
+          className={`ui-tabs__tab${activeTab === TAB_STATS ? ' ui-tabs__tab--active' : ''}`}
           onClick={() => setActiveTab(TAB_STATS)}
         >
           <BarChart2 size={15} /> Статистика
         </button>
         <button
           type="button"
-          className={`clients-page__tab${activeTab === TAB_PAYMENT_DAYS ? ' clients-page__tab--active' : ''}`}
+          className={`ui-tabs__tab${activeTab === TAB_PAYMENT_DAYS ? ' ui-tabs__tab--active' : ''}`}
           onClick={() => setActiveTab(TAB_PAYMENT_DAYS)}
         >
           <CalendarDays size={15} /> Записи по дням
@@ -369,7 +373,16 @@ const ClientsReportsPage = () => {
         <>
           <FilterBar className="clients-page__not-renewed-toolbar">
             <div className="clients-page__not-renewed-toolbar-inner">
-              <span className="clients-page__not-renewed-toolbar-label">Месяц</span>
+              <div className="ui-search clients-page__not-renewed-search">
+                <Search size={15} className="ui-search__icon" />
+                <input
+                  type="text"
+                  placeholder="Поиск по ФИО"
+                  value={nrSearch}
+                  onChange={(e) => setNrSearch(e.target.value)}
+                  className="ui-search__input"
+                />
+              </div>
               <Select
                 value={nrYear}
                 onChange={setNrYear}
@@ -492,6 +505,7 @@ const ClientsReportsPage = () => {
                 loading={scheduleStatsLoading}
                 errorMessage={scheduleStatsError}
                 endpointMissing={scheduleStatsEndpointMissing}
+                onRetry={fetchScheduleStats}
                 onTrainerRowClick={(trainerId, trainerName, slot) =>
                   setTrainerDetails({
                     trainerId,
@@ -549,6 +563,7 @@ const ClientsReportsPage = () => {
                 year={paymentDayYear}
                 month={paymentDayMonth}
                 onOpenClient={handleOpenCard}
+                onRetry={fetchPaymentDayReport}
               />
             </>
           )}

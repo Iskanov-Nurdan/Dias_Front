@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dumbbell } from 'lucide-react';
+import { Dumbbell, Pencil, Trash2 } from 'lucide-react';
 import { ErrorState, EmptyState, ConfirmModal, SkeletonTable } from '../../../shared/ui';
 import './SportsList.scss';
 
@@ -22,8 +22,8 @@ const SportsList = ({
   return (
     <>
       <div className="sports-list">
-        <div className="sports-list__table-wrap">
-          <table className="sports-list__table">
+        <div className="ui-list__table-wrap">
+          <table className="ui-list__table">
             <thead>
               <tr>
                 <th>Название</th>
@@ -33,13 +33,13 @@ const SportsList = ({
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={2} className="sports-list__skeleton-cell">
+                  <td colSpan={2} className="ui-list__skeleton-cell">
                     <SkeletonTable rows={8} cols={2} />
                   </td>
                 </tr>
               ) : !list.length ? (
                 <tr>
-                  <td colSpan={2} className="sports-list__empty-cell">
+                  <td colSpan={2} className="ui-list__empty-cell">
                     <EmptyState
                       compact
                       tableCell
@@ -52,16 +52,16 @@ const SportsList = ({
               ) : list.map((s) => (
                 <tr key={s.id}>
                   <td data-label="Название">
-                    <div className="sports-list__name-cell">
-                      <span className="sports-list__icon-wrap">
+                    <div className="ui-list__name-cell">
+                      <span className="ui-avatar ui-avatar--icon">
                         <Dumbbell size={16} />
                       </span>
-                      <span className="sports-list__name">{s.name || '—'}</span>
+                      <span className="ui-list__title">{s.name || '—'}</span>
                     </div>
                   </td>
-                  <td className="sports-list__actions" data-label="">
-                    <button type="button" className="sports-list__btn sports-list__btn--edit" onClick={() => onEdit(s)}>Изменить</button>
-                    <button type="button" className="sports-list__btn sports-list__btn--danger" onClick={() => onDelete(s)}>Удалить</button>
+                  <td className="ui-list__actions" data-label="">
+                    <button type="button" className="ui-list-btn ui-list-btn--edit" onClick={() => onEdit(s)}><Pencil size={13} /> Изменить</button>
+                    <button type="button" className="ui-list-btn ui-list-btn--danger" onClick={() => onDelete(s)}><Trash2 size={13} /> Удалить</button>
                   </td>
                 </tr>
               ))}

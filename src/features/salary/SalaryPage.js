@@ -157,8 +157,8 @@ const SalaryPage = () => {
         </div>
       </div>
 
-      <div className="salary-page__table-wrap">
-        <table className="salary-page__table">
+      <div className="ui-list__table-wrap salary-page__table-wrap">
+        <table className="ui-list__table salary-page__table">
           <thead>
             <tr>
               <th className="salary-page__th-name">Тренер</th>
@@ -176,12 +176,12 @@ const SalaryPage = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={10} className="salary-page__skeleton-cell">
+                <td colSpan={10} className="ui-list__skeleton-cell salary-page__skeleton-cell">
                   <SkeletonTable rows={6} cols={3} />
                 </td>
               </tr>
             ) : items.length === 0 ? (
-              <tr><td colSpan={10} className="salary-page__empty-cell"><EmptyState compact tableCell message="Нет данных за период" /></td></tr>
+              <tr><td colSpan={10} className="ui-list__empty-cell salary-page__empty-cell"><EmptyState compact tableCell message="Нет данных за период" /></td></tr>
             ) : items.map((row, index) => {
               const trainerId = row.trainerId ?? row.trainer_id ?? row.id ?? index;
               const income = Number.isFinite(Number(pickNumber(row.income, row.revenue, row.totalIncome, row.total_income, row.clientIncome, row.client_income, row.amount, row.sum, row.total) ?? 0))

@@ -185,28 +185,7 @@
   background: var(--color-surface-secondary);
 }
 
-.extend-modal__btn {
-  padding: 9px 18px;
-  border-radius: var(--input-radius, 6px);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s, opacity 0.15s;
-
-  &--cancel {
-    background: transparent;
-    border: 1px solid var(--color-border);
-    color: var(--color-text-muted);
-    &:hover { color: var(--color-text); border-color: var(--color-border-strong); }
-  }
-
-  &--submit {
-    background: var(--color-primary);
-    color: #fff;
-    border: none;
-    &:hover { background: var(--color-primary-hover); }
-  }
-}
+// Кнопки — общие .ui-modal-btn/.ui-modal-btn--primary, см. shared/styles/index.scss.
 
 // ── Мобильный fullscreen ─────────────────────────────────────────────────────
 @include mixins.mobile {

@@ -102,8 +102,8 @@ const ExpenseFormModal = ({ expense, categories = [], onSave, onClose, error, sa
             <textarea value={comment} onChange={(e) => setComment(e.target.value)} className="expense-form-modal__textarea" rows={2} placeholder="—" />
           </label>
           <div className="expense-form-modal__actions">
-            <button type="button" className="expense-form-modal__btn expense-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
-            <SubmitButton loading={saving} className="expense-form-modal__btn expense-form-modal__btn--submit">
+            <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving}>Отмена</button>
+            <SubmitButton loading={saving} className="ui-modal-btn ui-modal-btn--primary">
               Сохранить
             </SubmitButton>
           </div>

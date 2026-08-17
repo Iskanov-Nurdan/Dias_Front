@@ -151,10 +151,10 @@ const AccessModal = ({ employee, currentAccess, onSave, onClose, error, saving }
           </div>
 
           <div className="access-modal__actions">
-            <button type="button" className="access-modal__btn access-modal__btn--cancel" onClick={onClose} disabled={saving}>
+            <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving}>
               Отмена
             </button>
-            <SubmitButton loading={saving} className="access-modal__btn access-modal__btn--submit">
+            <SubmitButton loading={saving} className="ui-modal-btn ui-modal-btn--primary">
               Сохранить
             </SubmitButton>
           </div>

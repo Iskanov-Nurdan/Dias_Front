@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { XCircle, ShoppingBag } from 'lucide-react';
 import { fetchSalesSummary, fetchSales, createSale, cancelSale } from './api';
 import { fetchProducts } from '../warehouse/api';
 import SaleFormModal from './components/SaleFormModal';
@@ -149,37 +150,42 @@ const SalesPage = () => {
         </div>
       </div>
       {salesError && <ErrorState message={salesError} onRetry={fetchSalesSafe} />}
-      <div className="sales-page__table-wrap">
-        <table className="sales-page__table">
+      <div className="ui-list__table-wrap sales-page__table-wrap">
+        <table className="ui-list__table sales-page__table">
           <thead><tr><th>Товар</th><th>Кол-во</th><th>Сумма</th><th>Скидка</th><th>Дата</th><th>Статус</th><th></th></tr></thead>
           <tbody>
             {salesLoading ? (
               <tr>
-                <td colSpan={7} className="sales-page__skeleton-cell">
+                <td colSpan={7} className="ui-list__skeleton-cell sales-page__skeleton-cell">
                   <SkeletonTable rows={6} cols={7} />
                 </td>
               </tr>
             ) : salesItems.length === 0 ? (
-              <tr><td colSpan={7} className="sales-page__empty-cell"><EmptyState compact tableCell message="Нет продаж" /></td></tr>
+              <tr><td colSpan={7} className="ui-list__empty-cell sales-page__empty-cell"><EmptyState compact tableCell message="Нет продаж" /></td></tr>
             ) : salesItems.map((s) => {
                 const isCancelled = s.status === 'cancelled';
                 return (
                 <tr key={s.id} className={isCancelled ? 'sales-page__row--cancelled' : ''}>
-                  <td data-label="Товар"><span className="sales-page__cell-value">{s.productName ?? s.product?.name ?? '—'}</span></td>
-                  <td data-label="Кол-во"><span className="sales-page__cell-value">{s.qty ?? s.quantity ?? 0}</span></td>
-                  <td data-label="Сумма"><span className="sales-page__cell-value">{formatMoney(s.total)}</span></td>
-                  <td data-label="Скидка"><span className="sales-page__cell-value">{s.discountPercent != null ? `${s.discountPercent}%` : (s.discount != null ? `${s.discount}%` : '—')}</span></td>
-                  <td data-label="Дата"><span className="sales-page__cell-value">{s.date ? new Date(s.date).toLocaleDateString() : '—'}</span></td>
-                  <td data-label="Статус"><span className="sales-page__cell-value"><Badge variant={isCancelled ? 'danger' : 'success'}>{isCancelled ? 'Отменена' : 'Активна'}</Badge></span></td>
+                  <td data-label="Товар">
+                    <div className="ui-list__name-cell">
+                      <span className="ui-avatar ui-avatar--icon"><ShoppingBag size={16} /></span>
+                      <span className="ui-list__muted">{s.productName ?? s.product?.name ?? '—'}</span>
+                    </div>
+                  </td>
+                  <td data-label="Кол-во"><span className="ui-list__muted">{s.qty ?? s.quantity ?? 0}</span></td>
+                  <td data-label="Сумма"><span className="ui-list__muted">{formatMoney(s.total)}</span></td>
+                  <td data-label="Скидка"><span className="ui-list__muted">{s.discountPercent != null ? `${s.discountPercent}%` : (s.discount != null ? `${s.discount}%` : '—')}</span></td>
+                  <td data-label="Дата"><span className="ui-list__muted">{s.date ? new Date(s.date).toLocaleDateString() : '—'}</span></td>
+                  <td data-label="Статус"><span className="ui-list__muted"><Badge variant={isCancelled ? 'danger' : 'success'}>{isCancelled ? 'Отменена' : 'Активна'}</Badge></span></td>
                   <td className="sales-page__actions-cell" data-label="">
                     {!isCancelled && (
                       <button
                         type="button"
-                        className="sales-page__cancel-btn"
+                        className="ui-list-btn ui-list-btn--danger"
                         onClick={() => setConfirmCancelSale(s)}
                         disabled={cancellingId === s.id}
                       >
-                        {cancellingId === s.id ? '…' : 'Отменить'}
+                        {cancellingId === s.id ? '…' : (<><XCircle size={13} /> Отменить</>)}
                       </button>
                     )}
                   </td>

@@ -115,8 +115,8 @@ const SaleFormModal = ({ products = [], onSave, onClose, error, saving }) => {
             </label>
           </section>
           <div className="sale-form-modal__actions">
-            <button type="button" className="sale-form-modal__btn sale-form-modal__btn--cancel" onClick={onClose} disabled={saving}>Отмена</button>
-            <SubmitButton loading={saving} loadingLabel="Оформление…" className="sale-form-modal__btn sale-form-modal__btn--submit">
+            <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving}>Отмена</button>
+            <SubmitButton loading={saving} loadingLabel="Оформление…" className="ui-modal-btn ui-modal-btn--primary">
               Оформить
             </SubmitButton>
           </div>

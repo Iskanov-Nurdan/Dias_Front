@@ -37,10 +37,15 @@
 }
 
 .client-form-modal__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
   font-size: var(--font-section-title);
   font-weight: var(--font-weight-section-title);
   color: var(--color-text);
+
+  svg { flex-shrink: 0; color: var(--color-primary); }
 }
 
 .client-form-modal__close {
@@ -147,13 +152,18 @@
   display: flex;
   list-style: none;
   cursor: pointer;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary);
   padding: var(--space-3) 0;
   margin: 0 0 var(--space-2);
-  border-bottom: 1px dashed var(--color-border);
+  border-bottom: 1px solid var(--color-border);
   user-select: none;
+  transition: color var(--transition-fast);
+
+  &:hover { color: var(--color-text); }
 
   &::-webkit-details-marker {
     display: none;
@@ -195,19 +205,27 @@
 }
 
 .client-form-modal__section {
-  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 16px 18px;
   background: var(--color-surface-secondary);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
 }
 
 .client-form-modal__section-title {
-  margin: 0 0 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--color-text-muted);
+
+  svg { flex-shrink: 0; opacity: 0.8; }
 }
 
 .client-form-modal__row {
@@ -332,10 +350,11 @@ textarea.client-form-modal__input {
 
 .client-form-modal__field-hint {
   display: block;
-  margin-top: 4px;
+  margin-top: 6px;
   font-size: 11px;
   line-height: 1.35;
   color: var(--color-text-muted);
+  opacity: 0.85;
 }
 
 .client-form-modal__optional {
@@ -346,10 +365,11 @@ textarea.client-form-modal__input {
 
 .client-form-modal__installments {
   margin: 4px 0 16px;
-  padding: 14px 14px 16px;
+  padding: 12px 14px 14px;
   background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border: none;
+  border-left: 3px solid var(--color-border-strong);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
 .client-form-modal__installments-header {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { XCircle, ShoppingBag } from 'lucide-react';
+import { XCircle, ShoppingBag, Plus } from 'lucide-react';
 import { fetchSalesSummary, fetchSales, createSale, cancelSale } from './api';
 import { fetchProducts } from '../warehouse/api';
 import SaleFormModal from './components/SaleFormModal';
@@ -134,7 +134,7 @@ const SalesPage = () => {
             <input type="date" value={queryState.dateTo} onChange={(e) => setQueryState((q) => ({ ...q, dateTo: e.target.value, page: 1 }))} className="sales-page__input" />
           </label>
         </div>
-        <button type="button" className="sales-page__add filter-bar__action" onClick={() => setFormSaleOpen(true)}>Новая продажа</button>
+        <button type="button" className="sales-page__add filter-bar__action" onClick={() => setFormSaleOpen(true)}><Plus size={16} /> Новая продажа</button>
       </FilterBar>
       {summaryError && <ErrorState message={summaryError} onRetry={fetchSummarySafe} />}
       <div className="sales-page__stats-row">

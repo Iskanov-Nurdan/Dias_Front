@@ -14,7 +14,7 @@ import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { useDebounce } from '../../shared/hooks/useDebounce';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
 import { SEARCH_DEBOUNCE_MS } from '../../shared/constants/common';
-import { Trophy, UserCheck, Search } from 'lucide-react';
+import { Trophy, UserCheck, Search, Plus } from 'lucide-react';
 import { Select, Pagination, FilterBar, FiltersModal } from '../../shared/ui';
 import { SportsList, TrainersList, SportFormModal, TrainerFormModal, TrainerScheduleModal } from './components';
 import { WEEKDAYS } from './scheduleConstants';
@@ -192,7 +192,7 @@ const SportsTrainersPage = () => {
               />
             </div>
             <button type="button" className="sports-trainers-page__add filter-bar__action" onClick={() => setFormSport({})}>
-              Добавить
+              <Plus size={16} /> Добавить
             </button>
           </FilterBar>
           <SportsList
@@ -264,11 +264,11 @@ const SportsTrainersPage = () => {
             </label>
           </div>
           <button type="button" className="sports-trainers-page__add sports-trainers-page__add--desktop filter-bar__action" onClick={() => setFormTrainer({})}>
-            Добавить
+            <Plus size={16} /> Добавить
           </button>
           <div className="sports-trainers-page__toolbar-mobile">
             <button type="button" className="sports-trainers-page__filters-btn" onClick={() => setTrainerFiltersOpen(true)}>Фильтры</button>
-            <button type="button" className="sports-trainers-page__add filter-bar__action" onClick={() => setFormTrainer({})}>Добавить</button>
+            <button type="button" className="sports-trainers-page__add filter-bar__action" onClick={() => setFormTrainer({})}><Plus size={16} /> Добавить</button>
           </div>
         </FilterBar>
           <FiltersModal

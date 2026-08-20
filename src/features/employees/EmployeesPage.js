@@ -14,7 +14,7 @@ import {
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
 import { useDebounce } from '../../shared/hooks/useDebounce';
-import { Users, ShieldCheck, Search } from 'lucide-react';
+import { Users, ShieldCheck, Search, Plus } from 'lucide-react';
 import { Select, Pagination, FilterBar, FiltersModal } from '../../shared/ui';
 import { EmployeesList, RolesList, EmployeeFormModal, RoleFormModal, AccessModal } from './components';
 import './EmployeesPage.scss';
@@ -271,11 +271,11 @@ const EmployeesPage = () => {
               />
             </div>
             <button type="button" className="employees-page__add employees-page__add--desktop filter-bar__action" onClick={() => setFormEmployee({})}>
-              Добавить
+              <Plus size={16} /> Добавить
             </button>
             <div className="employees-page__toolbar-mobile">
               <button type="button" className="employees-page__filters-btn" onClick={() => setEmployeeFiltersOpen(true)}>Фильтры</button>
-              <button type="button" className="employees-page__add filter-bar__action" onClick={() => setFormEmployee({})}>Добавить</button>
+              <button type="button" className="employees-page__add filter-bar__action" onClick={() => setFormEmployee({})}><Plus size={16} /> Добавить</button>
             </div>
           </FilterBar>
           <FiltersModal
@@ -345,7 +345,7 @@ const EmployeesPage = () => {
               />
             </div>
             <button type="button" className="employees-page__add filter-bar__action" onClick={() => setFormRole({})}>
-              Добавить роль
+              <Plus size={16} /> Добавить роль
             </button>
           </FilterBar>
           <RolesList

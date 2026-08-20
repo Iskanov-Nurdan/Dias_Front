@@ -8,7 +8,7 @@ import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { SEARCH_DEBOUNCE_MS } from '../../shared/constants/common';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
 import { LeadFormModal, LeadCardModal, FunnelBoard } from './components';
-import { Inbox, Link2, Filter, Check, X as XIcon, Pencil, Trash2, Search } from 'lucide-react';
+import { Inbox, Link2, Filter, Check, X as XIcon, Pencil, Trash2, Search, Plus } from 'lucide-react';
 import { ErrorState, EmptyState, ConfirmModal, Pagination, FilterBar, SkeletonTable, Spinner } from '../../shared/ui';
 import TaplinkLeadsTab from './TaplinkLeadsTab';
 import './LeadsPage.scss';
@@ -302,7 +302,7 @@ const LeadsPage = () => {
               />
             </div>
             <button type="button" className="leads-page__add filter-bar__action" onClick={() => (isAdmin ? setFormLead({}) : showAccessDenied())}>
-              Новая заявка
+              <Plus size={16} /> Новая заявка
             </button>
           </FilterBar>
           {error && <ErrorState message={error} onRetry={fetchSafe} />}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { ImagePlus, Plus, Trash2, X } from 'lucide-react';
+import { ImagePlus, Plus, Trash2, X, UserPlus, User, Ticket, CreditCard, Camera, SlidersHorizontal, MessageSquare, Check } from 'lucide-react';
 import { useToast } from '../../../app/providers/ToastProvider';
 import { Select, SubmitButton, ConfirmModal, PhoneInput, MoneyInput } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
@@ -684,7 +684,10 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
     >
       <div ref={panelRef} className={`client-form-modal${fullscreen ? ' client-form-modal--fullscreen' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className="client-form-modal__header">
-          <h2 id="client-form-modal-title" className="client-form-modal__title">{client?.id ? 'Редактировать клиента' : 'Добавить клиента'}</h2>
+          <h2 id="client-form-modal-title" className="client-form-modal__title">
+            {client?.id ? <User size={18} /> : <UserPlus size={18} />}
+            {client?.id ? 'Редактировать клиента' : 'Добавить клиента'}
+          </h2>
           <button type="button" className="client-form-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
         </div>
         {error && (() => {
@@ -709,7 +712,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
         <form onSubmit={handleSubmit} className="client-form-modal__form">
           <div className="client-form-modal__scroll">
           <div className="client-form-modal__section">
-            <h3 className="client-form-modal__section-title">Личные данные</h3>
+            <h3 className="client-form-modal__section-title"><User size={14} /> Личные данные</h3>
             <div className="client-form-modal__row">
               <label className="client-form-modal__label">
                 <span className="client-form-modal__label-text">ФИО <span className="form-label-required" aria-hidden="true">*</span></span>
@@ -731,7 +734,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
             </div>
           </div>
           <div className="client-form-modal__section">
-            <h3 className="client-form-modal__section-title">Абонемент</h3>
+            <h3 className="client-form-modal__section-title"><Ticket size={14} /> Абонемент</h3>
             <div className="client-form-modal__row">
               <label className="client-form-modal__label">
                 <span className="client-form-modal__label-text">Вид спорта</span>
@@ -793,7 +796,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
             </div>
           </div>
           <div className="client-form-modal__section">
-            <h3 className="client-form-modal__section-title">Оплата</h3>
+            <h3 className="client-form-modal__section-title"><CreditCard size={14} /> Оплата</h3>
             <div className="client-form-modal__row">
               <label className="client-form-modal__label client-form-modal__label--full">
                 <span className="client-form-modal__label-text">
@@ -979,7 +982,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
           </div>
 
           <div className="client-form-modal__section">
-            <h3 className="client-form-modal__section-title">Фото для сверки</h3>
+            <h3 className="client-form-modal__section-title"><Camera size={14} /> Фото для сверки</h3>
             <div className="client-form-modal__row client-form-modal__row--photos-toolbar">
               <label className="client-form-modal__label">
                 <span className="client-form-modal__label-text">Тип для новых фото</span>
@@ -1084,7 +1087,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
             <summary className="client-form-modal__more-summary">Дополнительно</summary>
             <div className="client-form-modal__more-inner">
               <div className="client-form-modal__section client-form-modal__section--flush">
-                <h3 className="client-form-modal__section-title">Поля</h3>
+                <h3 className="client-form-modal__section-title"><SlidersHorizontal size={14} /> Поля</h3>
                 <div className="client-form-modal__row">
                   <label className="client-form-modal__label">
                     <span className="client-form-modal__label-text">Пол</span>
@@ -1119,7 +1122,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                 )}
               </div>
               <div className="client-form-modal__section client-form-modal__section--flush">
-                <h3 className="client-form-modal__section-title">Комментарий</h3>
+                <h3 className="client-form-modal__section-title"><MessageSquare size={14} /> Комментарий</h3>
                 <div className="client-form-modal__label client-form-modal__label--full">
                   {commentAuto.length > 0 && (
                     <div className="client-form-modal__comment-auto" aria-readonly="true">
@@ -1135,9 +1138,9 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
           </details>
           </div>
           <div className="client-form-modal__actions">
-            <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving}>Отмена</button>
+            <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving}><X size={15} /> Отмена</button>
             <SubmitButton loading={saving} className="ui-modal-btn ui-modal-btn--primary">
-              Сохранить
+              <Check size={15} /> Сохранить
             </SubmitButton>
           </div>
         </form>

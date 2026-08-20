@@ -755,7 +755,7 @@
   &__filter-drop-panel {
     position: absolute;
     top: calc(100% + 6px);
-    left: 0;
+    right: 0;
     z-index: 200;
     width: min(560px, calc(100vw - 28px));
     background: var(--color-surface);
@@ -792,42 +792,48 @@
     gap: 5px;
 
     > span {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
       font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.4px;
       color: var(--color-text-muted);
+
+      svg { flex-shrink: 0; opacity: 0.8; }
     }
   }
 
   &__filter-drop-footer {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     padding-top: 12px;
     border-top: 1px solid var(--color-border);
   }
 
   &__filter-drop-reset {
+    display: inline-flex;
+    align-items: center;
+    height: 34px;
+    padding: 0 14px;
+    border-radius: var(--radius-sm);
     background: transparent;
-    border: none;
-    color: var(--color-text-muted);
-    font-size: 13px;
-    cursor: pointer;
-    padding: 0;
-    &:hover { color: var(--color-danger); }
-  }
-
-  &__filter-drop-apply {
-    padding: 8px 20px;
-    border-radius: var(--input-radius);
-    background: var(--color-primary);
-    border: none;
-    color: #fff;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    &:hover { background: var(--color-primary-hover); }
+    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+    &:hover { background: var(--color-danger-soft); border-color: var(--color-danger); color: var(--color-danger); }
+  }
+
+  &__filter-drop-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 190;
+    background: rgba(0, 0, 0, 0.32);
   }
 
   &__toolbar-mobile {
@@ -896,8 +902,13 @@
     color: var(--color-text-muted);
 
     span {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
       font-weight: 400;
       color: var(--color-text);
+
+      svg { flex-shrink: 0; opacity: 0.8; }
     }
   }
 

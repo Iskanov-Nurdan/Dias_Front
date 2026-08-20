@@ -18,7 +18,7 @@ import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { MONTHS, STATS_YEARS } from '../../shared/constants/common';
 import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiError';
 import { prepareClientSavePayload } from './lib/prepareClientSavePayload';
-import { UserX, BarChart2, CalendarDays, Search } from 'lucide-react';
+import { UserX, BarChart2, CalendarDays, Search, Plus } from 'lucide-react';
 import { Select, ConfirmModal, Pagination, FilterBar, EmptyState, Spinner } from '../../shared/ui';
 import {
   ClientsList,
@@ -402,7 +402,7 @@ const ClientsReportsPage = () => {
                 className="clients-page__add clients-page__add--desktop filter-bar__action clients-page__not-renewed-add"
                 onClick={() => setFormClient({})}
               >
-                Добавить клиента
+                <Plus size={16} /> Добавить клиента
               </button>
             </div>
           </FilterBar>

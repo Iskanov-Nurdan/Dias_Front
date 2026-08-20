@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Tag, ChevronRight, ArrowLeft, Check, Pencil, Trash2, Receipt, Search } from 'lucide-react';
+import { Tag, ChevronRight, ArrowLeft, Check, Pencil, Trash2, Receipt, Search, Plus } from 'lucide-react';
 import { fetchExpenseCategories, fetchExpenses, saveExpense, createExpenseCategory, updateExpenseCategory, deleteExpenseCategory, createExpense, updateExpense, deleteExpense } from './api';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
@@ -170,7 +170,7 @@ const ExpensesPage = () => {
               <Search size={15} className="ui-search__icon" />
               <input type="text" placeholder="Поиск" value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="ui-search__input" />
             </div>
-            <button type="button" className="expenses-page__add filter-bar__action" onClick={() => setFormCategory({})}>Добавить</button>
+            <button type="button" className="expenses-page__add filter-bar__action" onClick={() => setFormCategory({})}><Plus size={16} /> Добавить</button>
           </FilterBar>
           {categoriesError && <ErrorState message={categoriesError} onRetry={fetchCategoriesSafe} />}
           <div className="ui-list__table-wrap expenses-page__table-wrap">
@@ -227,7 +227,7 @@ const ExpensesPage = () => {
               <Search size={15} className="ui-search__icon" />
               <input type="text" placeholder="Поиск" value={expensesSearch} onChange={(e) => setExpensesSearch(e.target.value)} className="ui-search__input" />
             </div>
-            <button type="button" className="expenses-page__add filter-bar__action" onClick={() => setFormExpense({ categoryId: selectedCategoryId })}>Добавить расход</button>
+            <button type="button" className="expenses-page__add filter-bar__action" onClick={() => setFormExpense({ categoryId: selectedCategoryId })}><Plus size={16} /> Добавить расход</button>
           </FilterBar>
           <h3 className="expenses-page__section">{selectedCategory?.name ?? 'Расходы по категории'}</h3>
           {expensesError && <ErrorState message={expensesError} onRetry={fetchExpensesSafe} />}

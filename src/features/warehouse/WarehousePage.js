@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Pencil, PackagePlus, Trash2, Package, Tag, Search } from 'lucide-react';
+import { Pencil, PackagePlus, Trash2, Package, Tag, Search, Plus } from 'lucide-react';
 import {
   fetchCategories,
   fetchProducts,
@@ -257,7 +257,7 @@ const WarehousePage = () => {
                 placeholder="Категории"
                 className="warehouse-page__select-wrap"
               />
-              <button type="button" className="warehouse-page__add filter-bar__action" onClick={() => setFormProduct({})}>Добавить товар</button>
+              <button type="button" className="warehouse-page__add filter-bar__action" onClick={() => setFormProduct({})}><Plus size={16} /> Добавить товар</button>
             </div>
             <div className="warehouse-page__toolbar-mobile">
               <div className="ui-search warehouse-page__search warehouse-page__search--mobile">
@@ -266,7 +266,7 @@ const WarehousePage = () => {
               </div>
               <div className="warehouse-page__toolbar-mobile-actions">
                 <button type="button" className="warehouse-page__filters-btn" onClick={() => setFiltersModalOpen(true)}>Фильтры</button>
-                <button type="button" className="warehouse-page__add warehouse-page__add--mobile filter-bar__action" onClick={() => setFormProduct({})}>Добавить товар</button>
+                <button type="button" className="warehouse-page__add warehouse-page__add--mobile filter-bar__action" onClick={() => setFormProduct({})}><Plus size={16} /> Добавить товар</button>
               </div>
             </div>
           </FilterBar>
@@ -359,14 +359,14 @@ const WarehousePage = () => {
                 <Search size={15} className="ui-search__icon" />
                 <input type="text" placeholder="Поиск" value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="ui-search__input" />
               </div>
-              <button type="button" className="warehouse-page__add filter-bar__action" onClick={() => setFormCategory({})}>Добавить категорию</button>
+              <button type="button" className="warehouse-page__add filter-bar__action" onClick={() => setFormCategory({})}><Plus size={16} /> Добавить категорию</button>
             </div>
             <div className="warehouse-page__toolbar-mobile">
               <div className="ui-search warehouse-page__search warehouse-page__search--mobile">
                 <Search size={15} className="ui-search__icon" />
                 <input type="text" placeholder="Поиск" value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} className="ui-search__input" />
               </div>
-              <button type="button" className="warehouse-page__add warehouse-page__add--mobile filter-bar__action" onClick={() => setFormCategory({})}>Добавить категорию</button>
+              <button type="button" className="warehouse-page__add warehouse-page__add--mobile filter-bar__action" onClick={() => setFormCategory({})}><Plus size={16} /> Добавить категорию</button>
             </div>
           </FilterBar>
           {categoriesError && <ErrorState message={categoriesError} onRetry={fetchCategoriesSafe} />}

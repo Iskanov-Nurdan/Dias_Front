@@ -7,7 +7,7 @@ import { SubmitButton } from '../../../shared/ui';
 import './AccessModal.scss';
 
 const ACCESS_MODAL_GROUPS = [
-  { label: 'Аналитика',           ids: ['analytics', 'reports'] },
+  { label: 'Аналитика',           ids: ['analytics', 'reports', 'activity-log'] },
   { label: 'Персонал',            ids: ['employees'] },
   { label: 'Спорт, клиенты и лиды', ids: ['clients', 'sports-trainers', 'leads'] },
   { label: 'Финансы',             ids: ['expenses', 'salary'] },

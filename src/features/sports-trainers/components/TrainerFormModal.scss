@@ -1,173 +1,66 @@
-@use '../../../shared/styles/mixins';
+// Базовые стили модалки — общие .enm* из shared/ui/EntityNameModal.scss.
+// Здесь только то, что специфично для тренера: чуть шире модалка + чекбоксы видов спорта.
 
-.trainer-form-modal__backdrop {
-  @include mixins.modal-backdrop;
-}
-
-.trainer-form-modal {
-  background: var(--color-bg-card);
-  border-radius: 12px;
-  width: 100%;
+.trainer-form-modal.enm {
   max-width: 460px;
   max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--color-border);
-  overflow: hidden;
 
-  &__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--color-border);
-    flex-shrink: 0;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--color-text);
-  }
-
-  &__close {
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
-    border: none;
-    background: transparent;
-    color: var(--color-text-muted);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: background 0.15s, color 0.15s;
-    &:hover { background: var(--color-surface-secondary); color: var(--color-text); }
-  }
-
-  &__error {
-    margin: 10px 20px 0;
-    padding: 8px 12px;
-    background: rgba(220, 38, 38, 0.09);
-    border: 1px solid rgba(220, 38, 38, 0.3);
-    border-radius: 7px;
-    color: #dc2626;
-    font-size: 13px;
-    flex-shrink: 0;
-    [data-theme='dark'] & { color: #f87171; }
-  }
-
-  &__form {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
+  .enm__form {
     overflow-y: auto;
-    @include mixins.scrollbar;
+    min-height: 0;
+  }
+}
+
+.trainer-form-modal__checkboxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 7px;
+}
+
+.trainer-form-modal__checkbox {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--input-bg);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  transition: border-color 0.15s, background 0.15s;
+  user-select: none;
+
+  input[type="checkbox"] {
+    position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;
   }
 
-  &__form-body {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 14px 20px;
+  &::before {
+    content: '';
+    flex-shrink: 0;
+    width: 15px;
+    height: 15px;
+    border-radius: 4px;
+    border: 1.5px solid var(--color-border);
+    background: var(--color-bg-card);
+    transition: all 0.15s;
   }
 
-  &__label {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  &__label-caption {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--color-text-secondary);
-    .form-label-required { color: var(--color-primary); margin-left: 1px; }
-  }
-
-  &__input {
-    width: 100%;
-    height: 38px !important;
-    min-height: 38px !important;
-    padding: 0 11px;
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    background: var(--input-bg);
-    color: var(--color-text);
-    font-size: 14px;
-    transition: border-color 0.15s, box-shadow 0.15s;
-    &::placeholder { color: var(--color-text-muted); }
-    &:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(239,68,68,0.1); }
-  }
-
-  // ── Custom checkboxes ────────────────────────────────────
-  &__checkboxes {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 7px;
-  }
-
-  &__checkbox {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 11px;
-    border-radius: 8px;
-    border: 1px solid var(--color-border);
-    background: var(--input-bg);
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--color-text);
-    transition: border-color 0.15s, background 0.15s;
-    user-select: none;
-
-    input[type="checkbox"] {
-      position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;
-    }
+  &:has(input:checked) {
+    border-color: var(--color-primary);
+    background: rgba(239, 68, 68, 0.06);
 
     &::before {
-      content: '';
-      flex-shrink: 0;
-      width: 15px;
-      height: 15px;
-      border-radius: 4px;
-      border: 1.5px solid var(--color-border);
-      background: var(--color-bg-card);
-      transition: all 0.15s;
-    }
-
-    &:has(input:checked) {
+      background: var(--color-primary);
       border-color: var(--color-primary);
-      background: rgba(239, 68, 68, 0.06);
-
-      &::before {
-        background: var(--color-primary);
-        border-color: var(--color-primary);
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 8'%3E%3Cpath d='M1 4l3 3 5-6' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: center;
-        background-size: 9px 7px;
-      }
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 8'%3E%3Cpath d='M1 4l3 3 5-6' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 9px 7px;
     }
-
-    &:hover:not(:has(input:checked)) { border-color: var(--color-text-muted); }
   }
 
-  // ── Actions ─────────────────────────────────────────────
-  &__actions {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-    align-items: center;
-    padding: 12px 20px;
-    border-top: 1px solid var(--color-border);
-    flex-shrink: 0;
-  }
-
-  // Кнопки — общие .ui-modal-btn/.ui-modal-btn--primary, см. shared/styles/index.scss.
+  &:hover:not(:has(input:checked)) { border-color: var(--color-text-muted); }
 }

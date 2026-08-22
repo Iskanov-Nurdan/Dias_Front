@@ -304,6 +304,7 @@ textarea {
   &--danger  { background: var(--color-danger-soft); color: var(--color-danger); }
   &--info    { background: var(--color-info-soft); color: var(--color-info); }
   &--primary { background: var(--color-primary-soft); color: var(--color-primary); }
+  &--warning { background: var(--color-warning-soft); color: var(--color-warning); }
 }
 
 .ui-list-btn {
@@ -354,6 +355,12 @@ textarea {
     border-color: var(--color-danger);
     color: var(--color-danger);
     &:hover { background: var(--color-danger-soft); }
+  }
+
+  &--warning {
+    border-color: var(--color-warning);
+    color: var(--color-warning);
+    &:hover { background: var(--color-warning-soft); }
   }
 
   &--icon-only {
@@ -481,6 +488,12 @@ textarea {
     border-color: var(--color-danger);
     color: var(--color-danger);
     &:hover { background: var(--color-danger-soft); }
+  }
+
+  &--warning {
+    border-color: var(--color-warning);
+    color: var(--color-warning);
+    &:hover { background: var(--color-warning-soft); }
   }
 
   &:disabled {

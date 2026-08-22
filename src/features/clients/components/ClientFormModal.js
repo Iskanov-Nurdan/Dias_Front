@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { ImagePlus, Plus, Trash2, X, UserPlus, User, Ticket, CreditCard, Camera, SlidersHorizontal, MessageSquare, Check } from 'lucide-react';
+import { ImagePlus, Plus, Trash2, X, UserPlus, User, Ticket, CreditCard, Camera, SlidersHorizontal, MessageSquare, Check, Dumbbell, UserCheck, Clock, Tag } from 'lucide-react';
 import { useToast } from '../../../app/providers/ToastProvider';
 import { Select, SubmitButton, ConfirmModal, PhoneInput, MoneyInput } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
@@ -738,7 +738,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
             <div className="client-form-modal__row">
               <label className="client-form-modal__label">
                 <span className="client-form-modal__label-text">Вид спорта</span>
-              <Select value={String(sportId)} onChange={(v) => { setSportId(v); setTrainerId(''); setTrainingSlotKey(''); }} options={[{ value: '', label: '—' }, ...(sports || []).map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="—" className="client-form-modal__select" />
+              <Select value={String(sportId)} onChange={(v) => { setSportId(v); setTrainerId(''); setTrainingSlotKey(''); }} options={[{ value: '', label: '—' }, ...(sports || []).map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="—" className="client-form-modal__select" icon={<Dumbbell size={15} />} />
             </label>
             <label className="client-form-modal__label">
               <span className="client-form-modal__label-text">Тренер</span>
@@ -751,6 +751,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                 options={[{ value: '', label: '—' }, ...(trainersList || []).map((t) => ({ value: String(t.id), label: t.fio || '' }))]}
                 placeholder="—"
                 className="client-form-modal__select"
+                icon={<UserCheck size={15} />}
               />
             </label>
             </div>
@@ -767,6 +768,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                   placeholder={scheduleSlotsLoading ? 'Загрузка…' : '—'}
                   disabled={!trainerId || scheduleSlotsLoading}
                   className="client-form-modal__select"
+                  icon={<Clock size={15} />}
                 />
                 {!compactHints && (
                   <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
@@ -791,6 +793,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                     { value: 'one-time', label: 'Разовый' },
                   ]}
                   className="client-form-modal__select"
+                  icon={<Tag size={15} />}
                 />
               </label>
             </div>
@@ -984,33 +987,36 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
           <div className="client-form-modal__section">
             <h3 className="client-form-modal__section-title"><Camera size={14} /> Фото для сверки</h3>
             <div className="client-form-modal__row client-form-modal__row--photos-toolbar">
-              <label className="client-form-modal__label">
-                <span className="client-form-modal__label-text">Тип для новых фото</span>
+              <label className={`client-form-modal__label${client?.id ? '' : ' client-form-modal__label--full'}`}>
+                <span className="client-form-modal__label-text">Тип для новых фото <span className="form-label-required" aria-hidden="true">*</span></span>
                 <Select
                   value={defaultPhotoKind}
                   onChange={setDefaultPhotoKind}
                   options={CLIENT_PHOTO_KIND_OPTIONS}
                   className="client-form-modal__select"
+                  icon={<Camera size={15} />}
                 />
               </label>
-              <div className="client-form-modal__photos-add-wrap">
-                <input
-                  ref={photoInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="client-form-modal__photos-file-input"
-                  onChange={handlePhotoFilesChange}
-                />
-                <button
-                  type="button"
-                  className="client-form-modal__photos-add-btn"
-                  onClick={() => photoInputRef.current?.click()}
-                >
-                  <ImagePlus size={18} strokeWidth={1.75} aria-hidden />
-                  Добавить фото
-                </button>
-              </div>
+              {client?.id && (
+                <div className="client-form-modal__photos-add-wrap">
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="client-form-modal__photos-file-input"
+                    onChange={handlePhotoFilesChange}
+                  />
+                  <button
+                    type="button"
+                    className="client-form-modal__photos-add-btn"
+                    onClick={() => photoInputRef.current?.click()}
+                  >
+                    <ImagePlus size={18} strokeWidth={1.75} aria-hidden />
+                    Добавить фото
+                  </button>
+                </div>
+              )}
             </div>
 
             {client?.id ? (
@@ -1063,6 +1069,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                         onChange={(v) => updatePendingPhotoKind(row._key, v)}
                         options={CLIENT_PHOTO_KIND_OPTIONS}
                         className="client-form-modal__select client-form-modal__photos-pending-kind"
+                        icon={<Camera size={15} />}
                       />
                       <button
                         type="button"
@@ -1101,6 +1108,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                       ]}
                       placeholder="—"
                       className="client-form-modal__select"
+                      icon={<User size={15} />}
                     />
                   </label>
                   <label className="client-form-modal__label">

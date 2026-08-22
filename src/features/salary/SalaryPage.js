@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, CalendarDays } from 'lucide-react';
 import { fetchSalary, saveSalary } from './api';
 import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
@@ -118,6 +118,7 @@ const SalaryPage = () => {
             options={MONTHS.slice(1).map((m, i) => ({ value: String(i + 1), label: m }))}
             placeholder="Месяц"
             className="salary-page__month-select"
+            icon={<CalendarDays size={15} />}
           />
         </div>
         <div className="salary-page__filter-item">

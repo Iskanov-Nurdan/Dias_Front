@@ -79,6 +79,7 @@ const buildClientsListParams = (queryState) => {
   if (queryState?.trainerId) params.trainerId = queryState.trainerId;
   if (queryState?.paid !== undefined && queryState?.paid !== '') params.paid = queryState.paid;
   if (queryState?.clientType) params.clientType = queryState.clientType;
+  if (queryState?.hasWarnings) params.hasWarnings = true;
 
   const y = queryState?.year;
   const m = queryState?.month;
@@ -114,6 +115,18 @@ const buildClientsListParams = (queryState) => {
 export const fetchClients = async (queryState, signal) => {
   const params = buildClientsListParams(queryState);
   const { data } = await apiClient.get('/clients/', { params, ...withSignal({}, signal) });
+  return data;
+};
+
+/** Поставить клиенту предупреждение за неоплату (+1, максимум 3; бэкенд сам валидирует условия). */
+export const addClientWarning = async (clientId, signal) => {
+  const { data } = await apiClient.post(`/clients/${clientId}/warnings/`, {}, withSignal({}, signal));
+  return data;
+};
+
+/** Сбросить предупреждения клиента в 0. */
+export const resetClientWarning = async (clientId, signal) => {
+  const { data } = await apiClient.delete(`/clients/${clientId}/warnings/`, withSignal({}, signal));
   return data;
 };
 

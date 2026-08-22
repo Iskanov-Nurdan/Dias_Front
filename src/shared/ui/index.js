@@ -19,3 +19,4 @@ export { default as Skeleton } from './Skeleton';
 export { SkeletonTable } from './Skeleton';
 export { default as Pagination } from './Pagination';
 export { default as SubmitButton } from './SubmitButton';
+export { default as EntityNameModal } from './EntityNameModal';

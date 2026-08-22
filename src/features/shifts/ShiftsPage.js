@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Clock, Plus, Banknote, CreditCard, TrendingUp, TrendingDown, Coins, ImagePlus, X as XIcon, Camera, FileText, Filter, Pencil, History } from 'lucide-react';
+import { Clock, Plus, Banknote, CreditCard, TrendingUp, TrendingDown, Coins, ImagePlus, X as XIcon, Camera, FileText, Filter, Pencil, History, Calendar, CalendarDays, CalendarClock } from 'lucide-react';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { fetchShifts, closeShift, updateShift, fetchPhotoReports, addPhotoReport } from './api';
 import { Select, Spinner, EmptyState, ErrorState } from '../../shared/ui';
@@ -59,6 +59,7 @@ const FiltersBar = ({ year, month, day, onYear, onMonth, onDay, onReset, default
         options={YEAR_OPTIONS}
         placeholder="Год"
         className="shifts-filters__select-wrap"
+        icon={<Calendar size={15} />}
       />
 
       <Select
@@ -67,6 +68,7 @@ const FiltersBar = ({ year, month, day, onYear, onMonth, onDay, onReset, default
         options={MONTH_OPTIONS}
         placeholder="Месяц"
         className="shifts-filters__select-wrap"
+        icon={<CalendarDays size={15} />}
       />
 
       <Select
@@ -75,6 +77,7 @@ const FiltersBar = ({ year, month, day, onYear, onMonth, onDay, onReset, default
         options={DAY_OPTIONS}
         placeholder="День"
         className="shifts-filters__select-wrap"
+        icon={<CalendarClock size={15} />}
       />
 
       {!isDefault && (

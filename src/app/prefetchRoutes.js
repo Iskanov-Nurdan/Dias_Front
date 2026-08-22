@@ -7,6 +7,7 @@ const loaders = {
   'sports-trainers': () => import('../features/sports-trainers/SportsTrainersPage'),
   clients: () => import('../features/clients/ClientsPage'),
   reports: () => import('../features/clients/ClientsReportsPage'),
+  'activity-log': () => import('../features/activity/ActivityLogPage'),
   leads: () => import('../features/leads/LeadsPage'),
   expenses: () => import('../features/expenses/ExpensesPage'),
   salary: () => import('../features/salary/SalaryPage'),

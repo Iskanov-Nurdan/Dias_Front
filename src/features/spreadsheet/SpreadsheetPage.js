@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, X, Trash2, Pencil, ArrowLeft, Sigma, Loader } from 'lucide-react';
+import { Plus, X, Trash2, Pencil, ArrowLeft, Sigma, Loader, Calendar, CalendarDays } from 'lucide-react';
 import { useToast } from '../../app/providers/ToastProvider';
 import { ConfirmModal, Select, EmptyState, ErrorState, Spinner } from '../../shared/ui';
 import * as api from './api';
@@ -71,6 +71,7 @@ function CreateModal({ onClose, onCreate, saving }) {
                 onChange={(v) => setYear(Number(v))}
                 options={YEAR_OPTS.map((y) => ({ value: String(y), label: String(y) }))}
                 disabled={saving}
+                icon={<Calendar size={15} />}
               />
             </label>
             <label className="sp-modal__label sp-modal__label--half">
@@ -80,6 +81,7 @@ function CreateModal({ onClose, onCreate, saving }) {
                 onChange={(v) => setMonth(Number(v))}
                 options={MONTHS_RU.map((m, i) => ({ value: String(i + 1), label: m }))}
                 disabled={saving}
+                icon={<CalendarDays size={15} />}
               />
             </label>
           </div>

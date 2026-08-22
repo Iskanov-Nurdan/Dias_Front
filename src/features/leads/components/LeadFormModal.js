@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, MessageSquare } from 'lucide-react';
 import { Select, SubmitButton, PhoneInput } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './LeadFormModal.scss';
@@ -64,6 +64,7 @@ const LeadFormModal = ({ lead, onSave, onClose, error, saving }) => {
               options={CHANNEL_OPTIONS}
               placeholder="—"
               className="lead-form-modal__select"
+              icon={<MessageSquare size={15} />}
             />
           </label>
           <div className="lead-form-modal__actions">

@@ -1,0 +1,175 @@
+@use '../../shared/styles/mixins';
+
+.activity-detail-modal__backdrop { @include mixins.modal-backdrop; }
+
+.activity-detail-modal {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-xl);
+  padding: 0;
+  max-width: 460px;
+  width: 100%;
+  max-height: min(85vh, calc(100dvh - 24px));
+  overflow-y: auto;
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+
+  @include mixins.scrollbar;
+}
+
+.activity-detail-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.activity-detail-modal__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text);
+
+  svg { flex-shrink: 0; color: var(--color-text-muted); }
+}
+
+.activity-detail-modal__close { @include mixins.modal-close-btn; flex-shrink: 0; }
+
+.activity-detail-modal__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 20px;
+  background: var(--color-surface-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.activity-detail-modal__meta-text {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+
+  strong { color: var(--color-text); font-weight: 600; }
+}
+
+.activity-detail-modal__body {
+  padding: 18px 20px;
+}
+
+.activity-detail-modal__section-label {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.activity-detail-modal__text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+// ── Диф изменений ────────────────────────────────────────────────────────────
+.activity-detail-modal__diff {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.activity-detail-modal__diff-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--color-surface-secondary);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+
+  @include mixins.mobile {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+
+.activity-detail-modal__diff-field {
+  font-weight: 600;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.activity-detail-modal__diff-before {
+  color: var(--color-danger);
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+
+.activity-detail-modal__diff-arrow {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+
+  @include mixins.mobile { display: none; }
+}
+
+.activity-detail-modal__diff-after {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+// ── Снимок удалённой записи ──────────────────────────────────────────────────
+.activity-detail-modal__snapshot {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.activity-detail-modal__snapshot-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  font-size: 13px;
+
+  &:not(:last-child) { border-bottom: 1px solid var(--color-border); }
+  &:nth-child(odd) { background: var(--color-surface-secondary); }
+}
+
+.activity-detail-modal__snapshot-field {
+  color: var(--color-text-muted);
+}
+
+.activity-detail-modal__snapshot-value {
+  color: var(--color-text);
+  font-weight: 600;
+  text-align: right;
+
+  &--empty {
+    color: var(--color-text-muted);
+    font-weight: 400;
+  }
+}
+
+// ── Кнопки ──────────────────────────────────────────────────────────────────
+.activity-detail-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 14px 20px 20px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-secondary);
+  flex-shrink: 0;
+}
+
+// Кнопка — общий .ui-modal-btn, см. shared/styles/index.scss.

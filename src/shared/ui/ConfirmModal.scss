@@ -49,11 +49,18 @@
     min-width: 0;
   }
 
+  &__icon {
+    display: flex;
+    justify-content: center;
+    margin: 0 0 var(--space-4);
+  }
+
   &__title {
-    margin: 0 0 12px;
+    margin: 0 0 8px;
     font-size: var(--font-section-title);
     font-weight: var(--font-weight-section-title);
     color: var(--color-text);
+    text-align: center;
   }
 
   &__message {
@@ -61,55 +68,20 @@
     color: var(--color-text-muted);
     font-size: var(--font-text);
     line-height: 1.55;
+    text-align: center;
   }
 
   &__actions {
     display: flex;
     flex-wrap: wrap;
     gap: 12px;
-    justify-content: flex-end;
-  }
+    justify-content: center;
 
-  &__btn {
-    min-height: 40px;
-    height: auto;
-    padding: 10px 16px;
-    border-radius: var(--radius-md);
-    font-size: 14px;
-    font-weight: 600;
-    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
-
-    @include mixins.mobile {
-      min-height: 44px;
-    }
-
-    &--cancel {
-      background: var(--color-surface);
-      border: 1px solid var(--color-border-strong);
-      color: var(--color-text);
-      &:hover {
-        background: var(--color-surface-secondary);
-        border-color: var(--color-primary);
-        color: var(--color-primary);
-      }
-    }
-
-    &--confirm {
-      background: var(--color-primary);
-      color: #fff;
-      border: 1px solid var(--color-primary);
-      &:hover {
-        background: var(--color-primary-hover);
-      }
-    }
-
-    &--danger {
-      background: transparent;
-      border: 1px solid var(--color-danger);
-      color: var(--color-danger);
-      &:hover {
-        background: var(--color-danger-soft);
-      }
+    .ui-modal-btn {
+      flex: 1;
+      min-width: 120px;
     }
   }
+
+  // Кнопки — общие .ui-modal-btn/.ui-modal-btn--primary/--danger, см. shared/styles/index.scss.
 }

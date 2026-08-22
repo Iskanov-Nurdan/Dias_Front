@@ -1,11 +1,11 @@
-@use '../../../shared/styles/mixins';
+@use '../styles/mixins';
 
-.rfm__backdrop {
+.enm__backdrop {
   @include mixins.modal-backdrop;
-  animation: rfm-fade-in 0.18s ease;
+  animation: enm-fade-in 0.18s ease;
 }
 
-.rfm {
+.enm {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 16px;
@@ -15,7 +15,7 @@
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-  animation: rfm-scale-in 0.18s ease;
+  animation: enm-scale-in 0.18s ease;
 
   // ── Header ────────────────────────────────────────────────
   &__header {
@@ -157,12 +157,12 @@
   // Кнопки — общие .ui-modal-btn/.ui-modal-btn--primary, см. shared/styles/index.scss.
 }
 
-@keyframes rfm-fade-in {
+@keyframes enm-fade-in {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
 
-@keyframes rfm-scale-in {
+@keyframes enm-scale-in {
   from { opacity: 0; transform: scale(0.97) translateY(6px); }
   to   { opacity: 1; transform: scale(1)    translateY(0);   }
 }

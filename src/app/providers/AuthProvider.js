@@ -14,14 +14,18 @@ export const useAuth = () => {
   return ctx;
 };
 
+// Бэкенд ещё не знает про эти разделы (право на них не заведено) — отсутствие
+// ключа в ответе бэкенда не должно считаться запретом, иначе они никогда не появятся.
+const PAGES_DEFAULT_OPEN = ['activity-log'];
+
 /** Нормализует user.access в объект { pageId: boolean }. Поддержка data.access, массива id, объекта. */
 const normalizeUserAccess = (u) => {
   if (!u || typeof u !== 'object') return u;
   const raw = u.access ?? u.data?.access;
   if (!raw || typeof raw !== 'object') return { ...u, access: {} };
   const access = Array.isArray(raw)
-    ? PAGE_IDS.reduce((o, id) => ({ ...o, [id]: raw.includes(id) }), {})
-    : PAGE_IDS.reduce((o, id) => ({ ...o, [id]: raw[id] === true }), {});
+    ? PAGE_IDS.reduce((o, id) => ({ ...o, [id]: PAGES_DEFAULT_OPEN.includes(id) ? true : raw.includes(id) }), {})
+    : PAGE_IDS.reduce((o, id) => ({ ...o, [id]: PAGES_DEFAULT_OPEN.includes(id) ? raw[id] !== false : raw[id] === true }), {});
   return { ...u, access };
 };
 

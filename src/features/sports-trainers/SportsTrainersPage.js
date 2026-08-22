@@ -14,7 +14,7 @@ import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { useDebounce } from '../../shared/hooks/useDebounce';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
 import { SEARCH_DEBOUNCE_MS } from '../../shared/constants/common';
-import { Trophy, UserCheck, Search, Plus } from 'lucide-react';
+import { Trophy, UserCheck, Search, Plus, Dumbbell, CalendarClock } from 'lucide-react';
 import { Select, Pagination, FilterBar, FiltersModal } from '../../shared/ui';
 import { SportsList, TrainersList, SportFormModal, TrainerFormModal, TrainerScheduleModal } from './components';
 import { WEEKDAYS } from './scheduleConstants';
@@ -230,6 +230,7 @@ const SportsTrainersPage = () => {
               options={[{ value: '', label: 'Все виды спорта' }, ...sportsData.map((s) => ({ value: String(s.id), label: s.name || '' }))]}
               placeholder="Спорт"
               className="sports-trainers-page__select-wrap"
+              icon={<Dumbbell size={15} />}
             />
             <Select
               value={String(queryState.weekday ?? '')}
@@ -238,6 +239,7 @@ const SportsTrainersPage = () => {
                 { value: '', label: 'Все дни' },
                 ...WEEKDAYS.map((w) => ({ value: String(w.weekday), label: w.short })),
               ]}
+              icon={<CalendarClock size={15} />}
               placeholder="День"
               className="sports-trainers-page__select-wrap sports-trainers-page__select-wrap--compact"
             />
@@ -291,6 +293,7 @@ const SportsTrainersPage = () => {
                   options={[{ value: '', label: 'Все виды спорта' }, ...sportsData.map((s) => ({ value: String(s.id), label: s.name || '' }))]}
                   placeholder="Спорт"
                   className="sports-trainers-page__select-wrap sports-trainers-page__select-wrap--modal"
+                  icon={<Dumbbell size={15} />}
                 />
               </label>
               <label className="sports-trainers-page__filter-label">
@@ -304,6 +307,7 @@ const SportsTrainersPage = () => {
                   ]}
                   placeholder="День"
                   className="sports-trainers-page__select-wrap sports-trainers-page__select-wrap--modal"
+                  icon={<CalendarClock size={15} />}
                 />
               </label>
               <div className="sports-trainers-page__filter-time-row">

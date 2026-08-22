@@ -256,6 +256,7 @@ const WarehousePage = () => {
                 options={[{ value: '', label: 'Все категории' }, ...categoriesList.map((c) => ({ value: String(c.id), label: c.name || '' }))]}
                 placeholder="Категории"
                 className="warehouse-page__select-wrap"
+                icon={<Tag size={15} />}
               />
               <button type="button" className="warehouse-page__add filter-bar__action" onClick={() => setFormProduct({})}><Plus size={16} /> Добавить товар</button>
             </div>
@@ -290,6 +291,7 @@ const WarehousePage = () => {
                   options={[{ value: '', label: 'Все' }, ...categoriesList.map((c) => ({ value: String(c.id), label: c.name || '' }))]}
                   placeholder="Все"
                   className="warehouse-page__select-wrap"
+                  icon={<Tag size={15} />}
                 />
               </label>
             </div>

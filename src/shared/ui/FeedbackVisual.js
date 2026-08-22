@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, ShieldOff, Loader2, SearchX } from 'lucide-react';
+import { AlertTriangle, ShieldOff, Loader2, SearchX, HelpCircle } from 'lucide-react';
 import './FeedbackVisual.scss';
 
 const VARIANT_ICON = {
@@ -7,6 +7,7 @@ const VARIANT_ICON = {
   denied: ShieldOff,
   loading: Loader2,
   notfound: SearchX,
+  confirm: HelpCircle,
 };
 
 /** Единый визуальный блок (иконка в мягком градиенте) для ошибки, доступа, загрузки, 404 — в духе empty state. */

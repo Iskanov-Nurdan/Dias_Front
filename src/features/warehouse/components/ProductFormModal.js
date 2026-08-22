@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, Tag } from 'lucide-react';
 import { Select, SubmitButton, MoneyInput } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './ProductFormModal.scss';
@@ -71,6 +71,7 @@ const ProductFormModal = ({ product, categories = [], onSave, onClose, error, sa
                 options={[{ value: '', label: '—' }, ...categories.map((c) => ({ value: String(c.id), label: c.name || '' }))]}
                 placeholder="—"
                 className="warehouse-form-modal__select"
+                icon={<Tag size={15} />}
               />
             </label>
           </section>

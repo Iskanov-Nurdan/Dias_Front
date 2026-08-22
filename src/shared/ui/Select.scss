@@ -178,6 +178,16 @@
   }
 }
 
+.select__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+
+  svg { display: block; }
+}
+
 .select__value {
   flex: 1;
   text-align: left;

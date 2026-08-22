@@ -268,6 +268,7 @@ const EmployeesPage = () => {
                 options={roleOptions}
                 placeholder="Роли"
                 className="employees-page__select-wrap"
+                icon={<ShieldCheck size={15} />}
               />
             </div>
             <button type="button" className="employees-page__add employees-page__add--desktop filter-bar__action" onClick={() => setFormEmployee({})}>
@@ -298,6 +299,7 @@ const EmployeesPage = () => {
                   options={roleOptions}
                   placeholder="Все роли"
                   className="employees-page__select-wrap employees-page__select-wrap--modal"
+                  icon={<ShieldCheck size={15} />}
                 />
               </label>
             </div>

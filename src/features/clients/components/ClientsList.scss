@@ -52,6 +52,19 @@
       background: rgba(109, 40, 217, 0.11);
     }
 
+    // Максимум предупреждений — срочно связаться с клиентом. Перекрывает
+    // остальные подсветки строки (!important), т.к. это самое важное состояние.
+    tbody tr.clients-list__row--warned-max td {
+      background: rgba(220, 38, 38, 0.16) !important;
+      border-color: var(--color-danger) !important;
+    }
+    tbody tr.clients-list__row--warned-max:hover td {
+      background: rgba(220, 38, 38, 0.22) !important;
+    }
+    tbody tr.clients-list__row--warned-max td:first-child {
+      box-shadow: inset 3px 0 0 var(--color-danger);
+    }
+
     // ── Mobile cards ────────────────────────────────────────
     @include mixins.mobile {
       display: block;
@@ -186,6 +199,13 @@
     flex-direction: column;
     gap: 3px;
     min-width: 0;
+  }
+
+  &__badges {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
   }
 
   &__sport {

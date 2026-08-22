@@ -123,6 +123,7 @@ const EmployeeFormModal = ({ employee, roles, onSave, onClose, error, saving }) 
                 options={(roles || []).map((r) => ({ value: String(r.id), label: r.name || '' }))}
                 placeholder="Выберите роль"
                 className="efm__select"
+                icon={<Shield size={15} />}
               />
             </div>
 

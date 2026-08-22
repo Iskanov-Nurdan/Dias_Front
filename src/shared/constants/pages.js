@@ -1,10 +1,11 @@
 import {
-  BarChart3, Users, Trophy, UsersRound, ClipboardList, Receipt, Wallet, Inbox, Link2, Clock, Table2,
+  BarChart3, Users, Trophy, UsersRound, ClipboardList, Receipt, Wallet, Inbox, Link2, Clock, Table2, History,
 } from 'lucide-react';
 
 export const PAGE_IDS = [
   'analytics',
   'reports',
+  'activity-log',
   'clients',
   'sports-trainers',
   'leads',
@@ -22,6 +23,7 @@ export const PAGE_ICONS = {
   'sports-trainers': Trophy,
   clients: UsersRound,
   reports: ClipboardList,
+  'activity-log': History,
   leads: Inbox,
   expenses: Receipt,
   salary: Wallet,
@@ -36,6 +38,7 @@ export const PAGE_LABELS = {
   'sports-trainers': 'Спорт и тренеры',
   clients: 'Клиенты',
   reports: 'Отчёты',
+  'activity-log': 'Журнал действий',
   leads: 'Лиды',
   expenses: 'Расходы',
   salary: 'Зарплата',
@@ -50,6 +53,7 @@ export const PAGE_ROUTES = {
   'sports-trainers': '/sports-trainers',
   clients: '/clients',
   reports: '/reports',
+  'activity-log': '/activity-log',
   leads: '/leads',
   expenses: '/expenses',
   salary: '/salary',
@@ -60,7 +64,7 @@ export const PAGE_ROUTES = {
 
 /** Группы пунктов меню: ключ группы → массив pageId */
 export const PAGE_GROUPS = {
-  'Аналитика': ['analytics', 'reports'],
+  'Аналитика': ['analytics', 'reports', 'activity-log'],
   'Люди': ['clients', 'sports-trainers', 'leads', 'employees'],
   'Финансы': ['expenses', 'salary'],
   'Смены': ['shifts'],

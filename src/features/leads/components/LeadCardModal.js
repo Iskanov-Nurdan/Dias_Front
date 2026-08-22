@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, MessageSquare, Inbox, Users, Dumbbell, UserCheck, Filter, ClipboardCheck, CheckCircle2 } from 'lucide-react';
 import { useToast } from '../../../app/providers/ToastProvider';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { Select, SubmitButton, PhoneInput } from '../../../shared/ui';
@@ -202,23 +202,23 @@ const LeadCardModal = ({ lead, stages = [], sports = [], trainers = [], onSave, 
               </label>
               <label className="lead-card-modal__label">
                 <span className="lead-card-modal__label-text">Канал</span>
-                <Select value={channel} onChange={setChannel} options={CHANNEL_OPTIONS} placeholder="—" className="lead-card-modal__select" />
+                <Select value={channel} onChange={setChannel} options={CHANNEL_OPTIONS} placeholder="—" className="lead-card-modal__select" icon={<MessageSquare size={15} />} />
               </label>
               <label className="lead-card-modal__label">
                 <span className="lead-card-modal__label-text">Источник лида</span>
-                <Select value={source} onChange={setSource} options={SOURCE_OPTIONS} placeholder="—" className="lead-card-modal__select" />
+                <Select value={source} onChange={setSource} options={SOURCE_OPTIONS} placeholder="—" className="lead-card-modal__select" icon={<Inbox size={15} />} />
               </label>
               <label className="lead-card-modal__label">
                 <span className="lead-card-modal__label-text">Для себя или для детей</span>
-                <Select value={targetType} onChange={setTargetType} options={TARGET_TYPE_OPTIONS} placeholder="—" className="lead-card-modal__select" />
+                <Select value={targetType} onChange={setTargetType} options={TARGET_TYPE_OPTIONS} placeholder="—" className="lead-card-modal__select" icon={<Users size={15} />} />
               </label>
               <label className="lead-card-modal__label">
                 <span className="lead-card-modal__label-text">Вид спорта</span>
-                <Select value={sportId} onChange={setSportId} options={sportOptions} placeholder="—" className="lead-card-modal__select" />
+                <Select value={sportId} onChange={setSportId} options={sportOptions} placeholder="—" className="lead-card-modal__select" icon={<Dumbbell size={15} />} />
               </label>
               <label className="lead-card-modal__label">
                 <span className="lead-card-modal__label-text">Тренер</span>
-                <Select value={trainerId} onChange={setTrainerId} options={trainerOptions} placeholder="—" className="lead-card-modal__select" disabled={!sportId} />
+                <Select value={trainerId} onChange={setTrainerId} options={trainerOptions} placeholder="—" className="lead-card-modal__select" disabled={!sportId} icon={<UserCheck size={15} />} />
               </label>
             </div>
           </section>
@@ -227,7 +227,7 @@ const LeadCardModal = ({ lead, stages = [], sports = [], trainers = [], onSave, 
           {stages.length > 0 && (
             <section className="lead-card-modal__section lead-card-modal__section--stage">
               <h3 className="lead-card-modal__section-title">Этап воронки</h3>
-              <Select value={stageId} onChange={setStageId} options={stageOptions} placeholder="—" className="lead-card-modal__select lead-card-modal__select--wide" />
+              <Select value={stageId} onChange={setStageId} options={stageOptions} placeholder="—" className="lead-card-modal__select lead-card-modal__select--wide" icon={<Filter size={15} />} />
             </section>
           )}
 
@@ -237,11 +237,11 @@ const LeadCardModal = ({ lead, stages = [], sports = [], trainers = [], onSave, 
             <div className="lead-card-modal__grid lead-card-modal__grid--2">
               <label className="lead-card-modal__label">
                 <span className="lead-card-modal__label-text">Пробная тренировка</span>
-                <Select value={trialStatus} onChange={setTrialStatus} options={TRIAL_OPTIONS} placeholder="Статус" className="lead-card-modal__select" />
+                <Select value={trialStatus} onChange={setTrialStatus} options={TRIAL_OPTIONS} placeholder="Статус" className="lead-card-modal__select" icon={<ClipboardCheck size={15} />} />
               </label>
               <label className="lead-card-modal__label">
                 <span className="lead-card-modal__label-text">Результат</span>
-                <Select value={resultStatus} onChange={setResultStatus} options={RESULT_OPTIONS} placeholder="Результат" className="lead-card-modal__select" />
+                <Select value={resultStatus} onChange={setResultStatus} options={RESULT_OPTIONS} placeholder="Результат" className="lead-card-modal__select" icon={<CheckCircle2 size={15} />} />
               </label>
             </div>
           </section>

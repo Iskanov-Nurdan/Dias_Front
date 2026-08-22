@@ -51,6 +51,12 @@
     --feedback-visual-bg-b: #fce7f3;
     --feedback-visual-icon: var(--color-info);
   }
+
+  &--confirm {
+    --feedback-visual-bg-a: #dbeafe;
+    --feedback-visual-bg-b: #ede9fe;
+    --feedback-visual-icon: var(--color-primary);
+  }
 }
 
 @keyframes feedback-visual-spin {
@@ -80,6 +86,11 @@
   &--notfound {
     --feedback-visual-bg-a: #1e2a3d;
     --feedback-visual-bg-b: #352535;
+  }
+
+  &--confirm {
+    --feedback-visual-bg-a: #1e2a3d;
+    --feedback-visual-bg-b: #2d2545;
   }
 }
 

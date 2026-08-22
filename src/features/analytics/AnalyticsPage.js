@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Calendar, CalendarDays, CalendarClock } from 'lucide-react';
 import { fetchIncomeDetail, fetchExpenseDetail, fetchProfitDetail } from './api';
 import { ErrorState, Select, DonutChart, Sparkline, Skeleton, SkeletonTable, FilterBar, EmptyState } from '../../shared/ui';
-import { MONTHS, MONTHS_SHORT, DONUT_COLORS, formatMoney } from '../../shared/constants/common';
+import { MONTHS, MONTHS_SHORT, DONUT_COLORS, formatMoney, STATS_YEARS } from '../../shared/constants/common';
 import { useAnalyticsFilters } from './hooks/useAnalyticsFilters';
 import { useAnalyticsData } from './hooks/useAnalyticsData';
 import './AnalyticsPage.scss';
@@ -23,9 +24,7 @@ const getExpenseName = (row) => {
 const now = new Date();
 const defaultQuery = { year: now.getFullYear(), month: now.getMonth() + 1, day: '' };
 
-// Окно из 5 лет вокруг текущего года — не нужно вручную обновлять на будущее
-const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i)
-  .map((y) => ({ value: String(y), label: String(y) }));
+const YEAR_OPTIONS = STATS_YEARS.map((y) => ({ value: y, label: y }));
 const DAY_OPTIONS = [
   { value: '', label: 'Все дни' },
   ...Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })),
@@ -199,6 +198,7 @@ const AnalyticsPage = () => {
                   options={YEAR_OPTIONS}
                   placeholder="Год"
                   className="analytics-page__select-wrap"
+                  icon={<Calendar size={15} />}
                 />
               </label>
               <label className="analytics-page__filter analytics-page__filter--month">
@@ -209,6 +209,7 @@ const AnalyticsPage = () => {
                   options={[{ value: '', label: 'Все месяцы' }, ...MONTHS.slice(1).map((m, i) => ({ value: String(i + 1), label: m }))]}
                   placeholder="Месяц"
                   className="analytics-page__select-wrap"
+                  icon={<CalendarDays size={15} />}
                 />
               </label>
               <label className="analytics-page__filter">
@@ -219,6 +220,7 @@ const AnalyticsPage = () => {
                   options={DAY_OPTIONS}
                   placeholder="Все дни"
                   className="analytics-page__select-wrap"
+                  icon={<CalendarClock size={15} />}
                 />
               </label>
               <button type="button" className="analytics-page__reset" onClick={resetFilters}>Сбросить</button>

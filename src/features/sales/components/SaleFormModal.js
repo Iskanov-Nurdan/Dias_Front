@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, Package } from 'lucide-react';
 import { Select, SubmitButton } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './SaleFormModal.scss';
@@ -67,6 +67,7 @@ const SaleFormModal = ({ products = [], onSave, onClose, error, saving }) => {
                 options={[{ value: '', label: '—' }, ...products.map((p) => ({ value: String(p.id), label: p.name || '' }))]}
                 placeholder="—"
                 className="sale-form-modal__select"
+                icon={<Package size={15} />}
               />
             </label>
             <div className="sale-form-modal__row">

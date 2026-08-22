@@ -311,8 +311,8 @@ const ClientsPage = () => {
       const msg = isPeriodClosedError(e)
         ? 'Период закрыт. Изменение финансовых данных запрещено.'
         : (d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка сохранения');
+      // Ошибка уже показывается внутри модалки (ClientFormModal сам красиво парсит список полей) — дублирующий toast не нужен
       setClientFormError(msg);
-      toast.error(msg);
     } finally {
       setClientFormSaving(false);
     }
@@ -406,31 +406,31 @@ const ClientsPage = () => {
                       <div className="clients-page__filter-drop-grid">
                         <label className="clients-page__filter-drop-label">
                           <span><Dumbbell size={13} /> Вид спорта</span>
-                          <Select value={queryState.sportId} onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...sports.map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="Все" className="clients-page__select-wrap" />
+                          <Select value={queryState.sportId} onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...sports.map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="Все" className="clients-page__select-wrap" icon={<Dumbbell size={15} />} />
                         </label>
                         <label className="clients-page__filter-drop-label">
                           <span><UserCheck size={13} /> Тренер</span>
-                          <Select value={queryState.trainerId} onChange={(v) => setQueryState((q) => ({ ...q, trainerId: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...trainers.map((t) => ({ value: String(t.id), label: t.fio || '' }))]} placeholder="Все" className="clients-page__select-wrap" />
+                          <Select value={queryState.trainerId} onChange={(v) => setQueryState((q) => ({ ...q, trainerId: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...trainers.map((t) => ({ value: String(t.id), label: t.fio || '' }))]} placeholder="Все" className="clients-page__select-wrap" icon={<UserCheck size={15} />} />
                         </label>
                         <label className="clients-page__filter-drop-label">
                           <span><CreditCard size={13} /> Оплата</span>
-                          <Select value={queryState.paid} onChange={(v) => setQueryState((q) => ({ ...q, paid: v, page: 1 }))} options={[{ value: '', label: 'Все' }, { value: 'true', label: 'Оплачено' }, { value: 'false', label: 'Не оплачено' }]} placeholder="Все" className="clients-page__select-wrap" />
+                          <Select value={queryState.paid} onChange={(v) => setQueryState((q) => ({ ...q, paid: v, page: 1 }))} options={[{ value: '', label: 'Все' }, { value: 'true', label: 'Оплачено' }, { value: 'false', label: 'Не оплачено' }]} placeholder="Все" className="clients-page__select-wrap" icon={<CreditCard size={15} />} />
                         </label>
                         <label className="clients-page__filter-drop-label">
                           <span><Tag size={13} /> Тип</span>
-                          <Select value={queryState.clientType} onChange={(v) => setQueryState((q) => ({ ...q, clientType: v, page: 1 }))} options={[{ value: '', label: 'Все' }, { value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }, { value: 'one-time', label: 'Разовый' }]} placeholder="Все" className="clients-page__select-wrap" />
+                          <Select value={queryState.clientType} onChange={(v) => setQueryState((q) => ({ ...q, clientType: v, page: 1 }))} options={[{ value: '', label: 'Все' }, { value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }, { value: 'one-time', label: 'Разовый' }]} placeholder="Все" className="clients-page__select-wrap" icon={<Tag size={15} />} />
                         </label>
                         <label className="clients-page__filter-drop-label">
                           <span><Calendar size={13} /> Год</span>
-                          <Select value={queryState.year} onChange={(v) => setQueryState((q) => ({ ...q, year: v, month: v ? q.month : '', day: v ? q.day : '', page: 1 }))} options={[{ value: '', label: 'Все' }, ...clientListFilterYearValues.map((y) => ({ value: y, label: y }))]} placeholder="Все" className="clients-page__select-wrap" />
+                          <Select value={queryState.year} onChange={(v) => setQueryState((q) => ({ ...q, year: v, month: v ? q.month : '', day: v ? q.day : '', page: 1 }))} options={[{ value: '', label: 'Все' }, ...clientListFilterYearValues.map((y) => ({ value: y, label: y }))]} placeholder="Все" className="clients-page__select-wrap" icon={<Calendar size={15} />} />
                         </label>
                         <label className="clients-page__filter-drop-label">
                           <span><CalendarDays size={13} /> Месяц</span>
-                          <Select value={queryState.month} onChange={(v) => setQueryState((q) => ({ ...q, month: v, day: v ? q.day : '', page: 1 }))} disabled={!queryState.year} options={[{ value: '', label: 'Все' }, { value: '1', label: 'Январь' }, { value: '2', label: 'Февраль' }, { value: '3', label: 'Март' }, { value: '4', label: 'Апрель' }, { value: '5', label: 'Май' }, { value: '6', label: 'Июнь' }, { value: '7', label: 'Июль' }, { value: '8', label: 'Август' }, { value: '9', label: 'Сентябрь' }, { value: '10', label: 'Октябрь' }, { value: '11', label: 'Ноябрь' }, { value: '12', label: 'Декабрь' }]} placeholder="Все" className="clients-page__select-wrap" />
+                          <Select value={queryState.month} onChange={(v) => setQueryState((q) => ({ ...q, month: v, day: v ? q.day : '', page: 1 }))} disabled={!queryState.year} options={[{ value: '', label: 'Все' }, { value: '1', label: 'Январь' }, { value: '2', label: 'Февраль' }, { value: '3', label: 'Март' }, { value: '4', label: 'Апрель' }, { value: '5', label: 'Май' }, { value: '6', label: 'Июнь' }, { value: '7', label: 'Июль' }, { value: '8', label: 'Август' }, { value: '9', label: 'Сентябрь' }, { value: '10', label: 'Октябрь' }, { value: '11', label: 'Ноябрь' }, { value: '12', label: 'Декабрь' }]} placeholder="Все" className="clients-page__select-wrap" icon={<CalendarDays size={15} />} />
                         </label>
                         <label className="clients-page__filter-drop-label">
                           <span><CalendarClock size={13} /> День</span>
-                          <Select value={queryState.day} onChange={(v) => setQueryState((q) => ({ ...q, day: v, page: 1 }))} disabled={!queryState.month} options={[{ value: '', label: 'Все' }, ...Array.from({ length: 31 }, (_, i) => i + 1).map((d) => ({ value: String(d), label: String(d) }))]} placeholder="Все" className="clients-page__select-wrap" />
+                          <Select value={queryState.day} onChange={(v) => setQueryState((q) => ({ ...q, day: v, page: 1 }))} disabled={!queryState.month} options={[{ value: '', label: 'Все' }, ...Array.from({ length: 31 }, (_, i) => i + 1).map((d) => ({ value: String(d), label: String(d) }))]} placeholder="Все" className="clients-page__select-wrap" icon={<CalendarClock size={15} />} />
                         </label>
                       </div>
                       <div className="clients-page__filter-drop-footer">
@@ -467,13 +467,13 @@ const ClientsPage = () => {
             )}
           >
             <div className="clients-page__filters-modal-content">
-              <label className="clients-page__filter-label"><span><Dumbbell size={13} /> Вид спорта</span><Select value={queryState.sportId} onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...sports.map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="Все" className="clients-page__select-wrap" /></label>
-              <label className="clients-page__filter-label"><span><UserCheck size={13} /> Тренер</span><Select value={queryState.trainerId} onChange={(v) => setQueryState((q) => ({ ...q, trainerId: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...trainers.map((t) => ({ value: String(t.id), label: t.fio || '' }))]} placeholder="Все" className="clients-page__select-wrap" /></label>
-              <label className="clients-page__filter-label"><span><CreditCard size={13} /> Оплата</span><Select value={queryState.paid} onChange={(v) => setQueryState((q) => ({ ...q, paid: v, page: 1 }))} options={[{ value: '', label: 'Все' }, { value: 'true', label: 'Оплачено' }, { value: 'false', label: 'Не оплачено' }]} placeholder="Все" className="clients-page__select-wrap" /></label>
-              <label className="clients-page__filter-label"><span><Tag size={13} /> Тип</span><Select value={queryState.clientType} onChange={(v) => setQueryState((q) => ({ ...q, clientType: v, page: 1 }))} options={[{ value: '', label: 'Все' }, { value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }, { value: 'one-time', label: 'Разовый' }]} placeholder="Все" className="clients-page__select-wrap" /></label>
-              <label className="clients-page__filter-label"><span><Calendar size={13} /> Год</span><Select value={queryState.year} onChange={(v) => setQueryState((q) => ({ ...q, year: v, month: v ? q.month : '', day: v ? q.day : '', page: 1 }))} options={[{ value: '', label: 'Все' }, ...clientListFilterYearValues.map((y) => ({ value: y, label: y }))]} placeholder="Все" className="clients-page__select-wrap" /></label>
-              {queryState.year && <label className="clients-page__filter-label"><span><CalendarDays size={13} /> Месяц</span><Select value={queryState.month} onChange={(v) => setQueryState((q) => ({ ...q, month: v, day: v ? q.day : '', page: 1 }))} options={[{ value: '', label: 'Все' }, ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: MONTHS[i + 1] }))]} placeholder="Все" className="clients-page__select-wrap" /></label>}
-              {queryState.year && queryState.month && <label className="clients-page__filter-label"><span><CalendarClock size={13} /> День</span><Select value={queryState.day} onChange={(v) => setQueryState((q) => ({ ...q, day: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...Array.from({ length: 31 }, (_, i) => i + 1).map((d) => ({ value: String(d), label: String(d) }))]} placeholder="Все" className="clients-page__select-wrap" /></label>}
+              <label className="clients-page__filter-label"><span><Dumbbell size={13} /> Вид спорта</span><Select value={queryState.sportId} onChange={(v) => setQueryState((q) => ({ ...q, sportId: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...sports.map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="Все" className="clients-page__select-wrap" icon={<Dumbbell size={15} />} /></label>
+              <label className="clients-page__filter-label"><span><UserCheck size={13} /> Тренер</span><Select value={queryState.trainerId} onChange={(v) => setQueryState((q) => ({ ...q, trainerId: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...trainers.map((t) => ({ value: String(t.id), label: t.fio || '' }))]} placeholder="Все" className="clients-page__select-wrap" icon={<UserCheck size={15} />} /></label>
+              <label className="clients-page__filter-label"><span><CreditCard size={13} /> Оплата</span><Select value={queryState.paid} onChange={(v) => setQueryState((q) => ({ ...q, paid: v, page: 1 }))} options={[{ value: '', label: 'Все' }, { value: 'true', label: 'Оплачено' }, { value: 'false', label: 'Не оплачено' }]} placeholder="Все" className="clients-page__select-wrap" icon={<CreditCard size={15} />} /></label>
+              <label className="clients-page__filter-label"><span><Tag size={13} /> Тип</span><Select value={queryState.clientType} onChange={(v) => setQueryState((q) => ({ ...q, clientType: v, page: 1 }))} options={[{ value: '', label: 'Все' }, { value: 'regular', label: 'Регулярный' }, { value: 'individual', label: 'Индивидуальный' }, { value: 'one-time', label: 'Разовый' }]} placeholder="Все" className="clients-page__select-wrap" icon={<Tag size={15} />} /></label>
+              <label className="clients-page__filter-label"><span><Calendar size={13} /> Год</span><Select value={queryState.year} onChange={(v) => setQueryState((q) => ({ ...q, year: v, month: v ? q.month : '', day: v ? q.day : '', page: 1 }))} options={[{ value: '', label: 'Все' }, ...clientListFilterYearValues.map((y) => ({ value: y, label: y }))]} placeholder="Все" className="clients-page__select-wrap" icon={<Calendar size={15} />} /></label>
+              {queryState.year && <label className="clients-page__filter-label"><span><CalendarDays size={13} /> Месяц</span><Select value={queryState.month} onChange={(v) => setQueryState((q) => ({ ...q, month: v, day: v ? q.day : '', page: 1 }))} options={[{ value: '', label: 'Все' }, ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: MONTHS[i + 1] }))]} placeholder="Все" className="clients-page__select-wrap" icon={<CalendarDays size={15} />} /></label>}
+              {queryState.year && queryState.month && <label className="clients-page__filter-label"><span><CalendarClock size={13} /> День</span><Select value={queryState.day} onChange={(v) => setQueryState((q) => ({ ...q, day: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...Array.from({ length: 31 }, (_, i) => i + 1).map((d) => ({ value: String(d), label: String(d) }))]} placeholder="Все" className="clients-page__select-wrap" icon={<CalendarClock size={15} />} /></label>}
             </div>
           </FiltersModal>
           <ClientsList
@@ -503,6 +503,7 @@ const ClientsPage = () => {
               options={[{ value: '', label: 'Год — все' }, ...STATS_YEARS.map((y) => ({ value: y, label: y }))]}
               placeholder="Год"
               className="clients-page__dup-select"
+              icon={<Calendar size={15} />}
             />
             <Select
               value={dupMonth}
@@ -513,6 +514,7 @@ const ClientsPage = () => {
               ]}
               placeholder="Месяц"
               className="clients-page__dup-select"
+              icon={<CalendarDays size={15} />}
             />
           </FilterBar>
           {/* Подтабы */}
@@ -579,6 +581,7 @@ const ClientsPage = () => {
               options={[{ value: '', label: 'Год — все' }, ...STATS_YEARS.map((y) => ({ value: y, label: y }))]}
               placeholder="Год"
               className="clients-page__onetime-select"
+              icon={<Calendar size={15} />}
             />
             <Select
               value={oneTimeMonth}
@@ -589,6 +592,7 @@ const ClientsPage = () => {
               ]}
               placeholder="Месяц"
               className="clients-page__onetime-select"
+              icon={<CalendarDays size={15} />}
             />
             {(oneTimeYear || oneTimeMonth) && (
               <button type="button" className="clients-page__date-clear" onClick={() => { setOneTimeYear(''); setOneTimeMonth(''); setOneTimePage(1); }} title="Сбросить фильтры">✕</button>
@@ -703,6 +707,7 @@ const ClientsPage = () => {
               options={[{ value: '', label: 'Год — все' }, ...clientListFilterYearValues.map((y) => ({ value: y, label: y }))]}
               placeholder="Год"
               className="clients-page__dup-select"
+              icon={<Calendar size={15} />}
             />
             <Select
               value={fixMonth}
@@ -714,6 +719,7 @@ const ClientsPage = () => {
               ]}
               placeholder="Месяц"
               className="clients-page__dup-select"
+              icon={<CalendarDays size={15} />}
             />
             <Select
               value={fixDay}
@@ -722,6 +728,7 @@ const ClientsPage = () => {
               options={[{ value: '', label: 'День — все' }, ...Array.from({ length: 31 }, (_, i) => i + 1).map((d) => ({ value: String(d), label: String(d) }))]}
               placeholder="День"
               className="clients-page__dup-select"
+              icon={<CalendarClock size={15} />}
             />
           </FilterBar>
 

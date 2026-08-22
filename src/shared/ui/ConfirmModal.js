@@ -1,6 +1,8 @@
 import React, { useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { Check } from 'lucide-react';
 import { useModalEffect } from '../hooks/useModalEffect';
+import FeedbackVisual from './FeedbackVisual';
 import './ConfirmModal.scss';
 
 const ConfirmModal = ({ title, message, confirmText = 'Да', cancelText = 'Отмена', onConfirm, onCancel, danger }) => {
@@ -15,18 +17,21 @@ const ConfirmModal = ({ title, message, confirmText = 'Да', cancelText = 'От
   const content = (
     <div className="confirm-modal__backdrop" onClick={onCancel} role="alertdialog" aria-modal="true" aria-labelledby="confirm-modal-title">
       <div className="confirm-modal" ref={panelRef} onClick={(e) => e.stopPropagation()}>
+        <div className="confirm-modal__icon">
+          <FeedbackVisual variant={danger ? 'error' : 'confirm'} />
+        </div>
         <h3 id="confirm-modal-title" className="confirm-modal__title">{title}</h3>
         {message && <p className="confirm-modal__message">{message}</p>}
         <div className="confirm-modal__actions">
-          <button type="button" className="confirm-modal__btn confirm-modal__btn--cancel" onClick={onCancel}>
+          <button type="button" className="ui-modal-btn" onClick={onCancel}>
             {cancelText}
           </button>
           <button
             type="button"
-            className={`confirm-modal__btn confirm-modal__btn--confirm ${danger ? 'confirm-modal__btn--danger' : ''}`}
+            className={`ui-modal-btn ${danger ? 'ui-modal-btn--danger' : 'ui-modal-btn--primary'}`}
             onClick={handleConfirm}
           >
-            {confirmText}
+            {!danger && <Check size={15} />} {confirmText}
           </button>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { useToast } from '../../app/providers/ToastProvider';
 import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { ErrorState, EmptyState, Pagination, SkeletonTable } from '../../shared/ui';
 import Select from '../../shared/ui/Select';
+import { Calendar, CalendarDays, CalendarClock } from 'lucide-react';
 import { STATS_YEARS } from '../../shared/constants/common';
 
 // ─── Константы ────────────────────────────────────────────────────────────────
@@ -218,6 +219,7 @@ const TaplinkLeadsTab = () => {
           onChange={v => changeYear(v)}
           options={years.map(y => ({ value: String(y), label: String(y) }))}
           placeholder="Год"
+          icon={<Calendar size={15} />}
         />
         <Select
           className="tlt__date-select"
@@ -225,6 +227,7 @@ const TaplinkLeadsTab = () => {
           onChange={v => changeMonth(v)}
           placeholder="Все месяцы"
           options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+          icon={<CalendarDays size={15} />}
         />
         <Select
           className="tlt__date-select"
@@ -232,6 +235,7 @@ const TaplinkLeadsTab = () => {
           onChange={v => changeDay(v)}
           placeholder="Все дни"
           disabled={!filterMonth}
+          icon={<CalendarClock size={15} />}
           options={Array.from({ length: daysInMonth }, (_, i) => ({
             value: String(i + 1),
             label: String(i + 1),

@@ -9,6 +9,7 @@ import {
   fetchClientsStats,
   fetchClientsScheduleStats,
   fetchClientsPaymentDayReport,
+  fetchClients,
   uploadClientPhotos,
 } from './api';
 import { fetchSports, fetchTrainers } from '../sports-trainers/api';
@@ -18,7 +19,8 @@ import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { MONTHS, STATS_YEARS } from '../../shared/constants/common';
 import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiError';
 import { prepareClientSavePayload } from './lib/prepareClientSavePayload';
-import { UserX, BarChart2, CalendarDays, Search, Plus } from 'lucide-react';
+import { MAX_WARNINGS } from './lib/clientWarnings';
+import { UserX, BarChart2, Calendar, CalendarDays, Search, Plus, AlertTriangle } from 'lucide-react';
 import { Select, ConfirmModal, Pagination, FilterBar, EmptyState, Spinner } from '../../shared/ui';
 import {
   ClientsList,
@@ -36,6 +38,7 @@ import './ClientsPage.scss';
 const TAB_NOT_RENEWED = 'not_renewed';
 const TAB_STATS = 'stats';
 const TAB_PAYMENT_DAYS = 'payment_days';
+const TAB_WARNINGS = 'warnings';
 
 const ClientsReportsPage = () => {
   const { user, isAdmin, showAccessDenied } = useAuth();
@@ -76,6 +79,12 @@ const ClientsReportsPage = () => {
   const [paymentDayReportError, setPaymentDayReportError] = useState(null);
   const paymentDayReportControllerRef = useRef(null);
   const paymentDayReportRequestSeq = useRef(0);
+
+  const [warningsData, setWarningsData] = useState(null);
+  const [warningsLoading, setWarningsLoading] = useState(false);
+  const [warningsError, setWarningsError] = useState(null);
+  const [warningsPage, setWarningsPage] = useState(1);
+  const warningsControllerRef = useRef(null);
 
   const [sports, setSports] = useState([]);
   const [formClient, setFormClient] = useState(null);
@@ -217,6 +226,31 @@ const ClientsReportsPage = () => {
     };
   }, [activeTab, fetchPaymentDayReport]);
 
+  const fetchWarnedClients = useCallback(async () => {
+    warningsControllerRef.current?.abort();
+    warningsControllerRef.current = new AbortController();
+    const { signal } = warningsControllerRef.current;
+    setWarningsLoading(true);
+    setWarningsError(null);
+    try {
+      const data = await fetchClients({ hasWarnings: true, page: warningsPage, perPage: 20 }, signal);
+      setWarningsData(data);
+    } catch (err) {
+      if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
+      setWarningsError(getApiErrorMessage(err));
+    } finally {
+      setWarningsLoading(false);
+    }
+  }, [warningsPage]);
+
+  useEffect(() => {
+    if (activeTab !== TAB_WARNINGS) return undefined;
+    fetchWarnedClients();
+    return () => {
+      warningsControllerRef.current?.abort();
+    };
+  }, [activeTab, fetchWarnedClients]);
+
   useEffect(() => {
     fetchSports(null)
       .then((d) => setSports(Array.isArray(d) ? d : d?.results ?? d?.items ?? []))
@@ -229,6 +263,9 @@ const ClientsReportsPage = () => {
   const notRenewedItems = nrSearch.trim()
     ? notRenewedItemsRaw.filter((c) => (c.fio ?? '').toLowerCase().includes(nrSearch.trim().toLowerCase()))
     : notRenewedItemsRaw;
+
+  const warningsItems = warningsData?.items ?? warningsData?.results ?? (Array.isArray(warningsData) ? warningsData : []) ?? [];
+  const warningsCount = warningsData?.meta?.total ?? warningsData?.meta?.totalCount ?? warningsItems.length;
 
   const nrNextPeriod = useMemo(() => {
     if (!nrYear || !nrMonth) return null;
@@ -367,6 +404,14 @@ const ClientsReportsPage = () => {
         >
           <CalendarDays size={15} /> Записи по дням
         </button>
+        <button
+          type="button"
+          className={`ui-tabs__tab${activeTab === TAB_WARNINGS ? ' ui-tabs__tab--active' : ''}`}
+          onClick={() => setActiveTab(TAB_WARNINGS)}
+        >
+          <AlertTriangle size={15} /> Предупреждения
+          {warningsCount > 0 && <span className="ui-tabs__badge">{warningsCount}</span>}
+        </button>
       </div>
 
       {activeTab === TAB_NOT_RENEWED && (
@@ -389,6 +434,7 @@ const ClientsReportsPage = () => {
                 options={STATS_YEARS.map((y) => ({ value: y, label: y }))}
                 placeholder="Год"
                 className="clients-page__not-renewed-select clients-page__not-renewed-select--year"
+                icon={<Calendar size={15} />}
               />
               <Select
                 value={nrMonth}
@@ -396,6 +442,7 @@ const ClientsReportsPage = () => {
                 options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: MONTHS[i + 1] }))}
                 placeholder="Месяц"
                 className="clients-page__not-renewed-select"
+                icon={<CalendarDays size={15} />}
               />
               <button
                 type="button"
@@ -463,6 +510,7 @@ const ClientsReportsPage = () => {
               options={[{ value: '', label: 'Год — все' }, ...STATS_YEARS.map((y) => ({ value: y, label: y }))]}
               placeholder="Год"
               className="clients-page__stats-select"
+              icon={<Calendar size={15} />}
             />
             <Select
               value={statsMonth}
@@ -473,6 +521,7 @@ const ClientsReportsPage = () => {
               ]}
               placeholder="Месяц"
               className="clients-page__stats-select"
+              icon={<CalendarDays size={15} />}
             />
           </FilterBar>
 
@@ -537,6 +586,7 @@ const ClientsReportsPage = () => {
               options={[{ value: '', label: 'Год — все' }, ...STATS_YEARS.map((y) => ({ value: y, label: y }))]}
               placeholder="Год"
               className="clients-page__stats-select"
+              icon={<Calendar size={15} />}
             />
             <Select
               value={paymentDayMonth}
@@ -547,6 +597,7 @@ const ClientsReportsPage = () => {
               ]}
               placeholder="Месяц"
               className="clients-page__stats-select"
+              icon={<CalendarDays size={15} />}
             />
           </FilterBar>
           {!paymentDayYear || !paymentDayMonth ? (
@@ -568,6 +619,26 @@ const ClientsReportsPage = () => {
             </>
           )}
         </div>
+      )}
+
+      {activeTab === TAB_WARNINGS && (
+        <>
+          <p className="clients-page__stats-info" role="status">
+            Клиенты с предупреждениями за неоплату (максимум {MAX_WARNINGS} на клиента). Предупреждение можно поставить в списке «Клиенты» у тех, кто не оплатил, но срок абонемента ещё не истёк.
+          </p>
+          <ClientsList
+            items={warningsItems}
+            loading={warningsLoading}
+            error={warningsError}
+            onRetry={fetchWarnedClients}
+            onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())}
+            onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())}
+            onDetails={handleOpenCard}
+            onExtend={setExtendClientObj}
+            emptyMessage="Пока нет клиентов с предупреждениями"
+          />
+          <Pagination meta={warningsData?.meta} currentPage={warningsPage} onPage={setWarningsPage} loading={warningsLoading} entityLabel="клиентов" />
+        </>
       )}
 
       {formClient && (

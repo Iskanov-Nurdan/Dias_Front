@@ -26,7 +26,7 @@ function useIsMobileSheet() {
 /**
  * Кастомный Select: на десктопе — dropdown с авто-позицией; на мобиле — bottom sheet.
  */
-const Select = ({ value, onChange, options = [], placeholder = 'Выберите...', className = '', disabled = false }) => {
+const Select = ({ value, onChange, options = [], placeholder = 'Выберите...', className = '', disabled = false, icon = null }) => {
   const [open, setOpen] = useState(false);
   const [dropdownLayout, setDropdownLayout] = useState(null);
   const rootRef = useRef(null);
@@ -136,12 +136,13 @@ const Select = ({ value, onChange, options = [], placeholder = 'Выберите
     >
       <button
         type="button"
-        className="select__trigger"
+        className={`select__trigger${icon ? ' select__trigger--with-icon' : ''}`}
         onClick={handleTriggerClick}
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
+        {icon && <span className="select__icon" aria-hidden>{icon}</span>}
         <span className="select__value">{displayLabel}</span>
         <span className="select__chevron" aria-hidden>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

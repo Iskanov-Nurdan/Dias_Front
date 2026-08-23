@@ -1,5 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { FiPlus, FiCheck, FiX, FiClipboard } from 'react-icons/fi';
+import {
+  FiPlus, FiCheck, FiX, FiClipboard,
+  FiUser, FiShoppingCart, FiTag, FiHash, FiCalendar, FiList, FiCreditCard, FiDollarSign,
+} from 'react-icons/fi';
 import { useOperationalRefetch, WS_CASH } from '../../../../shared/realtime';
 import {
   useServerQuery,
@@ -651,7 +654,10 @@ const CreateOrderModal = ({ clients, profiles, onClose, onCreated }) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal--wide" onClick={(ev) => ev.stopPropagation()}>
         <div className="modal__head">
-          <h3>Новая заявка</h3>
+          <div className="modal__head-titles">
+            <span className="modal__eyebrow">Заявка</span>
+            <h3>Новая заявка</h3>
+          </div>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть" disabled={busy}>
             ×
           </button>
@@ -659,8 +665,8 @@ const CreateOrderModal = ({ clients, profiles, onClose, onCreated }) => {
         <form onSubmit={submit}>
           <div className="orders-rq-create">
             <div className="orders-rq-create__top">
-              <div>
-                <label>Клиент *</label>
+              <div className="modal__field">
+                <label className="modal__label-icon"><FiUser aria-hidden size={15} strokeWidth={2} />Клиент *</label>
                 <SearchableSelect
                   value={client}
                   onChange={(v) => setClient(v != null ? String(v) : '')}
@@ -673,7 +679,7 @@ const CreateOrderModal = ({ clients, profiles, onClose, onCreated }) => {
             <div className="orders-rq-create__cart-layout">
               <div className="orders-rq-create__cart-panel">
                 <div className="orders-rq-create__cart-head">
-                  <label>Товары (корзина) *</label>
+                  <label className="modal__label-icon"><FiShoppingCart aria-hidden size={15} strokeWidth={2} />Товары (корзина) *</label>
                   <button
                     type="button"
                     className="btn btn--secondary"
@@ -719,8 +725,8 @@ const CreateOrderModal = ({ clients, profiles, onClose, onCreated }) => {
                 {!selectedLine && <p className="orders-rq__muted">Выберите товар из корзины</p>}
                 {selectedLine && (
                   <div className="orders-rq-create__line-grid">
-                    <div>
-                      <label>Профиль *</label>
+                    <div className="modal__field">
+                      <label className="modal__label-icon"><FiTag aria-hidden size={15} strokeWidth={2} />Профиль *</label>
                       <SearchableSelect
                         value={selectedLine.profile}
                         onChange={(v) => {
@@ -733,8 +739,8 @@ const CreateOrderModal = ({ clients, profiles, onClose, onCreated }) => {
                         placeholder="Выберите профиль"
                       />
                     </div>
-                    <div>
-                      <label>Количество *</label>
+                    <div className="modal__field">
+                      <label className="modal__label-icon"><FiHash aria-hidden size={15} strokeWidth={2} />Количество *</label>
                       <IntegerInput
                         min={1}
                         value={selectedLine.quantity}
@@ -749,59 +755,71 @@ const CreateOrderModal = ({ clients, profiles, onClose, onCreated }) => {
               </div>
             </div>
 
-            <label>Дата</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={busy} />
-            <label>Тип оплаты *</label>
-            <SearchableSelect
-              value={paymentType}
-              onChange={(v) => setPaymentType(v != null ? String(v) : 'debt')}
-              options={[
-                { value: 'full', label: 'Полная' },
-                { value: 'partial', label: 'Частичная' },
-                { value: 'debt', label: 'В долг' },
-              ]}
-              disabled={busy}
-            />
-            <label>Способ оплаты *</label>
-            <SearchableSelect
-              value={paymentMethod}
-              onChange={(v) => setPaymentMethod(v != null ? String(v) : 'cash')}
-              options={[
-                { value: 'cash', label: 'Наличные' },
-                { value: 'card', label: 'Карта' },
-                { value: 'transfer', label: 'Перевод' },
-              ]}
-              disabled={busy}
-            />
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiCalendar aria-hidden size={15} strokeWidth={2} />Дата</label>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={busy} />
+            </div>
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiList aria-hidden size={15} strokeWidth={2} />Тип оплаты *</label>
+              <SearchableSelect
+                value={paymentType}
+                onChange={(v) => setPaymentType(v != null ? String(v) : 'debt')}
+                options={[
+                  { value: 'full', label: 'Полная' },
+                  { value: 'partial', label: 'Частичная' },
+                  { value: 'debt', label: 'В долг' },
+                ]}
+                disabled={busy}
+              />
+            </div>
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiCreditCard aria-hidden size={15} strokeWidth={2} />Способ оплаты *</label>
+              <SearchableSelect
+                value={paymentMethod}
+                onChange={(v) => setPaymentMethod(v != null ? String(v) : 'cash')}
+                options={[
+                  { value: 'cash', label: 'Наличные' },
+                  { value: 'card', label: 'Карта' },
+                  { value: 'transfer', label: 'Перевод' },
+                ]}
+                disabled={busy}
+              />
+            </div>
             {paymentType === 'full' && (
-              <>
-                <label>Цена (сумма заявки) *</label>
+              <div className="modal__field">
+                <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />Цена (сумма заявки) *</label>
                 <DecimalInput min={0} value={fullAmount} onChange={setFullAmount} required disabled={busy} />
-              </>
+              </div>
             )}
             {paymentType === 'partial' && (
               <>
-                <label>Итог (сумма заявки) *</label>
-                <DecimalInput min={0} value={partialTotal} onChange={setPartialTotal} required disabled={busy} />
-                <label>Оплачено сейчас *</label>
-                <DecimalInput min={0} value={partialPaidNow} onChange={setPartialPaidNow} required disabled={busy} />
-                <label>Остаток к оплате</label>
-                <input
-                  readOnly
-                  className="orders-rq-create__readonly-sum"
-                  value={
-                    partialRemainder != null && Number.isFinite(partialRemainder)
-                      ? `${formatNumberForInput(partialRemainder)} сом`
-                      : '—'
-                  }
-                />
+                <div className="modal__field">
+                  <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />Итог (сумма заявки) *</label>
+                  <DecimalInput min={0} value={partialTotal} onChange={setPartialTotal} required disabled={busy} />
+                </div>
+                <div className="modal__field">
+                  <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />Оплачено сейчас *</label>
+                  <DecimalInput min={0} value={partialPaidNow} onChange={setPartialPaidNow} required disabled={busy} />
+                </div>
+                <div className="modal__field">
+                  <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />Остаток к оплате</label>
+                  <input
+                    readOnly
+                    className="orders-rq-create__readonly-sum"
+                    value={
+                      partialRemainder != null && Number.isFinite(partialRemainder)
+                        ? `${formatNumberForInput(partialRemainder)} сом`
+                        : '—'
+                    }
+                  />
+                </div>
               </>
             )}
             {paymentType === 'debt' && (
-              <>
-                <label>Сумма долга *</label>
+              <div className="modal__field">
+                <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />Сумма долга *</label>
                 <DecimalInput min={0} value={debtAmount} onChange={setDebtAmount} required disabled={busy} />
-              </>
+              </div>
             )}
             {localError && <p className="modal__error">{localError}</p>}
           </div>

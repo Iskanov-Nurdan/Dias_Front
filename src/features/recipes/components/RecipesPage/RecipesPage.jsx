@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { FiPlus, FiCheck, FiX } from 'react-icons/fi';
+import {
+  FiPlus, FiCheck, FiX, FiTag, FiLayers, FiMessageSquare, FiToggleRight,
+} from 'react-icons/fi';
 import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
 import {
   useServerQuery,
@@ -563,7 +565,10 @@ const RecipeMetaModal = ({
       />
       <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
-          <h3>{isEdit ? 'Редактировать рецепт' : 'Добавить рецепт'}</h3>
+          <div className="modal__head-titles">
+            <span className="modal__eyebrow">{isEdit ? 'Редактирование' : 'Новый рецепт'}</span>
+            <h3>{isEdit ? 'Редактировать рецепт' : 'Добавить рецепт'}</h3>
+          </div>
           <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
         {loading ? (
@@ -580,9 +585,10 @@ const RecipeMetaModal = ({
                 <strong>Профиль:</strong> {lockedSummary}
               </p>
             ) : (
-              <>
-                <label>Для какого профиля *</label>
+              <div className="modal__field">
+                <label className="modal__label-icon"><FiLayers aria-hidden size={15} strokeWidth={2} />Для какого профиля *</label>
                 <Select
+                  icon={FiLayers}
                   value={profileId === '' || profileId == null ? '' : String(profileId)}
                   onChange={setProfileId}
                   placeholder="Выберите профиль"
@@ -592,29 +598,36 @@ const RecipeMetaModal = ({
                     label: p.name || 'Без названия',
                   }))}
                 />
-              </>
+              </div>
             )}
-            <label>Название рецепта *</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Например, белый профиль 60"
-            />
-            <label>Комментарий</label>
-            <input
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Опционально"
-            />
-            <label>Статус *</label>
-            <Select
-              value={statusActive ? 'active' : 'inactive'}
-              onChange={(v) => setStatusActive(v === 'active')}
-              options={[
-                { value: 'active', label: 'активен' },
-                { value: 'inactive', label: 'неактивен' },
-              ]}
-            />
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiTag aria-hidden size={15} strokeWidth={2} />Название рецепта *</label>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Например, белый профиль 60"
+              />
+            </div>
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiMessageSquare aria-hidden size={15} strokeWidth={2} />Комментарий</label>
+              <input
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Опционально"
+              />
+            </div>
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiToggleRight aria-hidden size={15} strokeWidth={2} />Статус *</label>
+              <Select
+                icon={FiToggleRight}
+                value={statusActive ? 'active' : 'inactive'}
+                onChange={(v) => setStatusActive(v === 'active')}
+                options={[
+                  { value: 'active', label: 'активен' },
+                  { value: 'inactive', label: 'неактивен' },
+                ]}
+              />
+            </div>
             {error && <p className="modal__error">{error}</p>}
             <div className="modal__actions">
               <button type="button" className="btn btn--secondary" onClick={requestClose}>

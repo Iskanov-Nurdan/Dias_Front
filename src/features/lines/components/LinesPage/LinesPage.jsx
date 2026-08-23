@@ -1,5 +1,8 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { FiSettings, FiUnlock, FiClock, FiPlus, FiCheck, FiX } from 'react-icons/fi';
+import {
+  FiSettings, FiUnlock, FiClock, FiPlus, FiCheck, FiX,
+  FiTag, FiHash, FiMessageSquare,
+} from 'react-icons/fi';
 import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
 import { useServerQuery, formatNumberForInput, parseLocaleNumber, getApiErrorMessage } from '../../../../shared/lib';
 import {
@@ -1429,7 +1432,10 @@ const LineFormModal = ({ line, onSubmit, onClose, error }) => {
       />
       <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
-          <h3>{line ? 'Редактировать линию' : 'Добавить линию'}</h3>
+          <div className="modal__head-titles">
+            <span className="modal__eyebrow">{line ? 'Редактирование' : 'Новая линия'}</span>
+            <h3>{line ? 'Редактировать линию' : 'Добавить линию'}</h3>
+          </div>
           <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
         <form
@@ -1443,10 +1449,14 @@ const LineFormModal = ({ line, onSubmit, onClose, error }) => {
             });
           }}
         >
-          <label>Название линии *</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Например: Линия 1" />
-          <label>Код / номер линии</label>
-          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Внутренний код" autoComplete="off" />
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiTag aria-hidden size={15} strokeWidth={2} />Название линии *</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Например: Линия 1" />
+          </div>
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiHash aria-hidden size={15} strokeWidth={2} />Код / номер линии</label>
+            <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Внутренний код" autoComplete="off" />
+          </div>
           <label className="lines-form__check">
             <input
               type="checkbox"
@@ -1456,8 +1466,10 @@ const LineFormModal = ({ line, onSubmit, onClose, error }) => {
             Линия активна (на неактивной нельзя открыть смену)
           </label>
           <Collapse title="Комментарий">
-            <label>Комментарий</label>
-            <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Заметки" />
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiMessageSquare aria-hidden size={15} strokeWidth={2} />Комментарий</label>
+              <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Заметки" />
+            </div>
           </Collapse>
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">

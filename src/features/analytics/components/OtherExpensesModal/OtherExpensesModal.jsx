@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FiPlus, FiCheck, FiX } from 'react-icons/fi';
+import {
+  FiPlus, FiCheck, FiX, FiTag, FiDollarSign, FiCalendar,
+} from 'react-icons/fi';
 import { Select } from '../../../../shared/ui';
 import { parseApiListResponse } from '../../../../shared/lib';
 import {
@@ -103,14 +105,17 @@ const AddOtherExpenseModal = ({ open, onClose, onSaved, year, month, day }) => {
         aria-labelledby="other-expense-add-title"
       >
         <div className="modal__head modal__head--compact">
-          <h3 id="other-expense-add-title">Новый расход</h3>
+          <div className="modal__head-titles">
+            <span className="modal__eyebrow">Прочие расходы</span>
+            <h3 id="other-expense-add-title">Новый расход</h3>
+          </div>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
             ×
           </button>
         </div>
         <form className="analytics-other-expense-add-modal__form" onSubmit={handleCreate}>
           <div className="analytics-other-expense-add-modal__field">
-            <label htmlFor="other-exp-name">Имя</label>
+            <label htmlFor="other-exp-name" className="modal__label-icon"><FiTag aria-hidden size={15} strokeWidth={2} />Имя</label>
             <input
               id="other-exp-name"
               type="text"
@@ -122,7 +127,7 @@ const AddOtherExpenseModal = ({ open, onClose, onSaved, year, month, day }) => {
             />
           </div>
           <div className="analytics-other-expense-add-modal__field">
-            <label htmlFor="other-exp-amount">Сумма, сом</label>
+            <label htmlFor="other-exp-amount" className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />Сумма, сом</label>
             <input
               id="other-exp-amount"
               type="number"
@@ -134,7 +139,7 @@ const AddOtherExpenseModal = ({ open, onClose, onSaved, year, month, day }) => {
             />
           </div>
           <div className="analytics-other-expense-add-modal__field">
-            <label htmlFor="other-exp-date">Дата</label>
+            <label htmlFor="other-exp-date" className="modal__label-icon"><FiCalendar aria-hidden size={15} strokeWidth={2} />Дата</label>
             <input
               id="other-exp-date"
               type="date"

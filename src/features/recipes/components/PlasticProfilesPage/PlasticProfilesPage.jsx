@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiPlus, FiCheck, FiX } from 'react-icons/fi';
+import {
+  FiPlus, FiCheck, FiX, FiTag, FiHash, FiMessageSquare, FiPackage, FiToggleRight,
+} from 'react-icons/fi';
 import { useServerQuery, getApiErrorMessage, formatNumberForInput, parseLocaleNumber } from '../../../../shared/lib';
 import { Loading, EmptyState, ErrorState, ConfirmModal, useToast, Select, SearchInput, ActionMenu, DecimalInput, EntityAvatar } from '../../../../shared/ui';
 import {
@@ -288,43 +290,57 @@ const ProfileMetaModal = ({ initial, onSave, onClose, error }) => {
     <div className="modal-overlay" role="presentation" onClick={onClose}>
       <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
-          <h3>{isEdit ? 'Редактировать профиль' : 'Добавить профиль'}</h3>
+          <div className="modal__head-titles">
+            <span className="modal__eyebrow">{isEdit ? 'Редактирование' : 'Новый профиль'}</span>
+            <h3>{isEdit ? 'Редактировать профиль' : 'Добавить профиль'}</h3>
+          </div>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <form className="modal__body" onSubmit={handleSubmit}>
-          <label>Название *</label>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Например: Профиль 60"
-            autoComplete="off"
-          />
-          <label>Код *</label>
-          <input
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="Например: P60"
-            autoComplete="off"
-          />
-          <label>Комментарий</label>
-          <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Опционально" />
-          <label>Вес одной штуки, кг</label>
-          <DecimalInput
-            min={0}
-            value={weightKgStr}
-            onChange={setWeightKgStr}
-            placeholder="Например 2,5 — для ОТК и склада ГП"
-          />
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiTag aria-hidden size={15} strokeWidth={2} />Название *</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Например: Профиль 60"
+              autoComplete="off"
+            />
+          </div>
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiHash aria-hidden size={15} strokeWidth={2} />Код *</label>
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="Например: P60"
+              autoComplete="off"
+            />
+          </div>
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiMessageSquare aria-hidden size={15} strokeWidth={2} />Комментарий</label>
+            <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Опционально" />
+          </div>
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiPackage aria-hidden size={15} strokeWidth={2} />Вес одной штуки, кг</label>
+            <DecimalInput
+              min={0}
+              value={weightKgStr}
+              onChange={setWeightKgStr}
+              placeholder="Например 2,5 — для ОТК и склада ГП"
+            />
+          </div>
           <p className="plastic-profiles-modal__hint">Нужен для окна «Произвести», ОТК и склада ГП.</p>
-          <label>Статус *</label>
-          <Select
-            value={statusActive ? 'active' : 'inactive'}
-            onChange={(v) => setStatusActive(v === 'active')}
-            options={[
-              { value: 'active', label: 'активен' },
-              { value: 'inactive', label: 'неактивен' },
-            ]}
-          />
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiToggleRight aria-hidden size={15} strokeWidth={2} />Статус *</label>
+            <Select
+              icon={FiToggleRight}
+              value={statusActive ? 'active' : 'inactive'}
+              onChange={(v) => setStatusActive(v === 'active')}
+              options={[
+                { value: 'active', label: 'активен' },
+                { value: 'inactive', label: 'неактивен' },
+              ]}
+            />
+          </div>
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose}>

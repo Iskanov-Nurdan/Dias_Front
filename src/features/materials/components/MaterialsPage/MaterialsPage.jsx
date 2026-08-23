@@ -3,6 +3,7 @@ import React, {
 } from 'react';
 import {
   FiBookOpen, FiPackage, FiLayers, FiClock, FiPlus, FiCheck, FiX, FiSliders,
+  FiTag, FiAlertTriangle, FiMessageSquare,
 } from 'react-icons/fi';
 import { useDiscardOnClose, useDirtyFromBaseline, useProductLine, PRODUCT_LINE } from '../../../../shared/hooks';
 import {
@@ -171,6 +172,9 @@ const MaterialsPage = () => {
   const [balancesLoading, setBalancesLoading] = useState(false);
   const [balancesSearch, setBalancesSearch] = useState('');
   const [balanceFilter, setBalanceFilter] = useState(BALANCE_FILTER.ALL);
+  const [stockSearch, setStockSearch] = useState('');
+  const [batchesSearch, setBatchesSearch] = useState('');
+  const [movementsSearch, setMovementsSearch] = useState('');
 
   const refetchBalances = useCallback(() => {
     setBalancesLoading(true);
@@ -264,6 +268,24 @@ const MaterialsPage = () => {
     return list;
   }, [balances, balancesSearch, balanceFilter]);
 
+  const stockFiltered = useMemo(() => {
+    const q = stockSearch.trim().toLowerCase();
+    if (!q) return balances;
+    return balances.filter((b) => normName(b.material_name || b.name).includes(q));
+  }, [balances, stockSearch]);
+
+  const batchesFiltered = useMemo(() => {
+    const q = batchesSearch.trim().toLowerCase();
+    if (!q) return incomingList;
+    return incomingList.filter((i) => normName(i.material_name || i.name).includes(q));
+  }, [incomingList, batchesSearch]);
+
+  const movementsFiltered = useMemo(() => {
+    const q = movementsSearch.trim().toLowerCase();
+    if (!q) return movementList;
+    return movementList.filter((m) => normName(m.material_name || m.name).includes(q));
+  }, [movementList, movementsSearch]);
+
   const handleCreateCatalogSubmit = async (data) => {
     setSubmitError('');
     const duplicate = findMaterialByName(balances, data.name);
@@ -320,6 +342,13 @@ const MaterialsPage = () => {
   };
 
   const formatDate = (d) => (d ? (typeof d === 'string' ? d.slice(0, 10) : d) : '—');
+
+  const formatDateTimeShort = (d) => {
+    if (!d) return '—';
+    const s = typeof d === 'string' ? d : String(d);
+    if (s.length >= 16) return `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)} ${s.slice(11, 16)}`;
+    return formatDate(d);
+  };
 
   const displayName = (b) => b.name || b.material_name || '—';
 
@@ -420,6 +449,30 @@ const MaterialsPage = () => {
                 )}
               </>
             )}
+            {mainTab === MAIN_TAB.STOCK && (
+              <SearchInput
+                className="materials-card__search"
+                placeholder="Поиск"
+                value={stockSearch}
+                onChange={(e) => setStockSearch(e.target.value)}
+              />
+            )}
+            {mainTab === MAIN_TAB.BATCHES && (
+              <SearchInput
+                className="materials-card__search"
+                placeholder="Поиск по сырью"
+                value={batchesSearch}
+                onChange={(e) => setBatchesSearch(e.target.value)}
+              />
+            )}
+            {mainTab === MAIN_TAB.MOVEMENTS && (
+              <SearchInput
+                className="materials-card__search"
+                placeholder="Поиск по сырью"
+                value={movementsSearch}
+                onChange={(e) => setMovementsSearch(e.target.value)}
+              />
+            )}
           </div>
           <div className="ds-toolbar__end materials-card__toolbar-actions">
             <button type="button" className="btn btn--primary" onClick={() => setCatalogModal(true)}>
@@ -428,7 +481,7 @@ const MaterialsPage = () => {
             </button>
             <button
               type="button"
-              className="btn btn--secondary"
+              className="btn btn--warning"
               onClick={() => setReplenishModal({ pickMaterial: true })}
             >
               <FiPlus aria-hidden size={16} strokeWidth={2} />
@@ -522,6 +575,8 @@ const MaterialsPage = () => {
             {!balancesLoading && (
               balances.length === 0 ? (
                 <EmptyState title="Нет данных" />
+              ) : stockFiltered.length === 0 ? (
+                <EmptyState title="Ничего не найдено" />
               ) : (
                 <div className="materials-table-wrap">
                   <div className="materials-table materials-table--stock-view">
@@ -530,7 +585,7 @@ const MaterialsPage = () => {
                       <span className="materials-table__th">Общий остаток</span>
                       <span className="materials-table__th materials-table__th--min">Минимальный остаток</span>
                     </div>
-                    {balances.map((b, idx) => {
+                    {stockFiltered.map((b, idx) => {
                       const sk = getStockLevelKey(b);
                       const low = sk === 'low';
                       const mid = getMaterialId(b);
@@ -574,6 +629,8 @@ const MaterialsPage = () => {
             {!incomingLoading && !incomingError && (
               incomingList.length === 0 ? (
                 <EmptyState title="Нет партий" />
+              ) : batchesFiltered.length === 0 ? (
+                <EmptyState title="Ничего не найдено" />
               ) : (
                 <div className="materials-table-wrap">
                   <div className="materials-table materials-table--batches">
@@ -584,7 +641,7 @@ const MaterialsPage = () => {
                       <span className="materials-table__th">Осталось</span>
                       <span className="materials-table__th materials-table__th--actions"> </span>
                     </div>
-                    {incomingList.map((i) => {
+                    {batchesFiltered.map((i) => {
                       const at = i.received_at || i.created_at || i.date;
                       const qIn = i.quantity_initial ?? i.quantity;
                       const qRem = i.quantity_remaining ?? i.quantity_remaining_kg;
@@ -599,7 +656,7 @@ const MaterialsPage = () => {
                         <Fragment key={i.id}>
                           <div className="materials-table__row materials-table__row--batch-main">
                             <span className="materials-table__date" title={at && String(at).length > 12 ? String(at) : undefined}>
-                              {typeof at === 'string' && at.length >= 16 ? at.slice(0, 16).replace('T', ' ') : formatDate(at)}
+                              {formatDateTimeShort(at)}
                             </span>
                             <span>{i.material_name ?? i.name ?? '—'}</span>
                             <span title={inCell.title}>{inCell.display}</span>
@@ -607,7 +664,7 @@ const MaterialsPage = () => {
                             <div className="materials-table__actions">
                               <button
                                 type="button"
-                                className="btn btn--secondary btn--sm"
+                                className="action-row__btn"
                                 onClick={() => setBatchExpandId(expanded ? null : i.id)}
                               >
                                 {expanded ? 'Свернуть' : 'Подробнее'}
@@ -651,6 +708,8 @@ const MaterialsPage = () => {
                   title="Нет записей движения"
                   description="История движения сырья пока пуста. Записи появятся после операций прихода, списания и корректировок."
                 />
+              ) : movementsFiltered.length === 0 ? (
+                <EmptyState title="Ничего не найдено" />
               ) : (
                 <div className="materials-table-wrap">
                   <div className="materials-table materials-table--movements">
@@ -661,14 +720,14 @@ const MaterialsPage = () => {
                       <span className="materials-table__th">Количество</span>
                       <span className="materials-table__th">Цена за единицу</span>
                     </div>
-                    {movementList.map((m) => {
+                    {movementsFiltered.map((m) => {
                       const at = m.occurred_at ?? m.created_at ?? m.date;
                       const qCell = qtyNumWithUnitTitle(m.quantity, m.unit);
                       const unitPrice = getMovementUnitPrice(m, incomingPriceById);
                       return (
                         <div key={m.id} className="materials-table__row">
                           <span className="materials-table__date">
-                            {typeof at === 'string' && at.length >= 16 ? at.slice(0, 16).replace('T', ' ') : formatDate(at)}
+                            {formatDateTimeShort(at)}
                           </span>
                           <span>{m.material_name ?? m.name ?? '—'}</span>
                           <span>{movementTypeLabel(m.movement_type ?? m.type)}</span>
@@ -773,9 +832,12 @@ const AddCatalogMaterialModal = ({ onSubmit, onClose, error, existingMaterials =
         onConfirm={confirmDiscardAndClose}
         onCancel={cancelDiscard}
       />
-      <div className="modal modal--wide" onClick={(e) => e.stopPropagation()} style={{ padding: 0 }}>
+      <div className="modal modal--sm" onClick={(e) => e.stopPropagation()} style={{ padding: 0 }}>
         <div className="modal__head">
-          <h3>Добавить сырьё</h3>
+          <div className="modal__head-titles">
+            <span className="modal__eyebrow">Новое сырьё</span>
+            <h3>Добавить сырьё</h3>
+          </div>
           <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
         <form
@@ -799,20 +861,26 @@ const AddCatalogMaterialModal = ({ onSubmit, onClose, error, existingMaterials =
             });
           }}
         >
-          <label>Название *</label>
-          <input
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              if (validationError) setValidationError('');
-            }}
-            required
-            placeholder="Название сырья"
-          />
-          <label>Минимальный остаток</label>
-          <DecimalInput min={0} value={minBalance} onChange={setMinBalance} placeholder="Порог «мало»" />
-          <label>Комментарий</label>
-          <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Опционально" />
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiTag aria-hidden size={15} strokeWidth={2} />Название *</label>
+            <input
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (validationError) setValidationError('');
+              }}
+              required
+              placeholder="Название сырья"
+            />
+          </div>
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiAlertTriangle aria-hidden size={15} strokeWidth={2} />Минимальный остаток</label>
+            <DecimalInput min={0} value={minBalance} onChange={setMinBalance} placeholder="Порог «мало»" />
+          </div>
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiMessageSquare aria-hidden size={15} strokeWidth={2} />Комментарий</label>
+            <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Опционально" />
+          </div>
           {(validationError || error) && (
             <p className="modal__error">{validationError || error}</p>
           )}
@@ -857,7 +925,7 @@ const EditMaterialModal = ({ materialId, initial, unitLocked, onSubmit, onClose,
         onConfirm={confirmDiscardAndClose}
         onCancel={cancelDiscard}
       />
-      <div className="modal modal--wide" onClick={(e) => e.stopPropagation()} style={{ padding: 0 }}>
+      <div className="modal modal--sm" onClick={(e) => e.stopPropagation()} style={{ padding: 0 }}>
         <div className="modal__head">
           <h3>Редактировать сырьё</h3>
           <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>

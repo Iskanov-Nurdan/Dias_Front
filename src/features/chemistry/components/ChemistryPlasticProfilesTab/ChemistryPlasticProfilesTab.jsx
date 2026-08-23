@@ -1,5 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { FiPlus, FiCheck, FiX } from 'react-icons/fi';
+import {
+  FiPlus, FiCheck, FiX, FiTag, FiHash, FiLayers, FiDollarSign,
+} from 'react-icons/fi';
 import { useOperationalRefetch, WS_WORKSHOP } from '../../../../shared/realtime';
 import {
   useServerQuery,
@@ -205,84 +207,104 @@ const ProfileFormModal = ({ mode, profile, onClose, onSaved, existingProfiles = 
     <div className="modal-overlay" role="presentation" onClick={busy ? undefined : onClose}>
       <div className="modal modal--wide" onClick={(ev) => ev.stopPropagation()}>
         <div className="modal__head">
-          <h3>{isEdit ? 'Редактировать товар' : 'Новый товар'}</h3>
+          <div className="modal__head-titles">
+            <span className="modal__eyebrow">{isEdit ? 'Редактирование' : 'Новый товар'}</span>
+            <h3>{isEdit ? 'Редактировать товар' : 'Новый товар'}</h3>
+          </div>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть" disabled={busy}>
             ×
           </button>
         </div>
         <form className="modal__body chemistry-element-form" onSubmit={handleSubmit}>
-          <label>Имя *</label>
-          <input
-            value={name}
-            onChange={(ev) => {
-              setName(ev.target.value);
-              if (validationError) setValidationError('');
-            }}
-            autoComplete="off"
-            required
-          />
-          <label>Кг</label>
-          <DecimalInput min={0} value={kgStr} onChange={setKgStr} placeholder="0" />
-          <label>Граммы (0–999)</label>
-          <input
-            inputMode="numeric"
-            className="chemistry-plastic-profiles__grams chemistry-plastic-profiles__grams--wide"
-            value={gramsStr}
-            onChange={(ev) => setGramsStr(clampGramsInput(ev.target.value))}
-            placeholder="0–999"
-          />
-          <label>Заготовка *</label>
-          <Select
-            value={blankId === '' ? '' : String(blankId)}
-            onChange={setBlankId}
-            placeholder={blankOptions.length ? 'Выберите заготовку' : 'Нет заготовок'}
-            options={blankOptions}
-          />
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiTag aria-hidden size={15} strokeWidth={2} />Имя *</label>
+            <input
+              value={name}
+              onChange={(ev) => {
+                setName(ev.target.value);
+                if (validationError) setValidationError('');
+              }}
+              autoComplete="off"
+              required
+            />
+          </div>
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiHash aria-hidden size={15} strokeWidth={2} />Кг</label>
+            <DecimalInput min={0} value={kgStr} onChange={setKgStr} placeholder="0" />
+          </div>
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiHash aria-hidden size={15} strokeWidth={2} />Граммы (0–999)</label>
+            <input
+              inputMode="numeric"
+              className="chemistry-plastic-profiles__grams chemistry-plastic-profiles__grams--wide"
+              value={gramsStr}
+              onChange={(ev) => setGramsStr(clampGramsInput(ev.target.value))}
+              placeholder="0–999"
+            />
+          </div>
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiLayers aria-hidden size={15} strokeWidth={2} />Заготовка *</label>
+            <Select
+              icon={FiLayers}
+              value={blankId === '' ? '' : String(blankId)}
+              onChange={setBlankId}
+              placeholder={blankOptions.length ? 'Выберите заготовку' : 'Нет заготовок'}
+              options={blankOptions}
+            />
+          </div>
           <p className="chemistry-plastic-profiles__hint">
             В ОТК при учёте этой заготовки будут доступны только товары с этой привязкой.
           </p>
           <p className="chemistry-plastic-profiles__section-title">Прочие расходы на 1 шт, сом</p>
           {PROFILE_EXTRA_EXPENSE_FIELDS.map(({ apiKey, label }) => (
-            <React.Fragment key={apiKey}>
-              <label>{label}</label>
+            <div className="modal__field" key={apiKey}>
+              <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />{label}</label>
               <DecimalInput
                 min={0}
                 value={expenseStr[apiKey] ?? ''}
                 onChange={(v) => setExpenseStr((prev) => ({ ...prev, [apiKey]: v }))}
                 placeholder="0"
               />
-            </React.Fragment>
+            </div>
           ))}
           <p className="chemistry-plastic-profiles__section-title">Цена</p>
-          <label>Себестоимость, сом</label>
-          <p className="chemistry-plastic-profiles__readonly-cost">
-            {serverCost != null ? `${formatNumberForInput(serverCost)} сом` : '—'}
-          </p>
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />Себестоимость, сом</label>
+            <p className="chemistry-plastic-profiles__readonly-cost">
+              {serverCost != null ? `${formatNumberForInput(serverCost)} сом` : '—'}
+            </p>
+          </div>
           {!isEdit || serverCost == null ? (
             <p className="chemistry-plastic-profiles__hint">
               Считается системой после первого учёта в ОТК. Изменить вручную нельзя.
             </p>
           ) : null}
-          <label>Прочие расходы, сом</label>
-          <p className="chemistry-plastic-profiles__readonly-cost">
-            {formatNumberForInput(otherExpensesTotal)} сом
-          </p>
-          <label>Наценка, сом</label>
-          <div className="chemistry-plastic-profiles__markup-row">
-            <DecimalInput min={0} value={markupStr} onChange={setMarkupStr} placeholder="0" />
-            <span className="chemistry-plastic-profiles__markup-pct" title="% от себестоимости">
-              {markupPctDisplay}
-            </span>
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />Прочие расходы, сом</label>
+            <p className="chemistry-plastic-profiles__readonly-cost">
+              {formatNumberForInput(otherExpensesTotal)} сом
+            </p>
+          </div>
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />Наценка, сом</label>
+            <div className="chemistry-plastic-profiles__markup-row">
+              <DecimalInput min={0} value={markupStr} onChange={setMarkupStr} placeholder="0" />
+              <span className="chemistry-plastic-profiles__markup-pct" title="% от себестоимости">
+                {markupPctDisplay}
+              </span>
+            </div>
           </div>
           {serverCost == null ? (
             <p className="chemistry-plastic-profiles__hint">
               % наценки появится после расчёта себестоимости системой.
             </p>
           ) : null}
-          <label>Итого цена товара, сом</label>
-          <p className="chemistry-plastic-profiles__readonly-cost chemistry-plastic-profiles__readonly-cost--total">
-            {salePricePreview != null ? `${formatNumberForInput(salePricePreview)} сом` : '—'}
-          </p>
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />Итого цена товара, сом</label>
+            <p className="chemistry-plastic-profiles__readonly-cost chemistry-plastic-profiles__readonly-cost--total">
+              {salePricePreview != null ? `${formatNumberForInput(salePricePreview)} сом` : '—'}
+            </p>
+          </div>
           <p className="chemistry-plastic-profiles__hint">
             Себестоимость + прочие расходы + наценка.
           </p>

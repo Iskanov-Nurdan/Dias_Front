@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiCheck, FiX } from 'react-icons/fi';
+import {
+  FiCheck, FiX, FiUser, FiCreditCard, FiPhone, FiHash, FiMapPin, FiToggleRight,
+} from 'react-icons/fi';
 import { SearchableSelect } from '../../../../shared/ui';
 import '../ClientsPage/ClientsPage.scss';
 
@@ -71,7 +73,10 @@ const ClientFormModal = ({ client, onClose, onSubmit, error, titleNew = 'Соз�
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal clients-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
-          <h3>{client ? titleEdit : titleNew}</h3>
+          <div className="modal__head-titles">
+            <span className="modal__eyebrow">{client ? 'Редактирование' : 'Новый клиент'}</span>
+            <h3>{client ? titleEdit : titleNew}</h3>
+          </div>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
             ×
           </button>
@@ -113,34 +118,42 @@ const ClientFormModal = ({ client, onClose, onSubmit, error, titleNew = 'Соз�
               </button>
             </div>
 
-            <label>{clientType === 'company' ? 'Название компании *' : 'ФИО *'}</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} required />
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiUser aria-hidden size={15} strokeWidth={2} />{clientType === 'company' ? 'Название компании *' : 'ФИО *'}</label>
+              <input value={name} onChange={(e) => setName(e.target.value)} required />
+            </div>
             {clientType === 'company' ? (
-              <>
-                <label>Расчётный счёт</label>
+              <div className="modal__field">
+                <label className="modal__label-icon"><FiCreditCard aria-hidden size={15} strokeWidth={2} />Расчётный счёт</label>
                 <input value={settlementAccount} onChange={(e) => setSettlementAccount(e.target.value)} placeholder="Номер расчётного счёта" />
-              </>
+              </div>
             ) : null}
             <div className="clients-modal__grid">
-              <div>
-                <label>Телефон</label>
+              <div className="modal__field">
+                <label className="modal__label-icon"><FiPhone aria-hidden size={15} strokeWidth={2} />Телефон</label>
                 <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+996 …" />
               </div>
-              <div>
-                <label>{clientType === 'company' ? 'Доп. телефоны' : 'Доп. телефон'}</label>
+              <div className="modal__field">
+                <label className="modal__label-icon"><FiPhone aria-hidden size={15} strokeWidth={2} />{clientType === 'company' ? 'Доп. телефоны' : 'Доп. телефон'}</label>
                 <input value={phoneExtraVal} onChange={(e) => setPhoneExtraVal(e.target.value)} placeholder={clientType === 'company' ? 'Через запятую' : ''} />
               </div>
             </div>
             {clientType === 'company' ? (
               <>
-                <label>ИНН</label>
-                <input value={inn} onChange={(e) => setInn(e.target.value)} />
-                <label>Адрес</label>
-                <textarea rows={3} value={address} onChange={(e) => setAddress(e.target.value)} />
+                <div className="modal__field">
+                  <label className="modal__label-icon"><FiHash aria-hidden size={15} strokeWidth={2} />ИНН</label>
+                  <input value={inn} onChange={(e) => setInn(e.target.value)} />
+                </div>
+                <div className="modal__field">
+                  <label className="modal__label-icon"><FiMapPin aria-hidden size={15} strokeWidth={2} />Адрес</label>
+                  <textarea rows={3} value={address} onChange={(e) => setAddress(e.target.value)} />
+                </div>
               </>
             ) : null}
-            <label>Статус</label>
-            <SearchableSelect value={status} onChange={setStatus} options={statusOptions} placeholder="Статус" />
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiToggleRight aria-hidden size={15} strokeWidth={2} />Статус</label>
+              <SearchableSelect value={status} onChange={setStatus} options={statusOptions} placeholder="Статус" />
+            </div>
             {error && <p className="modal__error">{error}</p>}
           </div>
           <div className="modal__actions clients-modal__footer">

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { FiCheck, FiX } from 'react-icons/fi';
+import { FiCheck, FiX, FiMessageSquare } from 'react-icons/fi';
 import { createComplaint } from '../../api/shiftsApi';
 import './ComplaintModal.scss';
 
@@ -135,15 +135,20 @@ const ComplaintModal = ({ open, onClose, employees, shiftId, onSuccess }) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal complaint-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
-          <h3>Жалоба</h3>
+          <div className="modal__head-titles">
+            <span className="modal__eyebrow">Новая жалоба</span>
+            <h3>Жалоба</h3>
+          </div>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <form onSubmit={handleSubmit}>
           <div className="modal__body complaint-modal__body">
-            <label htmlFor="complaint-body">Причина / текст жалобы *</label>
-            <p className="complaint-modal__hint">
-              Напишите текст. Чтобы указать сотрудника, введите <strong>@</strong> и выберите из списка или допишите имя.
-            </p>
+            <div className="modal__field">
+              <label htmlFor="complaint-body" className="modal__label-icon"><FiMessageSquare aria-hidden size={15} strokeWidth={2} />Причина / текст жалобы *</label>
+              <p className="complaint-modal__hint">
+                Напишите текст. Чтобы указать сотрудника, введите <strong>@</strong> и выберите из списка или допишите имя.
+              </p>
+            </div>
             <div className="complaint-modal__field-wrap">
               <textarea
                 ref={taRef}

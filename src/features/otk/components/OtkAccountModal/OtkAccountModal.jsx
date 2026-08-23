@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { FiCheck, FiX } from 'react-icons/fi';
+import {
+  FiCheck, FiX, FiPackage, FiActivity, FiUser, FiUsers,
+} from 'react-icons/fi';
 import { Select, DecimalInput, IntegerInput, useToast } from '../../../../shared/ui';
 import {
   formatNumberForInput,
@@ -253,6 +255,7 @@ const OtkAccountModal = ({ pool = [], onClose, onSaved }) => {
       >
         <header className="otk-account-screen__head">
           <div className="otk-account-screen__head-text">
+            <span className="modal__eyebrow">Учёт ОТК</span>
             <h2 id="otk-account-title" className="otk-account-screen__title">Учесть</h2>
             <p className="otk-account-screen__lead">
               Кг списываются с заготовки, привязанной к профилю. Брак — в кг, необязательно.
@@ -372,12 +375,12 @@ const OtkAccountModal = ({ pool = [], onClose, onSaved }) => {
               <section className="otk-account-card">
                 <h3 className="otk-account-card__title">Брак</h3>
                 <div className="otk-account-card__field">
-                  <span className="otk-account-card__label">Кг (необязательно)</span>
+                  <span className="otk-account-card__label modal__label-icon"><FiPackage aria-hidden size={15} strokeWidth={2} />Кг (необязательно)</span>
                   <DecimalInput min={0} value={defectKgStr} onChange={setDefectKgStr} placeholder="0" />
                 </div>
                 {defectKg > 0 && defectBlankOptions.length > 1 ? (
                   <div className="otk-account-card__field">
-                    <span className="otk-account-card__label">Заготовка для брака</span>
+                    <span className="otk-account-card__label modal__label-icon"><FiPackage aria-hidden size={15} strokeWidth={2} />Заготовка для брака</span>
                     <Select
                       value={defectBlankId || firstLineBlankId}
                       onChange={(v) => setDefectBlankId(v != null ? String(v) : '')}
@@ -391,7 +394,7 @@ const OtkAccountModal = ({ pool = [], onClose, onSaved }) => {
               <section className="otk-account-card">
                 <h3 className="otk-account-card__title">Сотрудники</h3>
                 <div className="otk-account-card__field">
-                  <span className="otk-account-card__label">Смена</span>
+                  <span className="otk-account-card__label modal__label-icon"><FiActivity aria-hidden size={15} strokeWidth={2} />Смена</span>
                   <Select
                     value={shiftPeriod}
                     onChange={(v) => setShiftPeriod(v === 'night' ? 'night' : 'day')}
@@ -400,7 +403,7 @@ const OtkAccountModal = ({ pool = [], onClose, onSaved }) => {
                 </div>
                 <div className="otk-account-card__grid otk-account-card__grid--2">
                   <div className="otk-account-card__field">
-                    <span className="otk-account-card__label">Оператор</span>
+                    <span className="otk-account-card__label modal__label-icon"><FiUser aria-hidden size={15} strokeWidth={2} />Оператор</span>
                     <Select
                       value={operatorId}
                       onChange={(v) => setOperatorId(v != null ? String(v) : '')}
@@ -409,7 +412,7 @@ const OtkAccountModal = ({ pool = [], onClose, onSaved }) => {
                     />
                   </div>
                   <div className="otk-account-card__field">
-                    <span className="otk-account-card__label">Химик</span>
+                    <span className="otk-account-card__label modal__label-icon"><FiUser aria-hidden size={15} strokeWidth={2} />Химик</span>
                     <Select
                       value={chemistId}
                       onChange={(v) => setChemistId(v != null ? String(v) : '')}
@@ -419,7 +422,7 @@ const OtkAccountModal = ({ pool = [], onClose, onSaved }) => {
                   </div>
                 </div>
                 <div className="otk-account-card__field">
-                  <span className="otk-account-card__label">Упаковщики</span>
+                  <span className="otk-account-card__label modal__label-icon"><FiUsers aria-hidden size={15} strokeWidth={2} />Упаковщики</span>
                   {packerIds.length > 0 ? (
                     <div className="otk-account-packers">
                       {packerIds.map((id) => {

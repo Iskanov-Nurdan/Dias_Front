@@ -52,6 +52,17 @@
       background: var(--danger-muted);
     }
   }
+
+  &--warning {
+    background: var(--btn-warning-bg);
+    border-color: var(--btn-warning-bg);
+    color: var(--btn-warning-text);
+
+    &:hover:not(:disabled) {
+      background: var(--btn-warning-bg-hover);
+      border-color: var(--btn-warning-bg-hover);
+    }
+  }
 }
 
 .action-menu__backdrop {

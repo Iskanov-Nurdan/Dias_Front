@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { FiLayers, FiGrid, FiPlus, FiCheck, FiX } from 'react-icons/fi';
+import { FiLayers, FiGrid, FiPlus, FiCheck, FiX, FiTag } from 'react-icons/fi';
 import {
   useServerQuery,
   formatNumberForInput,
@@ -87,14 +87,19 @@ const AddBlankModal = ({ materialOptions, onClose, onCreated }) => {
     <div className="modal-overlay" role="presentation" onClick={onClose}>
       <div className="modal modal--wide" onClick={(ev) => ev.stopPropagation()}>
         <div className="modal__head">
-          <h3>Добавить заготовку</h3>
+          <div className="modal__head-titles">
+            <span className="modal__eyebrow">Новая заготовка</span>
+            <h3>Добавить заготовку</h3>
+          </div>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">
             ×
           </button>
         </div>
         <form className="modal__body chemistry-element-form" onSubmit={handleSubmit}>
-          <label>Имя *</label>
-          <input value={name} onChange={(ev) => setName(ev.target.value)} required autoComplete="off" />
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiTag aria-hidden size={15} strokeWidth={2} />Имя *</label>
+            <input value={name} onChange={(ev) => setName(ev.target.value)} required autoComplete="off" />
+          </div>
           <BlankRecipeRowsEditor
             recipeRows={recipeRows}
             setRecipeRows={setRecipeRows}

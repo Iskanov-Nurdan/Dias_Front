@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { FiUsers, FiShield, FiPlus, FiCheck, FiX, FiActivity, FiRepeat } from 'react-icons/fi';
+import { FiUsers, FiShield, FiPlus, FiCheck, FiX, FiActivity, FiRepeat, FiUser, FiLock } from 'react-icons/fi';
 import { useDiscardOnClose, useDirtyFromBaseline, useIsMobile } from '../../../../shared/hooks';
 import { useServerQuery, getApiErrorMessage } from '../../../../shared/lib';
 import {
@@ -817,7 +817,10 @@ const UserFormModal = ({ user, roles, onSubmit, onClose, error }) => {
       />
       <div className="modal users-page__form-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
-          <h3>{user ? 'Редактировать сотрудника' : 'Добавить сотрудника'}</h3>
+          <div className="modal__head-titles">
+            <span className="modal__eyebrow">{user ? 'Редактирование' : 'Новый сотрудник'}</span>
+            <h3>{user ? 'Редактировать сотрудника' : 'Добавить сотрудника'}</h3>
+          </div>
           <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
         <form
@@ -831,18 +834,20 @@ const UserFormModal = ({ user, roles, onSubmit, onClose, error }) => {
             onSubmit(data);
           }}
         >
-          <label>Имя *</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} required />
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiUser aria-hidden size={15} strokeWidth={2} />Имя *</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} required />
+          </div>
           {!user ? (
-            <>
-              <label>Пароль *</label>
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiLock aria-hidden size={15} strokeWidth={2} />Пароль *</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
-            </>
+            </div>
           ) : (
             <Collapse title="Смена пароля">
               <input
@@ -853,13 +858,15 @@ const UserFormModal = ({ user, roles, onSubmit, onClose, error }) => {
               />
             </Collapse>
           )}
-          <label>Роль *</label>
-          <Select
-            value={role}
-            onChange={setRole}
-            placeholder="Выберите роль"
-            options={roles.map((r) => ({ value: String(r.id), label: r.name }))}
-          />
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiShield aria-hidden size={15} strokeWidth={2} />Роль *</label>
+            <Select
+              value={role}
+              onChange={setRole}
+              placeholder="Выберите роль"
+              options={roles.map((r) => ({ value: String(r.id), label: r.name }))}
+            />
+          </div>
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={requestClose}>

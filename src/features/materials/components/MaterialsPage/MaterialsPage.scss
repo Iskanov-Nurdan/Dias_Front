@@ -263,12 +263,18 @@
   &--batches &__header,
   &--batches .materials-table__row--batch-main {
     grid-template-columns:
-      100px
+      minmax(9.5rem, auto)
       minmax(100px, 1.2fr)
       minmax(5rem, auto)
       minmax(5rem, auto)
       minmax(108px, auto);
     align-items: center;
+  }
+
+  &--batches &__date {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
   }
 
   &__batch-detail {
@@ -317,12 +323,18 @@
   &--movements &__header,
   &--movements &__row {
     grid-template-columns:
-      100px
+      minmax(9.5rem, auto)
       minmax(100px, 1fr)
       minmax(8rem, 1.1fr)
       minmax(5rem, auto)
       minmax(6.5rem, auto);
     align-items: center;
+  }
+
+  &--movements &__date {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
   }
 
   /*

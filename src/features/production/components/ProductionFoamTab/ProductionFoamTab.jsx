@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { FiPlus, FiCheck, FiX } from 'react-icons/fi';
 import {
   formatNumberForInput,
   pickFirstIsoDate,
   matchesClientDateFilter,
   getApiErrorMessage,
 } from '../../../../shared/lib';
-import { ClientDateFilter, EmptyState, Loading, useToast } from '../../../../shared/ui';
+import { ClientDateFilter, EmptyState, Loading, useToast, SearchInput, EntityAvatar } from '../../../../shared/ui';
 import { useOperationalRefetch, WS_FOAM_PRODUCTION } from '../../../../shared/realtime';
 import {
   FOAM_PRODUCTION_FORMATS,
@@ -133,8 +134,12 @@ const StartRunModal = ({ lots, grades, onClose, onCreate, saving }) => {
           {error && <p className="modal__error">{error}</p>}
 
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>Отмена</button>
+            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>
+              <FiX aria-hidden size={16} strokeWidth={2} />
+              Отмена
+            </button>
             <button type="submit" className="btn btn--primary" disabled={saving || !lot || (needsGrade && !gradeCode)}>
+              <FiCheck aria-hidden size={16} strokeWidth={2} />
               {saving ? 'Запуск…' : 'Запустить'}
             </button>
           </div>
@@ -153,6 +158,7 @@ const ProductionFoamTab = () => {
   const [startOpen, setStartOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dateFilterIso, setDateFilterIso] = useState('');
+  const [runsSearch, setRunsSearch] = useState('');
 
   const fetchAll = useCallback(async () => {
     try {
@@ -193,9 +199,14 @@ const ProductionFoamTab = () => {
   }, [productionRuns]);
 
   const visibleRuns = useMemo(() => {
-    if (!dateFilterIso) return productionRuns;
-    return productionRuns.filter((r) => matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(r, ['produced_at'])));
-  }, [productionRuns, dateFilterIso]);
+    let list = productionRuns;
+    if (dateFilterIso) {
+      list = list.filter((r) => matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(r, ['produced_at'])));
+    }
+    const q = runsSearch.trim().toLowerCase();
+    if (q) list = list.filter((r) => String(r.material_name || '').toLowerCase().includes(q));
+    return list;
+  }, [productionRuns, dateFilterIso, runsSearch]);
 
   const handleCreate = async (payload) => {
     setSaving(true);
@@ -230,12 +241,13 @@ const ProductionFoamTab = () => {
       <div className="production-card production-card--produced">
         <div className="production-card__head ds-toolbar ds-toolbar--in-card">
           <div className="ds-toolbar__start">
-            <h2 className="production-card__title">Выпуски пенопласта</h2>
+            <SearchInput placeholder="Поиск по сырью" value={runsSearch} onChange={(e) => setRunsSearch(e.target.value)} />
             <ClientDateFilter value={dateFilterIso} onChange={setDateFilterIso} id="production-foam-date" />
           </div>
           <div className="ds-toolbar__end">
             <button type="button" className="btn btn--primary" onClick={() => setStartOpen(true)}>
-              Запустить производство
+              <FiPlus aria-hidden size={16} strokeWidth={2} />
+              Производство
             </button>
           </div>
         </div>
@@ -260,7 +272,10 @@ const ProductionFoamTab = () => {
               </div>
               {visibleRuns.map((r) => (
                 <div key={r.id} className="chemistry-table__row">
-                  <span className="chemistry-table__name chemistry-table__cell-clip">{r.material_name}</span>
+                  <span className="chemistry-table__name chemistry-table__name--with-avatar chemistry-table__cell-clip">
+                    <EntityAvatar name={r.material_name} size={28} />
+                    {r.material_name}
+                  </span>
                   <span className="chemistry-table__cell-clip">{r.grade_code || '—'}</span>
                   <span className="chemistry-table__num">{formatNumberForInput(r.input_kg)} кг</span>
                   <span className="chemistry-table__cell-clip">

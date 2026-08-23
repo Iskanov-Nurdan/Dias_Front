@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { FiPlus, FiCheck, FiX } from 'react-icons/fi';
 import {
   formatNumberForInput,
   parseLocaleNumber,
@@ -6,7 +7,7 @@ import {
   matchesClientDateFilter,
   getApiErrorMessage,
 } from '../../../../shared/lib';
-import { Badge, ClientDateFilter, EmptyState, Loading, useToast } from '../../../../shared/ui';
+import { Badge, ClientDateFilter, EmptyState, Loading, useToast, SearchInput } from '../../../../shared/ui';
 import { useOperationalRefetch, WS_FOAM_SALES } from '../../../../shared/realtime';
 import {
   FOAM_SALE_PAYMENT_STATUS_LABEL,
@@ -180,8 +181,12 @@ const CreateFoamSaleModal = ({ stock, onClose, onCreate, saving }) => {
           {error && <p className="modal__error">{error}</p>}
 
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>Отмена</button>
+            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>
+              <FiX aria-hidden size={16} strokeWidth={2} />
+              Отмена
+            </button>
             <button type="submit" className="btn btn--primary" disabled={saving || !canSubmit}>
+              <FiCheck aria-hidden size={16} strokeWidth={2} />
               {saving ? 'Сохранение…' : 'Создать продажу'}
             </button>
           </div>
@@ -231,6 +236,7 @@ const SalesFoamTab = () => {
   const [saving, setSaving] = useState(false);
   const [detailsSale, setDetailsSale] = useState(null);
   const [dateFilterIso, setDateFilterIso] = useState('');
+  const [salesSearch, setSalesSearch] = useState('');
 
   const fetchAll = useCallback(async () => {
     try {
@@ -255,9 +261,16 @@ const SalesFoamTab = () => {
   useOperationalRefetch(WS_FOAM_SALES, fetchAll, true);
 
   const visibleSales = useMemo(() => {
-    if (!dateFilterIso) return sales;
-    return sales.filter((s) => matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(s, ['date'])));
-  }, [sales, dateFilterIso]);
+    let list = sales;
+    if (dateFilterIso) {
+      list = list.filter((s) => matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(s, ['date'])));
+    }
+    const q = salesSearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter((s) => String(s.client || '').toLowerCase().includes(q));
+    }
+    return list;
+  }, [sales, dateFilterIso, salesSearch]);
 
   const handleCreate = async (payload) => {
     setSaving(true);
@@ -276,11 +289,17 @@ const SalesFoamTab = () => {
     <div className="sales-foam-tab">
       <div className="ds-toolbar commercial-toolbar">
         <div className="ds-toolbar__start commercial-toolbar__filters">
+          <SearchInput
+            value={salesSearch}
+            onChange={(e) => setSalesSearch(e.target.value)}
+            placeholder="Поиск по клиенту"
+          />
           <ClientDateFilter value={dateFilterIso} onChange={setDateFilterIso} id="sales-foam-date-filter" />
         </div>
         <div className="ds-toolbar__end">
           <button type="button" className="btn btn--primary" onClick={() => setCreateOpen(true)}>
-            Создать продажу
+            <FiPlus aria-hidden size={16} strokeWidth={2} />
+            Продажа
           </button>
         </div>
       </div>
@@ -313,7 +332,7 @@ const SalesFoamTab = () => {
                   <td className="data-table__cell--num">{toMoney(s.debt_amount)}</td>
                   <td><Badge variant={FOAM_SALE_PAYMENT_STATUS_VARIANT[s.payment_status]}>{FOAM_SALE_PAYMENT_STATUS_LABEL[s.payment_status]}</Badge></td>
                   <td>
-                    <button type="button" className="btn btn--secondary btn--sm" onClick={() => setDetailsSale(s)}>
+                    <button type="button" className="action-row__btn" onClick={() => setDetailsSale(s)}>
                       Открыть
                     </button>
                   </td>

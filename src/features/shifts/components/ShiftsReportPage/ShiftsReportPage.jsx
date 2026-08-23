@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { FiCalendar, FiAlertCircle, FiClipboard, FiPlus, FiUser, FiActivity } from 'react-icons/fi';
 import { useToast, Select } from '../../../../shared/ui';
 import { getAllShifts, getShiftDetails, getAllUsers, getUserActivity, getActivityDetail } from '../../api/shiftsApi';
 import ShiftActivityListModal from '../ActivityAudit/ShiftActivityListModal';
@@ -170,6 +171,7 @@ const ShiftsReportPage = () => {
           className={`shifts-report__main-tab${mainTab === 'shifts' ? ' shifts-report__main-tab--active' : ''}`}
           onClick={() => setMainTab('shifts')}
         >
+          <FiCalendar aria-hidden size={16} strokeWidth={2} />
           Отчёт по сменам
         </button>
         <button
@@ -179,6 +181,7 @@ const ShiftsReportPage = () => {
           className={`shifts-report__main-tab${mainTab === 'complaints' ? ' shifts-report__main-tab--active' : ''}`}
           onClick={() => setMainTab('complaints')}
         >
+          <FiAlertCircle aria-hidden size={16} strokeWidth={2} />
           Жалобы
         </button>
         <button
@@ -188,6 +191,7 @@ const ShiftsReportPage = () => {
           className={`shifts-report__main-tab${mainTab === 'otk-staff' ? ' shifts-report__main-tab--active' : ''}`}
           onClick={() => setMainTab('otk-staff')}
         >
+          <FiClipboard aria-hidden size={16} strokeWidth={2} />
           Работа в ОТК
         </button>
       </div>
@@ -205,7 +209,8 @@ const ShiftsReportPage = () => {
               className="btn btn--primary"
               onClick={() => setComplaintModalOpen(true)}
             >
-              Добавить жалобу
+              <FiPlus aria-hidden size={16} strokeWidth={2} />
+              Жалоба
             </button>
           </div>
         </div>
@@ -257,7 +262,6 @@ const ShiftsReportPage = () => {
       </div>
 
       <div className="ds-list-card">
-      <h2 className="ds-list-card__title shifts-report__title">Смены</h2>
       <div className="shifts-report__filters">
         <div className="shifts-report__filter-group">
           <label className="shifts-report__filter-label">Дата</label>
@@ -272,6 +276,7 @@ const ShiftsReportPage = () => {
           <label className="shifts-report__filter-label">Сотрудник</label>
           <Select
             className="shifts-report__filter-select"
+            icon={FiUser}
             value={filterUser === '' || filterUser == null ? '' : String(filterUser)}
             onChange={setFilterUser}
             placeholder="Все сотрудники"
@@ -288,6 +293,7 @@ const ShiftsReportPage = () => {
           <label className="shifts-report__filter-label">Статус</label>
           <Select
             className="shifts-report__filter-select"
+            icon={FiActivity}
             value={filterStatus}
             onChange={setFilterStatus}
             placeholder="Все"
@@ -360,7 +366,7 @@ const ShiftsReportPage = () => {
                       <td className="shifts-report__table-actions">
                         <button
                         type="button"
-                        className="btn btn--secondary btn--sm"
+                        className="action-row__btn"
                         onClick={() => openDetails(s)}
                       >
                         <EyeIcon />

@@ -53,32 +53,5 @@
       max-width: 100%;
     }
   }
-
-  &__input {
-    min-height: var(--input-height);
-    padding: 0 var(--space-3);
-    background: var(--input-bg);
-    border: 1px solid var(--input-border);
-    border-radius: var(--radius-md);
-    color: var(--text);
-    font-size: var(--font-base);
-    font-family: inherit;
-    transition:
-      border-color var(--transition-fast),
-      box-shadow var(--transition-fast);
-    width: 100%;
-
-    &::placeholder {
-      color: var(--placeholder);
-    }
-
-    &:hover {
-      border-color: rgba(15, 23, 42, 0.18);
-    }
-
-    &:focus {
-      @include focus-ring;
-    }
-  }
 }
 

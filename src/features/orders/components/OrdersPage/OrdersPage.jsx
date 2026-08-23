@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { FiPlus, FiCheck, FiX, FiClipboard } from 'react-icons/fi';
 import { useOperationalRefetch, WS_CASH } from '../../../../shared/realtime';
 import {
   useServerQuery,
@@ -13,11 +14,13 @@ import {
   Badge,
   DecimalInput,
   EmptyState,
+  EntityAvatar,
   ErrorState,
   IntegerInput,
   Loading,
   Pagination,
   SearchableSelect,
+  SearchInput,
   useToast,
   ClientDateFilter,
 } from '../../../../shared/ui';
@@ -189,7 +192,7 @@ const OrderRowActions = ({ status, busy, onApprove, onReject, onRecheck }) => {
   if (st === 'not_ready') {
     return (
       <div className="orders-rq__row-actions">
-        <button type="button" className="btn btn--secondary btn--sm" disabled={busy} onClick={onRecheck}>
+        <button type="button" className="action-row__btn" disabled={busy} onClick={onRecheck}>
           Проверить снова
         </button>
       </div>
@@ -244,6 +247,7 @@ const OrdersPage = () => {
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState('');
   const [clientDateFilter, setClientDateFilter] = useState('');
+  const [ordersSearch, setOrdersSearch] = useState('');
 
   const { items, meta, loading, error, refetch } = useServerQuery('orders/', queryState, {
     enabled: true,
@@ -274,11 +278,16 @@ const OrdersPage = () => {
   );
 
   const visibleOrders = useMemo(() => {
-    if (!clientDateFilter) return items;
-    return (items || []).filter((o) =>
-      matchesClientDateFilter(clientDateFilter, pickFirstIsoDate(o, orderDateFields)),
-    );
-  }, [items, clientDateFilter, orderDateFields]);
+    let list = items || [];
+    if (clientDateFilter) {
+      list = list.filter((o) => matchesClientDateFilter(clientDateFilter, pickFirstIsoDate(o, orderDateFields)));
+    }
+    const q = ordersSearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter((o) => orderClientLabel(o, clients).toLowerCase().includes(q));
+    }
+    return list;
+  }, [items, clientDateFilter, orderDateFields, ordersSearch, clients]);
 
   const orderWithLines = useCallback(
     (o) => {
@@ -389,8 +398,13 @@ const OrdersPage = () => {
       <div className="ds-list-card">
       <div className="ds-toolbar commercial-toolbar">
         <div className="ds-toolbar__start commercial-toolbar__filters">
-          <h2 className="ds-list-card__title">Заявки</h2>
+          <SearchInput
+            value={ordersSearch}
+            onChange={(e) => setOrdersSearch(e.target.value)}
+            placeholder="Поиск по клиенту"
+          />
           <SearchableSelect
+            icon={FiClipboard}
             value={queryState.request_status}
             onChange={(v) => setQueryState((p) => ({ ...p, request_status: v, page: 1 }))}
             placeholder="Статус заявки"
@@ -400,7 +414,8 @@ const OrdersPage = () => {
         </div>
         <div className="ds-toolbar__end">
           <button type="button" className="btn btn--primary" onClick={() => setCreateOpen(true)}>
-            Создать заявку
+            <FiPlus aria-hidden size={16} strokeWidth={2} />
+            Заявка
           </button>
         </div>
       </div>
@@ -432,7 +447,12 @@ const OrdersPage = () => {
                 const lines = extractOrderLines(displayOrder);
                 return (
                   <tr key={o.id}>
-                    <td>{orderClientLabel(o, clients)}</td>
+                    <td>
+                      <span className="data-table__name--with-avatar">
+                        <EntityAvatar name={orderClientLabel(o, clients)} size={28} />
+                        {orderClientLabel(o, clients)}
+                      </span>
+                    </td>
                     <td>
                       <OrderLinesCell lines={lines} profileList={profiles} column="profile" />
                     </td>
@@ -787,9 +807,11 @@ const CreateOrderModal = ({ clients, profiles, onClose, onCreated }) => {
           </div>
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose} disabled={busy}>
+              <FiX aria-hidden size={16} strokeWidth={2} />
               Отмена
             </button>
             <button type="submit" className="btn btn--primary" disabled={!canSubmit || busy}>
+              <FiCheck aria-hidden size={16} strokeWidth={2} />
               {busy ? '…' : 'Создать'}
             </button>
           </div>

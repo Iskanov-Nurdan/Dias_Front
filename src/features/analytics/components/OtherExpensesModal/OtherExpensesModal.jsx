@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { FiPlus, FiCheck, FiX } from 'react-icons/fi';
 import { Select } from '../../../../shared/ui';
 import { parseApiListResponse } from '../../../../shared/lib';
 import {
@@ -147,9 +148,11 @@ const AddOtherExpenseModal = ({ open, onClose, onSaved, year, month, day }) => {
           ) : null}
           <div className="analytics-other-expense-add-modal__actions">
             <button type="button" className="btn btn--secondary btn--sm" onClick={onClose}>
+              <FiX aria-hidden size={16} strokeWidth={2} />
               Отмена
             </button>
             <button type="submit" className="btn btn--primary btn--sm" disabled={submitBusy}>
+              <FiCheck aria-hidden size={16} strokeWidth={2} />
               {submitBusy ? 'Сохранение…' : 'Сохранить'}
             </button>
           </div>
@@ -292,7 +295,8 @@ const OtherExpensesModal = ({ open, onClose, onChanged, initialYear, initialMont
               className="btn btn--primary btn--sm analytics-other-expenses-modal__add-btn"
               onClick={() => setAddOpen(true)}
             >
-              Добавить расход
+              <FiPlus aria-hidden size={16} strokeWidth={2} />
+              Расход
             </button>
           </div>
 

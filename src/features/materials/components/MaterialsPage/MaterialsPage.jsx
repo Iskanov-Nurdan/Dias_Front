@@ -1,6 +1,9 @@
 import React, {
   useMemo, useState, useEffect, useCallback, Fragment,
 } from 'react';
+import {
+  FiBookOpen, FiPackage, FiLayers, FiClock, FiPlus, FiCheck, FiX, FiSliders,
+} from 'react-icons/fi';
 import { useDiscardOnClose, useDirtyFromBaseline, useProductLine, PRODUCT_LINE } from '../../../../shared/hooks';
 import {
   useServerQuery,
@@ -8,7 +11,7 @@ import {
   formatQuantityDisplay,
   parseLocaleNumber,
 } from '../../../../shared/lib';
-import { ActionMenu, Loading, EmptyState, ErrorState, ConfirmModal, useToast, DecimalInput, Select, ProductLineTabs } from '../../../../shared/ui';
+import { ActionMenu, Loading, EmptyState, ErrorState, ConfirmModal, useToast, DecimalInput, Select, SearchInput, ProductLineTabs, EntityAvatar } from '../../../../shared/ui';
 import {
   createIncoming,
   createRawMaterial,
@@ -352,6 +355,7 @@ const MaterialsPage = () => {
           className={`materials-tabs__tab${mainTab === MAIN_TAB.CATALOG ? ' materials-tabs__tab--active' : ''}`}
           onClick={() => setMainTab(MAIN_TAB.CATALOG)}
         >
+          <FiBookOpen aria-hidden size={16} strokeWidth={2} />
           Справочник
         </button>
         <button
@@ -361,6 +365,7 @@ const MaterialsPage = () => {
           className={`materials-tabs__tab${mainTab === MAIN_TAB.STOCK ? ' materials-tabs__tab--active' : ''}`}
           onClick={() => setMainTab(MAIN_TAB.STOCK)}
         >
+          <FiPackage aria-hidden size={16} strokeWidth={2} />
           Остатки
         </button>
         <button
@@ -370,6 +375,7 @@ const MaterialsPage = () => {
           className={`materials-tabs__tab${mainTab === MAIN_TAB.BATCHES ? ' materials-tabs__tab--active' : ''}`}
           onClick={() => setMainTab(MAIN_TAB.BATCHES)}
         >
+          <FiLayers aria-hidden size={16} strokeWidth={2} />
           Партии
         </button>
         <button
@@ -379,6 +385,7 @@ const MaterialsPage = () => {
           className={`materials-tabs__tab${mainTab === MAIN_TAB.MOVEMENTS ? ' materials-tabs__tab--active' : ''}`}
           onClick={() => setMainTab(MAIN_TAB.MOVEMENTS)}
         >
+          <FiClock aria-hidden size={16} strokeWidth={2} />
           История движения
         </button>
       </div>
@@ -386,11 +393,17 @@ const MaterialsPage = () => {
       <div className="materials-card">
         <div className="materials-card__head ds-toolbar ds-toolbar--in-card">
           <div className="ds-toolbar__start materials-card__head-main">
-            <h2 className="materials-card__title">Сырьё</h2>
             {mainTab === MAIN_TAB.CATALOG && (
               <>
+                <SearchInput
+                  className="materials-card__search"
+                  placeholder="Поиск"
+                  value={balancesSearch}
+                  onChange={(e) => setBalancesSearch(e.target.value)}
+                />
                 <Select
                   className="materials-card__filter"
+                  icon={FiSliders}
                   value={balanceFilter}
                   onChange={setBalanceFilter}
                   aria-label="Остаток"
@@ -399,13 +412,6 @@ const MaterialsPage = () => {
                     { value: BALANCE_FILTER.LOW, label: 'Ниже минимума' },
                     { value: BALANCE_FILTER.OK, label: 'Норма' },
                   ]}
-                />
-                <input
-                  type="text"
-                  className="materials-card__search"
-                  placeholder="Поиск"
-                  value={balancesSearch}
-                  onChange={(e) => setBalancesSearch(e.target.value)}
                 />
                 {lowStockCount > 0 && (
                   <span className="materials-card__alert-pill" role="status">
@@ -417,14 +423,16 @@ const MaterialsPage = () => {
           </div>
           <div className="ds-toolbar__end materials-card__toolbar-actions">
             <button type="button" className="btn btn--primary" onClick={() => setCatalogModal(true)}>
-              Добавить сырьё
+              <FiPlus aria-hidden size={16} strokeWidth={2} />
+              Сырьё
             </button>
             <button
               type="button"
               className="btn btn--secondary"
               onClick={() => setReplenishModal({ pickMaterial: true })}
             >
-              Оформить приход
+              <FiPlus aria-hidden size={16} strokeWidth={2} />
+              Приход
             </button>
           </div>
         </div>
@@ -458,7 +466,8 @@ const MaterialsPage = () => {
                           key={mid != null ? String(mid) : `row-${idx}-${displayName(b)}`}
                           className={`materials-table__row ${low ? 'materials-table__row--low-stock' : ''}`}
                         >
-                          <span className="materials-table__name">
+                          <span className="materials-table__name materials-table__name--with-avatar">
+                            <EntityAvatar name={displayName(b)} size={28} />
                             {displayName(b)}
                             {!active && (
                               <span className="materials-table__inactive"> · неактивен</span>
@@ -476,11 +485,12 @@ const MaterialsPage = () => {
                           <div className="materials-table__actions">
                             <button
                               type="button"
-                              className="btn btn--secondary btn--sm"
+                              className="action-row__btn"
                               disabled={mid == null}
                               onClick={() => openIncomingForRow(b)}
                             >
-                              Оформить приход
+                              <FiPlus aria-hidden size={16} strokeWidth={2} />
+                              Приход
                             </button>
                             <ActionMenu
                               ariaLabel="Действия"
@@ -534,7 +544,10 @@ const MaterialsPage = () => {
                           key={mid != null ? String(mid) : `st-${idx}`}
                           className={`materials-table__row ${low || sk === 'empty' ? 'materials-table__row--low-stock' : ''}`}
                         >
-                          <span className="materials-table__name">{displayName(b)}</span>
+                          <span className="materials-table__name materials-table__name--with-avatar">
+                            <EntityAvatar name={displayName(b)} size={28} />
+                            {displayName(b)}
+                          </span>
                           <span
                             className={`materials-table__balance${low || sk === 'empty' ? ' materials-table__balance--low' : ''}`}
                             title={balCell.title}
@@ -804,8 +817,8 @@ const AddCatalogMaterialModal = ({ onSubmit, onClose, error, existingMaterials =
             <p className="modal__error">{validationError || error}</p>
           )}
           <div className="modal__actions">
-            <button type="submit" className="btn btn--primary">Сохранить</button>
-            <button type="button" className="btn btn--secondary" onClick={requestClose}>Отмена</button>
+            <button type="button" className="btn btn--secondary" onClick={requestClose}><FiX aria-hidden size={16} strokeWidth={2} />Отмена</button>
+            <button type="submit" className="btn btn--primary"><FiCheck aria-hidden size={16} strokeWidth={2} />Сохранить</button>
           </div>
         </form>
       </div>
@@ -872,8 +885,8 @@ const EditMaterialModal = ({ materialId, initial, unitLocked, onSubmit, onClose,
           <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Опционально" />
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
-            <button type="submit" className="btn btn--primary">Сохранить</button>
-            <button type="button" className="btn btn--secondary" onClick={requestClose}>Отмена</button>
+            <button type="button" className="btn btn--secondary" onClick={requestClose}><FiX aria-hidden size={16} strokeWidth={2} />Отмена</button>
+            <button type="submit" className="btn btn--primary"><FiCheck aria-hidden size={16} strokeWidth={2} />Сохранить</button>
           </div>
         </form>
       </div>
@@ -1026,14 +1039,15 @@ const ReplenishModal = ({ material, onSubmit, onClose, error }) => {
           <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Опционально" />
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
+            <button type="button" className="btn btn--secondary" onClick={requestClose}><FiX aria-hidden size={16} strokeWidth={2} />Отмена</button>
             <button
               type="submit"
               className="btn btn--primary"
               disabled={resolvedMaterial?.material_id == null}
             >
-              Оформить приход
+              <FiCheck aria-hidden size={16} strokeWidth={2} />
+              Приход
             </button>
-            <button type="button" className="btn btn--secondary" onClick={requestClose}>Отмена</button>
           </div>
         </form>
       </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { FiPlus } from 'react-icons/fi';
 import { getComplaints } from '../../api/shiftsApi';
 import './ComplaintsInbox.scss';
 
@@ -84,7 +85,8 @@ const ComplaintsInbox = ({ className = '', reloadToken = 0, onAddComplaint }) =>
           </button>
           {onAddComplaint ? (
             <button type="button" className="btn btn--primary btn--sm" onClick={onAddComplaint}>
-              Добавить жалобу
+              <FiPlus aria-hidden size={16} strokeWidth={2} />
+              Жалоба
             </button>
           ) : null}
         </div>

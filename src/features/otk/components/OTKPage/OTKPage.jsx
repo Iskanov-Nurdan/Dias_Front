@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { FiClipboard, FiClock, FiPlus } from 'react-icons/fi';
 import { useOperationalRefetch, WS_OTK } from '../../../../shared/realtime';
 import {
   EmptyState,
@@ -9,6 +10,7 @@ import {
   Badge,
   RecordDetailsModal,
   DetailFields,
+  SearchInput,
 } from '../../../../shared/ui';
 import {
   formatNumberForInput,
@@ -48,6 +50,8 @@ const OTKPage = () => {
   const [error, setError] = useState(null);
   const [accountModalOpen, setAccountModalOpen] = useState(false);
   const [historyDetail, setHistoryDetail] = useState(null);
+  const [poolSearch, setPoolSearch] = useState('');
+  const [historySearch, setHistorySearch] = useState('');
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -77,12 +81,23 @@ const OTKPage = () => {
     [pool],
   );
 
+  const visiblePool = useMemo(() => {
+    const q = poolSearch.trim().toLowerCase();
+    if (!q) return poolWithKg;
+    return poolWithKg.filter((p) => String(p.blankName || '').toLowerCase().includes(q));
+  }, [poolWithKg, poolSearch]);
+
   const visibleAccountHistory = useMemo(() => {
-    if (!dateFilterIso) return accountHistory;
-    return accountHistory.filter((row) =>
-      matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(row, ['createdAt'])),
-    );
-  }, [accountHistory, dateFilterIso]);
+    let list = accountHistory;
+    if (dateFilterIso) {
+      list = list.filter((row) => matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(row, ['createdAt'])));
+    }
+    const q = historySearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter((row) => String(row.blankName || '').toLowerCase().includes(q));
+    }
+    return list;
+  }, [accountHistory, dateFilterIso, historySearch]);
 
   const canOpenAccount = poolWithKg.some((p) => p.canAccount);
 
@@ -108,6 +123,7 @@ const OTKPage = () => {
           className={`production-main-tabs__btn${mainTab === 'pool' ? ' production-main-tabs__btn--active' : ''}`}
           onClick={() => setMainTab('pool')}
         >
+          <FiClipboard aria-hidden size={16} strokeWidth={2} />
           Проверки
         </button>
         <button
@@ -117,6 +133,7 @@ const OTKPage = () => {
           className={`production-main-tabs__btn${mainTab === 'history' ? ' production-main-tabs__btn--active' : ''}`}
           onClick={() => setMainTab('history')}
         >
+          <FiClock aria-hidden size={16} strokeWidth={2} />
           История
         </button>
       </div>
@@ -124,11 +141,24 @@ const OTKPage = () => {
       <div className="otk-card">
         <div className="otk-card__toolbar ds-toolbar ds-toolbar--in-card">
           <div className="ds-toolbar__start">
-            <h2 className="otk-card__title">{mainTab === 'pool' ? 'Заготовки в ОТК' : 'Учёты ОТК'}</h2>
+            {mainTab === 'pool' ? (
+              <SearchInput
+                placeholder="Поиск по заготовке"
+                value={poolSearch}
+                onChange={(e) => setPoolSearch(e.target.value)}
+              />
+            ) : (
+              <SearchInput
+                placeholder="Поиск по заготовке"
+                value={historySearch}
+                onChange={(e) => setHistorySearch(e.target.value)}
+              />
+            )}
           </div>
           <div className="ds-toolbar__end">
             {mainTab === 'pool' && canOpenAccount ? (
               <button type="button" className="btn btn--primary" onClick={() => setAccountModalOpen(true)}>
+                <FiPlus aria-hidden size={16} strokeWidth={2} />
                 Учесть
               </button>
             ) : null}
@@ -147,10 +177,12 @@ const OTKPage = () => {
               title="Нет заготовок в ОТК"
               description="Оформите выпуск в «Производство». Кнопка «Учесть» появится при остатке от 1 кг."
             />
+          ) : visiblePool.length === 0 ? (
+            <EmptyState title="Ничего не найдено" />
           ) : (
             <CompactList
               columns={POOL_COLUMNS}
-              items={poolWithKg}
+              items={visiblePool}
               getRowKey={(p) => p.blankId}
               rowClassName={(p) => (p.canAccount ? 'compact-list__row--attention' : '')}
               renderCell={(p, key) => {
@@ -211,19 +243,21 @@ const OTKPage = () => {
         >
           <DetailFields
             rows={[
-              { label: 'Дата', value: formatDateShort(historyDetail.createdAt) },
-              { label: 'Заготовка', value: historyDetail.blankName || '—' },
-              { label: 'Списано', value: `${formatNumberForInput(historyDetail.consumedKg)} кг` },
-              { label: 'Брак', value: `${formatNumberForInput(historyDetail.defectKg)} кг` },
-              { label: 'Смена', value: formatShiftPeriod(historyDetail.shiftPeriod) },
-              { label: 'Оператор', value: historyDetail.operatorName || '—' },
-              { label: 'Химик', value: historyDetail.chemistName || '—' },
-              { label: 'Упаковщики', value: formatPackers(historyDetail) },
+              { section: 'Учёт', label: 'Дата', value: formatDateShort(historyDetail.createdAt) },
+              { section: 'Учёт', label: 'Заготовка', value: historyDetail.blankName || '—' },
+              { section: 'Учёт', label: 'Списано', value: `${formatNumberForInput(historyDetail.consumedKg)} кг` },
+              { section: 'Учёт', label: 'Брак', value: `${formatNumberForInput(historyDetail.defectKg)} кг` },
+              { section: 'Смена', label: 'Смена', value: formatShiftPeriod(historyDetail.shiftPeriod) },
+              { section: 'Смена', label: 'Оператор', value: historyDetail.operatorName || '—' },
+              { section: 'Смена', label: 'Химик', value: historyDetail.chemistName || '—' },
+              { section: 'Смена', label: 'Упаковщики', value: formatPackers(historyDetail) },
               {
+                section: 'Профили',
                 label: 'Профили',
                 value: (historyDetail.lines || [])
                   .map((ln) => `${ln.profileName}: ${ln.pieces} шт`)
                   .join('; ') || '—',
+                full: true,
               },
             ]}
           />

@@ -79,6 +79,11 @@
     }
   }
 
+  &__icon {
+    flex-shrink: 0;
+    color: var(--placeholder);
+  }
+
   &__trigger {
     flex: 1;
     min-width: 0;

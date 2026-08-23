@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FiPlus, FiCheck, FiX } from 'react-icons/fi';
 import { useServerQuery, getApiErrorMessage, formatNumberForInput, parseLocaleNumber } from '../../../../shared/lib';
-import { Loading, EmptyState, ErrorState, ConfirmModal, useToast, Select, ActionMenu, DecimalInput } from '../../../../shared/ui';
+import { Loading, EmptyState, ErrorState, ConfirmModal, useToast, Select, SearchInput, ActionMenu, DecimalInput, EntityAvatar } from '../../../../shared/ui';
 import {
   createPlasticProfile,
   updatePlasticProfile,
@@ -136,8 +137,7 @@ const PlasticProfilesPage = () => {
       <div className="plastic-profiles-card">
         <div className="plastic-profiles-card__head ds-toolbar ds-toolbar--in-card">
           <div className="ds-toolbar__start">
-            <input
-              type="search"
+            <SearchInput
               className="plastic-profiles-card__search"
               placeholder="Поиск по названию, коду…"
               value={search}
@@ -146,7 +146,8 @@ const PlasticProfilesPage = () => {
           </div>
           <div className="ds-toolbar__end">
             <button type="button" className="btn btn--primary" onClick={() => { setSubmitError(''); setMetaModal({}); }}>
-              Добавить профиль
+              <FiPlus aria-hidden size={16} strokeWidth={2} />
+              Профиль
             </button>
           </div>
         </div>
@@ -172,7 +173,10 @@ const PlasticProfilesPage = () => {
                 return (
                   <div key={p.id} className="plastic-profiles-table__block">
                     <div className="plastic-profiles-table__row">
-                      <span className="plastic-profiles-table__name">{p.name || '—'}</span>
+                      <span className="plastic-profiles-table__name plastic-profiles-table__name--with-avatar">
+                        <EntityAvatar name={p.name || '—'} size={28} />
+                        {p.name || '—'}
+                      </span>
                       <span className="plastic-profiles-table__code">{p.code || '—'}</span>
                       <span className="plastic-profiles-table__has">{hasRecipe ? 'да' : 'нет'}</span>
                       <span className="plastic-profiles-table__status">{active ? 'активен' : 'неактивен'}</span>
@@ -323,10 +327,14 @@ const ProfileMetaModal = ({ initial, onSave, onClose, error }) => {
           />
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
+            <button type="button" className="btn btn--secondary" onClick={onClose}>
+              <FiX aria-hidden size={16} strokeWidth={2} />
+              Отмена
+            </button>
             <button type="submit" className="btn btn--primary" disabled={!canSave}>
+              <FiCheck aria-hidden size={16} strokeWidth={2} />
               {isEdit ? 'Сохранить' : 'Создать'}
             </button>
-            <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
           </div>
         </form>
       </div>

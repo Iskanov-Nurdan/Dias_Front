@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { FiCheck, FiX } from 'react-icons/fi';
 import { SearchableSelect } from '../../../../shared/ui';
 import '../ClientsPage/ClientsPage.scss';
 
@@ -144,9 +145,11 @@ const ClientFormModal = ({ client, onClose, onSubmit, error, titleNew = 'Соз�
           </div>
           <div className="modal__actions clients-modal__footer">
             <button type="button" className="btn btn--secondary" onClick={onClose}>
+              <FiX aria-hidden size={16} strokeWidth={2} />
               Отмена
             </button>
             <button type="submit" className="btn btn--primary" disabled={!name.trim()}>
+              <FiCheck aria-hidden size={16} strokeWidth={2} />
               Сохранить
             </button>
           </div>

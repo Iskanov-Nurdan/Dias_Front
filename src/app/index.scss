@@ -119,22 +119,16 @@ table {
 .data-table {
   width: 100%;
   border-collapse: separate;
-  border-spacing: 0;
-  background: var(--card);
+  border-spacing: 0 var(--space-2);
+  background: transparent;
   border: none;
-  border-radius: var(--radius-lg);
-  box-shadow:
-    var(--shadow-sm),
-    0 0 0 1px var(--card-border);
-  overflow: hidden;
   table-layout: auto;
 
   th,
   td {
-    padding: 10px var(--space-3);
+    padding: 10px var(--space-4);
     text-align: left;
     vertical-align: middle;
-    border-bottom: 1px solid var(--border-subtle);
     font-size: var(--font-label);
     font-weight: var(--weight-normal);
     color: var(--text-secondary);
@@ -142,14 +136,31 @@ table {
 
   td {
     color: var(--text);
+    background: var(--card);
+    border-top: 1px solid var(--card-border);
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  td:first-child {
+    border-left: 1px solid var(--card-border);
+    border-top-left-radius: var(--radius-lg);
+    border-bottom-left-radius: var(--radius-lg);
+  }
+
+  td:last-child {
+    border-right: 1px solid var(--card-border);
+    border-top-right-radius: var(--radius-lg);
+    border-bottom-right-radius: var(--radius-lg);
   }
 
   th {
-    background: var(--table-header-bg);
+    padding: 8px var(--space-4);
+    background: transparent;
     font-weight: var(--weight-medium);
-    font-size: var(--font-caption);
-    letter-spacing: 0.02em;
-    color: var(--text-secondary);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
   }
 
   &__cell--lead {
@@ -163,20 +174,22 @@ table {
     color: var(--text-secondary);
   }
 
+  &__name--with-avatar {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
   &__cell--num {
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
 
-  tr:last-child td {
-    border-bottom: none;
+  tbody tr td {
+    transition: background var(--transition-fast), border-color var(--transition-fast);
   }
 
-  tbody tr {
-    transition: background var(--transition-fast);
-  }
-
-  tbody tr:hover {
+  tbody tr:hover td {
     background: var(--bg-hover);
   }
 
@@ -188,18 +201,23 @@ table {
     th:last-child,
     td:last-child {
       text-align: right;
-      width: auto;
-      min-width: 10.5rem;
+      width: 1%;
+      min-width: 13.5rem;
       padding-left: var(--space-2);
       white-space: nowrap;
     }
 
     td.data-table__cell--actions {
-      display: flex;
-      flex-flow: row nowrap;
-      align-items: center;
-      justify-content: flex-end;
-      gap: var(--space-1);
+      text-align: right;
+      white-space: nowrap;
+
+      > * {
+        vertical-align: middle;
+      }
+
+      > * + * {
+        margin-left: var(--space-2);
+      }
     }
 
     @include responsive-tables {
@@ -430,13 +448,13 @@ button {
   }
 
   &--secondary {
-    background: var(--card);
-    border-color: var(--border);
-    color: var(--text);
+    background: var(--btn-secondary-bg);
+    border-color: var(--btn-secondary-border);
+    color: var(--btn-secondary-text);
 
     &:hover:not(:disabled) {
-      background: var(--bg-hover);
-      border-color: var(--text-muted);
+      background: var(--btn-secondary-bg-hover);
+      border-color: var(--btn-secondary-border);
     }
   }
 
@@ -494,7 +512,7 @@ button {
   }
 }
 
-input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not(.dias-select__value-input):not(.dias-select-sheet__field-search),
+input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not(.dias-select__value-input):not(.dias-select-sheet__field-search):not(.search-input__field),
 textarea {
   font-family: inherit;
   font-size: var(--font-body);

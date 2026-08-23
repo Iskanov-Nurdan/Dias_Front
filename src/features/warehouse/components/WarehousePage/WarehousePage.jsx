@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { FiPackage, FiClock } from 'react-icons/fi';
 import {
   formatNumberForInput,
   pickFirstIsoDate,
@@ -14,6 +15,8 @@ import {
   DetailFields,
   CompactList,
   ProductLineTabs,
+  SearchInput,
+  EntityAvatar,
 } from '../../../../shared/ui';
 import { useProductLine, PRODUCT_LINE } from '../../../../shared/hooks';
 import { useOperationalRefetch, WS_WAREHOUSE } from '../../../../shared/realtime';
@@ -85,6 +88,8 @@ const WarehouseStockPanel = () => {
   const [error, setError] = useState(null);
   const [dateFilterIso, setDateFilterIso] = useState('');
   const [detailRow, setDetailRow] = useState(null);
+  const [stockSearch, setStockSearch] = useState('');
+  const [opsSearch, setOpsSearch] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -112,12 +117,25 @@ const WarehouseStockPanel = () => {
 
   const aggregatedStock = useMemo(() => aggregateStockByProduct(stock), [stock]);
 
+  const visibleStock = useMemo(() => {
+    const q = stockSearch.trim().toLowerCase();
+    if (!q) return aggregatedStock;
+    return aggregatedStock.filter((row) => String(row.productName || '').toLowerCase().includes(q));
+  }, [aggregatedStock, stockSearch]);
+
   const filteredOps = useMemo(() => {
-    if (!dateFilterIso) return operations;
-    return operations.filter((op) =>
-      matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(op, ['created_at', 'at', 'timestamp'])),
-    );
-  }, [operations, dateFilterIso]);
+    let list = operations;
+    if (dateFilterIso) {
+      list = list.filter((op) =>
+        matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(op, ['created_at', 'at', 'timestamp'])),
+      );
+    }
+    const q = opsSearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter((op) => String(op.product_name ?? op.profile_name ?? '').toLowerCase().includes(q));
+    }
+    return list;
+  }, [operations, dateFilterIso, opsSearch]);
 
   return (
     <div className="warehouse-gp warehouse-gp--stock">
@@ -129,6 +147,7 @@ const WarehouseStockPanel = () => {
           className={`production-main-tabs__btn${mainTab === 'stock' ? ' production-main-tabs__btn--active' : ''}`}
           onClick={() => setMainTab('stock')}
         >
+          <FiPackage aria-hidden size={16} strokeWidth={2} />
           Остатки
         </button>
         <button
@@ -138,6 +157,7 @@ const WarehouseStockPanel = () => {
           className={`production-main-tabs__btn${mainTab === 'history' ? ' production-main-tabs__btn--active' : ''}`}
           onClick={() => setMainTab('history')}
         >
+          <FiClock aria-hidden size={16} strokeWidth={2} />
           История
         </button>
       </div>
@@ -149,7 +169,11 @@ const WarehouseStockPanel = () => {
         <div className="ds-list-card">
           <div className="ds-list-card__head ds-toolbar ds-toolbar--in-card">
             <div className="ds-toolbar__start">
-              <h2 className="ds-list-card__title">Готовая продукция</h2>
+              <SearchInput
+                placeholder="Поиск по товару"
+                value={stockSearch}
+                onChange={(e) => setStockSearch(e.target.value)}
+              />
             </div>
             <div className="ds-toolbar__end">
               <ClientDateFilter
@@ -162,14 +186,23 @@ const WarehouseStockPanel = () => {
           </div>
           {aggregatedStock.length === 0 ? (
             <EmptyState title="Склад пуст" description="Товар попадает сюда после учёта в ОТК." />
+          ) : visibleStock.length === 0 ? (
+            <EmptyState title="Ничего не найдено" />
           ) : (
             <CompactList
               className="compact-list--warehouse-stock"
               columns={STOCK_COLUMNS}
-              items={aggregatedStock}
+              items={visibleStock}
               getRowKey={(row) => row.key}
               renderCell={(row, key) => {
-                if (key === 'product') return row.productName;
+                if (key === 'product') {
+                  return (
+                    <span className="compact-list__cell--with-avatar">
+                      <EntityAvatar name={row.productName} size={28} />
+                      {row.productName}
+                    </span>
+                  );
+                }
                 if (key === 'pieces') return formatNumberForInput(row.pieces);
                 return '—';
               }}
@@ -184,7 +217,11 @@ const WarehouseStockPanel = () => {
         <div className="ds-list-card">
           <div className="ds-list-card__head ds-toolbar ds-toolbar--in-card">
             <div className="ds-toolbar__start">
-              <h2 className="ds-list-card__title">Движения склада</h2>
+              <SearchInput
+                placeholder="Поиск по товару"
+                value={opsSearch}
+                onChange={(e) => setOpsSearch(e.target.value)}
+              />
             </div>
             <div className="ds-toolbar__end">
               <ClientDateFilter

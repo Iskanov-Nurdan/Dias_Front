@@ -547,30 +547,6 @@
   }
 }
 
-.btn {
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  border: 1px solid transparent;
-  font-weight: 500;
-
-  &--primary {
-    background: var(--accent);
-    color: #fff;
-    border-color: var(--accent);
-  }
-  &--secondary {
-    background: var(--border);
-    color: var(--text);
-    border-color: var(--border);
-  }
-  &--sm {
-    padding: 0.4rem 0.75rem;
-    font-size: 0.85rem;
-  }
-}
-
 @include responsive-tables {
   .page--otk {
     .otk-table__actions {

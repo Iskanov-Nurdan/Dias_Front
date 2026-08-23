@@ -1,11 +1,12 @@
 import React, { useMemo } from 'react';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { FiBriefcase, FiTrendingUp } from 'react-icons/fi';
 import { useAuth } from '../../../auth';
 import './CashPage.scss';
 
 const CASH_TABS = [
-  { key: 'clients', label: 'Клиенты', path: '/cash/clients', accessKey: 'clients' },
-  { key: 'sales', label: 'Продажи', path: '/cash/sales', accessKey: 'sales' },
+  { key: 'clients', label: 'Клиенты', path: '/cash/clients', accessKey: 'clients', Icon: FiBriefcase },
+  { key: 'sales', label: 'Продажи', path: '/cash/sales', accessKey: 'sales', Icon: FiTrendingUp },
 ];
 
 const CASH_SHELL_ACCESS_KEYS = ['clients', 'sales'];
@@ -53,6 +54,7 @@ const CashPage = () => {
               className={`materials-tabs__tab${activeKey === tab.key ? ' materials-tabs__tab--active' : ''}`}
               onClick={() => navigate(tab.path)}
             >
+              <tab.Icon aria-hidden size={16} strokeWidth={2} />
               {tab.label}
             </button>
           ))}

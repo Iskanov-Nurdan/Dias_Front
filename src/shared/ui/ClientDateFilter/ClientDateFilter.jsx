@@ -1,4 +1,5 @@
 import React from 'react';
+import { FiCalendar } from 'react-icons/fi';
 import './ClientDateFilter.scss';
 
 /**
@@ -6,7 +7,8 @@ import './ClientDateFilter.scss';
  */
 const ClientDateFilter = ({ value, onChange, id = 'client-date-filter', className = '' }) => (
   <div className={`commercial-date-filter ${className}`.trim()} role="group" aria-label="Фильтр по дате">
-    <span className="commercial-date-filter__label" id={`${id}-label`}>
+    <FiCalendar aria-hidden size={16} strokeWidth={2} className="commercial-date-filter__icon" />
+    <span className="commercial-date-filter__sr-label" id={`${id}-label`}>
       По дате
     </span>
     <input

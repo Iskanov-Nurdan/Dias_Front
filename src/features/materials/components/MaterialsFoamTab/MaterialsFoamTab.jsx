@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { FiPackage, FiBookOpen, FiRefreshCw, FiPlus, FiCheck, FiX } from 'react-icons/fi';
 import {
   formatNumberForInput,
   pickFirstIsoDate,
   matchesClientDateFilter,
   getApiErrorMessage,
 } from '../../../../shared/lib';
-import { Badge, ClientDateFilter, EmptyState, Loading, useToast } from '../../../../shared/ui';
+import { Badge, ClientDateFilter, EmptyState, Loading, useToast, EntityAvatar, SearchInput } from '../../../../shared/ui';
 import { useOperationalRefetch, WS_FOAM_MATERIALS } from '../../../../shared/realtime';
 import { FOAM_WAREHOUSE_RAW } from '../../../foam/mockData';
 import {
@@ -76,8 +77,9 @@ const AddIntakeModal = ({ onClose, onCreate, saving }) => {
           <input type="number" min="1" value={bagWeightKg} onChange={(ev) => setBagWeightKg(ev.target.value)} required />
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>Отмена</button>
+            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}><FiX aria-hidden size={16} strokeWidth={2} />Отмена</button>
             <button type="submit" className="btn btn--primary" disabled={saving || !materialName.trim() || Number(bagWeightKg) <= 0}>
+              <FiCheck aria-hidden size={16} strokeWidth={2} />
               {saving ? 'Сохранение…' : 'Сохранить'}
             </button>
           </div>
@@ -128,8 +130,9 @@ const AddGradeModal = ({ existingCodes, onClose, onCreate, saving }) => {
           <input type="number" min="0" step="0.1" value={maxKgM3} onChange={(ev) => setMaxKgM3(ev.target.value)} required />
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>Отмена</button>
+            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}><FiX aria-hidden size={16} strokeWidth={2} />Отмена</button>
             <button type="submit" className="btn btn--primary" disabled={saving}>
+              <FiCheck aria-hidden size={16} strokeWidth={2} />
               {saving ? 'Сохранение…' : 'Сохранить'}
             </button>
           </div>
@@ -151,6 +154,9 @@ const MaterialsFoamTab = () => {
   const [savingLot, setSavingLot] = useState(false);
   const [savingGrade, setSavingGrade] = useState(false);
   const [dateFilterIso, setDateFilterIso] = useState('');
+  const [lotsSearch, setLotsSearch] = useState('');
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [movementsSearch, setMovementsSearch] = useState('');
 
   const fetchAll = useCallback(async () => {
     try {
@@ -201,14 +207,30 @@ const MaterialsFoamTab = () => {
   }, [lots, productionRuns]);
 
   const visibleLots = useMemo(() => {
-    if (!dateFilterIso) return lots;
-    return lots.filter((l) => matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(l, ['received_at'])));
-  }, [lots, dateFilterIso]);
+    let list = lots;
+    if (dateFilterIso) {
+      list = list.filter((l) => matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(l, ['received_at'])));
+    }
+    const q = lotsSearch.trim().toLowerCase();
+    if (q) list = list.filter((l) => String(l.material_name || '').toLowerCase().includes(q));
+    return list;
+  }, [lots, dateFilterIso, lotsSearch]);
 
   const visibleMovements = useMemo(() => {
-    if (!dateFilterIso) return movements;
-    return movements.filter((m) => matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(m, ['date'])));
-  }, [movements, dateFilterIso]);
+    let list = movements;
+    if (dateFilterIso) {
+      list = list.filter((m) => matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(m, ['date'])));
+    }
+    const q = movementsSearch.trim().toLowerCase();
+    if (q) list = list.filter((m) => String(m.note || '').toLowerCase().includes(q));
+    return list;
+  }, [movements, dateFilterIso, movementsSearch]);
+
+  const visibleDensityGrades = useMemo(() => {
+    const q = catalogSearch.trim().toLowerCase();
+    if (!q) return densityGrades;
+    return densityGrades.filter((g) => String(g.code || '').toLowerCase().includes(q));
+  }, [densityGrades, catalogSearch]);
 
   const handleCreateLot = async (payload) => {
     setSavingLot(true);
@@ -253,10 +275,10 @@ const MaterialsFoamTab = () => {
 
       <div className="materials-tabs" role="tablist" aria-label="Разделы сырья пенопласта">
         {[
-          [SUB_TAB.LOTS, 'Остатки по лотам'],
-          [SUB_TAB.CATALOG, 'Каталог марок'],
-          [SUB_TAB.MOVEMENTS, 'Движения'],
-        ].map(([key, label]) => (
+          [SUB_TAB.LOTS, 'Остатки по лотам', FiPackage],
+          [SUB_TAB.CATALOG, 'Каталог марок', FiBookOpen],
+          [SUB_TAB.MOVEMENTS, 'Движения', FiRefreshCw],
+        ].map(([key, label, Icon]) => (
           <button
             key={key}
             type="button"
@@ -265,6 +287,7 @@ const MaterialsFoamTab = () => {
             className={`materials-tabs__tab${subTab === key ? ' materials-tabs__tab--active' : ''}`}
             onClick={() => setSubTab(key)}
           >
+            <Icon aria-hidden size={16} strokeWidth={2} />
             {label}
           </button>
         ))}
@@ -274,13 +297,14 @@ const MaterialsFoamTab = () => {
         <div className="chemistry-card">
           <div className="chemistry-card__head ds-toolbar ds-toolbar--in-card">
             <div className="ds-toolbar__start">
-              <h2 className="chemistry-card__title">Остатки по лотам</h2>
+              <SearchInput placeholder="Поиск" value={lotsSearch} onChange={(e) => setLotsSearch(e.target.value)} />
               <span className="materials-foam-tab__warehouse-badge">{FOAM_WAREHOUSE_RAW}</span>
               <ClientDateFilter value={dateFilterIso} onChange={setDateFilterIso} id="materials-foam-lots-date" />
             </div>
             <div className="ds-toolbar__end">
               <button type="button" className="btn btn--primary" onClick={() => setAddOpen(true)}>
-                Добавить приход
+                <FiPlus aria-hidden size={16} strokeWidth={2} />
+                Приход
               </button>
             </div>
           </div>
@@ -302,7 +326,10 @@ const MaterialsFoamTab = () => {
                   const badge = LOT_STATUS_BADGE[status];
                   return (
                     <div key={lot.id} className="chemistry-table__row">
-                      <span className="chemistry-table__name chemistry-table__cell-clip">{lot.material_name}</span>
+                      <span className="chemistry-table__name chemistry-table__name--with-avatar chemistry-table__cell-clip">
+                        <EntityAvatar name={lot.material_name} size={28} />
+                        {lot.material_name}
+                      </span>
                       <span className="chemistry-table__cell-clip">{lot.supplier || '—'}</span>
                       <span className="chemistry-table__num">
                         {formatNumberForInput(lot.remaining_kg)} / {formatNumberForInput(lot.received_kg)} кг
@@ -322,23 +349,28 @@ const MaterialsFoamTab = () => {
         <div className="chemistry-card">
           <div className="chemistry-card__head ds-toolbar ds-toolbar--in-card">
             <div className="ds-toolbar__start">
-              <h2 className="chemistry-card__title">Каталог марок</h2>
+              <SearchInput placeholder="Поиск по плотности" value={catalogSearch} onChange={(e) => setCatalogSearch(e.target.value)} />
             </div>
             <div className="ds-toolbar__end">
               <button type="button" className="btn btn--primary" onClick={() => setAddGradeOpen(true)}>
-                Добавить плотность
+                <FiPlus aria-hidden size={16} strokeWidth={2} />
+                Плотность
               </button>
             </div>
           </div>
+          {visibleDensityGrades.length === 0 && <EmptyState title="Ничего не найдено" />}
           <div className="chemistry-table-wrap">
             <div className="chemistry-table materials-foam-tab__catalog-table">
               <div className="chemistry-table__header">
                 <span className="chemistry-table__th">Плотность</span>
                 <span className="chemistry-table__th chemistry-table__th--num">Вес 1 м³ (насыпной)</span>
               </div>
-              {densityGrades.map((g) => (
+              {visibleDensityGrades.map((g) => (
                 <div key={g.code} className="chemistry-table__row">
-                  <span className="chemistry-table__name">{g.code}</span>
+                  <span className="chemistry-table__name chemistry-table__name--with-avatar">
+                    <EntityAvatar name={g.code} size={28} />
+                    {g.code}
+                  </span>
                   <span className="chemistry-table__num">{g.min_kg_m3}–{g.max_kg_m3} кг/м³</span>
                 </div>
               ))}
@@ -351,7 +383,7 @@ const MaterialsFoamTab = () => {
         <div className="chemistry-card">
           <div className="chemistry-card__head ds-toolbar ds-toolbar--in-card">
             <div className="ds-toolbar__start">
-              <h2 className="chemistry-card__title">Движения</h2>
+              <SearchInput placeholder="Поиск" value={movementsSearch} onChange={(e) => setMovementsSearch(e.target.value)} />
               <ClientDateFilter value={dateFilterIso} onChange={setDateFilterIso} id="materials-foam-movements-date" />
             </div>
           </div>

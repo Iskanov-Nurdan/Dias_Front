@@ -171,6 +171,33 @@ const ActionMenu = ({ items, align = 'right', ariaLabel = 'Действия' }) 
 
   if (!items?.length) return null;
 
+  /* 1–3 действия — явные кнопки-аутлайны (видно сразу, без клика по «…»).
+     Больше — оставляем компактное меню, чтобы не разрывать строку списка. */
+  if (items.length <= 3) {
+    return (
+      <div className="action-row" onClick={(e) => e.stopPropagation()}>
+        {items.map((item, i) => {
+          const Icon = resolveItemIcon(item);
+          return (
+            <button
+              key={i}
+              type="button"
+              className={`action-row__btn${item.danger ? ' action-row__btn--danger' : ''}`}
+              disabled={item.disabled}
+              onClick={(e) => {
+                e.stopPropagation();
+                item.onClick?.();
+              }}
+            >
+              {Icon && <Icon aria-hidden size={15} strokeWidth={2} />}
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   const dropdownClass = [
     'action-menu__dropdown',
     'action-menu__dropdown--portal',

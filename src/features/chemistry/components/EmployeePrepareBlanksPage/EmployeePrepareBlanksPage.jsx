@@ -5,7 +5,7 @@ import {
   formatNumberForInput,
   getApiErrorMessage,
 } from '../../../../shared/lib';
-import { useToast, EmptyState, ErrorState, Loading } from '../../../../shared/ui';
+import { useToast, EmptyState, ErrorState, Loading, SearchInput, EntityAvatar } from '../../../../shared/ui';
 import {
   mapWorkshopBlankFromApi,
   mapPreparedBlankRowFromApi,
@@ -14,6 +14,7 @@ import {
 import '../ChemistryPage/ChemistryPage.scss';
 import './EmployeePrepareBlanksPage.scss';
 import { useOperationalRefetch, WS_WORKSHOP } from '../../../../shared/realtime';
+import { FiPlus } from 'react-icons/fi';
 
 const formatWorkshopNumber = (value) => {
   const n = Number(value);
@@ -103,6 +104,13 @@ const EmployeePrepareBlanksPage = () => {
 
   useOperationalRefetch(WS_WORKSHOP, refetchAll, true);
 
+  const [search, setSearch] = useState('');
+  const visibleRows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(({ blank }) => String(blank.name || '').toLowerCase().includes(q));
+  }, [rows, search]);
+
   const onAddBarrel = async (blankId) => {
     try {
       await postWorkshopAddBarrel(Number(blankId));
@@ -123,6 +131,12 @@ const EmployeePrepareBlanksPage = () => {
         )}
         {!loading && !error && blanks.length > 0 && (
           <div className="chemistry-table-wrap">
+            <div className="chemistry-blank-stock__toolbar ds-toolbar ds-toolbar--in-card">
+              <div className="ds-toolbar__start">
+                <SearchInput placeholder="Поиск" value={search} onChange={(e) => setSearch(e.target.value)} />
+              </div>
+            </div>
+            {visibleRows.length === 0 && <EmptyState title="Ничего не найдено" />}
             <div className="chemistry-table employee-prepare-table">
               <div className="chemistry-table__header">
                 <span className="chemistry-table__th">Рецепт</span>
@@ -132,9 +146,10 @@ const EmployeePrepareBlanksPage = () => {
                 <span className="chemistry-table__th chemistry-table__th--num">Всего, кг</span>
                 <span className="chemistry-table__th chemistry-table__th--actions"> </span>
               </div>
-              {rows.map(({ blank, breakdown }) => (
+              {visibleRows.map(({ blank, breakdown }) => (
                 <div key={blank.id} className="chemistry-table__row">
-                  <span className="chemistry-table__name chemistry-table__cell-clip">
+                  <span className="chemistry-table__name chemistry-table__name--with-avatar chemistry-table__cell-clip">
+                    <EntityAvatar name={blank.name} size={28} />
                     {blank.name || '—'}
                   </span>
                   <span className="chemistry-table__num">
@@ -154,7 +169,7 @@ const EmployeePrepareBlanksPage = () => {
                   <span className="chemistry-table__actions chemistry-table__actions--wrap">
                     <button
                       type="button"
-                      className="btn btn--secondary btn--sm"
+                      className="action-row__btn"
                       onClick={() => navigate(`/prepare-blanks/${blank.id}`)}
                     >
                       Подробности
@@ -165,7 +180,8 @@ const EmployeePrepareBlanksPage = () => {
                       disabled={!breakdown.recipeKgPerBarrel || breakdown.recipeKgPerBarrel <= 0}
                       onClick={() => onAddBarrel(blank.id)}
                     >
-                      + бочка
+                      <FiPlus aria-hidden size={16} strokeWidth={2} />
+                      Бочка
                     </button>
                   </span>
                 </div>

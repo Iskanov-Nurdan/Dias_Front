@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { FiGrid, FiBookOpen } from 'react-icons/fi';
 import PlasticProfilesPage from '../PlasticProfilesPage/PlasticProfilesPage';
 import RecipesPage from '../RecipesPage/RecipesPage';
 import './ReferenceBooksPage.scss';
@@ -20,6 +21,7 @@ const ReferenceBooksPage = () => {
           className={`materials-tabs__tab reference-books-page__tab${!isRecipesTab ? ' materials-tabs__tab--active reference-books-page__tab--active' : ''}`}
           onClick={() => navigate('/directories')}
         >
+          <FiGrid aria-hidden size={16} strokeWidth={2} />
           Профили
         </button>
         <button
@@ -29,6 +31,7 @@ const ReferenceBooksPage = () => {
           className={`materials-tabs__tab reference-books-page__tab${isRecipesTab ? ' materials-tabs__tab--active reference-books-page__tab--active' : ''}`}
           onClick={() => navigate('/directories/recipes')}
         >
+          <FiBookOpen aria-hidden size={16} strokeWidth={2} />
           Рецепты
         </button>
       </div>

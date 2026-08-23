@@ -331,15 +331,15 @@
   }
 
   .btn--secondary {
-    background: var(--card);
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
+    background: var(--btn-secondary-bg);
+    border: 1px solid var(--btn-secondary-border);
+    color: var(--btn-secondary-text);
     border-radius: var(--radius-md);
     min-height: var(--input-height);
 
     &:hover:not(:disabled) {
-      background: var(--bg-hover);
-      border-color: var(--text-muted);
+      background: var(--btn-secondary-bg-hover);
+      border-color: var(--btn-secondary-border);
     }
   }
 

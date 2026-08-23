@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { FiCheck } from 'react-icons/fi';
 import { useAuth } from '../../../auth';
 import { useToast } from '../../../../shared/ui';
 import { applyAuditShiftFromShift } from '../../../../shared/lib/auditShiftSync';
@@ -472,6 +473,7 @@ const MyShiftPage = () => {
                     className="btn btn--primary"
                     disabled={noteLoading || !noteText.trim()}
                   >
+                    <FiCheck aria-hidden size={16} strokeWidth={2} />
                     {noteLoading ? '...' : 'Добавить'}
                   </button>
                 </form>

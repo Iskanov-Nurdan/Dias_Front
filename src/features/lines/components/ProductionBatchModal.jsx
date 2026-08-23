@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { FiCheck, FiX } from 'react-icons/fi';
 import {
   getPlasticProfiles,
   createProductionBatch,
@@ -240,15 +241,17 @@ const ProductionBatchModal = ({ lineId: lineIdProp, lineName, onClose, onSuccess
               <textarea rows={2} value={comment} onChange={(ev) => setComment(ev.target.value)} />
               {error && <p className="modal__error">{error}</p>}
               <div className="modal__actions">
+                <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>
+                  <FiX aria-hidden size={16} strokeWidth={2} />
+                  Отмена
+                </button>
                 <button
                   type="submit"
                   className="btn btn--primary"
                   disabled={saving || !profiles.length}
                 >
+                  <FiCheck aria-hidden size={16} strokeWidth={2} />
                   {saving ? 'Создание…' : 'Создать партию'}
-                </button>
-                <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>
-                  Отмена
                 </button>
               </div>
             </form>

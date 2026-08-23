@@ -11,6 +11,7 @@ import {
   mapPreparedBlankRowFromApi,
   postWorkshopAddBarrel,
 } from '../../api/blankWorkshopApi';
+import { FiPlus } from 'react-icons/fi';
 import EmployeeBlankDetailContent from './EmployeeBlankDetailContent';
 import '../ChemistryPage/ChemistryPage.scss';
 import './EmployeePrepareBlanksPage.scss';
@@ -108,7 +109,8 @@ const EmployeeBlankDetailPage = () => {
             disabled={!canAddBarrel || addingBarrel}
             onClick={onAddBarrel}
           >
-            {addingBarrel ? '…' : '+ Бочка'}
+            <FiPlus aria-hidden size={16} strokeWidth={2} />
+            {addingBarrel ? '…' : 'Бочка'}
           </button>
         </div>
       </header>

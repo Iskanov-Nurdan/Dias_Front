@@ -50,6 +50,7 @@ const SearchableSelect = ({
   allowClear = false,
   clearValue = '',
   noMatchesText = 'Ничего не найдено',
+  icon: Icon = null,
   ...rest
 }) => {
   const [open, setOpen] = useState(false);
@@ -352,8 +353,9 @@ const SearchableSelect = ({
     <>
       <div
         ref={triggerRef}
-        className={`dias-select ${open ? 'dias-select--open' : ''} ${deskEditing ? 'dias-select--editing' : ''} ${disabled ? 'dias-select--disabled' : ''} ${invalid ? 'dias-select--invalid' : ''} ${showClear ? 'dias-select--has-clear' : ''} ${className}`.trim()}
+        className={`dias-select ${open ? 'dias-select--open' : ''} ${deskEditing ? 'dias-select--editing' : ''} ${disabled ? 'dias-select--disabled' : ''} ${invalid ? 'dias-select--invalid' : ''} ${showClear ? 'dias-select--has-clear' : ''} ${Icon ? 'dias-select--icon' : ''} ${className}`.trim()}
       >
+        {Icon ? <Icon aria-hidden size={16} strokeWidth={2} className="dias-select__icon" /> : null}
         {deskEditing ? (
           <>
             <input

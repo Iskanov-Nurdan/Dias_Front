@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { FiPlus, FiCheck, FiX } from 'react-icons/fi';
 import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
 import {
   useServerQuery,
@@ -8,7 +9,7 @@ import {
   getApiErrorMessage,
   parseApiListResponse,
 } from '../../../../shared/lib';
-import { Loading, EmptyState, ErrorState, ConfirmModal, useToast, DecimalInput, Select, ActionMenu } from '../../../../shared/ui';
+import { Loading, EmptyState, ErrorState, ConfirmModal, useToast, DecimalInput, Select, SearchInput, ActionMenu, EntityAvatar } from '../../../../shared/ui';
 import {
   createRecipe,
   updateRecipe,
@@ -286,8 +287,7 @@ const RecipesPage = () => {
       <div className="recipes-card">
         <div className="recipes-card__head ds-toolbar ds-toolbar--in-card">
           <div className="ds-toolbar__start recipes-card__head-start">
-            <input
-              type="text"
+            <SearchInput
               className="recipes-card__search"
               placeholder="Поиск"
               value={query.search || ''}
@@ -307,7 +307,8 @@ const RecipesPage = () => {
                 setMetaModal({});
               }}
             >
-              Добавить рецепт
+              <FiPlus aria-hidden size={16} strokeWidth={2} />
+              Рецепт
             </button>
           </div>
         </div>
@@ -342,7 +343,10 @@ const RecipesPage = () => {
                         }
                       }}
                     >
-                      <span className="recipes-table__name">{recipeDisplayName(r)}</span>
+                      <span className="recipes-table__name recipes-table__name--with-avatar">
+                        <EntityAvatar name={recipeDisplayName(r)} size={28} />
+                        {recipeDisplayName(r)}
+                      </span>
                       <span className="recipes-table__profile">{profileLabel(r, profileMap)}</span>
                       <span className="recipes-table__count">{componentCount(r)}</span>
                       <span className="recipes-table__status">{active ? 'активен' : 'неактивен'}</span>
@@ -613,15 +617,19 @@ const RecipeMetaModal = ({
             />
             {error && <p className="modal__error">{error}</p>}
             <div className="modal__actions">
+              <button type="button" className="btn btn--secondary" onClick={requestClose}>
+                <FiX aria-hidden size={16} strokeWidth={2} />
+                Отмена
+              </button>
               <button
                 type="submit"
                 className="btn btn--primary"
                 disabled={!canSubmit || (!isEdit && (!plasticProfiles || plasticProfiles.length === 0))}
                 title={!canSubmit ? 'Укажите профиль и название' : undefined}
               >
+                <FiCheck aria-hidden size={16} strokeWidth={2} />
                 {isEdit ? 'Сохранить' : 'Создать'}
               </button>
-              <button type="button" className="btn btn--secondary" onClick={requestClose}>Отмена</button>
             </div>
           </form>
         )}
@@ -971,10 +979,14 @@ const RecipeCompositionModal = ({ recipeId, recipeName, onClose, onSaved, error,
 
             {error && <p className="modal__error">{error}</p>}
             <div className="modal__actions">
+              <button type="button" className="btn btn--secondary" onClick={requestClose}>
+                <FiX aria-hidden size={16} strokeWidth={2} />
+                Отмена
+              </button>
               <button type="button" className="btn btn--primary" onClick={handleSave} disabled={saving}>
+                <FiCheck aria-hidden size={16} strokeWidth={2} />
                 {saving ? 'Сохранение…' : 'Сохранить состав'}
               </button>
-              <button type="button" className="btn btn--secondary" onClick={requestClose}>Отмена</button>
             </div>
           </div>
         )}
@@ -1081,9 +1093,9 @@ const RecipeDetailModal = ({
                 )}
               </section>
               <div className="recipe-view-modal__actions">
-                <button type="button" className="btn btn--secondary btn--sm" onClick={onEdit}>Редактировать</button>
-                <button type="button" className="btn btn--secondary btn--sm" onClick={onComposition}>Состав</button>
-                <button type="button" className="btn btn--secondary btn--sm" onClick={onAvailability}>Проверка остатков</button>
+                <button type="button" className="action-row__btn" onClick={onEdit}>Редактировать</button>
+                <button type="button" className="action-row__btn" onClick={onComposition}>Состав</button>
+                <button type="button" className="action-row__btn" onClick={onAvailability}>Проверка остатков</button>
               </div>
             </>
           )}

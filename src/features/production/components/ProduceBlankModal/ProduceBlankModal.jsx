@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { FiCheck, FiX } from 'react-icons/fi';
 import { Select } from '../../../../shared/ui';
 import {
   formatNumberForInput,
@@ -152,9 +153,11 @@ const ProduceBlankModal = ({ onClose, onSaved }) => {
 
             <div className="modal__actions">
               <button type="button" className="btn btn--secondary" onClick={overlayClose} disabled={submitting}>
+                <FiX aria-hidden size={16} strokeWidth={2} />
                 Отмена
               </button>
               <button type="submit" className="btn btn--primary" disabled={submitting}>
+                <FiCheck aria-hidden size={16} strokeWidth={2} />
                 {submitting ? '…' : 'Произвести'}
               </button>
             </div>

@@ -220,7 +220,7 @@ const OtkStaffReportTab = ({ users = [] }) => {
                   <td className="shifts-report__table-actions">
                     <button
                       type="button"
-                      className="btn btn--secondary btn--sm"
+                      className="action-row__btn"
                       onClick={() => setDetail(row)}
                     >
                       Подробнее

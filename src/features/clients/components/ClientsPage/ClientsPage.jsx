@@ -1,4 +1,5 @@
 import React, { useCallback, useState, useMemo, useEffect } from 'react';
+import { FiPlus, FiCheck, FiX, FiActivity } from 'react-icons/fi';
 import { useServerQuery, getApiErrorMessage, parseLocaleNumber, formatQuantityDisplay } from '../../../../shared/lib';
 import {
   ActionMenu,
@@ -9,8 +10,10 @@ import {
   useToast,
   Badge,
   SearchableSelect,
+  SearchInput,
   RecordDetailsModal,
   DetailFields,
+  EntityAvatar,
 } from '../../../../shared/ui';
 import { createClient, updateClient, getClientProfile } from '../../api/clientsApi';
 import { ClientFormModal } from '../ClientFormModal';
@@ -215,9 +218,7 @@ const ClientsPage = () => {
       <div className="ds-list-card">
       <div className="ds-toolbar ds-toolbar--stack-mobile commercial-toolbar">
         <div className="ds-toolbar__start clients-toolbar__start">
-          <h2 className="ds-list-card__title">Клиенты</h2>
-          <input
-            type="text"
+          <SearchInput
             className="ds-toolbar__search ds-toolbar__search--full"
             placeholder="Поиск по имени или телефону"
             value={queryState.search}
@@ -225,6 +226,7 @@ const ClientsPage = () => {
           />
           <div className="clients-toolbar__filter">
             <SearchableSelect
+              icon={FiActivity}
               value={activityFilter}
               onChange={(v) => {
                 setActivityFilter(v);
@@ -238,7 +240,8 @@ const ClientsPage = () => {
         </div>
         <div className="ds-toolbar__end">
           <button type="button" className="btn btn--primary" onClick={() => setModalClient({ _new: true })}>
-            Создать клиента
+            <FiPlus aria-hidden size={16} strokeWidth={2} />
+            Клиент
           </button>
         </div>
       </div>
@@ -260,7 +263,12 @@ const ClientsPage = () => {
             <tbody>
               {items.map((c) => (
                 <tr key={c.id}>
-                  <td className="data-table__cell--lead">{textOrDash(c.name || c.title)}</td>
+                  <td className="data-table__cell--lead">
+                    <span className="data-table__name--with-avatar">
+                      <EntityAvatar name={c.name || c.title} size={28} />
+                      {textOrDash(c.name || c.title)}
+                    </span>
+                  </td>
                   <td className="data-table__cell--muted">{textOrDash(c.phone || c.phone_number)}</td>
                   <td>
                     {clientIsActive(c) ? (
@@ -272,7 +280,7 @@ const ClientsPage = () => {
                   <td className="data-table__cell--actions clients-table__actions">
                     <button
                       type="button"
-                      className="btn btn--secondary btn--sm"
+                      className="action-row__btn"
                       onClick={() => setViewClient(c)}
                     >
                       Подробнее
@@ -281,9 +289,8 @@ const ClientsPage = () => {
                       ariaLabel="Действия"
                       items={[
                         { label: 'Редактировать', onClick: () => setModalClient(c) },
-                        { label: 'Карточка', onClick: () => setProfileClientId(c.id) },
                         ...(clientIsActive(c)
-                          ? [{ label: 'Деактивировать', danger: true, onClick: () => handleDeactivate(c) }]
+                          ? [{ label: 'Удалить', danger: true, onClick: () => handleDeactivate(c) }]
                           : []),
                       ]}
                     />
@@ -338,7 +345,7 @@ const ClientsPage = () => {
                     setViewClient(null);
                   }}
                 >
-                  Деактивировать
+                  Удалить
                 </button>
               ) : null}
             </>
@@ -346,16 +353,26 @@ const ClientsPage = () => {
         >
           <DetailFields
             rows={[
-              { label: 'Тип', value: clientTypeLabel(viewClient) },
-              { label: 'Телефон', value: textOrDash(viewClient.phone || viewClient.phone_number) },
+              { section: 'Контакты', label: 'Тип', value: clientTypeLabel(viewClient) },
+              { section: 'Контакты', label: 'Телефон', value: textOrDash(viewClient.phone || viewClient.phone_number) },
               {
+                section: 'Контакты',
                 label: 'Доп. телефон',
                 value: textOrDash(getPhoneExtra(viewClient)),
               },
-              { label: 'Статус', value: clientIsActive(viewClient) ? 'Активен' : 'Неактивен' },
-              { label: 'Адрес', value: textOrDash(addressField(viewClient)), full: true },
-              { label: 'ИНН', value: textOrDash(innField(viewClient)) },
               {
+                section: 'Контакты',
+                label: 'Статус',
+                value: (
+                  <Badge variant={clientIsActive(viewClient) ? 'success' : 'default'}>
+                    {clientIsActive(viewClient) ? 'Активен' : 'Неактивен'}
+                  </Badge>
+                ),
+              },
+              { section: 'Реквизиты', label: 'Адрес', value: textOrDash(addressField(viewClient)), full: true },
+              { section: 'Реквизиты', label: 'ИНН', value: textOrDash(innField(viewClient)) },
+              {
+                section: 'Реквизиты',
                 label: 'Расчётный счёт',
                 value: textOrDash(companyAccountField(viewClient)),
               },
@@ -573,7 +590,7 @@ const ClientProfileModal = ({ clientId, onClose, onPaymentSaved }) => {
               <section className="clients-profile__block clients-profile__block--accent">
                 <div className="clients-profile__head-row">
                   <h4 className="clients-profile__title">Погашение долга</h4>
-                  <button type="button" className="btn btn--primary" onClick={() => setPayModalOpen(true)}>Погасить долг</button>
+                  <button type="button" className="btn btn--primary" onClick={() => setPayModalOpen(true)}><FiPlus aria-hidden size={16} strokeWidth={2} />Погасить долг</button>
                 </div>
               </section>
               <section className="clients-profile__block">
@@ -644,8 +661,8 @@ const ClientProfileModal = ({ clientId, onClose, onPaymentSaved }) => {
               <textarea rows={2} value={paymentComment} onChange={(e) => setPaymentComment(e.target.value)} />
               {paymentError && <p className="modal__error">{paymentError}</p>}
               <div className="modal__actions">
-                <button type="button" className="btn btn--secondary" onClick={() => setPayModalOpen(false)}>Отмена</button>
-                <button type="submit" className="btn btn--primary" disabled={savingPayment}>{savingPayment ? 'Сохранение…' : 'Сохранить'}</button>
+                <button type="button" className="btn btn--secondary" onClick={() => setPayModalOpen(false)}><FiX aria-hidden size={16} strokeWidth={2} />Отмена</button>
+                <button type="submit" className="btn btn--primary" disabled={savingPayment}><FiCheck aria-hidden size={16} strokeWidth={2} />{savingPayment ? 'Сохранение…' : 'Сохранить'}</button>
               </div>
             </form>
           </div>

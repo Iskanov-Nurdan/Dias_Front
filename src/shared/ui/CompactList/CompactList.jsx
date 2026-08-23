@@ -67,7 +67,7 @@ export default function CompactList({
                 {canDetails ? (
                   <button
                     type="button"
-                    className="btn btn--ghost btn--sm compact-list__details-btn"
+                    className="compact-list__details-btn"
                     onClick={() => onDetails(item)}
                   >
                     {label}

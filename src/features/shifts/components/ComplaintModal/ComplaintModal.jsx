@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { FiCheck, FiX } from 'react-icons/fi';
 import { createComplaint } from '../../api/shiftsApi';
 import './ComplaintModal.scss';
 
@@ -184,9 +185,11 @@ const ComplaintModal = ({ open, onClose, employees, shiftId, onSuccess }) => {
           </div>
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose} disabled={submitting}>
+              <FiX aria-hidden size={16} strokeWidth={2} />
               Отмена
             </button>
             <button type="submit" className="btn btn--primary" disabled={submitting}>
+              <FiCheck aria-hidden size={16} strokeWidth={2} />
               {submitting ? 'Отправка…' : 'Отправить жалобу'}
             </button>
           </div>

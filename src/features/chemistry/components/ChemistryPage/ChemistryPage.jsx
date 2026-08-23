@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { FiLayers, FiGrid, FiPlus, FiCheck, FiX } from 'react-icons/fi';
 import {
   useServerQuery,
   formatNumberForInput,
@@ -10,6 +11,8 @@ import {
   ErrorState,
   Loading,
   useToast,
+  SearchInput,
+  EntityAvatar,
 } from '../../../../shared/ui';
 import {
   newLineKey,
@@ -100,9 +103,11 @@ const AddBlankModal = ({ materialOptions, onClose, onCreated }) => {
           />
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose} disabled={busy}>
+              <FiX aria-hidden size={16} strokeWidth={2} />
               Отмена
             </button>
             <button type="submit" className="btn btn--primary" disabled={busy}>
+              <FiCheck aria-hidden size={16} strokeWidth={2} />
               {busy ? '…' : 'Сохранить'}
             </button>
           </div>
@@ -148,9 +153,11 @@ const EditBlankModal = ({ initial, onClose, onSaved }) => {
           <input value={name} onChange={(ev) => setName(ev.target.value)} required />
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose} disabled={busy}>
+              <FiX aria-hidden size={16} strokeWidth={2} />
               Отмена
             </button>
             <button type="submit" className="btn btn--primary" disabled={busy}>
+              <FiCheck aria-hidden size={16} strokeWidth={2} />
               {busy ? '…' : 'Сохранить'}
             </button>
           </div>
@@ -252,9 +259,11 @@ const CompositionEditModal = ({ blankId, initialName, initialComposition, materi
           />
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose} disabled={busy}>
+              <FiX aria-hidden size={16} strokeWidth={2} />
               Отмена
             </button>
             <button type="submit" className="btn btn--primary" disabled={busy}>
+              <FiCheck aria-hidden size={16} strokeWidth={2} />
               {busy ? '…' : 'Сохранить состав'}
             </button>
           </div>
@@ -273,6 +282,7 @@ const ChemistryPage = () => {
   const [compositionTarget, setCompositionTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [blanksSearch, setBlanksSearch] = useState('');
 
   const { items: rawItems } = useServerQuery('raw-materials/', rawMatQuery, { enabled: true });
   const materialOptions = useMemo(
@@ -291,6 +301,11 @@ const ChemistryPage = () => {
     () => (items || []).map(mapWorkshopBlankFromApi).filter(Boolean),
     [items],
   );
+  const visibleBlanks = useMemo(() => {
+    const q = blanksSearch.trim().toLowerCase();
+    if (!q) return blanks;
+    return blanks.filter((b) => String(b.name || '').toLowerCase().includes(q));
+  }, [blanks, blanksSearch]);
 
   const refetchAll = useCallback(() => {
     refetch();
@@ -308,6 +323,7 @@ const ChemistryPage = () => {
           className={`chemistry-tabs__tab${stockTab === 'blanks' ? ' chemistry-tabs__tab--active' : ''}`}
           onClick={() => setStockTab('blanks')}
         >
+          <FiLayers aria-hidden size={16} strokeWidth={2} />
           Заготовки
         </button>
         <button
@@ -317,6 +333,7 @@ const ChemistryPage = () => {
           className={`chemistry-tabs__tab${stockTab === 'profiles' ? ' chemistry-tabs__tab--active' : ''}`}
           onClick={() => setStockTab('profiles')}
         >
+          <FiGrid aria-hidden size={16} strokeWidth={2} />
           Профили
         </button>
       </div>
@@ -325,7 +342,11 @@ const ChemistryPage = () => {
         <div className="chemistry-card">
           <div className="chemistry-card__head ds-toolbar ds-toolbar--in-card">
             <div className="ds-toolbar__start">
-              <h2 className="chemistry-card__title">Заготовки</h2>
+              <SearchInput
+                placeholder="Поиск"
+                value={blanksSearch}
+                onChange={(e) => setBlanksSearch(e.target.value)}
+              />
             </div>
             <div className="ds-toolbar__end chemistry-card__toolbar-actions">
               <button
@@ -336,7 +357,8 @@ const ChemistryPage = () => {
                   setAddOpen(true);
                 }}
               >
-                Добавить заготовку
+                <FiPlus aria-hidden size={16} strokeWidth={2} />
+                Заготовка
               </button>
             </div>
           </div>
@@ -346,7 +368,10 @@ const ChemistryPage = () => {
           {!loading && !error && blanks.length === 0 && (
             <EmptyState title="Нет заготовок — нажмите «Добавить заготовку»" />
           )}
-          {!loading && !error && blanks.length > 0 && (
+          {!loading && !error && blanks.length > 0 && visibleBlanks.length === 0 && (
+            <EmptyState title="Ничего не найдено" />
+          )}
+          {!loading && !error && visibleBlanks.length > 0 && (
             <div className="chemistry-table-wrap">
               <div className="chemistry-table chemistry-table--prep-list">
                 <div className="chemistry-table__header">
@@ -354,18 +379,22 @@ const ChemistryPage = () => {
                   <span className="chemistry-table__th chemistry-table__th--num">кг / бочка</span>
                   <span className="chemistry-table__th chemistry-table__th--actions">Действия</span>
                 </div>
-                {blanks.map((row) => (
+                {visibleBlanks.map((row) => (
                   <div key={row.id} className="chemistry-table__row">
-                    <span className="chemistry-table__name chemistry-table__cell-clip">{row.name}</span>
+                    <span className="chemistry-table__name chemistry-table__name--with-avatar chemistry-table__cell-clip">
+                      <EntityAvatar name={row.name} size={28} />
+                      {row.name}
+                    </span>
                     <span className="chemistry-table__num">
                       {formatNumberForInput(row.recipeKgPerBarrel)} кг
                     </span>
                     <div className="chemistry-table__actions chemistry-table__actions--wrap chemistry-blank-stock__actions">
                       <button
                         type="button"
-                        className="btn btn--secondary btn--sm"
+                        className="action-row__btn"
                         onClick={() => setCompositionTarget(row)}
                       >
+                        <FiLayers aria-hidden size={15} strokeWidth={2} />
                         Состав
                       </button>
                       <ActionMenu

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { FiCheck, FiX } from 'react-icons/fi';
 import { apiClient } from '../../../shared/api';
 import {
   parseLocaleNumber,
@@ -340,8 +341,12 @@ const PackFromOtkModal = ({ open, onClose, onSuccess, error: externalError, setE
           </div>
           {err && <p className="modal__error">{err}</p>}
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={requestClose} disabled={saving}>Отмена</button>
+            <button type="button" className="btn btn--secondary" onClick={requestClose} disabled={saving}>
+              <FiX aria-hidden size={16} strokeWidth={2} />
+              Отмена
+            </button>
             <button type="submit" className="btn btn--primary" disabled={saving || loadingBatches}>
+              <FiCheck aria-hidden size={16} strokeWidth={2} />
               {saving ? 'Упаковка…' : 'Упаковать'}
             </button>
           </div>

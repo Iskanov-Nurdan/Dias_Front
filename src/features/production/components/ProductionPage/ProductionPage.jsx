@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { FiPlus } from 'react-icons/fi';
 import {
   useServerQuery,
   formatNumberForInput,
@@ -15,6 +16,7 @@ import {
   RecordDetailsModal,
   DetailFields,
   ProductLineTabs,
+  SearchInput,
 } from '../../../../shared/ui';
 import { useProductLine, PRODUCT_LINE } from '../../../../shared/hooks';
 import { useOperationalRefetch, WS_PRODUCTION } from '../../../../shared/realtime';
@@ -45,6 +47,7 @@ const ProductionPage = () => {
   const [produceBlankOpen, setProduceBlankOpen] = useState(false);
   const [clientDateFilter, setClientDateFilter] = useState('');
   const [viewRun, setViewRun] = useState(null);
+  const [runsSearch, setRunsSearch] = useState('');
 
   const {
     items: runItems,
@@ -61,12 +64,16 @@ const ProductionPage = () => {
   );
 
   const visibleRuns = useMemo(() => {
-    const list = mappedRuns || [];
-    if (!clientDateFilter) return list;
-    return list.filter((run) =>
-      matchesClientDateFilter(clientDateFilter, pickFirstIsoDate(run, ['createdAt'])),
-    );
-  }, [mappedRuns, clientDateFilter]);
+    let list = mappedRuns || [];
+    if (clientDateFilter) {
+      list = list.filter((run) => matchesClientDateFilter(clientDateFilter, pickFirstIsoDate(run, ['createdAt'])));
+    }
+    const q = runsSearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter((run) => String(run.blankName || '').toLowerCase().includes(q));
+    }
+    return list;
+  }, [mappedRuns, clientDateFilter, runsSearch]);
 
   useOperationalRefetch(WS_PRODUCTION, refetchBlankRuns, true);
 
@@ -86,7 +93,11 @@ const ProductionPage = () => {
       <div className="production-card production-card--produced">
         <div className="production-card__head ds-toolbar ds-toolbar--in-card">
           <div className="ds-toolbar__start">
-            <h2 className="production-card__title">Выпуски заготовки</h2>
+            <SearchInput
+              placeholder="Поиск по заготовке"
+              value={runsSearch}
+              onChange={(e) => setRunsSearch(e.target.value)}
+            />
           </div>
           <div className="ds-toolbar__end production-card__toolbar-actions">
             <ClientDateFilter
@@ -99,6 +110,7 @@ const ProductionPage = () => {
               className="btn btn--primary"
               onClick={() => setProduceBlankOpen(true)}
             >
+              <FiPlus aria-hidden size={16} strokeWidth={2} />
               Произвести
             </button>
           </div>

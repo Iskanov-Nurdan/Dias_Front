@@ -1,21 +1,15 @@
 @use '../../styles/variables' as *;
 
 /*
- * Плотная таблица-список — единый визуальный язык с `.data-table` (см. src/app/index.scss):
- * один общий контейнер с рамкой/тенью, заголовок на table-header-bg, строки разделены
- * тонкой линией без скруглений/тени на каждой отдельной строке.
+ * Список из строк-карточек: каждая строка — своя рамка/скругление/тень,
+ * между строками — зазор (не единая таблица с разделителями).
  */
 .compact-list {
   display: flex;
   flex-direction: column;
   width: 100%;
   min-width: 0;
-  background: var(--card);
-  border-radius: var(--radius-lg);
-  box-shadow:
-    var(--shadow-sm),
-    0 0 0 1px var(--card-border);
-  overflow: hidden;
+  gap: var(--space-2);
 }
 
 .compact-list__head,
@@ -28,40 +22,35 @@
 }
 
 .compact-list__head {
-  padding: 10px var(--space-3);
-  background: var(--table-header-bg);
-  font-size: var(--font-caption);
+  padding: 8px var(--space-4);
+  font-size: 10px;
   font-weight: var(--weight-medium);
-  letter-spacing: 0.02em;
-  color: var(--text-secondary);
-  border-bottom: 1px solid var(--border-subtle);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 .compact-list__row {
-  padding: 10px var(--space-3);
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid var(--border-subtle);
-  border-radius: 0;
+  padding: 10px var(--space-4);
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
   font-size: var(--font-label);
   min-height: 44px;
   box-sizing: border-box;
-  transition: background var(--transition-fast);
-
-  &:last-child {
-    border-bottom: none;
-  }
+  transition: background var(--transition-fast), border-color var(--transition-fast);
 
   &:hover {
     background: var(--bg-hover);
   }
 
   &--attention {
-    background: color-mix(in srgb, var(--warning) 8%, transparent);
-    box-shadow: inset 3px 0 0 var(--warning);
+    border-color: color-mix(in srgb, var(--warning) 45%, var(--card-border));
+    box-shadow: var(--shadow-sm), inset 3px 0 0 var(--warning);
 
     &:hover {
-      background: color-mix(in srgb, var(--warning) 12%, transparent);
+      background: color-mix(in srgb, var(--warning) 8%, var(--card));
     }
   }
 }
@@ -82,6 +71,12 @@
   text-align: right;
 }
 
+.compact-list__cell--with-avatar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .compact-list__head .compact-list__cell--num,
 .compact-list__th.compact-list__th--num {
   text-align: right;
@@ -89,12 +84,11 @@
 
 .compact-list__actions {
   display: inline-flex;
-  flex-flow: row nowrap;
+  flex-flow: row wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--space-1);
+  gap: var(--space-2);
   min-width: 6.5rem;
-  white-space: nowrap;
 }
 
 .compact-list__status-muted {
@@ -103,7 +97,24 @@
 }
 
 .compact-list__details-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  background: transparent;
+  border: 1px solid var(--info);
+  border-radius: var(--radius-md);
+  color: var(--info);
+  font-size: var(--font-caption);
+  font-weight: var(--weight-medium);
   white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+
+  &:hover {
+    background: var(--info-muted);
+  }
 }
 
 /* Тот же брейкпоинт, что у `.data-table` (src/app/index.scss) — иначе на широком экране

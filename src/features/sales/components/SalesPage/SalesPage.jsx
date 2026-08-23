@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { FiPlus, FiCheck, FiX, FiCreditCard } from 'react-icons/fi';
 import {
   useServerQuery,
   parseLocaleNumber,
@@ -15,10 +16,12 @@ import { resolveBatchUnitSalePrice } from '../../../production/lib/plasticProfil
 import { useProductLine, PRODUCT_LINE } from '../../../../shared/hooks';
 import {
   EmptyState,
+  EntityAvatar,
   ErrorState,
   Loading,
   Pagination,
   SearchableSelect,
+  SearchInput,
   IntegerInput,
   Badge,
   useToast,
@@ -836,6 +839,7 @@ const SalesPage = () => {
   const [saleModalOpen, setSaleModalOpen] = useState(false);
   const [saleDetailsId, setSaleDetailsId] = useState(null);
   const [clientDateFilter, setClientDateFilter] = useState('');
+  const [salesSearch, setSalesSearch] = useState('');
 
   const apiQuery = useMemo(() => {
     const q = { page: queryState.page, page_size: queryState.page_size };
@@ -849,11 +853,16 @@ const SalesPage = () => {
 
   const saleDateFields = useMemo(() => ['date', 'created_at', 'updated_at', 'sold_at'], []);
   const visibleSales = useMemo(() => {
-    if (!clientDateFilter) return items;
-    return (items || []).filter((s) =>
-      matchesClientDateFilter(clientDateFilter, pickFirstIsoDate(s, saleDateFields)),
-    );
-  }, [items, clientDateFilter, saleDateFields]);
+    let list = items || [];
+    if (clientDateFilter) {
+      list = list.filter((s) => matchesClientDateFilter(clientDateFilter, pickFirstIsoDate(s, saleDateFields)));
+    }
+    const q = salesSearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter((s) => (s.client_name || clientLabel(s.client) || s.display || '').toLowerCase().includes(q));
+    }
+    return list;
+  }, [items, clientDateFilter, saleDateFields, salesSearch]);
 
   if (line === PRODUCT_LINE.FOAM) {
     return (
@@ -870,8 +879,13 @@ const SalesPage = () => {
       <div className="ds-list-card">
       <div className="ds-toolbar commercial-toolbar">
         <div className="ds-toolbar__start commercial-toolbar__filters">
-          <h2 className="ds-list-card__title">Продажи</h2>
+          <SearchInput
+            value={salesSearch}
+            onChange={(e) => setSalesSearch(e.target.value)}
+            placeholder="Поиск по клиенту"
+          />
           <SearchableSelect
+            icon={FiCreditCard}
             value={queryState.payment_filter}
             onChange={(v) => setQueryState((p) => ({ ...p, payment_filter: v, page: 1 }))}
             placeholder="Фильтр оплаты"
@@ -885,7 +899,8 @@ const SalesPage = () => {
         </div>
         <div className="ds-toolbar__end">
           <button type="button" className="btn btn--primary" onClick={() => setSaleModalOpen(true)}>
-            Создать продажу
+            <FiPlus aria-hidden size={16} strokeWidth={2} />
+            Продажа
           </button>
         </div>
       </div>
@@ -919,7 +934,12 @@ const SalesPage = () => {
                 const saleTypeText = 'Штуки';
                 return (
                   <tr key={s.id}>
-                    <td>{clientText || '—'}</td>
+                    <td>
+                      <span className="data-table__name--with-avatar">
+                        <EntityAvatar name={clientText || '—'} size={28} />
+                        {clientText || '—'}
+                      </span>
+                    </td>
                     <td>{formatDate(s.date || s.created_at)}</td>
                     <td>{saleTypeText}</td>
                     <td className="data-table__cell--num">{toMoney(s.total_amount ?? s.revenue)}</td>
@@ -927,7 +947,7 @@ const SalesPage = () => {
                     <td className="data-table__cell--num">{toMoney(s.debt_amount)}</td>
                     <td><Badge variant={paymentStatusVariant(s.payment_status)}>{paymentStatusLabel(s.payment_status_label || s.payment_status)}</Badge></td>
                     <td>
-                      <button type="button" className="btn btn--secondary btn--sm" onClick={() => setSaleDetailsId(s.id)}>
+                      <button type="button" className="action-row__btn" onClick={() => setSaleDetailsId(s.id)}>
                         Открыть
                       </button>
                     </td>
@@ -1789,8 +1809,7 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
                 <p className="sales-editor__placeholder">Выберите позицию слева</p>
               ) : (
                 <>
-                  <input
-                    type="search"
+                  <SearchInput
                     className="sales-editor__search"
                     value={batchStockSearch}
                     onChange={(e) => setBatchStockSearch(e.target.value)}
@@ -2102,6 +2121,7 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
                   ← Товары
                 </button>
                 <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>
+                  <FiX aria-hidden size={16} strokeWidth={2} />
                   Отмена
                 </button>
                 <button
@@ -2140,6 +2160,7 @@ const CreateSaleModal = ({ onClose, onSaved }) => {
                   disabled={saving || !isFormSubmittable || previewLoading}
                   onClick={submit}
                 >
+                  <FiCheck aria-hidden size={16} strokeWidth={2} />
                   {saving ? 'Сохранение…' : 'Оплата'}
                 </button>
               </div>

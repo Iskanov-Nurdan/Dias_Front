@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { FiCheck, FiX } from 'react-icons/fi';
 import {
   getProductionBatch,
   updateProductionBatch,
@@ -204,9 +205,6 @@ const ProductionBatchDetailModal = ({ batchId, onClose, onSaved }) => {
                   <textarea rows={2} value={comment} onChange={(ev) => setComment(ev.target.value)} />
                   {err && <p className="modal__error">{err}</p>}
                   <div className="modal__actions">
-                    <button type="submit" className="btn btn--primary" disabled={saving}>
-                      {saving ? 'Сохранение…' : 'Сохранить'}
-                    </button>
                     <button
                       type="button"
                       className="btn btn--secondary"
@@ -217,7 +215,12 @@ const ProductionBatchDetailModal = ({ batchId, onClose, onSaved }) => {
                       }}
                       disabled={saving}
                     >
+                      <FiX aria-hidden size={16} strokeWidth={2} />
                       Отмена
+                    </button>
+                    <button type="submit" className="btn btn--primary" disabled={saving}>
+                      <FiCheck aria-hidden size={16} strokeWidth={2} />
+                      {saving ? 'Сохранение…' : 'Сохранить'}
                     </button>
                   </div>
                 </form>

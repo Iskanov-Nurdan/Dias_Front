@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
+import { FiPlus, FiCheck, FiX } from 'react-icons/fi';
 import { useOperationalRefetch, WS_WORKSHOP } from '../../../../shared/realtime';
 import {
   useServerQuery,
@@ -16,6 +17,8 @@ import {
   RecordDetailsModal,
   DetailFields,
   Select,
+  SearchInput,
+  EntityAvatar,
 } from '../../../../shared/ui';
 import {
   createPlasticProfile,
@@ -286,9 +289,11 @@ const ProfileFormModal = ({ mode, profile, onClose, onSaved, existingProfiles = 
           {validationError && <p className="modal__error">{validationError}</p>}
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose} disabled={busy}>
+              <FiX aria-hidden size={16} strokeWidth={2} />
               Отмена
             </button>
             <button type="submit" className="btn btn--primary" disabled={busy}>
+              <FiCheck aria-hidden size={16} strokeWidth={2} />
               {busy ? '…' : 'Сохранить'}
             </button>
           </div>
@@ -305,38 +310,42 @@ const profileDetailRows = (profile) => {
   const viewGramsDisplay = viewKgGrams.gramsStr === '' ? '—' : viewKgGrams.gramsStr;
   const extras = readProfileOtherExpensesTotal(profile);
   return [
-    { label: 'Кг', value: viewKgDisplay },
-    { label: 'Граммы', value: viewGramsDisplay },
-    { label: 'Заготовка', value: readProfileBlankName(profile) || readProfileBlankId(profile) || '—' },
+    { section: 'Состав', label: 'Кг', value: viewKgDisplay },
+    { section: 'Состав', label: 'Граммы', value: viewGramsDisplay },
+    { section: 'Состав', label: 'Заготовка', value: readProfileBlankName(profile) || readProfileBlankId(profile) || '—' },
     ...PROFILE_EXTRA_EXPENSE_FIELDS.map(({ apiKey, label }) => ({
+      section: 'Расходы',
       label,
       value: readProfileExtraExpense(profile, apiKey) > 0
         ? `${formatNumberForInput(readProfileExtraExpense(profile, apiKey))} сом`
         : '0 сом',
     })),
-    { label: 'Себестоимость', value: formatProfileCostDisplay(profile) },
-    { label: 'Прочие расходы', value: `${formatNumberForInput(extras)} сом` },
+    { section: 'Расходы', label: 'Себестоимость', value: formatProfileCostDisplay(profile) },
+    { section: 'Расходы', label: 'Прочие расходы', value: `${formatNumberForInput(extras)} сом` },
     {
+      section: 'Цена',
       label: 'Наценка',
       value: readProfileMarkupAmount(profile) != null
         ? `${formatNumberForInput(readProfileMarkupAmount(profile))} сом`
         : '—',
     },
     {
+      section: 'Цена',
       label: 'Наценка, %',
       value: formatMarkupPercentDisplay(readProfileCostPrice(profile), readProfileMarkupAmount(profile)),
     },
-    { label: 'Итого цена', value: formatProfileSalePriceDisplay(profile) },
+    { section: 'Цена', label: 'Итого цена', value: formatProfileSalePriceDisplay(profile) },
   ];
 };
 
 const ProfileRow = ({ profile, onDetails, onEdit, onDeleteRequest }) => (
   <div className="chemistry-table__row chemistry-table__row--plastic-profile-compact">
-    <span className="chemistry-plastic-profiles__text chemistry-plastic-profiles__text--name">
+    <span className="chemistry-plastic-profiles__text chemistry-plastic-profiles__text--name chemistry-table__name--with-avatar">
+      <EntityAvatar name={profile.name} size={28} />
       {profile.name || '—'}
     </span>
     <div className="chemistry-table__actions chemistry-table__actions--wrap">
-      <button type="button" className="btn btn--ghost btn--sm" onClick={() => onDetails?.(profile)}>
+      <button type="button" className="action-row__btn" onClick={() => onDetails?.(profile)}>
         Подробнее
       </button>
       <ActionMenu
@@ -357,6 +366,7 @@ const ChemistryPlasticProfilesTab = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [search, setSearch] = useState('');
   const {
     items: profiles,
     loading,
@@ -374,6 +384,12 @@ const ChemistryPlasticProfilesTab = () => {
     list.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ru'));
     return list;
   }, [profiles]);
+
+  const visibleProfiles = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return sorted;
+    return sorted.filter((p) => String(p.name || '').toLowerCase().includes(q));
+  }, [sorted, search]);
 
   const refetchAll = useCallback(() => {
     refetch();
@@ -401,11 +417,12 @@ const ChemistryPlasticProfilesTab = () => {
     <div className="chemistry-card">
       <div className="chemistry-card__head ds-toolbar ds-toolbar--in-card">
         <div className="ds-toolbar__start">
-          <h2 className="chemistry-card__title">Профили</h2>
+          <SearchInput placeholder="Поиск" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <div className="ds-toolbar__end chemistry-card__toolbar-actions">
           <button type="button" className="btn btn--primary" onClick={() => setFormModal({ mode: 'add' })}>
-            Добавить товар
+            <FiPlus aria-hidden size={16} strokeWidth={2} />
+            Товар
           </button>
         </div>
       </div>
@@ -415,14 +432,17 @@ const ChemistryPlasticProfilesTab = () => {
       {!loading && !error && sorted.length === 0 && (
         <EmptyState title="Нет товаров — нажмите «Добавить товар»" />
       )}
-      {!loading && !error && sorted.length > 0 && (
+      {!loading && !error && sorted.length > 0 && visibleProfiles.length === 0 && (
+        <EmptyState title="Ничего не найдено" />
+      )}
+      {!loading && !error && visibleProfiles.length > 0 && (
         <div className="chemistry-table-wrap">
           <div className="chemistry-table chemistry-table--plastic-profiles chemistry-table--plastic-profiles-compact">
             <div className="chemistry-table__header">
               <span className="chemistry-table__th">Товар</span>
               <span className="chemistry-table__th chemistry-table__th--actions"> </span>
             </div>
-            {sorted.map((p) => (
+            {visibleProfiles.map((p) => (
               <ProfileRow
                 key={p.id}
                 profile={p}

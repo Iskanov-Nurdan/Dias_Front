@@ -1,14 +1,17 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { FiSettings, FiUnlock, FiClock, FiPlus, FiCheck, FiX } from 'react-icons/fi';
 import { useDiscardOnClose, useDirtyFromBaseline } from '../../../../shared/hooks';
 import { useServerQuery, formatNumberForInput, parseLocaleNumber, getApiErrorMessage } from '../../../../shared/lib';
 import {
   Loading,
   EmptyState,
+  EntityAvatar,
   ErrorState,
   ConfirmModal,
   useToast,
   DecimalInput,
   Select,
+  SearchInput,
   Pagination,
   Collapse,
   ActionMenu,
@@ -839,6 +842,7 @@ const LinesPage = () => {
           setProductionBatchLine(l);
         }}
       >
+        <FiPlus aria-hidden size={16} strokeWidth={2} />
         Партия
       </button>
     ) : (
@@ -868,6 +872,7 @@ const LinesPage = () => {
           className={`lines-tabs__tab ${activeTab === 'line' ? 'lines-tabs__tab--active' : ''}`}
           onClick={() => setActiveTab('line')}
         >
+          <FiSettings aria-hidden size={16} strokeWidth={2} />
           Линия
         </button>
         <button
@@ -875,6 +880,7 @@ const LinesPage = () => {
           className={`lines-tabs__tab ${activeTab === 'opening' ? 'lines-tabs__tab--active' : ''}`}
           onClick={() => setActiveTab('opening')}
         >
+          <FiUnlock aria-hidden size={16} strokeWidth={2} />
           Открытие
         </button>
         <button
@@ -882,6 +888,7 @@ const LinesPage = () => {
           className={`lines-tabs__tab ${activeTab === 'history' ? 'lines-tabs__tab--active' : ''}`}
           onClick={() => setActiveTab('history')}
         >
+          <FiClock aria-hidden size={16} strokeWidth={2} />
           История
         </button>
       </div>
@@ -890,8 +897,7 @@ const LinesPage = () => {
         <div className="lines-card">
           <div className="lines-toolbar">
             <div className="lines-toolbar__left">
-              <input
-                type="text"
+              <SearchInput
                 className="lines-toolbar__search"
                 placeholder="Поиск…"
                 value={queryState.search || ''}
@@ -905,7 +911,8 @@ const LinesPage = () => {
                 className="btn btn--primary btn--sm"
                 onClick={() => { setSubmitError(''); setLineModal({}); }}
               >
-                Создать
+                <FiPlus aria-hidden size={16} strokeWidth={2} />
+                Линия
               </button>
             </div>
           </div>
@@ -925,7 +932,10 @@ const LinesPage = () => {
                   </div>
                   {lines.map((line) => (
                     <div key={line.id} className="lines-table__row">
-                      <span className="lines-table__name">{line.name}</span>
+                      <span className="lines-table__name">
+                        <EntityAvatar name={line.name} size={28} />
+                        {line.name}
+                      </span>
                       <span className="lines-table__muted">{line.code ?? line.line_code ?? '—'}</span>
                       <span>
                         <span
@@ -1451,8 +1461,8 @@ const LineFormModal = ({ line, onSubmit, onClose, error }) => {
           </Collapse>
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={requestClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary">Сохранить</button>
+            <button type="button" className="btn btn--secondary" onClick={requestClose}><FiX aria-hidden size={16} strokeWidth={2} />Отмена</button>
+            <button type="submit" className="btn btn--primary"><FiCheck aria-hidden size={16} strokeWidth={2} />Сохранить</button>
           </div>
         </form>
       </div>
@@ -1510,8 +1520,8 @@ const ShiftPauseModal = ({ lineName, onSubmit, onClose, error }) => {
           />
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={requestClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary">Остановить смену</button>
+            <button type="button" className="btn btn--secondary" onClick={requestClose}><FiX aria-hidden size={16} strokeWidth={2} />Отмена</button>
+            <button type="submit" className="btn btn--primary"><FiCheck aria-hidden size={16} strokeWidth={2} />Остановить смену</button>
           </div>
         </form>
       </div>
@@ -1532,12 +1542,13 @@ const ShiftResumeModal = ({ lineName, onSubmit, onClose, error }) => (
         </p>
         {error && <p className="modal__error">{error}</p>}
         <div className="modal__actions">
-          <button type="button" className="btn btn--secondary" onClick={onClose}>Отмена</button>
+          <button type="button" className="btn btn--secondary" onClick={onClose}><FiX aria-hidden size={16} strokeWidth={2} />Отмена</button>
           <button
             type="button"
             className="btn btn--primary"
             onClick={() => onSubmit({})}
           >
+            <FiCheck aria-hidden size={16} strokeWidth={2} />
             Возобновить
           </button>
         </div>
@@ -1644,8 +1655,9 @@ const ShiftParamsModal = ({
           />
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={requestClose}>Отмена</button>
+            <button type="button" className="btn btn--secondary" onClick={requestClose}><FiX aria-hidden size={16} strokeWidth={2} />Отмена</button>
             <button type="submit" className="btn btn--primary">
+              <FiCheck aria-hidden size={16} strokeWidth={2} />
               {type === 'open' ? 'Открыть' : type === 'close' ? 'Закрыть и сохранить' : 'Сохранить'}
             </button>
           </div>

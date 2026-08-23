@@ -21,6 +21,12 @@
   white-space: nowrap;
 }
 
+.data-table__name--with-avatar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .clients-page__title {
   margin: 0;
   margin-right: var(--space-3);
@@ -659,9 +665,8 @@
       min-width: 0;
     }
 
-    .ds-toolbar__search,
-    input.ds-toolbar__search {
-      display: block;
+    .ds-toolbar__search {
+      display: flex;
       flex: 0 0 auto !important;
       width: 100% !important;
       max-width: none !important;

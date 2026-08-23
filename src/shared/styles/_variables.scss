@@ -123,6 +123,11 @@
   --secondary-action-border: rgba(255, 255, 255, 0.1);
   --secondary-action-text: var(--text);
 
+  --btn-secondary-bg: #232a38;
+  --btn-secondary-bg-hover: #2c3444;
+  --btn-secondary-border: rgba(255, 255, 255, 0.1);
+  --btn-secondary-text: var(--text);
+
   --success: #34d399;
   --success-muted: rgba(52, 211, 153, 0.12);
   --warning: #fbbf24;
@@ -221,6 +226,11 @@
   --secondary-action-border: #e5e7eb;
   --secondary-action-text: var(--text);
 
+  --btn-secondary-bg: #eceef3;
+  --btn-secondary-bg-hover: #e1e4ec;
+  --btn-secondary-border: rgba(15, 23, 42, 0.08);
+  --btn-secondary-text: var(--text);
+
   --success: #047857;
   --success-muted: rgba(4, 120, 87, 0.1);
   --warning: #b45309;
@@ -251,7 +261,7 @@
   --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.85);
   --shadow-soft: var(--shadow-sm);
 
-  --select-bg: #f8f9fb;
+  --select-bg: #ffffff;
   --select-border: #e5e7eb;
   --select-border-hover: #d1d5db;
   --select-text: var(--text);

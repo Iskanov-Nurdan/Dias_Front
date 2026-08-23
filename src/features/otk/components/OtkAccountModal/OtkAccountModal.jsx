@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { FiCheck, FiX } from 'react-icons/fi';
 import { Select, DecimalInput, IntegerInput, useToast } from '../../../../shared/ui';
 import {
   formatNumberForInput,
@@ -471,6 +472,7 @@ const OtkAccountModal = ({ pool = [], onClose, onSaved }) => {
 
         <footer className="otk-account-screen__foot">
           <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>
+            <FiX aria-hidden size={16} strokeWidth={2} />
             Отмена
           </button>
           <button
@@ -479,6 +481,7 @@ const OtkAccountModal = ({ pool = [], onClose, onSaved }) => {
             className="btn btn--primary"
             disabled={!canSubmit || saving}
           >
+            <FiCheck aria-hidden size={16} strokeWidth={2} />
             {saving ? 'Сохранение…' : 'Сохранить и на склад'}
           </button>
         </footer>

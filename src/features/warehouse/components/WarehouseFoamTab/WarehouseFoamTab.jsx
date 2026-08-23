@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { FiPackage, FiClock, FiCheck, FiX } from 'react-icons/fi';
 import {
   formatNumberForInput,
   pickFirstIsoDate,
   matchesClientDateFilter,
   getApiErrorMessage,
 } from '../../../../shared/lib';
-import { ClientDateFilter, EmptyState, Loading, useToast } from '../../../../shared/ui';
+import { ClientDateFilter, EmptyState, Loading, useToast, SearchInput, EntityAvatar } from '../../../../shared/ui';
 import { useOperationalRefetch, WS_FOAM_WAREHOUSE } from '../../../../shared/realtime';
 import {
   FOAM_WAREHOUSE_GP,
@@ -84,8 +85,12 @@ const CutCubeModal = ({ row, onClose, onSubmit, saving }) => {
           </div>
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>Отмена</button>
+            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>
+              <FiX aria-hidden size={16} strokeWidth={2} />
+              Отмена
+            </button>
             <button type="submit" className="btn btn--primary" disabled={saving || qtyNum <= 0 || willExceedStock}>
+              <FiCheck aria-hidden size={16} strokeWidth={2} />
               {saving ? 'Нарезка…' : 'Нарезать'}
             </button>
           </div>
@@ -105,6 +110,8 @@ const WarehouseFoamTab = () => {
   const [cutTarget, setCutTarget] = useState(null);
   const [cutting, setCutting] = useState(false);
   const [dateFilterIso, setDateFilterIso] = useState('');
+  const [stockSearch, setStockSearch] = useState('');
+  const [opsSearch, setOpsSearch] = useState('');
 
   const fetchAll = useCallback(async () => {
     try {
@@ -145,10 +152,23 @@ const WarehouseFoamTab = () => {
     };
   }, [stock]);
 
+  const visibleStock = useMemo(() => {
+    const q = stockSearch.trim().toLowerCase();
+    if (!q) return stock;
+    return stock.filter((s) => String(s.grade_code || '').toLowerCase().includes(q));
+  }, [stock, stockSearch]);
+
   const visibleOperations = useMemo(() => {
-    if (!dateFilterIso) return operations;
-    return operations.filter((op) => matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(op, ['created_at'])));
-  }, [operations, dateFilterIso]);
+    let list = operations;
+    if (dateFilterIso) {
+      list = list.filter((op) => matchesClientDateFilter(dateFilterIso, pickFirstIsoDate(op, ['created_at'])));
+    }
+    const q = opsSearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter((op) => String(op.grade_code || '').toLowerCase().includes(q));
+    }
+    return list;
+  }, [operations, dateFilterIso, opsSearch]);
 
   const handleCutSubmit = async (payload) => {
     setCutting(true);
@@ -166,9 +186,9 @@ const WarehouseFoamTab = () => {
     <div className="warehouse-gp warehouse-gp--stock warehouse-foam-tab">
       <div className="warehouse-gp__main-tabs production-main-tabs" role="tablist" aria-label="Склад пенопласта">
         {[
-          ['stock', 'Остатки'],
-          ['history', 'История'],
-        ].map(([key, label]) => (
+          ['stock', 'Остатки', FiPackage],
+          ['history', 'История', FiClock],
+        ].map(([key, label, Icon]) => (
           <button
             key={key}
             type="button"
@@ -177,6 +197,7 @@ const WarehouseFoamTab = () => {
             className={`production-main-tabs__btn${mainTab === key ? ' production-main-tabs__btn--active' : ''}`}
             onClick={() => setMainTab(key)}
           >
+            <Icon aria-hidden size={16} strokeWidth={2} />
             {label}
           </button>
         ))}
@@ -186,13 +207,18 @@ const WarehouseFoamTab = () => {
         <div className="ds-list-card">
           <div className="ds-list-card__head ds-toolbar ds-toolbar--in-card">
             <div className="ds-toolbar__start">
-              <h2 className="ds-list-card__title">
-                Готовая продукция <span className="warehouse-foam-tab__warehouse-badge">{FOAM_WAREHOUSE_GP}</span>
-              </h2>
+              <SearchInput
+                placeholder="Поиск по плотности"
+                value={stockSearch}
+                onChange={(e) => setStockSearch(e.target.value)}
+              />
+              <span className="warehouse-foam-tab__warehouse-badge">{FOAM_WAREHOUSE_GP}</span>
             </div>
           </div>
           {stock.length === 0 ? (
             <EmptyState title="Склад пуст" description="Товар попадает сюда сразу после выпуска в «Производстве»." />
+          ) : visibleStock.length === 0 ? (
+            <EmptyState title="Ничего не найдено" />
           ) : (
             <>
               <p className="warehouse-foam-tab__total-weight">
@@ -209,16 +235,19 @@ const WarehouseFoamTab = () => {
                     <span className="chemistry-table__th chemistry-table__th--num">≈ Вес</span>
                     <span className="chemistry-table__th chemistry-table__th--actions"> </span>
                   </div>
-                  {stock.map((s) => (
+                  {visibleStock.map((s) => (
                     <div key={s.id} className="chemistry-table__row">
-                      <span className="chemistry-table__name">{foamOutputFormatLabel(s.output_format)}</span>
+                      <span className="chemistry-table__name chemistry-table__name--with-avatar">
+                        <EntityAvatar name={foamOutputFormatLabel(s.output_format)} size={28} />
+                        {foamOutputFormatLabel(s.output_format)}
+                      </span>
                       <span className="chemistry-table__cell-clip">{s.grade_code || '—'}</span>
                       <span className="chemistry-table__cell-clip">{foamFormatParamsLabel(toCalcRow(s))}</span>
                       <span className="chemistry-table__num">{formatNumberForInput(s.qty)} {foamOutputUnitLabel(s.output_format)}</span>
                       <span className="chemistry-table__num">{formatNumberForInput(foamStockRowWeightKg(toCalcRow(s), calcGrades))} кг</span>
                       <span className="chemistry-table__actions chemistry-table__actions--wrap">
                         {s.output_format === 'cube' && (
-                          <button type="button" className="btn btn--secondary btn--sm" onClick={() => setCutTarget(s)}>
+                          <button type="button" className="action-row__btn" onClick={() => setCutTarget(s)}>
                             Нарезать на листы
                           </button>
                         )}
@@ -236,7 +265,11 @@ const WarehouseFoamTab = () => {
         <div className="ds-list-card">
           <div className="ds-list-card__head ds-toolbar ds-toolbar--in-card">
             <div className="ds-toolbar__start">
-              <h2 className="ds-list-card__title">Движения склада</h2>
+              <SearchInput
+                placeholder="Поиск по плотности"
+                value={opsSearch}
+                onChange={(e) => setOpsSearch(e.target.value)}
+              />
             </div>
             <div className="ds-toolbar__end">
               <ClientDateFilter value={dateFilterIso} onChange={setDateFilterIso} id="warehouse-foam-history-date" />

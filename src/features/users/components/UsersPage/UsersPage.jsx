@@ -1,15 +1,20 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { FiUsers, FiShield, FiPlus, FiCheck, FiX, FiActivity, FiRepeat } from 'react-icons/fi';
 import { useDiscardOnClose, useDirtyFromBaseline, useIsMobile } from '../../../../shared/hooks';
 import { useServerQuery, getApiErrorMessage } from '../../../../shared/lib';
 import {
   ServerList,
-  FilterBar,
   Collapse,
   ConfirmModal,
   Pagination,
   ActionMenu,
   useToast,
   Select,
+  SearchInput,
+  FilterPanel,
+  FilterPanelField,
+  Badge,
+  EntityAvatar,
 } from '../../../../shared/ui';
 import { useAuth } from '../../../auth/model';
 import { createUser, updateUser, deleteUser, updateUserAccess, getUser } from '../../api/usersApi';
@@ -27,25 +32,17 @@ import { shiftLineLabel } from '../../../shifts/lib/shiftDisplayUtils';
 import ShiftActivityListModal from '../../../shifts/components/ActivityAudit/ShiftActivityListModal';
 import './UsersPage.scss';
 
-const USERS_FILTERS_PRIMARY = (roleOptions) => [
-  { key: 'search', type: 'search', placeholder: 'Поиск' },
-  { key: 'role', type: 'select', placeholder: 'Роль', options: roleOptions },
+const USERS_STATUS_OPTIONS = [
+  { value: 'true', label: 'Активные' },
+  { value: 'false', label: 'Неактивные' },
 ];
 
-const USERS_FILTERS_EXTRA = () => [
-  { key: 'is_active', type: 'select', placeholder: 'Статус', options: [
-    { value: 'true', label: 'Активные' },
-    { value: 'false', label: 'Неактивные' },
-  ]},
-  { key: 'ordering', type: 'ordering', placeholder: 'Сортировка', options: [
-    { value: 'id', label: 'Сначала старые записи' },
-    { value: '-id', label: 'Сначала новые записи' },
-    { value: 'name', label: 'Имя А–Я' },
-    { value: '-name', label: 'Имя Я–А' },
-  ]},
+const USERS_ORDERING_OPTIONS = [
+  { value: 'id', label: 'Сначала старые записи' },
+  { value: '-id', label: 'Сначала новые записи' },
+  { value: 'name', label: 'Имя А–Я' },
+  { value: '-name', label: 'Имя Я–А' },
 ];
-
-const USERS_FILTERS_ALL = (roleOptions) => [...USERS_FILTERS_PRIMARY(roleOptions), ...USERS_FILTERS_EXTRA()];
 
 const ADMINISTRATOR_ROLE_NAME_LC = 'администратор';
 
@@ -60,14 +57,6 @@ const sortRolesForDisplay = (list) => {
     if (pa && !pb) return -1;
     if (!pa && pb) return 1;
     return String(a.name || '').localeCompare(String(b.name || ''), 'ru');
-  });
-  return copy;
-};
-
-const cleanQuery = (q) => {
-  const copy = { ...q };
-  Object.keys(copy).forEach((k) => {
-    if (copy[k] === '' || copy[k] == null) delete copy[k];
   });
   return copy;
 };
@@ -92,6 +81,7 @@ const UsersPage = () => {
   const [reportModal, setReportModal] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [submitError, setSubmitError] = useState('');
+  const [rolesSearch, setRolesSearch] = useState('');
 
   const { refetch: refetchAuth } = useAuth();
   const { items: users, meta, loading, error, refetch } = useServerQuery(
@@ -106,6 +96,12 @@ const UsersPage = () => {
   );
 
   const sortedRoles = useMemo(() => sortRolesForDisplay(roles), [roles]);
+
+  const visibleRoles = useMemo(() => {
+    const q = rolesSearch.trim().toLowerCase();
+    if (!q) return sortedRoles;
+    return sortedRoles.filter((r) => String(r.name || '').toLowerCase().includes(q));
+  }, [sortedRoles, rolesSearch]);
 
   const roleOptions = useMemo(
     () => [{ value: '', label: 'Все' }, ...sortedRoles.map((r) => ({ value: String(r.id), label: r.name }))],
@@ -204,6 +200,7 @@ const UsersPage = () => {
               className={`page__tab ${activeTab === 'users' ? 'page__tab--active' : ''}`}
               onClick={() => setActiveTab('users')}
             >
+              <FiUsers aria-hidden size={16} strokeWidth={2} />
               Список
             </button>
             <button
@@ -213,6 +210,7 @@ const UsersPage = () => {
               className={`page__tab ${activeTab === 'roles' ? 'page__tab--active' : ''}`}
               onClick={() => setActiveTab('roles')}
             >
+              <FiShield aria-hidden size={16} strokeWidth={2} />
               Роли
             </button>
           </div>
@@ -222,12 +220,14 @@ const UsersPage = () => {
       <div className="ds-sticky-mobile-actions">
         {activeTab === 'roles' && (
           <button type="button" className="btn btn--primary" onClick={() => setRoleModal({})}>
-            Создать роль
+            <FiPlus aria-hidden size={16} strokeWidth={2} />
+            Роль
           </button>
         )}
         {activeTab === 'users' && (
           <button type="button" className="btn btn--primary" onClick={() => setUserModal({})}>
-            Добавить
+            <FiPlus aria-hidden size={16} strokeWidth={2} />
+            Пользователь
           </button>
         )}
       </div>
@@ -237,15 +237,20 @@ const UsersPage = () => {
         <ServerList
           loading={rolesLoading}
           error={rolesError}
-          items={sortedRoles}
+          items={visibleRoles}
           meta={{ page: 1, total_pages: 1 }}
           onRetry={refetchRoles}
           renderFilters={() => (
-            <div className="users-page__filters users-page__filters--row users-page__filters--action-only">
-              <h2 className="ds-list-card__title">Роли</h2>
+            <div className="users-page__filters users-page__filters--row">
+              <SearchInput
+                value={rolesSearch}
+                onChange={(e) => setRolesSearch(e.target.value)}
+                placeholder="Поиск по роли"
+              />
               <div className="users-page__filters-action ds-hide-mobile">
                 <button type="button" className="btn btn--primary" onClick={() => setRoleModal({})}>
-                  Создать роль
+                  <FiPlus aria-hidden size={16} strokeWidth={2} />
+                  Роль
                 </button>
               </div>
             </div>
@@ -307,24 +312,58 @@ const UsersPage = () => {
           items={users}
           meta={meta}
           onRetry={refetch}
-          renderFilters={() => (
-            <div className={`users-page__filters users-page__filters--row${isMobile ? ' users-page__filters--mobile' : ''}`}>
-              <h2 className="ds-list-card__title">Сотрудники</h2>
-              <div className="users-page__filters-fields">
-                <FilterBar
-                  variant="row"
-                  filters={USERS_FILTERS_ALL(roleOptions)}
-                  queryState={cleanQuery(queryState)}
-                  onChange={handleFilterChange}
-                />
+          renderFilters={() => {
+            const activeCount = ['role', 'is_active', 'ordering'].filter((k) => queryState[k]).length;
+            return (
+              <div className={`users-page__filters users-page__filters--row${isMobile ? ' users-page__filters--mobile' : ''}`}>
+                <div className="users-page__filters-fields">
+                  <SearchInput
+                    value={queryState.search}
+                    onChange={(e) => handleFilterChange({ search: e.target.value || undefined })}
+                    placeholder="Поиск"
+                  />
+                  <FilterPanel
+                    activeCount={activeCount}
+                    onReset={() => handleFilterChange({ role: undefined, is_active: undefined, ordering: undefined })}
+                  >
+                    <FilterPanelField label="Роль">
+                      <Select
+                        icon={FiShield}
+                        value={queryState.role || ''}
+                        onChange={(v) => handleFilterChange({ role: v || undefined })}
+                        placeholder="Все"
+                        options={roleOptions}
+                      />
+                    </FilterPanelField>
+                    <FilterPanelField label="Статус">
+                      <Select
+                        icon={FiActivity}
+                        value={queryState.is_active || ''}
+                        onChange={(v) => handleFilterChange({ is_active: v || undefined })}
+                        placeholder="Все"
+                        options={[{ value: '', label: 'Все' }, ...USERS_STATUS_OPTIONS]}
+                      />
+                    </FilterPanelField>
+                    <FilterPanelField label="Сортировка">
+                      <Select
+                        icon={FiRepeat}
+                        value={queryState.ordering || ''}
+                        onChange={(v) => handleFilterChange({ ordering: v || undefined })}
+                        placeholder="По умолчанию"
+                        options={[{ value: '', label: 'По умолчанию' }, ...USERS_ORDERING_OPTIONS]}
+                      />
+                    </FilterPanelField>
+                  </FilterPanel>
+                </div>
+                <div className="users-page__filters-action ds-hide-mobile">
+                  <button type="button" className="btn btn--primary" onClick={() => setUserModal({})}>
+                    <FiPlus aria-hidden size={16} strokeWidth={2} />
+                    Пользователь
+                  </button>
+                </div>
               </div>
-              <div className="users-page__filters-action ds-hide-mobile">
-                <button type="button" className="btn btn--primary" onClick={() => setUserModal({})}>
-                  Добавить
-                </button>
-              </div>
-            </div>
-          )}
+            );
+          }}
           filtersClassName="server-list__filters--tight"
           renderTable={(listItems) => (
             <table className="data-table data-table--fixed data-table--users data-table--row-actions data-table--clickable">
@@ -350,17 +389,22 @@ const UsersPage = () => {
                       }
                     }}
                   >
-                    <td className="data-table__cell--lead">{u.name}</td>
+                    <td className="data-table__cell--lead">
+                      <span className="data-table__name--with-avatar">
+                        <EntityAvatar name={u.name} size={28} />
+                        {u.name}
+                      </span>
+                    </td>
                     <td className="users-page__muted data-table__cell--muted">{u.role_name ?? (roles.find((r) => r.id === u.role)?.name) ?? '—'}</td>
                     <td>
-                      <span className={`users-page__pill${u.is_active === false ? ' users-page__pill--off' : ''}`}>
+                      <Badge variant={u.is_active === false ? 'default' : 'success'}>
                         {u.is_active === false ? 'Выкл' : 'Активен'}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="users-page__employee-actions">
                       <button
                         type="button"
-                        className="btn btn--secondary users-page__details-btn"
+                        className="action-row__btn users-page__details-btn"
                         onClick={(e) => {
                           e.stopPropagation();
                           setUserDetail(u);
@@ -729,9 +773,11 @@ const AccessModal = ({ user, accessGroups, accessLabels, onSave, onClose, error 
 
             <div className="modal__actions access-modal__footer">
               <button type="button" className="btn btn--secondary" onClick={requestClose} disabled={saving}>
+                <FiX aria-hidden size={16} strokeWidth={2} />
                 Отмена
               </button>
               <button type="submit" className="btn btn--primary" disabled={saving}>
+                <FiCheck aria-hidden size={16} strokeWidth={2} />
                 {saving ? 'Сохранение…' : 'Сохранить'}
               </button>
             </div>
@@ -816,8 +862,14 @@ const UserFormModal = ({ user, roles, onSubmit, onClose, error }) => {
           />
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={requestClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary">Сохранить</button>
+            <button type="button" className="btn btn--secondary" onClick={requestClose}>
+              <FiX aria-hidden size={16} strokeWidth={2} />
+              Отмена
+            </button>
+            <button type="submit" className="btn btn--primary">
+              <FiCheck aria-hidden size={16} strokeWidth={2} />
+              Сохранить
+            </button>
           </div>
         </form>
       </div>
@@ -1179,8 +1231,14 @@ const RoleFormModal = ({ role, onSubmit, onClose, error }) => {
           <input value={name} onChange={(e) => setName(e.target.value)} required />
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={requestClose}>Отмена</button>
-            <button type="submit" className="btn btn--primary">Сохранить</button>
+            <button type="button" className="btn btn--secondary" onClick={requestClose}>
+              <FiX aria-hidden size={16} strokeWidth={2} />
+              Отмена
+            </button>
+            <button type="submit" className="btn btn--primary">
+              <FiCheck aria-hidden size={16} strokeWidth={2} />
+              Сохранить
+            </button>
           </div>
         </form>
       </div>

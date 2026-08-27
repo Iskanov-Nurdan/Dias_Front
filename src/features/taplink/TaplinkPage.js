@@ -231,7 +231,7 @@ const TrainersSlider = ({ trainers, onDetails, onBook }) => {
         <div className="tp-tc__stats">
           <div className="tp-tc__stat">
             <span className="tp-tc__stat-val">⭐ {t.experience}</span>
-            <span className="tp-tc__stat-lbl">опыта</span>
+            <span className="tp-tc__stat-lbl">стажа</span>
           </div>
           {t.achievements?.[0] && (
             <>
@@ -461,7 +461,7 @@ const TrainerSheet = ({ trainer, onClose, onBook, sports = [] }) => {
 
         <div className="tp-sheet__chips">
           <span className="tp-chip tp-chip--red">{trainer.sportName}</span>
-          <span className="tp-chip">{trainer.experience} опыта</span>
+          <span className="tp-chip">{trainer.experience} стажа</span>
         </div>
 
         <p className="tp-sheet__text">{trainer.bio}</p>

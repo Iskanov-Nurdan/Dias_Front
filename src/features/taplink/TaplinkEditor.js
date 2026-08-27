@@ -544,7 +544,7 @@ const TrainersTab = ({ data, setData }) => {
                         options={data.sports.map(s => ({ value: s.name, label: s.name }))}
                       />
                     </Field>
-                    <Field label="Опыт (напр. 10 лет)">
+                    <Field label="Тренерский стаж (напр. 10 лет)">
                       <input className="tpe-input" value={t.experience} onChange={e => set(i, 'experience', e.target.value)} />
                     </Field>
                   </div>

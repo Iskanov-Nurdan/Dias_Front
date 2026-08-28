@@ -159,7 +159,14 @@
     align-items: center;
     justify-content: center;
     gap: var(--space-1);
+    margin: var(--space-1);
     padding: var(--space-2) var(--space-1);
+  }
+
+  .main-layout__user-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
   }
 
   .main-layout__logout-btn {
@@ -192,14 +199,48 @@
 .main-layout__nav {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sidebar-group-gap);
 }
 
+// ── Group ────────────────────────────────────────────────────────
+// Section groups (Обзор / Производство / Склад / Персонал…) — a small
+// uppercase label above each group, plus a hairline above every group
+// after the first so the sections read as distinct zones, not one
+// undifferentiated list of links.
+
+.main-layout__nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  &:not(:first-child) {
+    margin-top: var(--space-1);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--sidebar-border);
+  }
+}
+
+.main-layout__nav-group-title {
+  padding: 0 var(--space-3) 6px;
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sidebar-text-muted);
+  @include text-ellipsis;
+}
+
+// ── Link ─────────────────────────────────────────────────────────
+// Active state gets a confident, unambiguous treatment: a left accent
+// bar (::before) plus a tinted background and bolder icon/label —
+// not just a faint background tint like before.
+
 .main-layout__link {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: 8px var(--space-3);
+  gap: var(--space-3);
+  padding: 9px var(--space-3);
   color: var(--sidebar-text);
   text-decoration: none;
   font-size: 0.9rem;
@@ -210,6 +251,22 @@
   white-space: nowrap;
   overflow: hidden;
 
+  &::before {
+    // Positioned inside the link's own box (not a negative offset) — the
+    // link has `overflow: hidden`, so anything outside its border-box
+    // would be silently clipped and never render.
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 0;
+    border-radius: 0 var(--radius-full) var(--radius-full) 0;
+    background: var(--primary);
+    transition: height var(--transition-fast);
+  }
+
   &:hover {
     color: #fff;
     background: var(--sidebar-bg-hover);
@@ -218,7 +275,12 @@
   &--active {
     color: var(--sidebar-active-text);
     background: var(--sidebar-active-bg);
-    font-weight: var(--weight-medium);
+    font-weight: var(--weight-semibold);
+    box-shadow: inset 0 0 0 1px rgba(244, 63, 94, 0.16);
+
+    &::before {
+      height: 18px;
+    }
 
     .main-layout__link-icon {
       color: var(--sidebar-active-text);
@@ -254,24 +316,38 @@
   font-size: inherit;
 }
 
+// ── User card ────────────────────────────────────────────────────
+// Larger, self-contained "account chip": bigger initials avatar,
+// clearer name/role hierarchy, own surface + border so it reads as a
+// distinct block rather than a thin strip under the nav.
+
 .main-layout__user-card {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-top: 1px solid var(--sidebar-border);
-  min-height: 48px;
+  gap: var(--space-3);
+  margin: var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border-top: none;
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius-lg);
+  background: var(--sidebar-bg-hover);
+  min-height: 56px;
 }
 
 .main-layout__user-avatar {
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
   background: var(--sidebar-active-bg);
   color: var(--sidebar-active-text);
-  @include flex-center;
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.01em;
 }
 
 .main-layout__user-info {
@@ -279,27 +355,41 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 2px;
   line-height: 1.2;
 }
 
 .main-layout__user-name {
-  font-size: var(--font-caption);
-  font-weight: var(--weight-medium);
-  color: rgba(255, 255, 255, 0.9);
+  font-size: var(--font-label);
+  font-weight: var(--weight-semibold);
+  color: #fff;
   @include text-ellipsis;
 }
 
 .main-layout__user-role {
-  font-size: 10px;
-  color: var(--sidebar-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.02em;
+  color: var(--sidebar-active-text);
   @include text-ellipsis;
+
+  &::before {
+    content: '';
+    flex-shrink: 0;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+  }
 }
 
 .main-layout__logout-btn {
   flex-shrink: 0;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   background: transparent;
   border: none;
@@ -311,7 +401,7 @@
 
   &:hover {
     color: var(--sidebar-active-text);
-    background: var(--sidebar-bg-hover);
+    background: var(--sidebar-bg);
   }
 
   &:focus-visible {

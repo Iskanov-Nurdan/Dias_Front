@@ -1,8 +1,17 @@
 @use '../../styles/variables' as *;
 @use '../../styles/mixins' as *;
 
+// Colors stay on the project's own theme-aware tokens (--card, --danger,
+// --warning...) so this still looks right in both light and dark theme —
+// --ds-* is a fixed-dark palette (only wired into the login screen), so it
+// would render this dialog with the wrong tone whenever the app is in light
+// mode. Shape/shadow/overlay/motion tokens (--ds-modal-*, --ds-duration-*,
+// --ds-ease-*) are theme-neutral and used directly, as asked.
+
 .confirm-modal-overlay {
   @include modal-backdrop;
+  background: var(--ds-modal-overlay-bg, rgba(10, 10, 11, 0.6));
+  animation: confirmOverlayIn var(--ds-duration-base, 0.22s) var(--ds-ease-decelerate, ease) both;
 
   @include mobile {
     align-items: center;
@@ -15,51 +24,79 @@
 }
 
 .confirm-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
   background: var(--card);
   border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  padding: var(--space-5);
-  min-width: min(320px, 90vw);
-  max-width: min(480px, 90vw);
-  animation: modalIn 0.16s ease;
+  border-radius: var(--ds-modal-radius, var(--radius-xl));
+  box-shadow: var(--ds-modal-shadow, var(--shadow-lg));
+  padding: var(--space-6) var(--space-6) var(--space-5);
+  min-width: min(340px, 90vw);
+  max-width: min(440px, 90vw);
+  animation: confirmModalIn var(--ds-duration-base, 0.22s) var(--ds-ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
 
   @include mobile {
     width: 100%;
-    max-width: min(480px, 100%);
-    border-radius: var(--radius-lg);
+    max-width: min(440px, 100%);
+    border-radius: var(--ds-modal-radius, var(--radius-xl));
     max-height: min(85vh, calc(100dvh - var(--space-8)));
-    padding: var(--space-4) var(--space-4) var(--space-5);
-    animation: modalIn 0.16s ease;
+    padding: var(--space-5) var(--space-4) var(--space-5);
+  }
+
+  &__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    margin-bottom: var(--space-4);
+    border-radius: var(--radius-full);
+    background: var(--danger-muted);
+    color: var(--danger);
+    flex-shrink: 0;
+  }
+
+  &--neutral &__icon {
+    background: var(--warning-muted);
+    color: var(--warning);
   }
 
   &__title {
     margin: 0 0 var(--space-2);
-    font-size: var(--font-title-sm);
+    font-size: var(--font-h2);
     font-weight: var(--weight-semibold);
+    letter-spacing: -0.01em;
     color: var(--text);
     line-height: var(--leading-tight);
   }
 
   &__message {
-    margin: 0 0 var(--space-5);
+    margin: 0 0 var(--space-6);
+    max-width: 34ch;
     color: var(--text-secondary);
     font-size: var(--font-sm);
     line-height: var(--leading-normal);
   }
 
   &__error {
-    margin: 0 0 var(--space-3);
-    padding: 0;
+    align-self: stretch;
+    margin: calc(-1 * var(--space-3)) 0 var(--space-4);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--danger-muted);
     color: var(--danger);
     font-size: var(--font-caption);
     line-height: var(--leading-normal);
+    text-align: left;
   }
 
   &__actions {
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
     gap: var(--space-2);
+    width: 100%;
 
     @include mobile {
       flex-wrap: wrap;
@@ -70,30 +107,40 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    flex: 1;
     padding: 0 var(--space-4);
     border-radius: var(--radius-md);
     cursor: pointer;
     font-size: var(--font-sm);
     font-weight: var(--weight-medium);
     transition:
-      background var(--transition-fast),
-      border-color var(--transition-fast),
-      box-shadow var(--transition-fast);
+      background var(--ds-duration-fast, 0.15s) var(--ds-ease-standard, ease),
+      border-color var(--ds-duration-fast, 0.15s) var(--ds-ease-standard, ease),
+      box-shadow var(--ds-duration-fast, 0.15s) var(--ds-ease-standard, ease),
+      transform var(--ds-duration-instant, 0.08s) var(--ds-ease-standard, ease);
     min-height: var(--input-height);
-
-    @include mobile {
-      flex: 1;
-      min-height: 48px;
-    }
     border: 1px solid transparent;
     font-family: inherit;
+
+    @include mobile {
+      min-height: 48px;
+    }
+
+    &:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+
+    &:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
 
     &--cancel {
       background: var(--card);
       border-color: var(--border);
       color: var(--text-secondary);
 
-      &:hover {
+      &:hover:not(:disabled) {
         background: var(--bg-hover);
         border-color: var(--text-muted);
       }
@@ -104,9 +151,24 @@
       border-color: var(--danger);
       color: #fff;
 
-      &:hover {
-        background: #b91c1c;
-        border-color: #b91c1c;
+      &:hover:not(:disabled) {
+        background: color-mix(in srgb, var(--danger) 82%, black);
+        border-color: color-mix(in srgb, var(--danger) 82%, black);
+      }
+    }
+
+    // Not --primary: this brand's primary color is itself a rose-red, close
+    // enough to --danger that a "neutral" action styled with it would still
+    // read as a destructive one. --info gives genuine contrast against the
+    // danger variant above.
+    &--confirm-neutral {
+      background: var(--info);
+      border-color: var(--info);
+      color: #fff;
+
+      &:hover:not(:disabled) {
+        background: color-mix(in srgb, var(--info) 85%, black);
+        border-color: color-mix(in srgb, var(--info) 85%, black);
       }
     }
 
@@ -116,13 +178,29 @@
   }
 }
 
-@keyframes modalIn {
+@keyframes confirmOverlayIn {
   from {
     opacity: 0;
-    transform: translateY(-4px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+  }
+}
+
+@keyframes confirmModalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confirm-modal-overlay,
+  .confirm-modal {
+    animation: none;
   }
 }

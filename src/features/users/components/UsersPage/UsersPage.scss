@@ -1,6 +1,10 @@
 @use '../../../../shared/styles/variables' as *;
 @use '../../../../shared/styles/mixins' as *;
 
+// Page title now lives in the shared header bar (`.main-layout__page-title`,
+// see `pageTitles.js` — `/users` is no longer in `OWN_TITLE_PATHS`), so this
+// page starts directly with its tabs/list — no local hero heading here.
+
 .users-page__head {
   margin-bottom: var(--space-3);
   padding-bottom: var(--space-2);
@@ -8,10 +12,56 @@
   min-width: 0;
 }
 
+// ── Employee identity cell (avatar plaque + name) ───────────────────
+
 .data-table__name--with-avatar {
   display: inline-flex;
   align-items: center;
+  gap: var(--space-3);
+}
+
+.users-page__avatar {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--avatar-plaque-radius);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+.users-page__name-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.users-page__name-primary {
+  font-weight: var(--weight-medium);
+  color: var(--text);
+  @include text-ellipsis;
+}
+
+// Role option inside the "Роль" Select (add/edit employee modal) — icon +
+// name, passed as `label` (JSX) to the shared SearchableSelect, which
+// already supports non-string labels (falls back to `searchText` for
+// search/measure) so no changes to the shared component were needed.
+.users-page__role-option {
+  display: inline-flex;
+  align-items: center;
   gap: var(--space-2);
+  min-width: 0;
+
+  svg {
+    flex-shrink: 0;
+    color: var(--text-muted);
+  }
 }
 
 .users-page__tabs-wrap {
@@ -40,6 +90,9 @@
     margin-bottom: 0;
   }
 
+  // A single cohesive "control bar" surface (search + filters + primary
+  // action) instead of the controls floating loose on the page background —
+  // same --input-height rhythm as its children, just given a home.
   &--row {
     display: flex;
     flex-direction: row;
@@ -47,9 +100,20 @@
     align-items: center;
     gap: var(--space-3);
     min-width: 0;
+    padding: var(--space-3);
+    // Slightly recessed vs. the surrounding `.ds-list-card` (same --card
+    // bg would just double the card look) — reads as a distinct toolbar zone.
+    background: var(--bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
 
     @media (min-width: 1024px) {
       flex-wrap: nowrap;
+    }
+
+    @include mobile {
+      padding: var(--space-2);
+      border-radius: var(--radius-md);
     }
   }
 
@@ -69,21 +133,44 @@
 .users-page__filters-fields {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   flex: 1 1 auto;
   min-width: 0;
+  flex-wrap: wrap;
 
   > .search-input {
-    flex: 1 1 auto;
+    flex: 1 1 220px;
+    min-width: 160px;
   }
+}
 
-  @include lg {
-    flex-wrap: wrap;
+.users-page__filter-select.dias-select {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 132px;
+  max-width: 168px;
+  margin: 0;
+}
 
-    > .search-input {
-      max-width: none;
-      flex: 1 1 100%;
-    }
+.users-page__filters-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  min-height: var(--control-height);
+  padding: 0 var(--space-2);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--font-label);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast), background var(--transition-fast);
+
+  &:hover {
+    color: var(--text);
+    background: var(--bg-hover);
   }
 }
 
@@ -131,18 +218,9 @@
     .users-page__filters--row {
       overflow: visible;
 
-      .filter-bar--row {
-        display: grid;
-        grid-template-columns: 1fr;
-        width: 100%;
-        min-width: 0;
-        gap: var(--space-2);
-      }
-
-      .filter-bar--row .filter-bar__item {
-        min-width: 0;
-        max-width: none;
-        width: 100%;
+      .users-page__filters-fields {
+        flex-direction: column;
+        align-items: stretch;
       }
 
       .search-input,
@@ -152,31 +230,106 @@
         margin: 0;
       }
 
+      .users-page__filter-select.dias-select {
+        width: 100%;
+        max-width: none;
+      }
+
       .dias-select__trigger,
       .dias-select__value-input {
         min-height: 42px;
+      }
+
+      .users-page__filters-reset {
+        align-self: flex-end;
       }
     }
   }
 }
 
 .data-table--users {
-  th:nth-child(1),
-  td:nth-child(1) {
-    width: 36%;
+  // Column widths (including the actions-column fix below) only make sense
+  // in real table-row layout. The shared `.data-table` component switches to
+  // a stacked block/card layout at `@include responsive-tables`
+  // (max-width: 1200px) — not at the 768/1023px breakpoints this page uses
+  // elsewhere — so everything table-layout-specific is guarded to the exact
+  // inverse of that breakpoint. An earlier version left these unguarded
+  // (or guarded only to 769px+ via `desktop-only`), which meant a
+  // 769-1200px gap where the base component had already collapsed to
+  // stacked cards but a lingering `width: 32% !important` / `flex-wrap:
+  // nowrap` fought that layout and made the 3 action buttons overflow the
+  // narrow card instead of wrapping.
+  @media (min-width: 1201px) {
+    th:nth-child(1),
+    td:nth-child(1) {
+      width: 46%;
+    }
+
+    th:nth-child(2),
+    td:nth-child(2) {
+      width: 24%;
+    }
+
+    th:nth-child(3),
+    td:nth-child(3) {
+      width: 18%;
+    }
+
+    // Actions column now holds a single compact "⋯" trigger (see `forceMenu`
+    // on ActionMenu below), not 3 labelled buttons — a small fixed width is
+    // enough; the freed space above goes to the name/role/status columns.
+    // !important: ties the base `.data-table--row-actions` rule's own
+    // `width: 1%` (same selector specificity — `th/td:last-child`).
+    th:nth-child(4),
+    td:nth-child(4) {
+      width: 12% !important;
+    }
+
+    // Flat unified list instead of the base component's per-row "card" look
+    // (border-spacing gap + individually rounded/bordered cells) — reads as
+    // one calm list with hairline separators, not a stack of boxes.
+    border-collapse: collapse;
+    border-spacing: 0;
+
+    thead th {
+      border-bottom: 1px solid var(--border);
+    }
+
+    th,
+    td {
+      padding: 8px var(--space-3);
+      min-height: 40px;
+    }
+
+    td {
+      border-top: none;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td:first-child,
+    td:last-child {
+      border-left: none;
+      border-right: none;
+      border-radius: 0;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
   }
 
-  th:nth-child(2),
-  td:nth-child(2) {
-    width: 28%;
-  }
-
-  th:nth-child(3),
-  td:nth-child(3) {
-    width: 20%;
-  }
-
-  @include mobile {
+  // The page's own stacked-card treatment must match the SAME breakpoint
+  // the shared `.data-table` component uses to switch into card mode
+  // (`@include responsive-tables`, max-width: 1200px) — it was previously
+  // scoped only to `@include mobile` (768px), leaving a 769-1200px gap
+  // where the base component was already in flex/card mode but this page's
+  // own action-row fix (`display: block` on the actions cell, below) never
+  // applied. In that gap, the generic base rule made the actions `<td>`
+  // `display: flex; justify-content: flex-end`, and ActionMenu's own
+  // `.action-row { flex-shrink: 0; }` then refused to shrink into it —
+  // overflowing the button row off the left edge of the card instead of
+  // wrapping.
+  @include responsive-tables {
     th:nth-child(n),
     td:nth-child(n) {
       width: auto;
@@ -211,9 +364,52 @@
 }
 
 .data-table--roles {
-  th:first-child,
-  td:first-child {
-    width: auto;
+  // Same fix as `.data-table--users`, same breakpoint reasoning: guarded to
+  // 1201px+ (the shared `.data-table` component's own stacked-layout
+  // breakpoint is 1200px, not 769px) so it never fights the base
+  // component's block/card layout in the 769-1200px range.
+  @media (min-width: 1201px) {
+    th:first-child,
+    td:first-child {
+      width: auto;
+    }
+
+    // Unprotected roles get a single compact "⋯" trigger from ActionMenu
+    // (`forceMenu`) — a small fixed column is enough.
+    th:last-child,
+    td:last-child {
+      width: 4.5rem !important;
+    }
+
+    // Flat unified list — see `.data-table--users` above for the same fix.
+    border-collapse: collapse;
+    border-spacing: 0;
+
+    thead th {
+      border-bottom: 1px solid var(--border);
+    }
+
+    th,
+    td {
+      padding: 8px var(--space-3);
+      min-height: 40px;
+    }
+
+    td {
+      border-top: none;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td:first-child,
+    td:last-child {
+      border-left: none;
+      border-right: none;
+      border-radius: 0;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
   }
 
   &.data-table--clickable tbody tr.data-table__row--no-actions {
@@ -237,8 +433,19 @@
   font-size: var(--font-caption);
 }
 
-.users-page__details-btn {
-  display: none;
+// Stand-in for the "⋯" action trigger on protected roles (e.g.
+// "Администратор") — same footprint so the row doesn't read as broken
+// (a blank cell where every other row has a visible control), with a
+// tooltip explaining why there's nothing to click.
+.users-page__role-locked {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height);
+  height: var(--control-height);
+  color: var(--text-muted);
+  opacity: 0.6;
+  cursor: default;
 }
 
 .users-page__pill {
@@ -259,7 +466,26 @@
   }
 }
 
-@include mobile {
+// Stacked-card treatment for both tables. Guarded to the shared
+// `.data-table` component's own card-mode breakpoint (`responsive-tables`,
+// max-width: 1200px) rather than `mobile` (768px) — using the narrower
+// 768px guard here left a 769-1200px gap where the base component was
+// already in flex/card mode (generic `tbody td { display: flex; }`) but
+// none of this page's card-specific fixes applied, so ActionMenu's
+// `.action-row { flex-shrink: 0; }` (it renders 3 explicit buttons rather
+// than a "…" dropdown for ≤3 items, which is what both these tables always
+// pass) refused to shrink into the flex cell and overflowed off its edge.
+@include responsive-tables {
+  // The base `.data-table` card-mode row uses `var(--card-border)` (a very
+  // faint ~6% overlay) for its outline — on this page's warm, close-in-tone
+  // background the cards blend into each other with barely any visible
+  // separation. A stronger, more opaque border reads clearly at a glance.
+  .data-table--users tbody tr,
+  .data-table--roles tbody tr {
+    box-shadow: none;
+    border: 1px solid var(--border);
+  }
+
   .data-table--users {
     tbody tr {
       display: grid;
@@ -324,9 +550,9 @@
     }
 
     td:last-child {
-      display: block;
-      align-items: center;
-      justify-content: stretch;
+      display: flex;
+      align-items: stretch;
+      justify-content: flex-end;
       padding-top: var(--space-2) !important;
       padding-bottom: 0 !important;
       margin-top: 0;
@@ -338,12 +564,16 @@
       content: none;
     }
 
-    .users-page__details-btn {
-      display: inline-flex;
-      width: 100%;
+    .action-menu {
+      flex-shrink: 0;
+    }
+
+    .action-menu__trigger {
+      width: 40px;
+      min-width: 40px;
       height: 40px;
       min-height: 40px !important;
-      justify-content: center;
+      border-color: var(--card-border) !important;
     }
 
     .users-page__pill {
@@ -351,14 +581,20 @@
     }
   }
 
+  // Name and actions are stacked as separate full-width blocks rather than
+  // sharing one flex row. Unprotected roles get 3 explicit action buttons
+  // from ActionMenu (it only renders the compact "…" trigger above 3
+  // items — both tables here always pass exactly 3), and `.action-row`
+  // sets `flex-shrink: 0` on itself in ActionMenu's own base CSS — no
+  // amount of flex-basis/grow tuning on a shared row makes it share space
+  // with the name text; it just refuses to shrink and overflows. Giving it
+  // its own full-width row below the name (same pattern already used for
+  // `.data-table--users` above) sidesteps that entirely: `.action-row`'s
+  // own `flex-wrap: wrap` then has real room to wrap into.
   .data-table--roles {
     tbody tr {
-      display: flex !important;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-3);
-      min-height: 76px;
-      height: 76px;
+      display: grid !important;
+      gap: var(--space-2);
       margin-bottom: var(--space-2);
       padding: var(--space-3);
       border-radius: var(--radius-md);
@@ -371,7 +607,6 @@
     }
 
     td:nth-child(1) {
-      flex: 1 1 auto;
       min-width: 0;
       font-size: var(--font-body);
       font-weight: var(--weight-medium);
@@ -389,12 +624,13 @@
     }
 
     td:nth-child(2) {
-      flex: 0 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 40px;
-      min-width: 40px;
+      display: block;
+      width: auto;
+      text-align: right;
+    }
+
+    .action-row {
+      justify-content: flex-end;
     }
 
     .users-page__role-actions:empty {
@@ -540,13 +776,13 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-3) var(--space-4);
   @include scrollbar;
 }
 
 .access-modal__divider {
   height: 1px;
-  margin: var(--space-4) 0;
+  margin: var(--space-3) 0;
   background: var(--border-subtle);
 }
 
@@ -555,21 +791,23 @@
 }
 
 .access-modal__group-head {
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .access-modal__group-title {
   margin: 0;
-  font-size: var(--font-label);
+  font-size: 11px;
   font-weight: var(--weight-semibold);
-  color: var(--text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
   line-height: var(--leading-tight);
 }
 
 .access-modal__grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--space-2);
+  gap: 6px;
 
   @include from-md {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -578,33 +816,58 @@
   @media (min-width: 1024px) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  @media (min-width: 1320px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
+// Compact permission tile: small icon chip + label + a small native-style
+// checkbox. Deliberately understated at rest and only a light tint (not a
+// fully saturated card) when granted — with most keys checked by default
+// for admin-like roles, a solid-color card per tile made the whole grid
+// read as one loud red block instead of a scannable list.
 .access-modal__row {
   display: flex !important;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
-  min-height: 44px;
+  gap: var(--space-2);
+  min-height: 40px;
   margin: 0 !important;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  border: 1px solid transparent;
+  padding: 6px var(--space-2) 6px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--card-border);
+  background: var(--card);
   cursor: pointer;
   transition:
     background var(--transition-fast),
     border-color var(--transition-fast);
 
   &:hover {
+    border-color: var(--border);
     background: var(--bg-hover);
-    border-color: var(--border-subtle);
+  }
+
+  &:has(.access-modal__checkbox:checked) {
+    background: color-mix(in srgb, var(--primary) 6%, var(--card));
+    border-color: color-mix(in srgb, var(--primary) 30%, transparent);
+
+    .access-modal__row-icon {
+      background: color-mix(in srgb, var(--primary) 14%, transparent);
+      color: var(--primary);
+    }
+  }
+
+  &:has(.access-modal__checkbox:focus-visible) {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
   }
 }
 
 .access-modal__row-leading {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   flex: 1;
   min-width: 0;
 }
@@ -614,38 +877,75 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-md);
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
   background: var(--bg-hover);
-  color: var(--text-secondary);
+  color: var(--text-muted);
+  transition: background var(--transition-fast), color var(--transition-fast);
 
   svg {
-    width: 18px;
-    height: 18px;
+    width: 14px;
+    height: 14px;
   }
 }
 
 .access-modal__row-label {
-  font-size: var(--font-label);
-  font-weight: var(--weight-medium);
+  font-size: 12.5px;
+  font-weight: var(--weight-normal);
   color: var(--text);
-  line-height: var(--leading-normal);
+  line-height: var(--leading-tight);
   text-align: left;
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+// Fully custom checkbox (native `appearance: none` + a checkmark drawn via
+// background-image) rather than the browser default — the native control
+// read as unfinished against the rest of this row's styling. Kept small and
+// square (not the near-circular blob a 20px box + radius-sm renders as) so
+// it reads as a checkbox, not a second badge competing with the icon chip.
 .access-modal__checkbox {
-  width: 1.25rem;
-  height: 1.25rem;
-  min-width: 1.25rem;
-  min-height: 1.25rem;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
   margin: 0 !important;
   flex-shrink: 0;
   cursor: pointer;
-  accent-color: var(--primary);
-  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  border-radius: 5px;
+  background-color: var(--input-bg);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 10px;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+
+  &:hover {
+    border-color: var(--primary);
+  }
+
+  &:checked {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='3 8.5 6.5 12 13 4.5'/%3E%3C/svg%3E");
+  }
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 3px var(--primary-muted);
+  }
 }
 
 .access-modal__error {
@@ -731,24 +1031,28 @@
 
 .report-modal__stat-pill {
   display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  background: var(--bg);
-  border: 1px solid var(--border-subtle);
-  border-radius: 999px;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 14px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   white-space: nowrap;
 }
 
 .report-modal__stat-value {
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 
 .report-modal__stat-label {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 // в”Ђв”Ђ Body в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
@@ -988,15 +1292,36 @@
     min-width: 0;
   }
 
+  .users-page__form-icon {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    background: var(--primary-muted);
+    color: var(--primary);
+  }
+
+  .modal__head-titles {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
   .users-page__form {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    row-gap: var(--space-2);
+    row-gap: var(--space-3);
     padding: var(--space-3) var(--space-4) 0;
   }
 
   .users-page__form label {
     margin: 0;
+  }
+
+  .users-page__form .modal__field {
+    margin-bottom: 0;
   }
 
   .users-page__form input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']),
@@ -1053,80 +1378,3 @@
   }
 }
 
-.users-page__detail-modal {
-  width: min(420px, 96vw);
-  min-width: 0;
-
-  .modal__head {
-    align-items: center;
-    padding: var(--space-3) var(--space-4);
-  }
-
-  @include mobile {
-    width: 100%;
-
-    .modal__head {
-      padding: var(--space-3);
-    }
-  }
-}
-
-.users-page__detail-body {
-  display: grid;
-  gap: 10px;
-  padding: var(--space-3) var(--space-4) var(--space-2) !important;
-  overflow: visible !important;
-  flex: 0 0 auto !important;
-
-  @include mobile {
-    padding-left: var(--space-3) !important;
-    padding-right: var(--space-3) !important;
-  }
-}
-
-.users-page__detail-row {
-  display: grid;
-  grid-template-columns: minmax(72px, 32%) minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 28px;
-  font-size: var(--font-label);
-
-  span {
-    color: var(--text-muted);
-  }
-
-  strong {
-    min-width: 0;
-    color: var(--text);
-    font-weight: var(--weight-medium);
-    text-align: left;
-    overflow-wrap: anywhere;
-  }
-}
-
-.users-page__detail-actions {
-  display: grid !important;
-  grid-template-columns: 1fr;
-  gap: var(--space-2) !important;
-  padding-top: var(--space-3) !important;
-
-  .btn {
-    width: 100%;
-    height: 44px;
-    min-height: 44px;
-    justify-content: center;
-  }
-}
-
-.users-page__detail-danger {
-  margin-top: var(--space-1);
-  background: var(--danger-muted) !important;
-  border-color: color-mix(in srgb, var(--danger) 35%, transparent) !important;
-  color: var(--danger) !important;
-
-  &:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--danger-muted) 78%, var(--danger) 22%) !important;
-    border-color: var(--danger) !important;
-  }
-}

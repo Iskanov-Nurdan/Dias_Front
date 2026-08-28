@@ -39,10 +39,15 @@
   font-size: var(--font-label);
   min-height: 44px;
   box-sizing: border-box;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
 
+  // Shadow-lift hover (shared with the Сотрудники/Сырьё tables) instead of
+  // just a background swap — used across every page built on CompactList
+  // (Производство/ОТК/Склад), so this one change lands consistently on all
+  // three rather than needing a per-page override.
   &:hover {
     background: var(--bg-hover);
+    box-shadow: var(--table-row-shadow-hover, var(--shadow-md));
   }
 
   &--attention {

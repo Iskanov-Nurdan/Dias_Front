@@ -205,17 +205,17 @@ const ProfileFormModal = ({ mode, profile, onClose, onSaved, existingProfiles = 
 
   return (
     <div className="modal-overlay" role="presentation" onClick={busy ? undefined : onClose}>
-      <div className="modal modal--wide" onClick={(ev) => ev.stopPropagation()}>
+      <div className="modal" onClick={(ev) => ev.stopPropagation()} style={{ width: 'min(620px, 92vw)', maxWidth: 'min(620px, 92vw)' }}>
         <div className="modal__head">
           <div className="modal__head-titles">
-            <span className="modal__eyebrow">{isEdit ? 'Редактирование' : 'Новый товар'}</span>
+            <span className="modal__eyebrow">Товар</span>
             <h3>{isEdit ? 'Редактировать товар' : 'Новый товар'}</h3>
           </div>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть" disabled={busy}>
             ×
           </button>
         </div>
-        <form className="modal__body chemistry-element-form" onSubmit={handleSubmit}>
+        <form className="modal__body chemistry-element-form chemistry-plastic-profiles-form" onSubmit={handleSubmit}>
           <div className="modal__field">
             <label className="modal__label-icon"><FiTag aria-hidden size={15} strokeWidth={2} />Имя *</label>
             <input
@@ -228,19 +228,21 @@ const ProfileFormModal = ({ mode, profile, onClose, onSaved, existingProfiles = 
               required
             />
           </div>
-          <div className="modal__field">
-            <label className="modal__label-icon"><FiHash aria-hidden size={15} strokeWidth={2} />Кг</label>
-            <DecimalInput min={0} value={kgStr} onChange={setKgStr} placeholder="0" />
-          </div>
-          <div className="modal__field">
-            <label className="modal__label-icon"><FiHash aria-hidden size={15} strokeWidth={2} />Граммы (0–999)</label>
-            <input
-              inputMode="numeric"
-              className="chemistry-plastic-profiles__grams chemistry-plastic-profiles__grams--wide"
-              value={gramsStr}
-              onChange={(ev) => setGramsStr(clampGramsInput(ev.target.value))}
-              placeholder="0–999"
-            />
+          <div className="modal__field-row">
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiHash aria-hidden size={15} strokeWidth={2} />Кг</label>
+              <DecimalInput min={0} value={kgStr} onChange={setKgStr} placeholder="0" />
+            </div>
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiHash aria-hidden size={15} strokeWidth={2} />Граммы (0–999)</label>
+              <input
+                inputMode="numeric"
+                className="chemistry-plastic-profiles__grams chemistry-plastic-profiles__grams--wide"
+                value={gramsStr}
+                onChange={(ev) => setGramsStr(clampGramsInput(ev.target.value))}
+                placeholder="0–999"
+              />
+            </div>
           </div>
           <div className="modal__field">
             <label className="modal__label-icon"><FiLayers aria-hidden size={15} strokeWidth={2} />Заготовка *</label>
@@ -256,42 +258,62 @@ const ProfileFormModal = ({ mode, profile, onClose, onSaved, existingProfiles = 
             В ОТК при учёте этой заготовки будут доступны только товары с этой привязкой.
           </p>
           <p className="chemistry-plastic-profiles__section-title">Прочие расходы на 1 шт, сом</p>
-          {PROFILE_EXTRA_EXPENSE_FIELDS.map(({ apiKey, label }) => (
-            <div className="modal__field" key={apiKey}>
-              <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />{label}</label>
-              <DecimalInput
-                min={0}
-                value={expenseStr[apiKey] ?? ''}
-                onChange={(v) => setExpenseStr((prev) => ({ ...prev, [apiKey]: v }))}
-                placeholder="0"
-              />
-            </div>
-          ))}
+          {(() => {
+            const rows = [];
+            for (let i = 0; i < PROFILE_EXTRA_EXPENSE_FIELDS.length; i += 2) {
+              rows.push(PROFILE_EXTRA_EXPENSE_FIELDS.slice(i, i + 2));
+            }
+            return rows.map((pair) => (
+              <div className="modal__field-row" key={pair[0].apiKey}>
+                {pair.map(({ apiKey, label }) => (
+                  <div className="modal__field" key={apiKey}>
+                    <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />{label}</label>
+                    <DecimalInput
+                      min={0}
+                      value={expenseStr[apiKey] ?? ''}
+                      onChange={(v) => setExpenseStr((prev) => ({ ...prev, [apiKey]: v }))}
+                      placeholder="0"
+                    />
+                  </div>
+                ))}
+              </div>
+            ));
+          })()}
           <p className="chemistry-plastic-profiles__section-title">Цена</p>
-          <div className="modal__field">
-            <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />Себестоимость, сом</label>
-            <p className="chemistry-plastic-profiles__readonly-cost">
-              {serverCost != null ? `${formatNumberForInput(serverCost)} сом` : '—'}
-            </p>
+          <div className="modal__field-row">
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />Себестоимость, сом</label>
+              <p className="chemistry-plastic-profiles__readonly-cost">
+                {serverCost != null ? `${formatNumberForInput(serverCost)} сом` : '—'}
+              </p>
+            </div>
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />Прочие расходы, сом</label>
+              <p className="chemistry-plastic-profiles__readonly-cost">
+                {formatNumberForInput(otherExpensesTotal)} сом
+              </p>
+            </div>
           </div>
           {!isEdit || serverCost == null ? (
             <p className="chemistry-plastic-profiles__hint">
-              Считается системой после первого учёта в ОТК. Изменить вручную нельзя.
+              Себестоимость считается системой после первого учёта в ОТК. Изменить вручную нельзя.
             </p>
           ) : null}
-          <div className="modal__field">
-            <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />Прочие расходы, сом</label>
-            <p className="chemistry-plastic-profiles__readonly-cost">
-              {formatNumberForInput(otherExpensesTotal)} сом
-            </p>
-          </div>
-          <div className="modal__field">
-            <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />Наценка, сом</label>
-            <div className="chemistry-plastic-profiles__markup-row">
-              <DecimalInput min={0} value={markupStr} onChange={setMarkupStr} placeholder="0" />
-              <span className="chemistry-plastic-profiles__markup-pct" title="% от себестоимости">
-                {markupPctDisplay}
-              </span>
+          <div className="modal__field-row">
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />Наценка, сом</label>
+              <div className="chemistry-plastic-profiles__markup-row">
+                <DecimalInput min={0} value={markupStr} onChange={setMarkupStr} placeholder="0" />
+                <span className="chemistry-plastic-profiles__markup-pct" title="% от себестоимости">
+                  {markupPctDisplay}
+                </span>
+              </div>
+            </div>
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />Итого цена товара, сом</label>
+              <p className="chemistry-plastic-profiles__readonly-cost chemistry-plastic-profiles__readonly-cost--total">
+                {salePricePreview != null ? `${formatNumberForInput(salePricePreview)} сом` : '—'}
+              </p>
             </div>
           </div>
           {serverCost == null ? (
@@ -299,14 +321,8 @@ const ProfileFormModal = ({ mode, profile, onClose, onSaved, existingProfiles = 
               % наценки появится после расчёта себестоимости системой.
             </p>
           ) : null}
-          <div className="modal__field">
-            <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />Итого цена товара, сом</label>
-            <p className="chemistry-plastic-profiles__readonly-cost chemistry-plastic-profiles__readonly-cost--total">
-              {salePricePreview != null ? `${formatNumberForInput(salePricePreview)} сом` : '—'}
-            </p>
-          </div>
           <p className="chemistry-plastic-profiles__hint">
-            Себестоимость + прочие расходы + наценка.
+            Итого цена = себестоимость + прочие расходы + наценка.
           </p>
           {validationError && <p className="modal__error">{validationError}</p>}
           <div className="modal__actions">

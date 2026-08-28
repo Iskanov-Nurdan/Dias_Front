@@ -23,20 +23,27 @@
   gap: 6px;
   min-height: 32px;
   padding: 0 var(--space-3);
-  background: transparent;
-  border: 1px solid var(--info);
+  background: var(--card);
+  border: 1px solid var(--card-border);
   border-radius: var(--radius-md);
-  color: var(--info);
+  color: var(--text-secondary);
   font-size: var(--font-caption);
   font-weight: var(--weight-medium);
   white-space: nowrap;
   cursor: pointer;
   transition:
     background var(--transition-fast),
+    border-color var(--transition-fast),
     color var(--transition-fast);
 
+  svg {
+    opacity: 0.85;
+  }
+
   &:hover:not(:disabled) {
-    background: var(--info-muted);
+    background: var(--bg-hover);
+    border-color: var(--border);
+    color: var(--text);
   }
 
   &:disabled {
@@ -45,11 +52,14 @@
   }
 
   &--danger {
-    border-color: var(--danger);
+    border-color: var(--card-border);
     color: var(--danger);
+    background: transparent;
 
     &:hover:not(:disabled) {
       background: var(--danger-muted);
+      border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+      color: var(--danger);
     }
   }
 
@@ -138,7 +148,7 @@
 }
 
 .action-menu__dropdown {
-  min-width: 160px;
+  min-width: 172px;
   width: max-content;
   max-width: min(260px, calc(100vw - 24px));
   margin: 0;
@@ -149,11 +159,17 @@
   box-shadow:
     var(--shadow-md),
     0 0 0 1px var(--card-border);
+  animation: actionMenuIn 0.14s ease;
+  transform-origin: top right;
 
   &--portal {
     box-sizing: border-box;
     overflow-y: auto;
     @include scrollbar;
+  }
+
+  &--left {
+    transform-origin: top left;
   }
 
   &--sheet {
@@ -162,6 +178,7 @@
     box-shadow:
       0 -12px 40px color-mix(in srgb, var(--bg) 75%, transparent),
       0 0 0 1px var(--card-border);
+    animation: actionMenuInSheet 0.18s ease;
 
     /* На тач-устройствах (нижний лист) пункты остаются крупными — компактность только для desktop-дропдауна. */
     .action-menu__item {
@@ -171,14 +188,36 @@
   }
 }
 
+@keyframes actionMenuIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes actionMenuInSheet {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .action-menu__item {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 10px;
   width: 100%;
   text-align: left;
   padding: var(--space-2) var(--space-3) !important;
-  min-height: 40px !important;
+  min-height: 38px !important;
   margin: 0 !important;
   border: none !important;
   border-radius: var(--radius-sm) !important;
@@ -214,7 +253,11 @@
   justify-content: center;
   width: 16px;
   color: currentColor;
-  opacity: 0.85;
+  opacity: 0.7;
+}
+
+.action-menu__item--danger .action-menu__item-icon {
+  opacity: 0.9;
 }
 
 .action-menu__divider {

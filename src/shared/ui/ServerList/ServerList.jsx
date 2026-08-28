@@ -42,9 +42,10 @@ const ServerList = ({
         </div>
       )}
       <div className="server-list__content">{content}</div>
-      {meta && renderPagination && (
-        <div className="server-list__pagination">{renderPagination(meta)}</div>
-      )}
+      {meta && renderPagination && (() => {
+        const pagination = renderPagination(meta);
+        return pagination ? <div className="server-list__pagination">{pagination}</div> : null;
+      })()}
     </div>
   );
 };

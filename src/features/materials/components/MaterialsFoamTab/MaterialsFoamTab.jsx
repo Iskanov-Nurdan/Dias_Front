@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FiPackage, FiBookOpen, FiRefreshCw, FiPlus, FiCheck, FiX } from 'react-icons/fi';
+import {
+  FiPackage, FiBookOpen, FiRefreshCw, FiPlus, FiCheck, FiX,
+  FiTag, FiTruck, FiHash, FiSliders,
+} from 'react-icons/fi';
 import {
   formatNumberForInput,
   pickFirstIsoDate,
@@ -63,18 +66,29 @@ const AddIntakeModal = ({ onClose, onCreate, saving }) => {
 
   return (
     <div className="modal-overlay" role="presentation" onClick={onClose}>
-      <div className="modal" onClick={(ev) => ev.stopPropagation()}>
+      <div className="modal modal--sm" onClick={(ev) => ev.stopPropagation()}>
         <div className="modal__head">
-          <h3>Приход гранул</h3>
+          <div className="modal__head-titles">
+            <span className="modal__eyebrow">Новый приход</span>
+            <h3>Приход гранул</h3>
+          </div>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <form className="modal__body" onSubmit={handleSubmit}>
-          <label>Название сырья</label>
-          <input value={materialName} onChange={(ev) => setMaterialName(ev.target.value)} placeholder="Например, Гранула EPS Kingeps HS" autoComplete="off" required />
-          <label>Поставщик</label>
-          <input value={supplier} onChange={(ev) => setSupplier(ev.target.value)} autoComplete="off" />
-          <label>Вес, кг</label>
-          <input type="number" min="1" value={bagWeightKg} onChange={(ev) => setBagWeightKg(ev.target.value)} required />
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiTag aria-hidden size={15} strokeWidth={2} />Название сырья</label>
+            <input value={materialName} onChange={(ev) => setMaterialName(ev.target.value)} placeholder="Например, Гранула EPS Kingeps HS" autoComplete="off" required />
+          </div>
+          <div className="modal__field-row">
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiTruck aria-hidden size={15} strokeWidth={2} />Поставщик</label>
+              <input value={supplier} onChange={(ev) => setSupplier(ev.target.value)} autoComplete="off" />
+            </div>
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiHash aria-hidden size={15} strokeWidth={2} />Вес, кг</label>
+              <input type="number" min="1" value={bagWeightKg} onChange={(ev) => setBagWeightKg(ev.target.value)} required />
+            </div>
+          </div>
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}><FiX aria-hidden size={16} strokeWidth={2} />Отмена</button>
@@ -116,18 +130,29 @@ const AddGradeModal = ({ existingCodes, onClose, onCreate, saving }) => {
 
   return (
     <div className="modal-overlay" role="presentation" onClick={onClose}>
-      <div className="modal" onClick={(ev) => ev.stopPropagation()}>
+      <div className="modal modal--sm" onClick={(ev) => ev.stopPropagation()}>
         <div className="modal__head">
-          <h3>Добавить плотность</h3>
+          <div className="modal__head-titles">
+            <span className="modal__eyebrow">Новая плотность</span>
+            <h3>Добавить плотность</h3>
+          </div>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
         </div>
         <form className="modal__body" onSubmit={handleSubmit}>
-          <label>Код (как в накладных, например «20»)</label>
-          <input value={code} onChange={(ev) => { setCode(ev.target.value); setError(''); }} required autoComplete="off" />
-          <label>Вес 1 м³, кг — от</label>
-          <input type="number" min="0" step="0.1" value={minKgM3} onChange={(ev) => setMinKgM3(ev.target.value)} required />
-          <label>Вес 1 м³, кг — до</label>
-          <input type="number" min="0" step="0.1" value={maxKgM3} onChange={(ev) => setMaxKgM3(ev.target.value)} required />
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiTag aria-hidden size={15} strokeWidth={2} />Код (как в накладных, например «20»)</label>
+            <input value={code} onChange={(ev) => { setCode(ev.target.value); setError(''); }} required autoComplete="off" />
+          </div>
+          <div className="modal__field-row">
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiSliders aria-hidden size={15} strokeWidth={2} />Вес 1 м³, кг — от</label>
+              <input type="number" min="0" step="0.1" value={minKgM3} onChange={(ev) => setMinKgM3(ev.target.value)} required />
+            </div>
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiSliders aria-hidden size={15} strokeWidth={2} />Вес 1 м³, кг — до</label>
+              <input type="number" min="0" step="0.1" value={maxKgM3} onChange={(ev) => setMaxKgM3(ev.target.value)} required />
+            </div>
+          </div>
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}><FiX aria-hidden size={16} strokeWidth={2} />Отмена</button>

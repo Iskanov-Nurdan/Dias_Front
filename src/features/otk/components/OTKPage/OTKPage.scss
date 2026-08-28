@@ -1,9 +1,52 @@
 @use '../../../../shared/styles/variables' as *;
 @use '../../../../shared/styles/mixins' as *;
 
+.otk-page__title {
+  margin: 0 0 var(--space-5);
+  font-size: 1.75rem;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.01em;
+  color: var(--text);
+  line-height: 1.2;
+
+  @include mobile {
+    font-size: 1.375rem;
+    margin-bottom: var(--space-4);
+  }
+}
+
+// Internal tabs (Проверки/История): reuses the shared `.production-main-tabs`
+// class (also the OTK component's only current consumer — Производство's own
+// stylesheet has leftover rules for it from a prior layout, but no longer
+// renders it), scoped to this page only so the filled-pill active state
+// doesn't leak into any other consumer of that shared class.
 .page--otk {
-  .page__title {
-    margin-bottom: 0.5rem;
+  .production-main-tabs {
+    gap: var(--space-2);
+    margin-bottom: var(--space-5);
+  }
+
+  .production-main-tabs__btn {
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    font-size: var(--font-body);
+    font-weight: var(--weight-medium);
+
+    &--active {
+      background: var(--primary-muted);
+      color: var(--primary);
+      font-weight: var(--weight-semibold);
+
+      &::after {
+        height: 3px;
+        background: var(--primary);
+      }
+
+      &:hover {
+        background: var(--primary-muted);
+      }
+    }
   }
 }
 
@@ -114,6 +157,8 @@
 
 .otk-card {
   @include card-soft;
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-xl);
   padding: var(--space-6);
   margin-bottom: var(--space-6);
 
@@ -134,13 +179,20 @@
     color: var(--text);
   }
 
+  // Recessed control-bar surface, same treatment as Сотрудники/Производство:
+  // search + primary action (+ date filter on История) read as one
+  // deliberate bar rather than loose controls sitting on the card.
   &__toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-3);
-    margin-bottom: 0.75rem;
+    margin-bottom: var(--space-4);
+    padding: var(--space-3);
+    background: var(--bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
   }
 
   &__subtitle {
@@ -946,15 +998,9 @@
       order: 4;
     }
 
-    .compact-list__cell:nth-child(2)::before {
-      content: 'Вес';
-      color: var(--text-muted);
-      font-size: var(--font-caption);
-      font-weight: var(--weight-medium);
-    }
-
+    .compact-list__cell:nth-child(2)::before,
     .compact-list__cell:nth-child(3)::before {
-      content: 'Статус';
+      content: attr(data-label);
       color: var(--text-muted);
       font-size: var(--font-caption);
       font-weight: var(--weight-medium);

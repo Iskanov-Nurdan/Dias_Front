@@ -49,7 +49,7 @@ const shouldUseSheetMenu = (vw) => {
   return isNarrow && isTouch;
 };
 
-const ActionMenu = ({ items, align = 'right', ariaLabel = 'Действия' }) => {
+const ActionMenu = ({ items, align = 'right', ariaLabel = 'Действия', forceMenu = false }) => {
   const [open, setOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState({});
   const [sheet, setSheet] = useState(false);
@@ -172,8 +172,10 @@ const ActionMenu = ({ items, align = 'right', ariaLabel = 'Действия' }) 
   if (!items?.length) return null;
 
   /* 1–3 действия — явные кнопки-аутлайны (видно сразу, без клика по «…»).
-     Больше — оставляем компактное меню, чтобы не разрывать строку списка. */
-  if (items.length <= 3) {
+     Больше — оставляем компактное меню, чтобы не разрывать строку списка.
+     `forceMenu` переопределяет это для страниц, где всегда нужен компактный
+     триггер «⋯», даже при ≤3 действиях. */
+  if (!forceMenu && items.length <= 3) {
     return (
       <div className="action-row" onClick={(e) => e.stopPropagation()}>
         {items.map((item, i) => {

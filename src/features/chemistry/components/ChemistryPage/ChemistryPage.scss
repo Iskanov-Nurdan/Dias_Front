@@ -1203,7 +1203,7 @@
 }
 
 .chemistry-plastic-profiles__text--name {
-  font-size: var(--font-body);
+  font-size: var(--font-label);
   font-weight: var(--weight-medium);
 }
 
@@ -1255,6 +1255,23 @@
   color: var(--text-primary);
 }
 
+/* Форма товара короче и плотнее стандартной — полей много, стандартные --space-5
+   отступы модалок делают её слишком длинной и «воздушной». */
+.chemistry-plastic-profiles-form.modal__body {
+  .modal__field,
+  .modal__field-row {
+    margin-bottom: var(--space-3);
+  }
+
+  .chemistry-plastic-profiles__hint {
+    margin: -0.25rem 0 var(--space-3);
+  }
+
+  .chemistry-plastic-profiles__section-title {
+    margin: var(--space-2) 0 var(--space-2);
+  }
+}
+
 .chemistry-plastic-profiles__readonly-cost--total {
   font-weight: var(--weight-semibold);
   color: var(--primary);
@@ -1293,10 +1310,16 @@
 .chemistry-plastic-profiles__text {
   display: block;
   min-width: 0;
-  padding: 0.35rem 0;
-  font-size: var(--font-body);
+  padding: 0;
+  font-size: var(--font-label);
   color: var(--text);
   line-height: 1.35;
+}
+
+.chemistry-plastic-profiles__text.chemistry-table__name--with-avatar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .chemistry-plastic-profiles__text--num {

@@ -57,12 +57,14 @@ export function getDefaultHomePath(accesses) {
 export function getNavSections() {
   const sections = [
     {
-      links: [{ path: '/my-shift', accessKey: 'my_shift' }],
+      title: 'Обзор',
+      links: [
+        { path: '/my-shift', accessKey: 'my_shift' },
+        { path: '/analytics', accessKey: 'analytics' },
+      ],
     },
     {
-      links: [{ path: '/analytics', accessKey: 'analytics' }],
-    },
-    {
+      title: 'Сырьё и химия',
       links: [
         { path: '/materials', accessKey: 'materials' },
         { path: '/chemistry', accessKey: 'chemistry' },
@@ -75,18 +77,21 @@ export function getNavSections() {
       ],
     },
     {
+      title: 'Производство',
       links: [
         { path: '/production', accessKey: 'production' },
         { path: '/otk', accessKey: 'otk' },
       ],
     },
     {
+      title: 'Склад',
       links: [{ path: '/warehouse', accessKey: 'warehouse' }],
     },
   ];
 
   if (STAGE2_TABS_ENABLED) {
     sections.push({
+      title: 'Продажи',
       links: [
         {
           path: '/cash',
@@ -99,14 +104,13 @@ export function getNavSections() {
     });
   }
 
-  sections.push(
-    {
-      links: [{ path: '/shifts', accessKey: 'shifts' }],
-    },
-    {
-      links: [{ path: '/users', accessKey: 'users' }],
-    },
-  );
+  sections.push({
+    title: 'Персонал',
+    links: [
+      { path: '/shifts', accessKey: 'shifts' },
+      { path: '/users', accessKey: 'users' },
+    ],
+  });
 
   return sections;
 }

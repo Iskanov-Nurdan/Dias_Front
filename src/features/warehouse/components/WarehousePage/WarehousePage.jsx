@@ -248,12 +248,12 @@ const WarehouseStockPanel = () => {
                 <tbody>
                   {filteredOps.map((op, idx) => (
                     <tr key={op.id ?? idx}>
-                      <td className="data-table__cell--muted">
+                      <td className="data-table__cell--muted" data-label="Дата">
                         {gpFmtIso(op.created_at ?? op.at ?? op.timestamp)}
                       </td>
-                      <td>{operationKindLabel(op.kind ?? op.operation_type ?? op.kind_label)}</td>
-                      <td className="warehouse-gp__product">{op.product_name ?? op.profile_name ?? '—'}</td>
-                      <td className="data-table__cell--num">
+                      <td data-label="Операция">{operationKindLabel(op.kind ?? op.operation_type ?? op.kind_label)}</td>
+                      <td className="warehouse-gp__product" data-label="Товар">{op.product_name ?? op.profile_name ?? '—'}</td>
+                      <td className="data-table__cell--num" data-label="Шт">
                         {op.pieces != null ? formatNumberForInput(op.pieces) : '—'}
                       </td>
                     </tr>
@@ -296,6 +296,7 @@ const WarehousePage = () => {
   const [line, setLine] = useProductLine();
   return (
     <div className="page page--warehouse commercial-page">
+      <h1 className="warehouse-page__title">Склад</h1>
       <ProductLineTabs value={line} onChange={setLine} />
       {line === PRODUCT_LINE.FOAM ? <WarehouseFoamTab /> : <WarehouseStockPanel />}
     </div>

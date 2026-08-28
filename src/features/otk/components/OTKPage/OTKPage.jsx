@@ -115,6 +115,7 @@ const OTKPage = () => {
 
   return (
     <div className="page page--otk">
+      <h1 className="otk-page__title">ОТК</h1>
       <div className="otk-page__tabs production-main-tabs" role="tablist" aria-label="Разделы ОТК">
         <button
           type="button"

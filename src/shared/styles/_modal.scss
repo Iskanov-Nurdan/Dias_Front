@@ -64,8 +64,8 @@
     min-width: min(320px, 92vw);
 
     @include desktop-only {
-      width: min(560px, 92vw);
-      max-width: min(560px, 92vw);
+      width: min(640px, 92vw);
+      max-width: min(640px, 92vw);
     }
   }
   &--fullscreen {
@@ -111,8 +111,8 @@
   }
 
   &__head-titles h3 {
-    font-size: var(--font-h2);
-    font-weight: var(--weight-semibold);
+    font-size: var(--font-h3);
+    font-weight: var(--weight-medium);
   }
 
   &__close {
@@ -216,6 +216,23 @@
     select,
     .dias-select {
       margin-bottom: 0;
+    }
+  }
+
+  /* Два поля в ряд — для коротких парных значений (кол-во/цена, дата/поставщик и т.п.) */
+  &__field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-5);
+
+    .modal__field {
+      margin-bottom: 0;
+    }
+
+    @media (max-width: 420px) {
+      grid-template-columns: 1fr;
+      gap: var(--space-3);
     }
   }
 
@@ -351,6 +368,32 @@
     border-radius: 0;
     line-height: var(--leading-normal);
     text-align: left;
+  }
+
+  /* Тонированный блок предпросмотра результата действия (сумма, новая дата и т.п.) */
+  &__result {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-5);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    font-size: var(--font-label);
+    color: var(--text);
+
+    strong {
+      font-weight: var(--weight-semibold);
+      color: inherit;
+    }
+
+    &--success {
+      background: var(--success-muted);
+      color: var(--success);
+
+      strong {
+        color: var(--success);
+      }
+    }
   }
 
   &__actions {

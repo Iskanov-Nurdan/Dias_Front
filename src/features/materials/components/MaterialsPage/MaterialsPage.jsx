@@ -3,7 +3,7 @@ import React, {
 } from 'react';
 import {
   FiBookOpen, FiPackage, FiLayers, FiClock, FiPlus, FiCheck, FiX, FiSliders,
-  FiTag, FiAlertTriangle, FiMessageSquare,
+  FiTag, FiAlertTriangle, FiMessageSquare, FiHash, FiDollarSign, FiCalendar, FiTruck, FiFileText,
 } from 'react-icons/fi';
 import { useDiscardOnClose, useDirtyFromBaseline, useProductLine, PRODUCT_LINE } from '../../../../shared/hooks';
 import {
@@ -12,7 +12,7 @@ import {
   formatQuantityDisplay,
   parseLocaleNumber,
 } from '../../../../shared/lib';
-import { ActionMenu, Loading, EmptyState, ErrorState, ConfirmModal, useToast, DecimalInput, Select, SearchInput, ProductLineTabs, EntityAvatar } from '../../../../shared/ui';
+import { ActionMenu, Loading, EmptyState, ErrorState, ConfirmModal, useToast, DecimalInput, Select, SearchInput, ProductLineTabs, DetailFields } from '../../../../shared/ui';
 import {
   createIncoming,
   createRawMaterial,
@@ -108,6 +108,23 @@ const BALANCE_FILTER = {
   ALL: 'all',
   LOW: 'low',
   OK: 'ok',
+};
+
+const AVATAR_HUES = 5;
+
+const initialsOf = (name) => {
+  const words = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return '?';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+};
+
+/** Deterministic (not random) hue per name, purely presentational. */
+const avatarHueOf = (name) => {
+  const str = String(name || '');
+  let hash = 0;
+  for (let i = 0; i < str.length; i += 1) hash = (hash * 31 + str.charCodeAt(i)) % 997;
+  return (hash % AVATAR_HUES) + 1;
 };
 
 const normName = (s) => String(s ?? '').trim().toLowerCase();
@@ -367,6 +384,7 @@ const MaterialsPage = () => {
   if (line === PRODUCT_LINE.FOAM) {
     return (
       <div className="page page--materials">
+        <h1 className="materials-page__title">Сырьё</h1>
         <ProductLineTabs value={line} onChange={setLine} />
         <MaterialsFoamTab />
       </div>
@@ -375,6 +393,7 @@ const MaterialsPage = () => {
 
   return (
     <div className="page page--materials">
+      <h1 className="materials-page__title">Сырьё</h1>
       <ProductLineTabs value={line} onChange={setLine} />
       <div className="materials-tabs" role="tablist" aria-label="Разделы склада сырья">
         <button
@@ -475,17 +494,19 @@ const MaterialsPage = () => {
             )}
           </div>
           <div className="ds-toolbar__end materials-card__toolbar-actions">
-            <button type="button" className="btn btn--primary" onClick={() => setCatalogModal(true)}>
-              <FiPlus aria-hidden size={16} strokeWidth={2} />
-              Сырьё
-            </button>
+            {/* Приход (recording a delivery) is the high-frequency daily action → primary accent.
+                Сырьё (defining a brand-new material) is rare setup work → secondary. */}
             <button
               type="button"
-              className="btn btn--warning"
+              className="btn btn--primary"
               onClick={() => setReplenishModal({ pickMaterial: true })}
             >
               <FiPlus aria-hidden size={16} strokeWidth={2} />
               Приход
+            </button>
+            <button type="button" className="btn btn--secondary" onClick={() => setCatalogModal(true)}>
+              <FiPlus aria-hidden size={16} strokeWidth={2} />
+              Сырьё
             </button>
           </div>
         </div>
@@ -506,9 +527,10 @@ const MaterialsPage = () => {
                       <span className="materials-table__th materials-table__th--actions">Действия</span>
                     </div>
                     {balancesFiltered.map((b, idx) => {
-                      const low = isLowStock(b);
+                      const sk = getStockLevelKey(b);
                       const mid = getMaterialId(b);
                       const active = b.is_active !== false;
+                      const name = displayName(b);
                       const balCell = qtyNumWithUnitTitle(b.balance, b.unit);
                       const minRaw = minBalanceValue(b);
                       const minCell = minRaw != null && minRaw !== ''
@@ -517,17 +539,19 @@ const MaterialsPage = () => {
                       return (
                         <div
                           key={mid != null ? String(mid) : `row-${idx}-${displayName(b)}`}
-                          className={`materials-table__row ${low ? 'materials-table__row--low-stock' : ''}`}
+                          className={`materials-table__row${sk !== 'ok' ? ` materials-table__row--stock-${sk}` : ''}`}
                         >
                           <span className="materials-table__name materials-table__name--with-avatar">
-                            <EntityAvatar name={displayName(b)} size={28} />
-                            {displayName(b)}
+                            <span className={`materials-table__avatar materials-table__avatar--hue-${avatarHueOf(name)}`} aria-hidden="true">
+                              {initialsOf(name)}
+                            </span>
+                            {name}
                             {!active && (
                               <span className="materials-table__inactive"> · неактивен</span>
                             )}
                           </span>
                           <span
-                            className={`materials-table__balance${low ? ' materials-table__balance--low' : ''}`}
+                            className={`materials-table__balance${sk !== 'ok' ? ` materials-table__balance--stock-${sk}` : ''}`}
                             title={balCell.title}
                           >
                             {balCell.display}
@@ -538,12 +562,13 @@ const MaterialsPage = () => {
                           <div className="materials-table__actions">
                             <button
                               type="button"
-                              className="action-row__btn"
+                              className="materials-table__icon-btn"
                               disabled={mid == null}
                               onClick={() => openIncomingForRow(b)}
+                              title="Приход"
+                              aria-label="Приход"
                             >
                               <FiPlus aria-hidden size={16} strokeWidth={2} />
-                              Приход
                             </button>
                             <ActionMenu
                               ariaLabel="Действия"
@@ -587,8 +612,8 @@ const MaterialsPage = () => {
                     </div>
                     {stockFiltered.map((b, idx) => {
                       const sk = getStockLevelKey(b);
-                      const low = sk === 'low';
                       const mid = getMaterialId(b);
+                      const name = displayName(b);
                       const balCell = qtyNumWithUnitTitle(b.balance, b.unit);
                       const minRaw = minBalanceValue(b);
                       const minCell = minRaw != null && minRaw !== ''
@@ -597,14 +622,16 @@ const MaterialsPage = () => {
                       return (
                         <div
                           key={mid != null ? String(mid) : `st-${idx}`}
-                          className={`materials-table__row ${low || sk === 'empty' ? 'materials-table__row--low-stock' : ''}`}
+                          className={`materials-table__row${sk !== 'ok' ? ` materials-table__row--stock-${sk}` : ''}`}
                         >
                           <span className="materials-table__name materials-table__name--with-avatar">
-                            <EntityAvatar name={displayName(b)} size={28} />
-                            {displayName(b)}
+                            <span className={`materials-table__avatar materials-table__avatar--hue-${avatarHueOf(name)}`} aria-hidden="true">
+                              {initialsOf(name)}
+                            </span>
+                            {name}
                           </span>
                           <span
-                            className={`materials-table__balance${low || sk === 'empty' ? ' materials-table__balance--low' : ''}`}
+                            className={`materials-table__balance${sk !== 'ok' ? ` materials-table__balance--stock-${sk}` : ''}`}
                             title={balCell.title}
                           >
                             {balCell.display}
@@ -673,17 +700,16 @@ const MaterialsPage = () => {
                           </div>
                           {expanded && (
                             <div className="materials-table__batch-detail">
-                              <dl className="materials-batch-detail__dl">
-                                <div><dt>Цена за ед.</dt><dd>{up != null && up !== '' ? `${formatQuantityDisplay(up)} сом` : '—'}</dd></div>
-                                <div><dt>Сумма</dt><dd>{tot != null && tot !== '' ? `${formatQuantityDisplay(tot)} сом` : '—'}</dd></div>
-                                <div><dt>Ед. учёта</dt><dd>{uDisp}</dd></div>
-                                <div><dt>Поставщик</dt><dd>{i.supplier_name ?? i.supplier ?? '—'}</dd></div>
-                                <div><dt>Документ</dt><dd>{doc ?? '—'}</dd></div>
-                                <div className="materials-batch-detail__dl-row materials-batch-detail__dl-row--wide">
-                                  <dt>Комментарий</dt>
-                                  <dd>{i.comment ?? '—'}</dd>
-                                </div>
-                              </dl>
+                              <DetailFields
+                                rows={[
+                                  { section: 'Оплата', label: 'Цена за ед.', value: up != null && up !== '' ? `${formatQuantityDisplay(up)} сом` : '—' },
+                                  { section: 'Оплата', label: 'Сумма', value: tot != null && tot !== '' ? `${formatQuantityDisplay(tot)} сом` : '—' },
+                                  { section: 'Оплата', label: 'Ед. учёта', value: uDisp },
+                                  { section: 'Поставка', label: 'Поставщик', value: i.supplier_name || i.supplier || '—' },
+                                  { section: 'Поставка', label: 'Документ', value: doc || '—' },
+                                  { section: 'Поставка', label: 'Комментарий', value: i.comment || '—', full: true },
+                                ]}
+                              />
                             </div>
                           )}
                         </Fragment>
@@ -927,7 +953,10 @@ const EditMaterialModal = ({ materialId, initial, unitLocked, onSubmit, onClose,
       />
       <div className="modal modal--sm" onClick={(e) => e.stopPropagation()} style={{ padding: 0 }}>
         <div className="modal__head">
-          <h3>Редактировать сырьё</h3>
+          <div className="modal__head-titles">
+            <span className="modal__eyebrow">Редактирование</span>
+            <h3>Редактировать сырьё</h3>
+          </div>
           <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
         <form
@@ -945,12 +974,18 @@ const EditMaterialModal = ({ materialId, initial, unitLocked, onSubmit, onClose,
             onSubmit(materialId, payload);
           }}
         >
-          <label>Название *</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} required />
-          <label>Минимальный остаток</label>
-          <DecimalInput min={0} value={minBalance} onChange={setMinBalance} placeholder="Порог «мало»" />
-          <label>Комментарий</label>
-          <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Опционально" />
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiTag aria-hidden size={15} strokeWidth={2} />Название *</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} required />
+          </div>
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiAlertTriangle aria-hidden size={15} strokeWidth={2} />Минимальный остаток</label>
+            <DecimalInput min={0} value={minBalance} onChange={setMinBalance} placeholder="Порог «мало»" />
+          </div>
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiMessageSquare aria-hidden size={15} strokeWidth={2} />Комментарий</label>
+            <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Опционально" />
+          </div>
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={requestClose}><FiX aria-hidden size={16} strokeWidth={2} />Отмена</button>
@@ -1044,9 +1079,12 @@ const ReplenishModal = ({ material, onSubmit, onClose, error }) => {
         onConfirm={confirmDiscardAndClose}
         onCancel={cancelDiscard}
       />
-      <div className="modal modal--wide" onClick={(e) => e.stopPropagation()} style={{ padding: 0 }}>
+      <div className="modal modal--sm" onClick={(e) => e.stopPropagation()} style={{ padding: 0 }}>
         <div className="modal__head">
-          <h3>Приход сырья{!pickMode && mname ? `: ${mname}` : ''}</h3>
+          <div className="modal__head-titles">
+            <span className="modal__eyebrow">Новый приход</span>
+            <h3>Приход сырья{!pickMode && mname ? `: ${mname}` : ''}</h3>
+          </div>
           <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
         <form
@@ -1070,10 +1108,11 @@ const ReplenishModal = ({ material, onSubmit, onClose, error }) => {
           }}
         >
           {pickMode && (
-            <>
-              <label>Сырьё *</label>
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiPackage aria-hidden size={15} strokeWidth={2} />Сырьё *</label>
               {pickLoading ? <Loading /> : (
                 <Select
+                  icon={FiPackage}
                   value={selectedId}
                   onChange={setSelectedId}
                   options={[
@@ -1082,29 +1121,50 @@ const ReplenishModal = ({ material, onSubmit, onClose, error }) => {
                   ]}
                 />
               )}
-            </>
+            </div>
           )}
-          {!pickMode && <p style={{ margin: '0 0 0.5rem', fontWeight: 600 }}>{mname}</p>}
-          <label>Количество *</label>
-          <DecimalInput min={0} value={quantity} onChange={setQuantity} required placeholder="Напр. 10 или 0,5" />
-          <label>Цена за единицу (сом) *</label>
-          <DecimalInput min={0} value={pricePerUnit} onChange={setPricePerUnit} required />
+          {!pickMode && <p style={{ margin: '0 0 var(--space-4)', fontWeight: 600 }}>{mname}</p>}
+          <div className="modal__field-row">
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiHash aria-hidden size={15} strokeWidth={2} />Количество *</label>
+              <DecimalInput min={0} value={quantity} onChange={setQuantity} required placeholder="Напр. 10 или 0,5" />
+            </div>
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiDollarSign aria-hidden size={15} strokeWidth={2} />Цена за единицу (сом) *</label>
+              <DecimalInput min={0} value={pricePerUnit} onChange={setPricePerUnit} required />
+            </div>
+          </div>
           {batchSum != null && Number.isFinite(batchSum) && (
-            <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem' }}>{formatQuantityDisplay(batchSum)} сом</p>
+            <div className="modal__result modal__result--success">
+              <FiDollarSign aria-hidden size={16} strokeWidth={2} />
+              <span>Итого к оплате: <strong>{formatQuantityDisplay(batchSum)} сом</strong></span>
+            </div>
           )}
-          <label>Дата прихода *</label>
-          <input
-            type="datetime-local"
-            value={receivedAt}
-            onChange={(e) => setReceivedAt(e.target.value)}
-            required
-          />
-          <label>Поставщик</label>
-          <input value={supplierName} onChange={(e) => setSupplierName(e.target.value)} placeholder="Опционально" />
-          <label>Номер документа</label>
-          <input value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} placeholder="Опционально" />
-          <label>Комментарий</label>
-          <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Опционально" />
+          <div className="modal__field-row">
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiCalendar aria-hidden size={15} strokeWidth={2} />Дата прихода *</label>
+              <input
+                type="datetime-local"
+                value={receivedAt}
+                onChange={(e) => setReceivedAt(e.target.value)}
+                required
+              />
+            </div>
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiTruck aria-hidden size={15} strokeWidth={2} />Поставщик</label>
+              <input value={supplierName} onChange={(e) => setSupplierName(e.target.value)} placeholder="Опционально" />
+            </div>
+          </div>
+          <div className="modal__field-row">
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiFileText aria-hidden size={15} strokeWidth={2} />Номер документа</label>
+              <input value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} placeholder="Опционально" />
+            </div>
+            <div className="modal__field">
+              <label className="modal__label-icon"><FiMessageSquare aria-hidden size={15} strokeWidth={2} />Комментарий</label>
+              <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Опционально" />
+            </div>
+          </div>
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={requestClose}><FiX aria-hidden size={16} strokeWidth={2} />Отмена</button>
@@ -1114,7 +1174,7 @@ const ReplenishModal = ({ material, onSubmit, onClose, error }) => {
               disabled={resolvedMaterial?.material_id == null}
             >
               <FiCheck aria-hidden size={16} strokeWidth={2} />
-              Приход
+              Оформить приход
             </button>
           </div>
         </form>

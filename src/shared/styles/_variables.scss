@@ -65,6 +65,24 @@
   --field-gap: var(--space-3);
   --field-gap-lg: var(--space-4);
 
+  --sidebar-group-gap: var(--space-4);
+  --avatar-plaque-radius: var(--radius-md);
+  --table-row-radius: var(--radius-lg);
+  --table-row-shadow-hover: var(--shadow-md), 0 0 0 1px var(--card-border);
+
+  /* Rotating avatar-plaque palette — aliases of the existing semantic colors
+     (not new hues) so it stays in sync with theme + brand automatically. */
+  --avatar-hue-1-bg: var(--primary-muted);
+  --avatar-hue-1-fg: var(--primary);
+  --avatar-hue-2-bg: var(--info-muted);
+  --avatar-hue-2-fg: var(--info);
+  --avatar-hue-3-bg: var(--success-muted);
+  --avatar-hue-3-fg: var(--success);
+  --avatar-hue-4-bg: var(--warning-muted);
+  --avatar-hue-4-fg: var(--warning);
+  --avatar-hue-5-bg: var(--accent-2-muted);
+  --avatar-hue-5-fg: var(--accent-2);
+
   --transition-fast: 0.12s ease;
   --transition-base: 0.18s ease;
   --transition-slow: 0.22s ease;
@@ -192,9 +210,9 @@
 [data-theme='light'] {
   color-scheme: light;
 
-  --bg: #f3f4f8;
+  --bg: #f2f0ee;
   --bg-elevated: #ffffff;
-  --bg-hover: #e8ebf1;
+  --bg-hover: #e8e5e1;
   --surface: #ffffff;
   --card: #ffffff;
   --card-border: rgba(15, 23, 42, 0.06);
@@ -262,7 +280,7 @@
   --input-focus-border: var(--primary);
   --input-focus-ring: rgba(225, 29, 72, 0.12);
 
-  --bg-gradient: linear-gradient(180deg, #f6f7f9 0%, #eef1f5 100%);
+  --bg-gradient: linear-gradient(180deg, #f5f3f0 0%, #eeece7 100%);
   --card-hover: var(--bg-hover);
   --accent-2: #ea580c;
   --accent-2-muted: rgba(234, 88, 12, 0.1);

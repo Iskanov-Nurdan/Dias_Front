@@ -25,3 +25,13 @@ export function getPageTitle(pathname, navLabel) {
   if (seg && ACCESS_LABELS[seg]) return ACCESS_LABELS[seg];
   return 'DIAS LINE';
 }
+
+/** Pages that render their own large in-page heading — the shared header
+ * bar should not also show a title for these (avoids the double "Сотрудники"
+ * heading). Add a path here whenever a page adopts its own hero title. */
+const OWN_TITLE_PATHS = ['/materials', '/production', '/otk', '/warehouse'];
+
+export function pageHasOwnTitle(pathname) {
+  const path = pathname || '';
+  return OWN_TITLE_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
+}

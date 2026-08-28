@@ -80,6 +80,7 @@ const ProductionPage = () => {
   if (line === PRODUCT_LINE.FOAM) {
     return (
       <div className="page page--production">
+        <h1 className="production-page__title">Производство</h1>
         <ProductLineTabs value={line} onChange={setLine} />
         <ProductionFoamTab />
       </div>
@@ -88,6 +89,7 @@ const ProductionPage = () => {
 
   return (
     <div className="page page--production">
+      <h1 className="production-page__title">Производство</h1>
       <ProductLineTabs value={line} onChange={setLine} />
 
       <div className="production-card production-card--produced">

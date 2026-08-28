@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { FiUsers, FiShield, FiPlus, FiCheck, FiX, FiActivity, FiRepeat, FiUser, FiLock } from 'react-icons/fi';
+import { FiUsers, FiShield, FiPlus, FiCheck, FiX, FiActivity, FiUser, FiLock, FiEdit3, FiTrash2, FiFileText } from 'react-icons/fi';
 import { useDiscardOnClose, useDirtyFromBaseline, useIsMobile } from '../../../../shared/hooks';
 import { useServerQuery, getApiErrorMessage } from '../../../../shared/lib';
 import {
@@ -11,10 +11,7 @@ import {
   useToast,
   Select,
   SearchInput,
-  FilterPanel,
-  FilterPanelField,
   Badge,
-  EntityAvatar,
 } from '../../../../shared/ui';
 import { useAuth } from '../../../auth/model';
 import { createUser, updateUser, deleteUser, updateUserAccess, getUser } from '../../api/usersApi';
@@ -37,14 +34,19 @@ const USERS_STATUS_OPTIONS = [
   { value: 'false', label: 'Неактивные' },
 ];
 
-const USERS_ORDERING_OPTIONS = [
-  { value: 'id', label: 'Сначала старые записи' },
-  { value: '-id', label: 'Сначала новые записи' },
-  { value: 'name', label: 'Имя А–Я' },
-  { value: '-name', label: 'Имя Я–А' },
-];
-
 const ADMINISTRATOR_ROLE_NAME_LC = 'администратор';
+
+const initialsOf = (name) => {
+  const words = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return '?';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+};
+
+/** Role names are free-text (no fixed role "type" field) — a light heuristic
+ * picks a more specific icon for admin-like roles, FiUser otherwise, so the
+ * role Select always shows some icon rather than being inconsistent. */
+const roleIconFor = (name) => (/админ/i.test(String(name || '')) ? FiShield : FiUser);
 
 const isProtectedRole = (r) =>
   Boolean(r) && String(r.name || '').trim().toLowerCase() === ADMINISTRATOR_ROLE_NAME_LC;
@@ -71,12 +73,9 @@ const UsersPage = () => {
     search: '',
     role: '',
     is_active: '',
-    ordering: '',
   });
   const [userModal, setUserModal] = useState(null);
-  const [userDetail, setUserDetail] = useState(null);
   const [roleModal, setRoleModal] = useState(null);
-  const [roleDetail, setRoleDetail] = useState(null);
   const [accessModal, setAccessModal] = useState(null);
   const [reportModal, setReportModal] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -104,7 +103,7 @@ const UsersPage = () => {
   }, [sortedRoles, rolesSearch]);
 
   const roleOptions = useMemo(
-    () => [{ value: '', label: 'Все' }, ...sortedRoles.map((r) => ({ value: String(r.id), label: r.name }))],
+    () => sortedRoles.map((r) => ({ value: String(r.id), label: r.name })),
     [sortedRoles],
   );
 
@@ -273,23 +272,27 @@ const UsersPage = () => {
                     tabIndex={locked ? undefined : 0}
                     role={locked ? undefined : 'button'}
                     className={locked ? 'data-table__row--no-actions' : undefined}
-                    onClick={locked ? undefined : () => setRoleDetail(r)}
+                    onClick={locked ? undefined : () => setRoleModal(r)}
                     onKeyDown={locked ? undefined : (e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        setRoleDetail(r);
+                        setRoleModal(r);
                       }
                     }}
                   >
                     <td className="data-table__cell--lead">{r.name}</td>
                     <td className="users-page__role-actions">
-                      {!locked && (
+                      {locked ? (
+                        <span className="users-page__role-locked" title="Системная роль — защищена от изменения">
+                          <FiLock aria-hidden size={14} strokeWidth={2} />
+                        </span>
+                      ) : (
                       <ActionMenu
                         ariaLabel="Действия"
+                        forceMenu
                         items={[
-                          { label: 'Открыть', onClick: () => setRoleDetail(r) },
-                          { label: 'Редактировать', onClick: () => setRoleModal(r) },
-                          { label: 'Удалить', danger: true, onClick: () => setDeleteTarget({ type: 'role', id: r.id, name: r.name }) },
+                          { label: 'Редактировать', icon: FiEdit3, onClick: () => setRoleModal(r) },
+                          { label: 'Удалить', icon: FiTrash2, danger: true, onClick: () => setDeleteTarget({ type: 'role', id: r.id, name: r.name }) },
                         ]}
                       />
                       )}
@@ -313,7 +316,7 @@ const UsersPage = () => {
           meta={meta}
           onRetry={refetch}
           renderFilters={() => {
-            const activeCount = ['role', 'is_active', 'ordering'].filter((k) => queryState[k]).length;
+            const activeCount = ['role', 'is_active'].filter((k) => queryState[k]).length;
             return (
               <div className={`users-page__filters users-page__filters--row${isMobile ? ' users-page__filters--mobile' : ''}`}>
                 <div className="users-page__filters-fields">
@@ -322,38 +325,32 @@ const UsersPage = () => {
                     onChange={(e) => handleFilterChange({ search: e.target.value || undefined })}
                     placeholder="Поиск"
                   />
-                  <FilterPanel
-                    activeCount={activeCount}
-                    onReset={() => handleFilterChange({ role: undefined, is_active: undefined, ordering: undefined })}
-                  >
-                    <FilterPanelField label="Роль">
-                      <Select
-                        icon={FiShield}
-                        value={queryState.role || ''}
-                        onChange={(v) => handleFilterChange({ role: v || undefined })}
-                        placeholder="Все"
-                        options={roleOptions}
-                      />
-                    </FilterPanelField>
-                    <FilterPanelField label="Статус">
-                      <Select
-                        icon={FiActivity}
-                        value={queryState.is_active || ''}
-                        onChange={(v) => handleFilterChange({ is_active: v || undefined })}
-                        placeholder="Все"
-                        options={[{ value: '', label: 'Все' }, ...USERS_STATUS_OPTIONS]}
-                      />
-                    </FilterPanelField>
-                    <FilterPanelField label="Сортировка">
-                      <Select
-                        icon={FiRepeat}
-                        value={queryState.ordering || ''}
-                        onChange={(v) => handleFilterChange({ ordering: v || undefined })}
-                        placeholder="По умолчанию"
-                        options={[{ value: '', label: 'По умолчанию' }, ...USERS_ORDERING_OPTIONS]}
-                      />
-                    </FilterPanelField>
-                  </FilterPanel>
+                  <Select
+                    className="users-page__filter-select"
+                    icon={FiShield}
+                    value={queryState.role || ''}
+                    onChange={(v) => handleFilterChange({ role: v || undefined })}
+                    placeholder="Роль"
+                    options={roleOptions}
+                  />
+                  <Select
+                    className="users-page__filter-select"
+                    icon={FiActivity}
+                    value={queryState.is_active || ''}
+                    onChange={(v) => handleFilterChange({ is_active: v || undefined })}
+                    placeholder="Статус"
+                    options={USERS_STATUS_OPTIONS}
+                  />
+                  {activeCount > 0 && (
+                    <button
+                      type="button"
+                      className="users-page__filters-reset"
+                      onClick={() => handleFilterChange({ role: undefined, is_active: undefined })}
+                    >
+                      <FiX aria-hidden size={14} strokeWidth={2} />
+                      Сбросить
+                    </button>
+                  )}
                 </div>
                 <div className="users-page__filters-action ds-hide-mobile">
                   <button type="button" className="btn btn--primary" onClick={() => setUserModal({})}>
@@ -366,7 +363,7 @@ const UsersPage = () => {
           }}
           filtersClassName="server-list__filters--tight"
           renderTable={(listItems) => (
-            <table className="data-table data-table--fixed data-table--users data-table--row-actions data-table--clickable">
+            <table className="data-table data-table--fixed data-table--users data-table--row-actions">
               <thead>
                 <tr>
                   <th>Имя</th>
@@ -377,47 +374,32 @@ const UsersPage = () => {
               </thead>
               <tbody>
                 {listItems.map((u) => (
-                  <tr
-                    key={u.id}
-                    tabIndex={0}
-                    role="button"
-                    onClick={() => setUserDetail(u)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setUserDetail(u);
-                      }
-                    }}
-                  >
+                  <tr key={u.id}>
                     <td className="data-table__cell--lead">
                       <span className="data-table__name--with-avatar">
-                        <EntityAvatar name={u.name} size={28} />
-                        {u.name}
+                        <span className="users-page__avatar" aria-hidden="true">
+                          {initialsOf(u.name)}
+                        </span>
+                        <span className="users-page__name-text">
+                          <span className="users-page__name-primary">{u.name}</span>
+                        </span>
                       </span>
                     </td>
                     <td className="users-page__muted data-table__cell--muted">{u.role_name ?? (roles.find((r) => r.id === u.role)?.name) ?? '—'}</td>
                     <td>
-                      <Badge variant={u.is_active === false ? 'default' : 'success'}>
+                      <Badge variant={u.is_active === false ? 'default' : 'success'} dot>
                         {u.is_active === false ? 'Выкл' : 'Активен'}
                       </Badge>
                     </td>
                     <td className="users-page__employee-actions">
-                      <button
-                        type="button"
-                        className="action-row__btn users-page__details-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setUserDetail(u);
-                        }}
-                      >
-                        Подробнее
-                      </button>
                       <ActionMenu
                         ariaLabel="Действия"
+                        forceMenu
                         items={[
-                          { label: 'Редактировать', onClick: () => setUserModal(u) },
-                          { label: 'Доступы', onClick: () => setAccessModal(u) },
-                          { label: 'Удалить', danger: true, onClick: () => setDeleteTarget({ type: 'user', id: u.id, name: u.name }) },
+                          { label: 'Редактировать', icon: FiEdit3, onClick: () => setUserModal(u) },
+                          { label: 'Отчёт', icon: FiFileText, onClick: () => setReportModal(u) },
+                          { label: 'Доступы', icon: FiShield, onClick: () => setAccessModal(u) },
+                          { label: 'Удалить', icon: FiTrash2, danger: true, onClick: () => setDeleteTarget({ type: 'user', id: u.id, name: u.name }) },
                         ]}
                       />
                     </td>
@@ -438,30 +420,6 @@ const UsersPage = () => {
           )}
         />
         </div>
-      )}
-
-      {userDetail && (
-        <UserDetailModal
-          user={userDetail}
-          roleName={userDetail.role_name ?? (roles.find((r) => r.id === userDetail.role)?.name) ?? '—'}
-          onClose={() => setUserDetail(null)}
-          onEdit={(u) => {
-            setUserDetail(null);
-            setUserModal(u);
-          }}
-          onAccess={(u) => {
-            setUserDetail(null);
-            setAccessModal(u);
-          }}
-          onReport={(u) => {
-            setUserDetail(null);
-            setReportModal(u);
-          }}
-          onDelete={(u) => {
-            setUserDetail(null);
-            setDeleteTarget({ type: 'user', id: u.id, name: u.name });
-          }}
-        />
       )}
 
       {userModal && (
@@ -492,17 +450,6 @@ const UsersPage = () => {
         />
       )}
 
-      {roleDetail && (
-        <RoleDetailModal
-          role={roleDetail}
-          onClose={() => setRoleDetail(null)}
-          onEdit={(r) => {
-            setRoleDetail(null);
-            setRoleModal(r);
-          }}
-        />
-      )}
-
       {roleModal && (
         <RoleFormModal
           role={roleModal?.id ? roleModal : null}
@@ -523,54 +470,6 @@ const UsersPage = () => {
     </div>
   );
 };
-
-const UserDetailModal = ({ user, roleName, onClose, onEdit, onAccess, onReport, onDelete }) => (
-  <div className="modal-overlay" onClick={onClose}>
-    <div className="modal users-page__detail-modal" onClick={(e) => e.stopPropagation()}>
-      <div className="modal__head">
-        <h3>Карточка сотрудника</h3>
-        <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
-      </div>
-      <div className="users-page__detail-body">
-        <div className="users-page__detail-row">
-          <span>Имя:</span>
-          <strong>{user?.name || '—'}</strong>
-        </div>
-        <div className="users-page__detail-row">
-          <span>Роль:</span>
-          <strong>{roleName}</strong>
-        </div>
-        <div className="users-page__detail-row">
-          <span>Статус:</span>
-          <strong>{user?.is_active === false ? 'Неактивен' : 'Активен'}</strong>
-        </div>
-      </div>
-      <div className="modal__actions users-page__detail-actions">
-        <button type="button" className="btn btn--primary" onClick={() => onEdit(user)}>Редактировать</button>
-        <button type="button" className="btn btn--secondary" onClick={() => onReport(user)}>Отчёт</button>
-        <button type="button" className="btn btn--secondary" onClick={() => onAccess(user)}>Доступы</button>
-        <button type="button" className="btn btn--danger users-page__detail-danger" onClick={() => onDelete(user)}>Удалить</button>
-      </div>
-    </div>
-  </div>
-);
-
-const RoleDetailModal = ({ role, onClose, onEdit }) => (
-  <div className="modal-overlay" onClick={onClose}>
-    <div className="modal" onClick={(e) => e.stopPropagation()}>
-      <div className="modal__head">
-        <h3>Карточка роли</h3>
-        <button type="button" className="modal__close" onClick={onClose} aria-label="Закрыть">×</button>
-      </div>
-      <div style={{ padding: '1.5rem' }}>
-        <p><strong>Название:</strong> {role?.name || '—'}</p>
-      </div>
-      <div className="modal__actions">
-        <button type="button" className="btn btn--primary" onClick={() => onEdit(role)}>Редактировать</button>
-      </div>
-    </div>
-  </div>
-);
 
 const AccessModal = ({ user, accessGroups, accessLabels, onSave, onClose, error }) => {
   const [selected, setSelected] = useState(new Set());
@@ -817,6 +716,9 @@ const UserFormModal = ({ user, roles, onSubmit, onClose, error }) => {
       />
       <div className="modal users-page__form-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
+          <span className="users-page__form-icon" aria-hidden="true">
+            <FiUser size={17} strokeWidth={2} />
+          </span>
           <div className="modal__head-titles">
             <span className="modal__eyebrow">{user ? 'Редактирование' : 'Новый сотрудник'}</span>
             <h3>{user ? 'Редактировать сотрудника' : 'Добавить сотрудника'}</h3>
@@ -836,7 +738,12 @@ const UserFormModal = ({ user, roles, onSubmit, onClose, error }) => {
         >
           <div className="modal__field">
             <label className="modal__label-icon"><FiUser aria-hidden size={15} strokeWidth={2} />Имя *</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} required />
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Иванов Иван Иванович"
+              required
+            />
           </div>
           {!user ? (
             <div className="modal__field">
@@ -845,6 +752,7 @@ const UserFormModal = ({ user, roles, onSubmit, onClose, error }) => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                placeholder="Минимум 6 символов"
                 required
               />
             </div>
@@ -864,7 +772,20 @@ const UserFormModal = ({ user, roles, onSubmit, onClose, error }) => {
               value={role}
               onChange={setRole}
               placeholder="Выберите роль"
-              options={roles.map((r) => ({ value: String(r.id), label: r.name }))}
+              icon={FiShield}
+              options={roles.map((r) => {
+                const RoleIcon = roleIconFor(r.name);
+                return {
+                  value: String(r.id),
+                  searchText: r.name,
+                  label: (
+                    <span className="users-page__role-option">
+                      <RoleIcon aria-hidden size={15} strokeWidth={2} />
+                      {r.name}
+                    </span>
+                  ),
+                };
+              })}
             />
           </div>
           {error && <p className="modal__error">{error}</p>}
@@ -1224,7 +1145,13 @@ const RoleFormModal = ({ role, onSubmit, onClose, error }) => {
       />
       <div className="modal users-page__form-modal users-page__form-modal--role" onClick={(e) => e.stopPropagation()}>
         <div className="modal__head">
-          <h3>{role ? 'Редактировать роль' : 'Создать роль'}</h3>
+          <span className="users-page__form-icon" aria-hidden="true">
+            <FiShield size={17} strokeWidth={2} />
+          </span>
+          <div className="modal__head-titles">
+            <span className="modal__eyebrow">{role ? 'Редактирование' : 'Новая роль'}</span>
+            <h3>{role ? 'Редактировать роль' : 'Создать роль'}</h3>
+          </div>
           <button type="button" className="modal__close" onClick={requestClose} aria-label="Закрыть">×</button>
         </div>
         <form
@@ -1234,8 +1161,15 @@ const RoleFormModal = ({ role, onSubmit, onClose, error }) => {
             onSubmit({ name });
           }}
         >
-          <label>Название *</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} required />
+          <div className="modal__field">
+            <label className="modal__label-icon"><FiShield aria-hidden size={15} strokeWidth={2} />Название *</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Например, Кладовщик"
+              required
+            />
+          </div>
           {error && <p className="modal__error">{error}</p>}
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={requestClose}>

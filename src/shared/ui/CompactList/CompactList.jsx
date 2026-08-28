@@ -58,6 +58,7 @@ export default function CompactList({
               <span
                 key={col.key}
                 className={`compact-list__cell${col.className ? ` ${col.className}` : ''}`}
+                data-label={col.label}
               >
                 {renderCell(item, col.key)}
               </span>

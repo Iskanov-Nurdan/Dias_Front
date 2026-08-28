@@ -291,14 +291,14 @@ const WarehouseFoamTab = () => {
                 <tbody>
                   {visibleOperations.map((op) => (
                     <tr key={op.id}>
-                      <td className="data-table__cell--muted">{formatDateTime(op.created_at)}</td>
-                      <td>{FOAM_OPERATION_KIND_LABEL[op.kind] || op.kind}{op.ref ? ` — ${op.ref}` : ''}</td>
-                      <td>
+                      <td className="data-table__cell--muted" data-label="Дата">{formatDateTime(op.created_at)}</td>
+                      <td data-label="Операция">{FOAM_OPERATION_KIND_LABEL[op.kind] || op.kind}{op.ref ? ` — ${op.ref}` : ''}</td>
+                      <td data-label="Товар">
                         {foamOutputFormatLabel(op.output_format)}
                         {op.grade_code ? `, плотность ${op.grade_code}` : ''}
                         {op.thickness_cm ? `, ${op.thickness_cm} см` : ''}
                       </td>
-                      <td className={`data-table__cell--num warehouse-foam-tab__qty${Number(op.qty) < 0 ? ' warehouse-foam-tab__qty--out' : ' warehouse-foam-tab__qty--in'}`}>
+                      <td className={`data-table__cell--num warehouse-foam-tab__qty${Number(op.qty) < 0 ? ' warehouse-foam-tab__qty--out' : ' warehouse-foam-tab__qty--in'}`} data-label="Кол-во">
                         {Number(op.qty) > 0 ? '+' : ''}{formatNumberForInput(op.qty)} {foamOutputUnitLabel(op.output_format)}
                       </td>
                     </tr>

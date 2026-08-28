@@ -1,9 +1,55 @@
 @use '../../../../shared/styles/variables' as *;
 @use '../../../../shared/styles/mixins' as *;
 
-.page--materials {
-  .page__title {
-    margin-bottom: 0.5rem;
+.materials-page__title {
+  margin: 0 0 var(--space-5);
+  font-size: 1.75rem;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.01em;
+  color: var(--text);
+  line-height: 1.2;
+
+  @include mobile {
+    font-size: 1.375rem;
+    margin-bottom: var(--space-4);
+  }
+}
+
+// ── Internal tabs (Справочник/Остатки/Партии/История) ──────────────
+// The shared ERP-tabs rule (_system-ui.scss) gives every page's sub-tabs a
+// bare underline-only active state. That reads fine when it's the *only*
+// tab row on a page, but here it sits right under the much heavier
+// ProductLineTabs pill switcher and visually disappeared next to it. Give
+// the active tab real weight (filled pill, not just an underline) so the
+// two tab rows read as a clear hierarchy instead of the lower one fading out.
+.materials-tabs {
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  padding-bottom: 2px;
+}
+
+.materials-tabs__tab {
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-body);
+  font-weight: var(--weight-medium);
+
+  &--active {
+    background: var(--primary-muted);
+    color: var(--primary);
+    font-weight: var(--weight-semibold);
+
+    &::after {
+      // heavier underline than the shared default, still present for the
+      // "separator from the content below" cue the shared rule already gives
+      height: 3px;
+      background: var(--primary);
+    }
+
+    &:hover {
+      background: var(--primary-muted);
+    }
   }
 }
 
@@ -198,7 +244,7 @@
       minmax(120px, 1.35fr)
       minmax(7rem, auto)
       minmax(6rem, auto)
-      minmax(220px, auto);
+      minmax(260px, auto);
     align-items: center;
   }
 
@@ -207,23 +253,41 @@
     border-bottom: none;
   }
 
+  // Elevated hover (shadow lift, matching the row treatment already used on
+  // the Сотрудники table) instead of just a background swap — makes rows
+  // feel like distinct, clickable-adjacent cards rather than a flat list.
   &--catalog &__row {
     padding: 10px var(--space-3);
     background: var(--card);
     border: 1px solid var(--card-border);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
+    transition: box-shadow var(--transition-fast), background var(--transition-fast);
 
     &:hover {
       background: var(--bg-hover);
+      box-shadow: var(--table-row-shadow-hover, var(--shadow-md));
     }
 
-    &.materials-table__row--low-stock {
-      background: color-mix(in srgb, var(--danger) 6%, transparent);
+    // Two-tier indication (reuses the same `empty`/`low`/`ok` classification
+    // already computed for the Остатки tab via getStockLevelKey — just wired
+    // up here too instead of a separate binary low/not-low flag): amber for
+    // "below minimum but still some stock", red for "nothing left".
+    &.materials-table__row--stock-low {
+      background: color-mix(in srgb, var(--warning) 7%, transparent);
+      box-shadow: inset 3px 0 0 var(--warning);
+
+      &:hover {
+        background: color-mix(in srgb, var(--warning) 12%, transparent);
+      }
+    }
+
+    &.materials-table__row--stock-empty {
+      background: color-mix(in srgb, var(--danger) 7%, transparent);
       box-shadow: inset 3px 0 0 var(--danger);
 
       &:hover {
-        background: color-mix(in srgb, var(--danger) 10%, transparent);
+        background: color-mix(in srgb, var(--danger) 12%, transparent);
       }
     }
   }
@@ -279,10 +343,10 @@
 
   &__batch-detail {
     margin: 0 0 var(--space-2);
-    padding: var(--space-3);
+    padding: var(--space-4);
     background: var(--bg-hover, rgba(0, 0, 0, 0.03));
     border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md, 8px);
+    border-radius: var(--radius-lg, 12px);
   }
 
   .materials-batch-detail__dl {
@@ -363,18 +427,29 @@
     border: 1px solid var(--card-border);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
+    transition: box-shadow var(--transition-fast), background var(--transition-fast);
 
     &:hover {
       background: var(--bg-hover);
+      box-shadow: var(--table-row-shadow-hover, var(--shadow-md));
     }
   }
 
-  &--stock-view &__row.materials-table__row--low-stock {
-    background: color-mix(in srgb, var(--danger) 6%, transparent);
+  &--stock-view &__row.materials-table__row--stock-low {
+    background: color-mix(in srgb, var(--warning) 7%, transparent);
+    box-shadow: inset 3px 0 0 var(--warning);
+
+    &:hover {
+      background: color-mix(in srgb, var(--warning) 12%, transparent);
+    }
+  }
+
+  &--stock-view &__row.materials-table__row--stock-empty {
+    background: color-mix(in srgb, var(--danger) 7%, transparent);
     box-shadow: inset 3px 0 0 var(--danger);
 
     &:hover {
-      background: color-mix(in srgb, var(--danger) 10%, transparent);
+      background: color-mix(in srgb, var(--danger) 12%, transparent);
     }
   }
 
@@ -449,7 +524,12 @@
     white-space: nowrap;
   }
 
-  &__balance--low {
+  &__balance--stock-low {
+    color: var(--warning);
+    font-weight: 600;
+  }
+
+  &__balance--stock-empty {
     color: var(--danger);
     font-weight: 600;
   }
@@ -534,7 +614,66 @@
 .materials-table__name--with-avatar {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
+}
+
+// Same rotating avatar-plaque palette used on Сотрудники — aliases of the
+// existing semantic colors (--avatar-hue-*), not new hex values, so it stays
+// in sync with theme + brand automatically.
+.materials-table__avatar {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--avatar-plaque-radius, var(--radius-md));
+  font-size: 11.5px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.01em;
+  line-height: 1;
+
+  &--hue-1 { background: var(--avatar-hue-1-bg); color: var(--avatar-hue-1-fg); }
+  &--hue-2 { background: var(--avatar-hue-2-bg); color: var(--avatar-hue-2-fg); }
+  &--hue-3 { background: var(--avatar-hue-3-bg); color: var(--avatar-hue-3-fg); }
+  &--hue-4 { background: var(--avatar-hue-4-bg); color: var(--avatar-hue-4-fg); }
+  &--hue-5 { background: var(--avatar-hue-5-bg); color: var(--avatar-hue-5-fg); }
+}
+
+// Compact icon-only row action (Приход) — a text label per row added up
+// fast across a long list; the icon + native `title` tooltip keeps every
+// row scannable while still being reachable/labelled for a11y.
+.materials-table__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--info);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--info);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+
+  &:hover:not(:disabled) {
+    background: var(--info-muted);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.96);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
 }
 
 .materials-card__toolbar-actions {
@@ -645,8 +784,25 @@
       content: 'Мин. остаток';
     }
 
-    .materials-table--catalog .materials-table__row > *:nth-child(4)::before {
-      content: 'Действия';
+    // The actions cell holds an icon button + ActionMenu's inline 2-button
+    // row (ActionMenu renders explicit buttons rather than a "…" dropdown
+    // for ≤3 items — see the Сотрудники table fix for the same pattern).
+    // The generic label:value child treatment above forces
+    // `justify-content: space-between` + a "Действия" label competing for
+    // the same width as those buttons, which is exactly what overflowed on
+    // the Сотрудники table in this same 769-1200px zone. Buttons are
+    // self-explanatory here (icon+tooltip, Редактировать/Удалить text), so
+    // the label is dropped and the row is allowed to justify+wrap freely
+    // instead of fighting a fixed split.
+    .materials-table--catalog .materials-table__row > .materials-table__actions {
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      border-bottom: none;
+
+      &::before {
+        display: none;
+        content: none;
+      }
     }
 
     .materials-table--stock-view .materials-table__row > *:nth-child(1)::before {
@@ -869,9 +1025,17 @@
       font-size: var(--font-body);
     }
 
+    // Two kinds of buttons land here: the icon-only Приход button
+    // (.materials-table__icon-btn) and ActionMenu's own 2-button
+    // Редактировать/Удалить row (.action-row — it renders explicit buttons
+    // rather than a "…" dropdown for ≤3 items). Stacked full-width rows
+    // instead of a 2-column grid — a 2-column grid would put the icon
+    // button in one cell and the *whole 2-button* action-row in the other,
+    // squeezing 2 more buttons into half the width.
     .materials-table__actions {
-      display: grid !important;
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      display: flex !important;
+      flex-direction: column;
+      align-items: stretch;
       gap: var(--space-2) !important;
       padding-top: var(--space-2) !important;
       margin-top: 0;
@@ -881,6 +1045,37 @@
       &::before {
         display: none;
         content: none !important;
+      }
+
+      .btn,
+      .materials-table__icon-btn,
+      .action-row {
+        width: 100%;
+      }
+
+      .materials-table__icon-btn {
+        height: 40px;
+        justify-content: center;
+        gap: var(--space-2);
+
+        &::after {
+          content: 'Приход';
+          font-size: var(--font-sm);
+          font-weight: var(--weight-medium);
+        }
+      }
+
+      .action-row {
+        gap: var(--space-2);
+      }
+
+      .action-row__btn {
+        flex: 1;
+        height: 40px;
+        min-height: 40px;
+        justify-content: center;
+        white-space: normal;
+        line-height: 1.15;
       }
 
       .btn {

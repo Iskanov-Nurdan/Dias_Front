@@ -1,39 +1,314 @@
 @use '../../../../shared/styles/variables' as *;
 @use '../../../../shared/styles/mixins' as *;
 
+// tokens.css (--ds-* variables used throughout this file) is imported once from
+// LoginPage.jsx so webpack bundles it properly — not re-imported here to avoid a
+// broken/duplicate raw `@import url()` in the compiled CSS output.
+
+// Motorsport-premium login: full-bleed dark canvas, telemetry typography,
+// a diagonal racing-stripe accent, and the form as a floating glass card.
+// All visual values come from --ds-* tokens (src/design-system/split-screen/tokens.css).
+// data-theme (light/dark) still controls the rest of the app after login —
+// this screen intentionally stays on the fixed dark brand canvas, like a livery.
+
 .login-page {
   position: relative;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--ds-bg-dark-panel);
+  color: var(--ds-text-on-dark);
+  font-family: var(--ds-font-body);
+}
+
+// ---------- decorative canvas layers ----------
+
+.login-page__stripe {
+  position: absolute;
+  inset: -15% -10%;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    var(--ds-stripe-angle),
+    transparent 44%,
+    var(--ds-stripe-faint) 44.4%,
+    var(--ds-stripe-faint) 45%,
+    transparent 45.4%,
+    transparent 61%,
+    var(--ds-stripe-color) 61.4%,
+    var(--ds-stripe-color) calc(61.4% + var(--ds-stripe-width)),
+    transparent calc(61.4% + var(--ds-stripe-width) + 0.4%)
+  );
+  opacity: 0.85;
+}
+
+.login-page__checker {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 0;
+  width: 128px;
+  height: 128px;
+  pointer-events: none;
+  background:
+    repeating-conic-gradient(var(--ds-checker-color) 0 25%, transparent 0 50%) 0 0 /
+    calc(var(--ds-checker-cell) * 2) calc(var(--ds-checker-cell) * 2);
+  -webkit-mask-image: linear-gradient(to top right, black, transparent 72%);
+  mask-image: linear-gradient(to top right, black, transparent 72%);
+
+  @include mobile {
+    width: 84px;
+    height: 84px;
+  }
+}
+
+// ---------- main: asymmetric hero + floating card ----------
+
+.login-page__main {
+  position: relative;
+  z-index: 1;
+  flex: 1;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  background: var(--card);
+  grid-template-columns: 1.4fr 1fr;
+  align-items: stretch;
+
+  @include lg {
+    grid-template-columns: 1fr 1fr;
+  }
 
   @include mobile {
     grid-template-columns: 1fr;
   }
 }
 
-.login-page__theme {
-  position: fixed;
-  top: var(--space-4);
-  right: var(--space-4);
-  z-index: 10;
-  display: inline-flex;
+.login-page__hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  padding: var(--ds-space-16) var(--ds-container-px-desktop);
+
+  @include lg {
+    padding: var(--ds-space-12) var(--ds-container-px-tablet);
+  }
+
+  @include mobile {
+    align-items: center;
+    text-align: center;
+    padding: var(--ds-space-10) var(--ds-container-px-mobile) var(--ds-space-6);
+  }
+}
+
+// No background watermark here anymore — with the crisp logo now the hero's
+// primary element, a second faint copy of the same mark behind it read as
+// visual noise rather than texture, so it's dropped rather than layered.
+
+.login-page__eyebrow {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 var(--ds-space-5);
+  font-family: var(--ds-font-mono);
+  font-size: var(--ds-eyebrow-mono-size);
+  font-weight: var(--ds-eyebrow-weight);
+  letter-spacing: var(--ds-eyebrow-tracking);
+  text-transform: uppercase;
+  color: var(--ds-accent);
+}
+
+// The logo itself is now the hero's primary visual (replaces the old "Вход"
+// display headline) — sized to occupy roughly the same footprint the
+// headline used to, so the section's proportions stay balanced.
+.login-page__hero-logo {
+  display: block !important;
+  position: relative;
+  z-index: 1;
+  width: clamp(150px, 19vw, 300px) !important;
+  height: auto !important;
+  max-width: none !important;
+  max-height: none !important;
+  filter:
+    drop-shadow(0 12px 36px rgba(0, 0, 0, 0.45))
+    drop-shadow(0 0 14px rgba(225, 29, 63, 0.12));
+
+  @include mobile {
+    width: clamp(140px, 46vw, 220px) !important;
+    margin: 0 auto;
+  }
+}
+
+.login-page__ruler {
+  position: relative;
+  z-index: 1;
+  width: 64px;
+  height: var(--ds-stripe-width);
+  margin: var(--ds-space-6) 0;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-accent);
+
+  @include mobile {
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+.login-page__lede {
+  position: relative;
+  z-index: 1;
+  max-width: 420px;
+  margin: 0;
+  font-size: var(--ds-body-lg-size);
+  line-height: var(--ds-body-lg-line-height);
+  color: var(--ds-text-on-dark-secondary);
+}
+
+// ---------- floating glass form card ----------
+
+.login-page__panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  padding: var(--ds-space-10);
+
+  @include lg {
+    padding: var(--ds-space-8) var(--ds-container-px-tablet);
+  }
+
+  @include mobile {
+    padding: var(--ds-space-6) var(--ds-container-px-mobile) var(--ds-space-16);
+  }
+}
+
+.login-page__card {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  padding: var(--ds-space-10) var(--ds-space-8) var(--ds-space-8);
+  overflow: hidden;
+  border-radius: var(--ds-glass-radius);
+  background: var(--ds-glass-bg);
+  border: 1px solid var(--ds-glass-border);
+  box-shadow: var(--ds-glass-shadow);
+  backdrop-filter: blur(var(--ds-glass-blur));
+  -webkit-backdrop-filter: blur(var(--ds-glass-blur));
+  animation: login-page-card-in var(--ds-duration-slow) var(--ds-ease-decelerate) both;
+
+  @include mobile {
+    max-width: 100%;
+    padding: var(--ds-space-8) var(--ds-space-6);
+  }
+}
+
+@keyframes login-page-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--ds-space-4));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-page__card {
+    animation: none;
+  }
+}
+
+.login-page__card-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--ds-glass-accent-bar-height);
+  background: linear-gradient(90deg, transparent, var(--ds-accent), transparent);
+}
+
+.login-page__card-title {
+  margin: 0 0 var(--ds-space-6);
+  padding-bottom: var(--ds-space-3);
+  border-bottom: 1px solid var(--ds-hairline-on-canvas);
+  font-family: var(--ds-font-mono);
+  font-size: var(--ds-label-mono-size);
+  font-weight: var(--ds-weight-semibold);
+  letter-spacing: var(--ds-label-mono-tracking);
+  text-transform: uppercase;
+  color: var(--ds-text-on-dark-secondary);
+}
+
+.login-page__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-5);
+}
+
+.login-page__field .ds-field__label {
+  font-family: var(--ds-font-mono);
+  font-size: var(--ds-label-mono-size);
+  letter-spacing: var(--ds-label-mono-tracking);
+  text-transform: uppercase;
+  color: var(--ds-text-on-dark-muted);
+}
+
+.login-page__input {
+  width: 100%;
+  // !important: the base `input:not(...)` reset in app/index.scss carries a long
+  // :not() chain (high specificity) that would otherwise win over this scoped override.
+  background: var(--ds-glass-bg-elevated) !important;
+  border: 1px solid var(--ds-border-on-dark) !important;
+  color: var(--ds-text-on-dark) !important;
+  transition:
+    border-color var(--ds-duration-fast) var(--ds-ease-standard),
+    box-shadow var(--ds-duration-fast) var(--ds-ease-standard),
+    background-color var(--ds-duration-fast) var(--ds-ease-standard) !important;
+
+  &::placeholder {
+    color: var(--ds-text-on-dark-muted) !important;
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--ds-neutral-600) !important;
+  }
+
+  &:focus-visible {
+    outline: none;
+    border-color: var(--ds-accent) !important;
+    box-shadow: var(--ds-shadow-focus-ring) !important;
+  }
+}
+
+.login-page__input-group {
+  position: relative;
+  display: flex;
+}
+
+.login-page__input--password {
+  padding-right: var(--ds-space-10) !important;
+}
+
+.login-page__input-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ds-space-10);
   padding: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--card);
-  color: var(--text-secondary);
+  border: none;
+  background: transparent;
+  color: var(--ds-text-on-dark-muted);
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
+  transition: color var(--ds-duration-fast) var(--ds-ease-standard);
 
   &:hover {
-    background: var(--bg-hover);
-    color: var(--text);
+    color: var(--ds-text-on-dark);
   }
 
   &:focus {
@@ -41,122 +316,82 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--primary);
-    outline-offset: 2px;
+    outline: none;
+    border-radius: var(--ds-radius-sm);
+    box-shadow: var(--ds-shadow-focus-ring);
   }
-}
-
-.login-page__panel {
-  background: var(--sidebar-bg);
-  position: relative;
-  overflow: hidden;
-  @include flex-center;
-  flex-direction: column;
-  padding: var(--space-8);
-
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 85% 65% at 50% 42%, rgba(230, 30, 30, 0.28), transparent 72%),
-      radial-gradient(ellipse 90% 60% at 50% 100%, rgba(255, 255, 255, 0.04), transparent 55%);
-    pointer-events: none;
-  }
-
-  @include mobile {
-    display: none;
-  }
-}
-
-.login-page__brand {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 560px;
-  padding: 0 var(--space-6);
-  text-align: center;
-  filter: drop-shadow(0 12px 40px rgba(0, 0, 0, 0.45));
-
-  .dias-logo--hero {
-    width: 100%;
-    max-height: min(48vh, 360px);
-    margin: 0 auto;
-  }
-}
-
-.login-page__brand-mobile {
-  display: none;
-  text-align: center;
-
-  @include mobile {
-    display: block;
-  }
-
-  .dias-logo--md {
-    margin-bottom: var(--space-5);
-  }
-}
-
-.login-page__form-area {
-  @include flex-center;
-  padding: var(--space-8);
-  background: var(--card);
-
-  @include mobile {
-    padding: var(--space-6) var(--space-4);
-    align-items: flex-start;
-    padding-top: max(var(--space-6), env(safe-area-inset-top, var(--space-6)));
-  }
-
-  @include xs {
-    padding: var(--space-4) var(--space-3);
-    padding-top: max(var(--space-4), env(safe-area-inset-top, var(--space-4)));
-  }
-}
-
-.login-page__card {
-  width: 100%;
-  max-width: 360px;
-
-  @include mobile {
-    max-width: 100%;
-  }
-}
-
-.login-page__title {
-  margin: 0 0 var(--space-6);
-  font-size: var(--font-h2);
-  font-weight: var(--weight-semibold);
-  color: var(--text);
-  line-height: var(--leading-h);
-  text-align: left;
-}
-
-.login-page__form {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.login-page__input {
-  width: 100%;
 }
 
 .login-page__error {
-  margin: 0 0 var(--space-3);
-  color: var(--danger);
-  font-size: var(--font-caption);
-  font-weight: var(--weight-normal);
-  padding: var(--space-2) var(--space-3);
-  background: var(--danger-muted);
-  border-radius: var(--radius-md);
-  line-height: var(--leading-normal);
+  margin: 0;
+  padding: var(--ds-space-2) var(--ds-space-3);
+  border-radius: var(--ds-radius-md);
+  background: color-mix(in srgb, var(--ds-danger) 16%, transparent);
+  color: var(--ds-danger);
+  font-size: var(--ds-caption-size);
+  line-height: var(--ds-caption-line-height);
   text-align: left;
 }
 
 .login-page__submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ds-space-2);
   width: 100%;
-  margin-top: var(--space-2);
+  height: var(--ds-btn-height-lg);
+  margin-top: var(--ds-space-1);
+  border: none;
+  border-radius: var(--ds-btn-radius);
+  background: var(--ds-btn-primary-bg);
+  color: var(--ds-btn-primary-text);
+  font-family: var(--ds-font-body);
+  font-size: var(--ds-btn-font-size);
+  font-weight: var(--ds-btn-font-weight);
+  cursor: pointer;
+  transition:
+    background-color var(--ds-duration-base) var(--ds-ease-standard),
+    box-shadow var(--ds-duration-base) var(--ds-ease-standard),
+    transform var(--ds-duration-instant) var(--ds-ease-standard);
+
+  &:hover:not(:disabled) {
+    background: var(--ds-btn-primary-bg-hover);
+    box-shadow: var(--ds-btn-primary-shadow-hover);
+  }
+
+  &:hover:not(:disabled) .login-page__submit-icon {
+    transform: translateX(3px);
+  }
+
+  &:active:not(:disabled) {
+    background: var(--ds-btn-primary-bg-active);
+    transform: translateY(1px);
+  }
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--ds-shadow-focus-ring);
+  }
+
+  &:disabled {
+    background: var(--ds-btn-disabled-bg);
+    color: var(--ds-btn-disabled-text);
+    cursor: not-allowed;
+  }
 }
 
+.login-page__submit-icon {
+  transition: transform var(--ds-duration-fast) var(--ds-ease-standard);
+}
+
+.login-page__hint {
+  margin: 0;
+  font-size: var(--ds-caption-size);
+  line-height: var(--ds-caption-line-height);
+  color: var(--ds-text-on-dark-muted);
+  text-align: center;
+}

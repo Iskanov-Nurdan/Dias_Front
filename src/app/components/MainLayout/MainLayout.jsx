@@ -5,7 +5,7 @@ import { useAuth } from '../../../features/auth';
 import { ACCESS_LABELS } from '../../../shared/config/constants';
 import { NavIcons as Icons, ACCESS_NAV_ICONS as PAGE_ICONS } from '../../../shared/config/navPageIcons';
 import { getNavSections } from '../../../shared/config/navigation';
-import { getPageTitle } from '../../../shared/config/pageTitles';
+import { getPageTitle, pageHasOwnTitle } from '../../../shared/config/pageTitles';
 import NetworkOfflineBanner from '../../../shared/ui/NetworkOfflineBanner/NetworkOfflineBanner';
 import { getStoredTheme, toggleStoredTheme, Theme } from '../../../shared/lib/theme';
 import { DiasLogo } from '../../../shared/ui';
@@ -13,7 +13,14 @@ import './MainLayout.scss';
 
 const SIDEBAR_COLLAPSED_KEY = 'dias_sidebar_collapsed';
 
-const SidebarContent = memo(({ collapsed, inDrawer, navRows, currentPath, displayName, roleName, toggleCollapsed, handleLogout, onCloseDrawer }) => (
+const initialsOf = (name) => {
+  const words = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return '?';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+};
+
+const SidebarContent = memo(({ collapsed, inDrawer, navGroups, currentPath, displayName, roleName, toggleCollapsed, handleLogout, onCloseDrawer }) => (
   <div className={`main-layout__sidebar-inner${inDrawer ? ' main-layout__sidebar-inner--drawer' : ''}`}>
     <div className="main-layout__logo-row">
       <div className="main-layout__logo">
@@ -44,33 +51,40 @@ const SidebarContent = memo(({ collapsed, inDrawer, navRows, currentPath, displa
 
     <div className="main-layout__nav-wrap">
       <nav className="main-layout__nav" aria-label="Главное меню">
-        {navRows.map((item) => {
-          const isActive = currentPath === item.path || currentPath.startsWith(`${item.path}/`);
-          const IconComp = item.Icon;
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`main-layout__link${isActive ? ' main-layout__link--active' : ''}`}
-              title={collapsed && !inDrawer ? item.label : undefined}
-            >
-              {IconComp && (
-                <span className="main-layout__link-icon">
-                  <IconComp />
-                </span>
-              )}
-              {(!collapsed || inDrawer) && (
-                <span className="main-layout__link-label">{item.label}</span>
-              )}
-            </Link>
-          );
-        })}
+        {navGroups.map((group, groupIndex) => (
+          <div className="main-layout__nav-group" key={group.title || groupIndex}>
+            {group.title && (!collapsed || inDrawer) && (
+              <span className="main-layout__nav-group-title">{group.title}</span>
+            )}
+            {group.items.map((item) => {
+              const isActive = currentPath === item.path || currentPath.startsWith(`${item.path}/`);
+              const IconComp = item.Icon;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`main-layout__link${isActive ? ' main-layout__link--active' : ''}`}
+                  title={collapsed && !inDrawer ? item.label : undefined}
+                >
+                  {IconComp && (
+                    <span className="main-layout__link-icon">
+                      <IconComp />
+                    </span>
+                  )}
+                  {(!collapsed || inDrawer) && (
+                    <span className="main-layout__link-label">{item.label}</span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
     </div>
 
     <div className="main-layout__user-card">
       <div className="main-layout__user-avatar" aria-hidden="true">
-        <Icons.User />
+        {initialsOf(displayName)}
       </div>
       {(!collapsed || inDrawer) && (
         <div className="main-layout__user-info">
@@ -139,8 +153,8 @@ const MainLayout = () => {
 
   const accesses = Array.isArray(user?.accesses) ? user.accesses : [];
 
-  const navRows = useMemo(() => {
-    const rows = [];
+  const navGroups = useMemo(() => {
+    const groups = [];
     for (const section of getNavSections()) {
       const links = section.links.filter((l) => {
         if (Array.isArray(l.accessAnyKeys) && l.accessAnyKeys.length > 0) {
@@ -148,18 +162,24 @@ const MainLayout = () => {
         }
         return accesses.includes(l.accessKey);
       });
-      for (const l of links) {
-        const iconKey = l.iconKey || l.accessKey;
-        rows.push({
-          path: l.path,
-          accessKey: l.accessKey,
-          label: l.label || ACCESS_LABELS[l.accessKey] || l.accessKey,
-          Icon: PAGE_ICONS[iconKey] || null,
-        });
-      }
+      if (!links.length) continue;
+      groups.push({
+        title: section.title,
+        items: links.map((l) => {
+          const iconKey = l.iconKey || l.accessKey;
+          return {
+            path: l.path,
+            accessKey: l.accessKey,
+            label: l.label || ACCESS_LABELS[l.accessKey] || l.accessKey,
+            Icon: PAGE_ICONS[iconKey] || null,
+          };
+        }),
+      });
     }
-    return rows;
+    return groups;
   }, [accesses]);
+
+  const navRows = useMemo(() => navGroups.flatMap((g) => g.items), [navGroups]);
 
   const handleLogout = async () => {
     await logout();
@@ -174,6 +194,7 @@ const MainLayout = () => {
       location.pathname === item.path || location.pathname.startsWith(`${item.path}/`),
   );
   const pageTitle = getPageTitle(location.pathname, currentPage?.label);
+  const showHeaderTitle = !pageHasOwnTitle(location.pathname);
 
   return (
     <div className={`main-layout${collapsed ? ' main-layout--collapsed' : ''}`}>
@@ -182,7 +203,7 @@ const MainLayout = () => {
         <SidebarContent
           collapsed={collapsed}
           inDrawer={false}
-          navRows={navRows}
+          navGroups={navGroups}
           currentPath={location.pathname}
           displayName={displayName}
           roleName={roleName}
@@ -203,7 +224,7 @@ const MainLayout = () => {
         <SidebarContent
           collapsed={collapsed}
           inDrawer
-          navRows={navRows}
+          navGroups={navGroups}
           currentPath={location.pathname}
           displayName={displayName}
           roleName={roleName}
@@ -224,7 +245,7 @@ const MainLayout = () => {
           >
             <Icons.Menu />
           </button>
-          <h1 className="main-layout__page-title">{pageTitle}</h1>
+          {showHeaderTitle && <h1 className="main-layout__page-title">{pageTitle}</h1>}
           <button
             type="button"
             className="main-layout__theme-toggle"

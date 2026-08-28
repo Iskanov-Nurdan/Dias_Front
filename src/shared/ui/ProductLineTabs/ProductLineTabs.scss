@@ -6,27 +6,43 @@
  * страницы (Остатки/История, Каталог марок и т.п.): сегмент-контрол с заливкой
  * активной кнопки, а не общий стиль ERP-вкладок (._system-ui.scss) с подчёркиванием.
  */
+// A real category switcher, not a faded link row: visible resting-state
+// border (not just a tinted background), larger touch targets, and an
+// accent-filled (not neutral) active pill so the chosen product line reads
+// as a deliberate choice rather than "which link is slightly bolder".
 .product-line-tabs {
   display: inline-flex;
   width: auto;
   min-height: auto;
-  margin: 0 0 var(--space-4);
-  padding: 3px;
-  border: none;
-  border-bottom: none;
-  border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--text) 6%, transparent);
+  margin: 0 0 var(--space-5);
+  padding: 4px;
+  border: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
   box-sizing: border-box;
 
   .chemistry-tabs__tab {
     flex: 0 0 auto;
-    min-height: 34px;
-    padding: var(--space-2) var(--space-4);
-    border-radius: var(--radius-md);
+    min-width: 0;
+    min-height: 40px;
+    padding: var(--space-2) var(--space-5);
+    border-radius: var(--radius-lg);
+    font-size: var(--font-body);
     font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition:
+      background var(--transition-fast),
+      color var(--transition-fast),
+      box-shadow var(--transition-fast);
 
     &:hover {
-      background: color-mix(in srgb, var(--text) 5%, transparent);
+      background: var(--bg-hover);
+      color: var(--text);
     }
 
     svg {
@@ -35,17 +51,18 @@
   }
 
   .chemistry-tabs__tab--active {
-    background: var(--surface);
-    color: var(--text);
+    background: var(--primary);
+    color: #fff;
     font-weight: var(--weight-semibold);
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-accent, var(--shadow-sm));
 
     &::after {
       display: none;
     }
 
     &:hover {
-      background: var(--surface);
+      background: var(--primary-hover);
+      color: #fff;
     }
   }
 }
@@ -56,6 +73,7 @@
 
     .chemistry-tabs__tab {
       flex: 1 1 0;
+      padding: var(--space-2) var(--space-3);
     }
   }
 }

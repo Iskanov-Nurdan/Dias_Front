@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { ImagePlus, Plus, Trash2, X, UserPlus, User, Ticket, CreditCard, Camera, SlidersHorizontal, MessageSquare, Check, Dumbbell, UserCheck, Clock, Tag } from 'lucide-react';
+import { Plus, Trash2, X, UserPlus, User, Ticket, CreditCard, Wallet, SlidersHorizontal, MessageSquare, Check, Dumbbell, UserCheck, Clock, Tag } from 'lucide-react';
 import { useToast } from '../../../app/providers/ToastProvider';
 import { Select, SubmitButton, ConfirmModal, PhoneInput, MoneyInput } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
@@ -8,12 +8,10 @@ import { formatMoney, isClientPaid } from '../../../shared/constants/common';
 import { isPeriodClosedError } from '../../../shared/lib/apiError';
 import {
   createOneTimePayment,
-  deleteClientPhoto,
   deleteOneTimePayment,
   fetchClientOneTimePayments,
-  fetchClientPhotos,
 } from '../api';
-import { CLIENT_PHOTO_KIND_OPTIONS, getClientPhotoKindLabel } from '../lib/clientPhotos';
+import { CLIENT_PHOTO_KIND_OPTIONS } from '../lib/clientPhotos';
 import { fetchTrainerSchedule } from '../../sports-trainers/api';
 import {
   flattenScheduleToSlotOptions,
@@ -45,6 +43,26 @@ const FIELD_LABELS = {
   paid:          'Оплачено',
   trainingSlot:  'Время занятия',
   training_slot: 'Время занятия',
+};
+
+// Поле API → ключ секции формы (для автоскролла/подсветки при ошибке с бэка)
+const FIELD_SECTION_KEY = {
+  fio:           'personal',
+  phone:         'personal',
+  sportId:       'subscription',
+  sport_id:      'subscription',
+  trainerId:     'subscription',
+  trainer_id:    'subscription',
+  dateStart:     'subscription',
+  date_start:    'subscription',
+  clientType:    'subscription',
+  client_type:   'subscription',
+  trainingSlot:  'subscription',
+  training_slot: 'subscription',
+  price:         'payment',
+  paid:          'payment',
+  paymentKind:   'paymentKind',
+  payment_kind:  'paymentKind',
 };
 
 // Парсит строку "sportId: Текст. trainerId: Текст." → [{field, label, message}]
@@ -160,14 +178,48 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const [oneTimeAdding, setOneTimeAdding] = useState(false);
   const [confirmDeleteOneTime, setConfirmDeleteOneTime] = useState(null);
   const [deletingOneTimeId, setDeletingOneTimeId] = useState(null);
-  const [confirmDeletePhoto, setConfirmDeletePhoto] = useState(null);
+  const [paymentKind, setPaymentKind] = useState('');
+  const paymentKindRef = useRef(null);
+  const personalSectionRef = useRef(null);
+  const subscriptionSectionRef = useRef(null);
+  const paymentSectionRef = useRef(null);
+  const [highlightSection, setHighlightSection] = useState(null);
+  const highlightTimeoutRef = useRef(null);
 
-  const photoInputRef = useRef(null);
-  const [serverPhotos, setServerPhotos] = useState([]);
-  const [photosLoading, setPhotosLoading] = useState(false);
-  const [photoDeletingId, setPhotoDeletingId] = useState(null);
-  const [pendingPhotos, setPendingPhotos] = useState([]);
-  const [defaultPhotoKind, setDefaultPhotoKind] = useState('receipt');
+  const focusSection = (ref, key) => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlightSection(key);
+    if (highlightTimeoutRef.current) window.clearTimeout(highlightTimeoutRef.current);
+    highlightTimeoutRef.current = window.setTimeout(() => {
+      setHighlightSection((cur) => (cur === key ? null : cur));
+    }, 1600);
+  };
+
+  const sectionClass = (key) =>
+    `client-form-modal__section${highlightSection === key ? ' client-form-modal__section--highlight' : ''}`;
+
+  const sectionRefsByKey = {
+    personal: personalSectionRef,
+    subscription: subscriptionSectionRef,
+    payment: paymentSectionRef,
+    paymentKind: paymentKindRef,
+  };
+  /** Порядок секций сверху вниз, как они идут в форме — определяет, к какому полю скроллить первым. */
+  const SECTION_ORDER = ['personal', 'subscription', 'payment', 'paymentKind'];
+
+  /** Ошибка с бэка (после неудачного сохранения) — скроллим к самому верхнему по форме невалидному полю, а не к тому, что бэк перечислил первым. */
+  useEffect(() => {
+    if (!error) return;
+    const parsed = parseApiError(error);
+    if (!parsed?.length) return;
+    const keysWithErrors = new Set(
+      parsed.map(({ field }) => FIELD_SECTION_KEY[field]).filter(Boolean)
+    );
+    const topKey = SECTION_ORDER.find((k) => keysWithErrors.has(k));
+    const ref = topKey ? sectionRefsByKey[topKey] : null;
+    if (ref) focusSection(ref, topKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error]);
 
   useEffect(() => {
     if (!client?.id || clientType !== 'one-time') {
@@ -199,40 +251,8 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
     if (clientType !== 'one-time') setConfirmDeleteOneTime(null);
   }, [clientType]);
 
-  useEffect(() => {
-    return () => {
-      pendingPhotos.forEach((p) => {
-        if (p.previewUrl) URL.revokeObjectURL(p.previewUrl);
-      });
-    };
-  }, [pendingPhotos]);
-
   /** Только смена клиента (id / новая карточка), не каждый новый объект-ссылка — иначе поле цены постоянно сбрасывается и кажется «нерабочим». */
   const clientFormSyncKey = client?.id != null && client?.id !== '' ? String(client.id) : 'new';
-
-  useEffect(() => {
-    setPendingPhotos([]);
-    setServerPhotos([]);
-    if (!client?.id) {
-      setPhotosLoading(false);
-      return undefined;
-    }
-    let cancelled = false;
-    setPhotosLoading(true);
-    fetchClientPhotos(client.id, null)
-      .then((res) => {
-        if (!cancelled) setServerPhotos(res?.items ?? []);
-      })
-      .catch(() => {
-        if (!cancelled) setServerPhotos([]);
-      })
-      .finally(() => {
-        if (!cancelled) setPhotosLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [clientFormSyncKey, client?.id]);
 
   useEffect(() => {
     if (!client) return;
@@ -267,6 +287,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
     setPaid(isClientPaid(client));
     setInstallments(getInitialInstallmentRows(client));
     setGender(client.gender || '');
+    setPaymentKind(client.paymentKind ?? client.payment_kind ?? '');
     const { auto, manual } = parseComment(client.comment);
     setCommentAuto(auto);
     setCommentManual(manual);
@@ -547,56 +568,18 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
     }
   };
 
-  const handlePhotoFilesChange = (e) => {
-    const fl = e.target.files;
-    if (!fl?.length) return;
-    const next = Array.from(fl).map((file) => ({
-      _key: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      file,
-      kind: defaultPhotoKind,
-      previewUrl: URL.createObjectURL(file),
-    }));
-    setPendingPhotos((prev) => [...prev, ...next]);
-    e.target.value = '';
-  };
-
-  const removePendingPhoto = (_key) => {
-    setPendingPhotos((prev) => {
-      const row = prev.find((x) => x._key === _key);
-      if (row?.previewUrl) URL.revokeObjectURL(row.previewUrl);
-      return prev.filter((x) => x._key !== _key);
-    });
-  };
-
-  const updatePendingPhotoKind = (_key, kind) => {
-    setPendingPhotos((prev) => prev.map((x) => (x._key === _key ? { ...x, kind } : x)));
-  };
-
-  const handleDeleteServerPhoto = async (photo) => {
-    const cid = client?.id;
-    if (!cid || !photo?.id) return;
-    setPhotoDeletingId(photo.id);
-    try {
-      await deleteClientPhoto(cid, photo.id, null);
-      setServerPhotos((prev) => prev.filter((p) => p.id !== photo.id));
-      toast.success('Фото удалено');
-    } catch (err) {
-      toast.error(
-        err?.response?.data?.error?.message ??
-          err?.response?.data?.message ??
-          err?.message ??
-          'Не удалось удалить фото'
-      );
-    } finally {
-      setPhotoDeletingId(null);
-    }
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
     const built = buildActualPaymentsPayload(installments);
     if (!built.ok) {
       toast.error(built.message);
+      focusSection(paymentSectionRef, 'payment');
+      return;
+    }
+
+    if (!paymentKind) {
+      toast.error('Выберите способ оплаты');
+      focusSection(paymentKindRef, 'paymentKind');
       return;
     }
 
@@ -607,10 +590,12 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       const trOk = Number.isFinite(tr) && tr >= 0;
       if (!clubOk || !trOk) {
         toast.error('Укажите корректные суммы: клуб и тренеру');
+        focusSection(paymentSectionRef, 'payment');
         return;
       }
       if (Math.round(club + tr) <= 0) {
         toast.error('Общая сумма должна быть больше ноля');
+        focusSection(paymentSectionRef, 'payment');
         return;
       }
     }
@@ -652,8 +637,6 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       paymentsPayload.actualPayments = built.payload;
     }
 
-    const photoUploads = pendingPhotos.map(({ file, kind }) => ({ file, kind })).filter((x) => x.file);
-
     onSave({
       fio,
       phone,
@@ -670,7 +653,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       gender: gender || undefined,
       comment: commentValue,
       ...trainingPayload,
-      ...(photoUploads.length > 0 ? { photoUploads } : {}),
+      paymentKind,
     });
   };
 
@@ -711,7 +694,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
         })()}
         <form onSubmit={handleSubmit} className="client-form-modal__form">
           <div className="client-form-modal__scroll">
-          <div className="client-form-modal__section">
+          <div className={sectionClass('personal')} ref={personalSectionRef}>
             <h3 className="client-form-modal__section-title"><User size={14} /> Личные данные</h3>
             <div className="client-form-modal__row">
               <label className="client-form-modal__label">
@@ -733,12 +716,12 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               </label>
             </div>
           </div>
-          <div className="client-form-modal__section">
+          <div className={sectionClass('subscription')} ref={subscriptionSectionRef}>
             <h3 className="client-form-modal__section-title"><Ticket size={14} /> Абонемент</h3>
             <div className="client-form-modal__row">
               <label className="client-form-modal__label">
                 <span className="client-form-modal__label-text">Вид спорта</span>
-              <Select value={String(sportId)} onChange={(v) => { setSportId(v); setTrainerId(''); setTrainingSlotKey(''); }} options={[{ value: '', label: '—' }, ...(sports || []).map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="—" className="client-form-modal__select" icon={<Dumbbell size={15} />} />
+              <Select value={String(sportId)} onChange={(v) => { setSportId(v); setTrainerId(''); setTrainingSlotKey(''); setHighlightSection((cur) => (cur === 'subscription' ? null : cur)); }} options={[{ value: '', label: '—' }, ...(sports || []).map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="—" className="client-form-modal__select" icon={<Dumbbell size={15} />} />
             </label>
             <label className="client-form-modal__label">
               <span className="client-form-modal__label-text">Тренер</span>
@@ -747,6 +730,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                 onChange={(v) => {
                   setTrainerId(v);
                   setTrainingSlotKey('');
+                  setHighlightSection((cur) => (cur === 'subscription' ? null : cur));
                 }}
                 options={[{ value: '', label: '—' }, ...(trainersList || []).map((t) => ({ value: String(t.id), label: t.fio || '' }))]}
                 placeholder="—"
@@ -798,7 +782,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               </label>
             </div>
           </div>
-          <div className="client-form-modal__section">
+          <div className={sectionClass('payment')} ref={paymentSectionRef}>
             <h3 className="client-form-modal__section-title"><CreditCard size={14} /> Оплата</h3>
             <div className="client-form-modal__row">
               <label className="client-form-modal__label client-form-modal__label--full">
@@ -984,107 +968,24 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
             )}
           </div>
 
-          <div className="client-form-modal__section">
-            <h3 className="client-form-modal__section-title"><Camera size={14} /> Фото для сверки</h3>
-            <div className="client-form-modal__row client-form-modal__row--photos-toolbar">
-              <label className={`client-form-modal__label${client?.id ? '' : ' client-form-modal__label--full'}`}>
-                <span className="client-form-modal__label-text">Тип для новых фото <span className="form-label-required" aria-hidden="true">*</span></span>
+          <div className={sectionClass('paymentKind')} ref={paymentKindRef}>
+            <h3 className="client-form-modal__section-title"><Wallet size={14} /> Способ оплаты</h3>
+            <div className="client-form-modal__row">
+              <label className="client-form-modal__label client-form-modal__label--full">
+                <span className="client-form-modal__label-text">Способ оплаты <span className="form-label-required" aria-hidden="true">*</span></span>
                 <Select
-                  value={defaultPhotoKind}
-                  onChange={setDefaultPhotoKind}
+                  value={paymentKind}
+                  onChange={(v) => {
+                    setPaymentKind(v);
+                    setHighlightSection((cur) => (cur === 'paymentKind' ? null : cur));
+                  }}
                   options={CLIENT_PHOTO_KIND_OPTIONS}
+                  placeholder="Выберите..."
                   className="client-form-modal__select"
-                  icon={<Camera size={15} />}
+                  icon={<Wallet size={15} />}
                 />
               </label>
-              {client?.id && (
-                <div className="client-form-modal__photos-add-wrap">
-                  <input
-                    ref={photoInputRef}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="client-form-modal__photos-file-input"
-                    onChange={handlePhotoFilesChange}
-                  />
-                  <button
-                    type="button"
-                    className="client-form-modal__photos-add-btn"
-                    onClick={() => photoInputRef.current?.click()}
-                  >
-                    <ImagePlus size={18} strokeWidth={1.75} aria-hidden />
-                    Добавить фото
-                  </button>
-                </div>
-              )}
             </div>
-
-            {client?.id ? (
-              photosLoading ? (
-                <p className="client-form-modal__photos-loading">Загрузка фото…</p>
-              ) : serverPhotos.length > 0 ? (
-                <ul className="client-form-modal__photos-grid" aria-label="Сохранённые фото">
-                  {serverPhotos.map((ph) => (
-                    <li key={ph.id} className="client-form-modal__photos-item">
-                      <a
-                        href={ph.url || '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="client-form-modal__photos-thumb-link"
-                      >
-                        <img src={ph.url} alt="" className="client-form-modal__photos-thumb" />
-                      </a>
-                      <span className="client-form-modal__photos-kind">{getClientPhotoKindLabel(ph.kind)}</span>
-                      <button
-                        type="button"
-                        className="client-form-modal__photos-remove"
-                        onClick={() => setConfirmDeletePhoto(ph)}
-                        disabled={photoDeletingId === ph.id}
-                        aria-label="Удалить фото"
-                        title="Удалить"
-                      >
-                        <Trash2 size={16} strokeWidth={1.75} />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="client-form-modal__photos-empty">Пока нет загруженных фото</p>
-              )
-            ) : null}
-
-            {pendingPhotos.length > 0 ? (
-              <div className="client-form-modal__photos-pending">
-                {!compactHints && (
-                  <span className="client-form-modal__photos-pending-title">Будут загружены при сохранении</span>
-                )}
-                <ul className="client-form-modal__photos-grid" aria-label="Очередь загрузки">
-                  {pendingPhotos.map((row) => (
-                    <li key={row._key} className="client-form-modal__photos-item client-form-modal__photos-item--pending">
-                      <span className="client-form-modal__photos-thumb-wrap">
-                        <img src={row.previewUrl} alt="" className="client-form-modal__photos-thumb" />
-                      </span>
-                      <Select
-                        value={row.kind}
-                        onChange={(v) => updatePendingPhotoKind(row._key, v)}
-                        options={CLIENT_PHOTO_KIND_OPTIONS}
-                        className="client-form-modal__select client-form-modal__photos-pending-kind"
-                        icon={<Camera size={15} />}
-                      />
-                      <button
-                        type="button"
-                        className="client-form-modal__photos-remove"
-                        onClick={() => removePendingPhoto(row._key)}
-                        aria-label="Убрать из очереди"
-                        title="Убрать"
-                      >
-                        <Trash2 size={16} strokeWidth={1.75} />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
           </div>
 
           <details
@@ -1159,16 +1060,6 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
             confirmText="Удалить"
             onConfirm={() => handleDeleteOneTimePayment(confirmDeleteOneTime)}
             onCancel={() => setConfirmDeleteOneTime(null)}
-            danger
-          />
-        )}
-        {confirmDeletePhoto && (
-          <ConfirmModal
-            title="Удалить фото?"
-            message="Это действие нельзя отменить."
-            confirmText="Удалить"
-            onConfirm={() => handleDeleteServerPhoto(confirmDeletePhoto)}
-            onCancel={() => setConfirmDeletePhoto(null)}
             danger
           />
         )}

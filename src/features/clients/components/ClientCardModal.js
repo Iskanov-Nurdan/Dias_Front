@@ -1,13 +1,13 @@
 import React, { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Phone, Calendar, User, Dumbbell, Clock, CreditCard, Camera, MessageSquare, Snowflake, Pencil, Trash2 } from 'lucide-react';
+import { X, Phone, Calendar, User, Dumbbell, Clock, CreditCard, MessageSquare, Snowflake, Pencil, Trash2 } from 'lucide-react';
 import { formatMoney, isClientPaid } from '../../../shared/constants/common';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { useToast } from '../../../app/providers/ToastProvider';
 import { getApiErrorMessage, isPeriodClosedError } from '../../../shared/lib/apiError';
 import { WEEKDAYS } from '../../sports-trainers/scheduleConstants';
 import { getClientPaymentsForCard } from '../lib/clientActualPayments';
-import { createClientFreeze, deleteClientFreeze, fetchClient, fetchClientPhotos, updateClientFreeze } from '../api';
+import { createClientFreeze, deleteClientFreeze, fetchClient, updateClientFreeze } from '../api';
 import { getClientPhotoKindLabel } from '../lib/clientPhotos';
 import {
   formatFreezeDateLabel,
@@ -15,7 +15,7 @@ import {
   freezeStatusLabel,
   getFreezeFromClient,
 } from '../lib/clientFreezeNormalize';
-import { ConfirmModal, Spinner } from '../../../shared/ui';
+import { ConfirmModal } from '../../../shared/ui';
 import ClientFreezeModal from './ClientFreezeModal';
 import './ClientCardModal.scss';
 
@@ -64,23 +64,12 @@ const ClientCardModal = ({
   const toast = useToast();
   useModalEffect(!!client, onClose);
 
-  const [cardPhotos, setCardPhotos] = React.useState([]);
-  const [cardPhotosLoading, setCardPhotosLoading] = React.useState(false);
   const [freezeModalMode, setFreezeModalMode] = useState(null);
   const [freezeFormError, setFreezeFormError] = useState(null);
   const [freezeSaving, setFreezeSaving] = useState(false);
   const [deleteFreezeOpen, setDeleteFreezeOpen] = useState(false);
 
-  React.useEffect(() => {
-    if (!client?.id) { setCardPhotos([]); return undefined; }
-    let cancelled = false;
-    setCardPhotosLoading(true);
-    fetchClientPhotos(client.id, null)
-      .then((res) => { if (!cancelled) setCardPhotos(res?.items ?? []); })
-      .catch(() => { if (!cancelled) setCardPhotos([]); })
-      .finally(() => { if (!cancelled) setCardPhotosLoading(false); });
-    return () => { cancelled = true; };
-  }, [client?.id]);
+  const paymentKindLabel = getClientPhotoKindLabel(client?.paymentKind ?? client?.payment_kind ?? '') || '';
 
   const applyClientFromServer = useCallback(async (payload) => {
     let next = payload;
@@ -219,6 +208,12 @@ const ClientCardModal = ({
                   {paid ? 'Оплачено' : 'Не оплачено'}
                 </span>
               </div>
+              {paymentKindLabel && (
+                <div className="ccm__info-row">
+                  <span className="ccm__info-label">Способ оплаты</span>
+                  <span className="ccm__info-val">{paymentKindLabel}</span>
+                </div>
+              )}
               {paymentParts.length > 0 && (
                 <div className="ccm__info-row ccm__info-row--col">
                   <span className="ccm__info-label">Частичные оплаты</span>
@@ -299,27 +294,6 @@ const ClientCardModal = ({
               </div>
             )}
           </section>
-
-          {/* ── Фото ── */}
-          {(cardPhotosLoading || cardPhotos.length > 0) && (
-            <section className="ccm__section">
-              <h3 className="ccm__section-title"><Camera size={13} />Фото для сверки</h3>
-              {cardPhotosLoading ? (
-                <Spinner />
-              ) : (
-                <ul className="ccm__photos">
-                  {cardPhotos.map((ph) => (
-                    <li key={ph.id}>
-                      <a href={ph.url || '#'} target="_blank" rel="noopener noreferrer" className="ccm__photo-link">
-                        <img src={ph.url} alt="" className="ccm__photo-thumb" />
-                        <span className="ccm__photo-kind">{getClientPhotoKindLabel(ph.kind)}</span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          )}
 
           {/* ── Комментарий ── */}
           {client.comment && (

@@ -212,6 +212,18 @@
   background: var(--color-surface-secondary);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.client-form-modal__section--highlight {
+  border-color: var(--color-danger, #e5484d);
+  box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.18);
+  animation: client-form-modal-pulse 1.1s ease-in-out 1;
+}
+
+@keyframes client-form-modal-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.18); }
+  50% { box-shadow: 0 0 0 6px rgba(229, 72, 77, 0.28); }
 }
 
 .client-form-modal__section-title {

@@ -239,6 +239,43 @@
       margin: 0;
     }
   }
+
+  // Список секций/тренеров теперь только из CRM — поясняем, почему нет кнопки «+Добавить»
+  &__crm-note {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    text-align: right;
+    max-width: 320px;
+  }
+}
+
+.tpe-item__hidden-badge {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tpe-publish-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-primary);
+    cursor: pointer;
+  }
 }
 
 // ── Card wrapper ──────────────────────────────────────────────────────────────
@@ -873,6 +910,27 @@ select.tpe-select {
     &:hover { opacity: 0.75; }
   }
 
+  // Секция подключена к CRM — расписание только на просмотр, источник истины сайт (не таплинк)
+  &__live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-primary);
+
+    .tpe-spin { animation: loading-spin 0.7s linear infinite; }
+  }
+
+  &__live-note {
+    margin: 0 0 10px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--color-text-muted);
+  }
+
   &__empty {
     font-size: 12px;
     color: var(--color-text-muted);
@@ -908,6 +966,49 @@ select.tpe-select {
     width: 24px;
     height: 24px;
     padding: 0;
+  }
+
+  // Живой график из CRM — только категория редактируема, дни/время/тренер — просмотр
+  &--readonly {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  &__age-select {
+    width: 150px;
+    flex-shrink: 0;
+  }
+}
+
+.tpe-sched-readonly {
+  &__chip {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 6px;
+    background: rgba(229, 72, 77, 0.12);
+    border: 1px solid rgba(229, 72, 77, 0.3);
+    color: var(--color-primary);
+    font-size: 11px;
+    font-weight: 700;
+
+    &--days { background: var(--color-surface-secondary); border-color: var(--color-border); color: var(--color-text-muted); }
+  }
+
+  &__time {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  &__trainers {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--color-text-muted);
   }
 }
 

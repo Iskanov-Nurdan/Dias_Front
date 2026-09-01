@@ -252,3 +252,16 @@
     color: var(--color-primary);
   }
 }
+
+// Ненажимаемый заголовок группы опций (напр. дни занятия — общие для нескольких строк ниже).
+// Компактнее обычного пункта — иначе группировка увеличивает общую высоту списка вместо экономии.
+.select__group-header {
+  display: block;
+  padding: 6px 10px 3px;
+  font-size: 11px;
+  color: var(--color-text-muted, inherit);
+
+  &:first-child {
+    padding-top: 2px;
+  }
+}

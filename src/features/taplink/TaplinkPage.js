@@ -1,8 +1,95 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import './TaplinkPage.scss';
 import { loadTaplinkData, loadTaplinkDataAsync, hasSessionData } from './taplinkStore';
-import { BACKEND_ENABLED, submitBooking } from './api';
+import { BACKEND_ENABLED, submitBooking, fetchPublicTrainerSchedule } from './api';
+import { scheduleFromApiResponse, groupScheduleRows, WEEKDAYS } from '../sports-trainers/scheduleConstants';
 import Select from '../../shared/ui/Select';
+
+/**
+ * Живой график набора тренеров (CRM) — общая логика для формы записи и карточек секции/тренера.
+ * Возрастная категория приходит прямо из графика тренера (задаётся в CRM «Настройка графика»),
+ * а не отдельной картой на стороне Taplink — один источник истины, разъехаться не может.
+ */
+function useLiveScheduleRows(trainerRefs) {
+  const key = (trainerRefs || []).map(t => t.crmTrainerId).filter(Boolean).join(',');
+  const [state, setState] = useState({ loading: false, rows: [] });
+
+  useEffect(() => {
+    if (!key) { setState({ loading: false, rows: [] }); return undefined; }
+    const ids = key.split(',');
+    const byId = new Map((trainerRefs || []).map(t => [String(t.crmTrainerId), t.name]));
+    let cancelled = false;
+    setState(s => ({ loading: true, rows: s.rows }));
+    Promise.all(ids.map(id => fetchPublicTrainerSchedule(id, null).then(d => ({ id, d })).catch(() => null)))
+      .then(results => {
+        if (cancelled) return;
+        const rows = [];
+        for (const r of results) {
+          if (!r) continue;
+          const scheduleRows = scheduleFromApiResponse(r.d || {});
+          for (const g of groupScheduleRows(scheduleRows)) {
+            const dayObjs = g.weekdays.map(wd => WEEKDAYS.find(w => w.weekday === wd) ?? { weekday: wd, short: String(wd) });
+            for (const int of g.intervals) {
+              rows.push({
+                trainerId: r.id,
+                trainerName: byId.get(String(r.id)) || '',
+                days: dayObjs,
+                start: int.start,
+                end: int.end,
+                weekday: g.weekdays[0],
+                ageGroup: int.ageGroup || '',
+              });
+            }
+          }
+        }
+        rows.sort((a, b) => a.weekday - b.weekday || a.start.localeCompare(b.start));
+        setState({ loading: false, rows });
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- key уже отражает состав trainerRefs
+  }, [key]);
+
+  return state;
+}
+
+/** Бейджи дней — общий рендер для живых слотов CRM (weekday-объекты) и ручного расписания (строки "Пн"). */
+const DayChips = ({ days }) => (
+  <>
+    {(days || []).map((d, i) => (
+      <span key={typeof d === 'object' ? d.weekday : `${d}-${i}`} className="tp-slot-day-chip">
+        {typeof d === 'object' ? d.short : d}
+      </span>
+    ))}
+  </>
+);
+
+/** Дни группы (общие для нескольких строк времени ниже) — бейджи в стиле taplink-чипов. */
+const TpSlotDaysHeader = ({ days, group }) => (
+  <span className="tp-slot-days-header">
+    {group && <span className="tp-slot-group-chip">{group}</span>}
+    <DayChips days={days} />
+  </span>
+);
+
+/** Один слот: (группа +) дни + время — когда у набора дней всего один интервал.
+ * `end` необязателен — ручное расписание хранит время одной строкой ("18:00–20:00"), а не парой start/end. */
+const TpSlotOption = ({ days, group, start, end }) => (
+  <span className="tp-slot-option">
+    {group && <span className="tp-slot-group-chip">{group}</span>}
+    <span className="tp-slot-days">
+      <DayChips days={days} />
+    </span>
+    <span className="tp-slot-time">{end ? `${start}–${end}` : start}</span>
+  </span>
+);
+
+/** Время внутри группы дней — без повтора бейджа дня. */
+const TpSlotTimeRow = ({ start, end, group }) => (
+  <span className="tp-slot-time-row">
+    {group && <span className="tp-slot-group-chip tp-slot-group-chip--inline">{group}</span>}
+    {end ? `${start}–${end}` : start}
+  </span>
+);
 
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -81,6 +168,42 @@ const InstagramIcon = () => (
   </svg>
 );
 
+/** Компактный значок Instagram — для тесных мест (шапка карточки-слайдера). */
+const InstagramBadge = ({ username, size = 'sm' }) => {
+  if (!username) return null;
+  return (
+    <a
+      href={`https://instagram.com/${username.replace('@', '')}`}
+      className={`tp-ig-badge tp-ig-badge--${size}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Instagram: @${username.replace('@', '')}`}
+      title={`@${username.replace('@', '')}`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <InstagramIcon />
+    </a>
+  );
+};
+
+/** Подписанная кнопка Instagram — для детальной карточки, где важно, что это кликабельная ссылка. */
+const InstagramLink = ({ username }) => {
+  if (!username) return null;
+  const handle = username.replace('@', '');
+  return (
+    <a
+      href={`https://instagram.com/${handle}`}
+      className="tp-ig-link"
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <InstagramIcon />
+      <span>@{handle}</span>
+    </a>
+  );
+};
+
 const TikTokIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
     <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/>
@@ -90,6 +213,54 @@ const TikTokIcon = () => (
 const MapPinIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+  </svg>
+);
+
+const UserIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+  </svg>
+);
+
+const PhoneFieldIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+  </svg>
+);
+
+const DumbbellIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5"/><path d="M2 8.5v7M22 8.5v7M4.5 6v12M19.5 6v12"/>
+  </svg>
+);
+
+const WhistleIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="9" cy="15" r="6"/><path d="M14.5 10.5 21 4M21 4h-4M21 4v4"/><path d="M9 12v3l2 1.5"/>
+  </svg>
+);
+
+const ClockFieldIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>
+  </svg>
+);
+
+const MessageIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+  </svg>
+);
+
+const AlertIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/>
+  </svg>
+);
+
+const CheckCircleIcon = () => (
+  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/>
   </svg>
 );
 
@@ -207,10 +378,13 @@ const TrainersSlider = ({ trainers, onDetails, onBook }) => {
     <div className="tp-slider" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <div key={animKey} className={`tp-tc tp-tc--${animKey === 0 ? 'init' : dir}`}>
 
-        {/* Шапка: секция + счётчик */}
+        {/* Шапка: секция + (инстаграм) + счётчик */}
         <div className="tp-tc__header">
           <span className="tp-tc__sport">{t.sportName}</span>
-          <span className="tp-tc__counter">{idx + 1} / {trainers.length}</span>
+          <div className="tp-tc__header-right">
+            <InstagramBadge username={t.instagram} />
+            <span className="tp-tc__counter">{idx + 1} / {trainers.length}</span>
+          </div>
         </div>
 
         {/* Фото */}
@@ -374,8 +548,17 @@ const AchievementsList = ({ items }) => {
 
 // ─── Sport Sheet (bottom) ─────────────────────────────────────────────────────
 
-const SportSheet = ({ sport, onClose, onBook }) => {
+const SportSheet = ({ sport, trainers = [], onClose, onBook }) => {
   const [openVideo, setOpenVideo] = useState(null);
+  const sportTrainers = trainers.filter(t => t.sportName === sport.name);
+  const { rows: liveRows } = useLiveScheduleRows(sportTrainers);
+  const scheduleRows = liveRows.map((r, i) => ({
+    id: i,
+    group: r.ageGroup,
+    days: r.days.map(d => d.short).join(', '),
+    time: `${r.start}–${r.end}`,
+    trainers: [r.trainerName],
+  }));
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -391,13 +574,13 @@ const SportSheet = ({ sport, onClose, onBook }) => {
         <h2 className="tp-sheet__title">{sport.name}</h2>
         <p className="tp-sheet__text">{sport.desc}</p>
 
-        {sport.schedule && sport.schedule.length > 0 && (
+        {scheduleRows.length > 0 && (
           <div className="tp-sheet__section">
             <h4 className="tp-sheet__sub">Расписание</h4>
             <ScheduleList
-              rows={sport.schedule}
-              blockKeyFor={row => (row.trainers?.length > 0 ? row.trainers.join(', ') : row.trainer) || ''}
-              blockLabelFor={row => (row.trainers?.length > 0 ? row.trainers.join(', ') : row.trainer) || null}
+              rows={scheduleRows}
+              blockKeyFor={row => row.trainers.join(', ')}
+              blockLabelFor={row => row.trainers.join(', ') || null}
             />
           </div>
         )}
@@ -425,7 +608,7 @@ const SportSheet = ({ sport, onClose, onBook }) => {
 
 // ─── Trainer Sheet (bottom) ───────────────────────────────────────────────────
 
-const TrainerSheet = ({ trainer, onClose, onBook, sports = [] }) => {
+const TrainerSheet = ({ trainer, onClose, onBook }) => {
   const [openVideo, setOpenVideo] = useState(null);
 
   useEffect(() => {
@@ -433,17 +616,14 @@ const TrainerSheet = ({ trainer, onClose, onBook, sports = [] }) => {
     return () => { document.body.style.overflow = ''; };
   }, []);
 
-  // Find schedule rows that belong to this trainer across all matching sports
-  const hasTrainer = (r) => {
-    const names = r.trainers?.length > 0 ? r.trainers : (r.trainer ? [r.trainer] : []);
-    return names.length === 0 || names.includes(trainer.name);
-  };
-  const trainerSchedule = sports
-    .filter(s => s.name === trainer.sportName || s.schedule?.some(r => {
-      const names = r.trainers?.length > 0 ? r.trainers : (r.trainer ? [r.trainer] : []);
-      return names.includes(trainer.name);
-    }))
-    .flatMap(s => (s.schedule || []).filter(hasTrainer).map(r => ({ ...r, sportName: s.name })));
+  const { rows: liveRows } = useLiveScheduleRows([trainer]);
+  const trainerSchedule = liveRows.map((r, i) => ({
+    id: i,
+    group: r.ageGroup,
+    days: r.days.map(d => d.short).join(', '),
+    time: `${r.start}–${r.end}`,
+    sportName: trainer.sportName,
+  }));
 
   return (
     <div className="tp-overlay" onClick={onClose}>
@@ -463,6 +643,8 @@ const TrainerSheet = ({ trainer, onClose, onBook, sports = [] }) => {
           <span className="tp-chip tp-chip--red">{trainer.sportName}</span>
           <span className="tp-chip">{trainer.experience} стажа</span>
         </div>
+
+        <InstagramLink username={trainer.instagram} />
 
         <p className="tp-sheet__text">{trainer.bio}</p>
 
@@ -558,9 +740,41 @@ const BookingModal = ({ onClose, initial = {}, dark, sports = [], trainers = [] 
     ? trainers.filter(t => t.sportName === form.sport)
     : [];
 
-  // Schedule slots for the selected sport → "Группа — Дни Время"
-  const selectedSport   = sports.find(s => s.name === form.sport);
-  const scheduleSlots   = selectedSport?.schedule || [];
+  // Тренер(ы), чей РЕАЛЬНЫЙ график из CRM нужно показать: конкретный выбранный тренер,
+  // либо (если тренер не выбран — «любой тренер») все тренеры этой секции.
+  const scheduleTrainerRefs = form.trainer
+    ? sportTrainers.filter(t => t.name === form.trainer)
+    : sportTrainers;
+  const { loading: liveLoading, rows: liveRows } = useLiveScheduleRows(scheduleTrainerRefs);
+
+  const preferredTimeOptions = useMemo(() => {
+    const byDaysKey = new Map();
+    for (const row of liveRows) {
+      const daysKey = row.days.map(d => d.weekday).join(',');
+      if (!byDaysKey.has(daysKey)) byDaysKey.set(daysKey, { days: row.days, items: [] });
+      byDaysKey.get(daysKey).items.push(row);
+    }
+    const out = [];
+    for (const g of byDaysKey.values()) {
+      const grouped = g.items.length > 1;
+      if (grouped) {
+        out.push({ header: true, key: `h-${g.days.map(d => d.weekday).join(',')}`, render: <TpSlotDaysHeader days={g.days} /> });
+      }
+      for (const row of g.items) {
+        const daysLabel = g.days.map(d => d.short).join(', ');
+        const label = [row.ageGroup, `${daysLabel} ${row.start}–${row.end}`].filter(Boolean).join(' — ');
+        out.push({
+          value: label,
+          label,
+          render: grouped
+            ? <TpSlotTimeRow start={row.start} end={row.end} group={row.ageGroup} />
+            : <TpSlotOption days={g.days} start={row.start} end={row.end} group={row.ageGroup} />,
+          triggerRender: <TpSlotOption days={g.days} start={row.start} end={row.end} group={row.ageGroup} />,
+        });
+      }
+    }
+    return out;
+  }, [liveRows]);
 
   const submit = async e => {
     e.preventDefault();
@@ -607,97 +821,116 @@ const BookingModal = ({ onClose, initial = {}, dark, sports = [], trainers = [] 
       <div className="tp-fs-modal__body">
         {done ? (
           <div className="tp-modal-done">
-            <div className="tp-modal-done__ic">✅</div>
+            <div className="tp-modal-done__ic"><CheckCircleIcon /></div>
             <h2 className="tp-modal-done__title">Заявка принята!</h2>
             <p className="tp-modal-done__text">
               Мы свяжемся с вами в течение часа для подтверждения записи.
             </p>
-            <button className="tp-btn tp-btn--red tp-btn--full" onClick={onClose}>
+            <button className="tp-btn tp-btn--red tp-btn--full tp-btn--lg" onClick={onClose}>
               Готово
             </button>
           </div>
         ) : (
           <>
             <div className="tp-fs-modal__hero">
-              <h2 className="tp-fs-modal__title">Запись на тренировку</h2>
               <p className="tp-fs-modal__sub">Оставьте заявку — мы перезвоним вам</p>
             </div>
 
             <form className="tp-form" onSubmit={submit} noValidate>
 
-              <div className="tp-field">
-                <label className="tp-field__label">ФИО *</label>
-                <input
-                  className={`tp-field__input${errors.name ? ' tp-field__input--err' : ''}`}
-                  type="text" placeholder="Бекматов Асан"
-                  value={form.name} onChange={set('name')}
-                  autoComplete="name"
-                />
-                {errors.name && <span className="tp-field__err">{errors.name}</span>}
+              <div className="tp-form__section">
+                <div className="tp-form__section-head">
+                  <UserIcon />
+                  <span>Контактные данные</span>
+                </div>
+
+                <div className="tp-field">
+                  <label className="tp-field__label">ФИО *</label>
+                  <div className="tp-field__control">
+                    <span className="tp-field__ic"><UserIcon /></span>
+                    <input
+                      className={`tp-field__input tp-field__input--ic${errors.name ? ' tp-field__input--err' : ''}`}
+                      type="text" placeholder="Бекматов Асан"
+                      value={form.name} onChange={set('name')}
+                      autoComplete="name"
+                    />
+                  </div>
+                  {errors.name && <span className="tp-field__err"><AlertIcon />{errors.name}</span>}
+                </div>
+
+                <div className="tp-field">
+                  <label className="tp-field__label">Телефон *</label>
+                  <div className="tp-field__control">
+                    <span className="tp-field__ic"><PhoneFieldIcon /></span>
+                    <input
+                      className={`tp-field__input tp-field__input--ic${errors.phone ? ' tp-field__input--err' : ''}`}
+                      type="tel" placeholder="+996 555 123 456"
+                      value={form.phone} onChange={set('phone')}
+                      autoComplete="tel"
+                    />
+                  </div>
+                  {errors.phone && <span className="tp-field__err"><AlertIcon />{errors.phone}</span>}
+                </div>
               </div>
 
-              <div className="tp-field">
-                <label className="tp-field__label">Телефон *</label>
-                <input
-                  className={`tp-field__input${errors.phone ? ' tp-field__input--err' : ''}`}
-                  type="tel" placeholder="+996 555 123 456"
-                  value={form.phone} onChange={set('phone')}
-                  autoComplete="tel"
-                />
-                {errors.phone && <span className="tp-field__err">{errors.phone}</span>}
+              <div className="tp-form__section">
+                <div className="tp-form__section-head">
+                  <WhistleIcon />
+                  <span>Детали тренировки</span>
+                </div>
+
+                <div className={`tp-field${errors.sport ? ' tp-field--err' : ''}`}>
+                  <label className="tp-field__label"><DumbbellIcon /> Вид спорта *</label>
+                  <Select
+                    value={form.sport}
+                    onChange={setSportSelect}
+                    placeholder="— Выберите секцию —"
+                    options={sports.map(s => ({ value: s.name, label: s.name }))}
+                  />
+                  {errors.sport && <span className="tp-field__err"><AlertIcon />{errors.sport}</span>}
+                </div>
+
+                <div className="tp-field">
+                  <label className="tp-field__label"><WhistleIcon /> Тренер <em>(необязательно)</em></label>
+                  <Select
+                    value={form.trainer}
+                    onChange={setSelectField('trainer')}
+                    disabled={!form.sport}
+                    placeholder={!form.sport ? '— Сначала выберите секцию —' : 'Любой тренер'}
+                    options={sportTrainers.map(t => ({ value: t.name, label: t.name }))}
+                  />
+                </div>
+
+                <div className="tp-field">
+                  <label className="tp-field__label"><ClockFieldIcon /> Удобное время занятий</label>
+                  <Select
+                    value={form.preferredTime}
+                    onChange={setSelectField('preferredTime')}
+                    disabled={!form.sport || liveLoading}
+                    placeholder={
+                      !form.sport ? '— Сначала выберите секцию —'
+                      : liveLoading ? 'Загрузка графика…'
+                      : !preferredTimeOptions.length ? '— Расписание не указано —'
+                      : '— Выберите время —'
+                    }
+                    options={preferredTimeOptions}
+                  />
+                </div>
               </div>
 
-              <div className={`tp-field${errors.sport ? ' tp-field--err' : ''}`}>
-                <label className="tp-field__label">Вид спорта *</label>
-                <Select
-                  value={form.sport}
-                  onChange={setSportSelect}
-                  placeholder="— Выберите секцию —"
-                  options={sports.map(s => ({ value: s.name, label: s.name }))}
-                />
-                {errors.sport && <span className="tp-field__err">{errors.sport}</span>}
-              </div>
-
-              <div className="tp-field">
-                <label className="tp-field__label">Тренер (необязательно)</label>
-                <Select
-                  value={form.trainer}
-                  onChange={setSelectField('trainer')}
-                  disabled={!form.sport}
-                  placeholder={!form.sport ? '— Сначала выберите секцию —' : 'Любой тренер'}
-                  options={sportTrainers.map(t => ({ value: t.name, label: t.name }))}
-                />
-              </div>
-
-              <div className="tp-field">
-                <label className="tp-field__label">Удобное время занятий</label>
-                <Select
-                  value={form.preferredTime}
-                  onChange={setSelectField('preferredTime')}
-                  disabled={!form.sport}
-                  placeholder={
-                    !form.sport           ? '— Сначала выберите секцию —'
-                    : !scheduleSlots.length ? '— Расписание не указано —'
-                    : '— Выберите время —'
-                  }
-                  options={scheduleSlots.map((slot, i) => ({
-                    value: `${slot.group} — ${slot.days} ${slot.time}`,
-                    label: `${slot.group} — ${slot.days} ${slot.time}`,
-                  }))}
-                />
-              </div>
-
-              <div className="tp-field">
-                <label className="tp-field__label">Комментарий</label>
-                <textarea
-                  className="tp-field__input tp-field__ta"
-                  placeholder="Уровень подготовки, пожелания, вопросы..."
-                  value={form.comment} onChange={set('comment')}
-                />
+              <div className="tp-form__section">
+                <div className="tp-field">
+                  <label className="tp-field__label"><MessageIcon /> Комментарий <em>(необязательно)</em></label>
+                  <textarea
+                    className="tp-field__input tp-field__ta"
+                    placeholder="Уровень подготовки, пожелания, вопросы..."
+                    value={form.comment} onChange={set('comment')}
+                  />
+                </div>
               </div>
 
               {errors._submit && (
-                <p className="tp-field__err tp-field__err--center">{errors._submit}</p>
+                <p className="tp-field__err tp-field__err--center"><AlertIcon />{errors._submit}</p>
               )}
 
               <button
@@ -706,6 +939,7 @@ const BookingModal = ({ onClose, initial = {}, dark, sports = [], trainers = [] 
                 disabled={sending}
               >
                 {sending ? 'Отправляем…' : 'Отправить заявку'}
+                {sending ? <span className="tp-btn__spinner" /> : <ArrowRight />}
               </button>
             </form>
           </>
@@ -726,7 +960,10 @@ const TaplinkPage = () => {
   });
   // Sync initial load (localStorage / session) — no flicker
   const [pageData, setPageData] = useState(() => loadTaplinkData());
-  const { hero, stats, sports, trainers, prices, offer, footer } = pageData;
+  const { hero, stats, prices, offer, footer } = pageData;
+  // Скрытые в редакторе (published: false) секции/тренеры на публичной странице не показываются.
+  const sports = (pageData.sports || []).filter(s => s.published !== false);
+  const trainers = (pageData.trainers || []).filter(t => t.published !== false);
 
   const [activeSport,   setActiveSport]   = useState(null);
   const [activeTrainer, setActiveTrainer] = useState(null);
@@ -988,6 +1225,7 @@ const TaplinkPage = () => {
       {activeSport && (
         <SportSheet
           sport={activeSport}
+          trainers={trainers}
           onClose={() => setActiveSport(null)}
           onBook={init => { setActiveSport(null); openBooking(init); }}
         />
@@ -995,7 +1233,6 @@ const TaplinkPage = () => {
       {activeTrainer && (
         <TrainerSheet
           trainer={activeTrainer}
-          sports={sports}
           onClose={() => setActiveTrainer(null)}
           onBook={init => { setActiveTrainer(null); openBooking(init); }}
         />

@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, Plus, Trash2, CalendarClock } from 'lucide-react';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
-import { SubmitButton, Spinner } from '../../../shared/ui';
+import { Select, SubmitButton, Spinner } from '../../../shared/ui';
 import { fetchTrainerSchedule, updateTrainerSchedule } from '../api';
 import {
   WEEKDAYS,
+  AGE_GROUP_OPTIONS,
   createEmptyScheduleState,
   scheduleFromApiResponse,
   scheduleToApiPayload,
+  groupScheduleRows,
 } from '../scheduleConstants';
 import './TrainerScheduleModal.scss';
 
@@ -83,7 +85,7 @@ const TrainerScheduleModal = ({ trainer, readOnly = false, onClose, onSaved }) =
             enabled: true,
             intervals: r.intervals?.some((i) => i.start && i.end)
               ? r.intervals
-              : [{ start: '10:00', end: '12:00' }],
+              : [{ start: '10:00', end: '12:00', ageGroup: '' }],
           };
         }
         return { ...r, enabled: false, intervals: [{ start: '', end: '' }] };
@@ -91,10 +93,23 @@ const TrainerScheduleModal = ({ trainer, readOnly = false, onClose, onSaved }) =
     );
   };
 
-  const setIntervalField = (weekday, index, field, value) => {
+  /** Дни группируются по идентичному набору интервалов — «Ср+Пт 10:00–12:00» одной карточкой вместо двух. */
+  const groups = useMemo(() => groupScheduleRows(rows), [rows]);
+  const [openPickerKey, setOpenPickerKey] = useState(null);
+
+  useEffect(() => {
+    if (!openPickerKey) return undefined;
+    const closeOnOutsideClick = (e) => {
+      if (!e.target.closest('.trainer-schedule-modal__group-add-day')) setOpenPickerKey(null);
+    };
+    document.addEventListener('mousedown', closeOnOutsideClick);
+    return () => document.removeEventListener('mousedown', closeOnOutsideClick);
+  }, [openPickerKey]);
+
+  const setGroupIntervalField = (weekdays, index, field, value) => {
     setRows((prev) =>
       prev.map((r) => {
-        if (r.weekday !== weekday) return r;
+        if (!weekdays.includes(r.weekday)) return r;
         const intervals = [...(r.intervals || [])];
         intervals[index] = { ...intervals[index], [field]: value };
         return { ...r, intervals };
@@ -102,23 +117,38 @@ const TrainerScheduleModal = ({ trainer, readOnly = false, onClose, onSaved }) =
     );
   };
 
-  const addInterval = (weekday) => {
+  const addGroupInterval = (weekdays) => {
     setRows((prev) =>
       prev.map((r) => {
-        if (r.weekday !== weekday) return r;
-        return { ...r, intervals: [...(r.intervals || []), { start: '', end: '' }] };
+        if (!weekdays.includes(r.weekday)) return r;
+        return { ...r, intervals: [...(r.intervals || []), { start: '', end: '', ageGroup: '' }] };
       })
     );
   };
 
-  const removeInterval = (weekday, index) => {
+  const removeGroupInterval = (weekdays, index) => {
     setRows((prev) =>
       prev.map((r) => {
-        if (r.weekday !== weekday) return r;
+        if (!weekdays.includes(r.weekday)) return r;
         const intervals = (r.intervals || []).filter((_, i) => i !== index);
         return { ...r, intervals: intervals.length ? intervals : [{ start: '', end: '' }] };
       })
     );
+  };
+
+  /** Убрать день из группы — выключает его, как клик по чипу дня наверху. */
+  const removeDayFromGroup = (weekday) => toggleDay(weekday, false);
+
+  /** Присоединить день к группе: копируем её текущие интервалы, «забирая» день из прежней группы (если была). */
+  const mergeDayIntoGroup = (weekday, groupIntervals) => {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.weekday === weekday
+          ? { ...r, enabled: true, intervals: groupIntervals.map((i) => ({ ...i })) }
+          : r
+      )
+    );
+    setOpenPickerKey(null);
   };
 
   const handleFormSubmit = async (e) => {
@@ -161,7 +191,10 @@ const TrainerScheduleModal = ({ trainer, readOnly = false, onClose, onSaved }) =
     >
       <div className="trainer-schedule-modal" onClick={(e) => e.stopPropagation()}>
         <div className="trainer-schedule-modal__header">
-          <div>
+          <div className="trainer-schedule-modal__header-icon" aria-hidden>
+            <CalendarClock size={20} strokeWidth={1.75} />
+          </div>
+          <div className="trainer-schedule-modal__header-text">
             <h2 id="trainer-schedule-modal-title" className="trainer-schedule-modal__title">
               {title}
             </h2>
@@ -180,10 +213,15 @@ const TrainerScheduleModal = ({ trainer, readOnly = false, onClose, onSaved }) =
           </p>
         )}
         {loading ? (
-          <div className="trainer-schedule-modal__loading"><Spinner /></div>
+          <div className="trainer-schedule-modal__loading">
+            <Spinner />
+            <span>Загружаем график…</span>
+          </div>
         ) : (
           <form className="trainer-schedule-modal__form" onSubmit={handleFormSubmit}>
-            <div className="trainer-schedule-modal__days" role="group" aria-label="Дни недели">
+            <div className="trainer-schedule-modal__days-rail">
+              <span className="trainer-schedule-modal__days-label">Дни недели</span>
+              <div className="trainer-schedule-modal__days" role="group" aria-label="Дни недели">
               {WEEKDAYS.map(({ weekday, short }) => {
                 const row = rows.find((r) => r.weekday === weekday);
                 const active = row?.enabled;
@@ -200,62 +238,127 @@ const TrainerScheduleModal = ({ trainer, readOnly = false, onClose, onSaved }) =
                   </button>
                 );
               })}
+              </div>
             </div>
 
             <div className="trainer-schedule-modal__blocks">
-              {rows
-                .filter((r) => r.enabled)
-                .map((row) => {
-                  const meta = WEEKDAYS.find((w) => w.weekday === row.weekday);
-                  return (
-                    <div key={row.weekday} className="trainer-schedule-modal__day-block">
-                      <h3 className="trainer-schedule-modal__day-block-title">{meta?.label ?? row.weekday}</h3>
-                      <div className="trainer-schedule-modal__intervals">
-                        {(row.intervals || []).map((int, idx) => (
-                          <div key={idx} className="trainer-schedule-modal__interval-row">
-                            <span className="trainer-schedule-modal__interval-label">с</span>
+              {groups.map((group, groupIndex) => {
+                const groupKey = group.weekdays.join(',');
+                const pickerOpen = openPickerKey === groupKey;
+                const otherDays = WEEKDAYS.filter((w) => !group.weekdays.includes(w.weekday));
+                const groupLabel = group.weekdays
+                  .map((wd) => WEEKDAYS.find((w) => w.weekday === wd)?.short ?? wd)
+                  .join(', ');
+                return (
+                  <div key={groupKey} className="trainer-schedule-modal__day-block">
+                    <div className="trainer-schedule-modal__group-header">
+                      <span className="trainer-schedule-modal__group-index" aria-hidden>{groupIndex + 1}</span>
+                      <div className="trainer-schedule-modal__group-days" role="group" aria-label={`Дни занятия: ${groupLabel}`}>
+                        {group.weekdays.map((wd) => {
+                          const meta = WEEKDAYS.find((w) => w.weekday === wd);
+                          return (
+                            <button
+                              key={wd}
+                              type="button"
+                              className="trainer-schedule-modal__group-day-badge"
+                              onClick={() => !readOnly && removeDayFromGroup(wd)}
+                              disabled={readOnly}
+                              title="Убрать день из занятия"
+                            >
+                              {meta?.short ?? wd}
+                              {!readOnly && <span className="trainer-schedule-modal__group-day-badge-x" aria-hidden>×</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {!readOnly && otherDays.length > 0 && (
+                        <div className="trainer-schedule-modal__group-add-day">
+                          <button
+                            type="button"
+                            className="trainer-schedule-modal__group-add-day-btn"
+                            onClick={() => setOpenPickerKey(pickerOpen ? null : groupKey)}
+                          >
+                            <Plus size={13} /> День
+                          </button>
+                          {pickerOpen && (
+                            <div className="trainer-schedule-modal__group-day-picker" role="menu">
+                              {otherDays.map((d) => (
+                                <button
+                                  key={d.weekday}
+                                  type="button"
+                                  className="trainer-schedule-modal__group-day-picker-item"
+                                  onClick={() => mergeDayIntoGroup(d.weekday, group.intervals)}
+                                >
+                                  {d.short}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="trainer-schedule-modal__intervals">
+                      {(group.intervals || []).map((int, idx) => (
+                        <div key={idx} className="trainer-schedule-modal__interval-row">
+                          <div className="trainer-schedule-modal__time-range">
                             <input
                               type="time"
                               value={int.start}
-                              onChange={(e) => setIntervalField(row.weekday, idx, 'start', e.target.value)}
+                              onChange={(e) => setGroupIntervalField(group.weekdays, idx, 'start', e.target.value)}
                               disabled={readOnly}
                               className="trainer-schedule-modal__time"
+                              aria-label="Время начала"
                             />
-                            <span className="trainer-schedule-modal__interval-label">до</span>
+                            <span className="trainer-schedule-modal__time-sep" aria-hidden>—</span>
                             <input
                               type="time"
                               value={int.end}
-                              onChange={(e) => setIntervalField(row.weekday, idx, 'end', e.target.value)}
+                              onChange={(e) => setGroupIntervalField(group.weekdays, idx, 'end', e.target.value)}
                               disabled={readOnly}
                               className="trainer-schedule-modal__time"
+                              aria-label="Время окончания"
                             />
-                            {!readOnly && (row.intervals || []).length > 1 && (
-                              <button
-                                type="button"
-                                className="trainer-schedule-modal__remove-interval"
-                                onClick={() => removeInterval(row.weekday, idx)}
-                                aria-label="Удалить интервал"
-                              >
-                                Удалить
-                              </button>
-                            )}
                           </div>
-                        ))}
-                      </div>
-                      {!readOnly && (
-                        <button
-                          type="button"
-                          className="trainer-schedule-modal__add-interval"
-                          onClick={() => addInterval(row.weekday)}
-                        >
-                          + Интервал
-                        </button>
-                      )}
+                          <Select
+                            value={int.ageGroup || ''}
+                            onChange={(v) => setGroupIntervalField(group.weekdays, idx, 'ageGroup', v)}
+                            placeholder="Категория"
+                            disabled={readOnly}
+                            options={[{ value: '', label: '— Не указана —' }, ...AGE_GROUP_OPTIONS]}
+                            className="trainer-schedule-modal__age-select"
+                          />
+                          {!readOnly && (group.intervals || []).length > 1 && (
+                            <button
+                              type="button"
+                              className="trainer-schedule-modal__remove-interval"
+                              onClick={() => removeGroupInterval(group.weekdays, idx)}
+                              aria-label="Удалить интервал"
+                              title="Удалить интервал"
+                            >
+                              <Trash2 size={15} strokeWidth={1.75} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  );
-                })}
-              {!rows.some((r) => r.enabled) && (
-                <p className="trainer-schedule-modal__empty">Нет активных дней. Включите дни кнопками выше.</p>
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        className="trainer-schedule-modal__add-interval"
+                        onClick={() => addGroupInterval(group.weekdays)}
+                      >
+                        <Plus size={14} /> Интервал
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+              {groups.length === 0 && (
+                <div className="trainer-schedule-modal__empty">
+                  <CalendarClock size={28} strokeWidth={1.5} aria-hidden />
+                  <p>Нет активных дней</p>
+                  <span>Включите дни кнопками выше, чтобы задать интервалы занятий</span>
+                </div>
               )}
             </div>
 

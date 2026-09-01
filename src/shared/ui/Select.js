@@ -33,8 +33,8 @@ const Select = ({ value, onChange, options = [], placeholder = 'Выберите
   const dropdownRef = useRef(null);
   const isMobileSheet = useIsMobileSheet();
 
-  const selectedOption = options.find((o) => String(o.value) === String(value));
-  const displayLabel = selectedOption ? selectedOption.label : placeholder;
+  const selectedOption = options.find((o) => !o.header && String(o.value) === String(value));
+  const displayLabel = selectedOption ? (selectedOption.triggerRender ?? selectedOption.render ?? selectedOption.label) : placeholder;
 
   const computeDesktopLayout = useCallback(() => {
     if (!rootRef.current) return null;
@@ -127,7 +127,7 @@ const Select = ({ value, onChange, options = [], placeholder = 'Выберите
     setOpen(false);
   };
 
-  const sheetTitle = displayLabel || placeholder;
+  const sheetTitle = (selectedOption ? selectedOption.label : '') || placeholder;
 
   return (
     <div
@@ -168,18 +168,24 @@ const Select = ({ value, onChange, options = [], placeholder = 'Выберите
               <button type="button" className="select__sheet-close" onClick={() => setOpen(false)} aria-label="Закрыть">✕</button>
             </div>
             <div className="select__sheet-list">
-              {options.map((opt) => (
-                <button
-                  key={String(opt.value)}
-                  type="button"
-                  role="option"
-                  aria-selected={String(opt.value) === String(value)}
-                  className={`select__sheet-option ${String(opt.value) === String(value) ? 'select__sheet-option--selected' : ''}`}
-                  onClick={() => handleSelect(opt)}
-                >
-                  {opt.label}
-                </button>
-              ))}
+              {options.map((opt, i) =>
+                opt.header ? (
+                  <div key={opt.key ?? `h${i}`} className="select__group-header" role="presentation">
+                    {opt.render ?? opt.label}
+                  </div>
+                ) : (
+                  <button
+                    key={String(opt.value)}
+                    type="button"
+                    role="option"
+                    aria-selected={String(opt.value) === String(value)}
+                    className={`select__sheet-option ${String(opt.value) === String(value) ? 'select__sheet-option--selected' : ''}`}
+                    onClick={() => handleSelect(opt)}
+                  >
+                    {opt.render ?? opt.label}
+                  </button>
+                )
+              )}
             </div>
           </div>
         </div>,
@@ -199,24 +205,30 @@ const Select = ({ value, onChange, options = [], placeholder = 'Выберите
             zIndex: 1100,
           }}
         >
-          {options.map((opt) => (
-            <button
-              key={String(opt.value)}
-              type="button"
-              role="option"
-              aria-selected={String(opt.value) === String(value)}
-              data-value={String(opt.value)}
-              data-label={opt.label}
-              className={`select__option ${String(opt.value) === String(value) ? 'select__option--selected' : ''}`}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleSelect(opt);
-              }}
-            >
-              {opt.label}
-            </button>
-          ))}
+          {options.map((opt, i) =>
+            opt.header ? (
+              <div key={opt.key ?? `h${i}`} className="select__group-header" role="presentation">
+                {opt.render ?? opt.label}
+              </div>
+            ) : (
+              <button
+                key={String(opt.value)}
+                type="button"
+                role="option"
+                aria-selected={String(opt.value) === String(value)}
+                data-value={String(opt.value)}
+                data-label={typeof opt.label === 'string' ? opt.label : undefined}
+                className={`select__option ${String(opt.value) === String(value) ? 'select__option--selected' : ''}`}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSelect(opt);
+                }}
+              >
+                {opt.render ?? opt.label}
+              </button>
+            )
+          )}
         </div>,
         document.body
       )}

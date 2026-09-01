@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Trash2, X, UserPlus, User, Ticket, CreditCard, Wallet, SlidersHorizontal, MessageSquare, Check, Dumbbell, UserCheck, Clock, Tag } from 'lucide-react';
+import { Plus, Trash2, X, UserPlus, User, Ticket, CreditCard, Wallet, Receipt, Banknote, SlidersHorizontal, MessageSquare, Check, Dumbbell, UserCheck, Clock, Tag } from 'lucide-react';
 import { useToast } from '../../../app/providers/ToastProvider';
 import { Select, SubmitButton, ConfirmModal, PhoneInput, MoneyInput } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
@@ -15,6 +15,7 @@ import { CLIENT_PHOTO_KIND_OPTIONS } from '../lib/clientPhotos';
 import { fetchTrainerSchedule } from '../../sports-trainers/api';
 import {
   flattenScheduleToSlotOptions,
+  groupSlotOptionsByDays,
   matchClientToSlotKey,
   parseTrainingSlotKey,
 } from '../../sports-trainers/scheduleConstants';
@@ -26,7 +27,42 @@ import {
 } from '../lib/clientActualPayments';
 import './ClientFormModal.scss';
 
+/**
+ * Слот из графика тренера: если время повторяется в нескольких днях (Пн/Ср/Пт и т.п.),
+ * показываем ВСЕ дни бейджами сразу — без «скрытого знания», что один день значит несколько.
+ */
+const TrainingSlotOption = ({ days, start, end }) => (
+  <span className="client-form-modal__slot-option">
+    <span className="client-form-modal__slot-days">
+      {(days || []).map((d) => (
+        <span key={d.weekday} className="client-form-modal__slot-day-badge">{d.short}</span>
+      ))}
+    </span>
+    <span className="client-form-modal__slot-time">{start}–{end}</span>
+  </span>
+);
+
+/** Заголовок группы: дни показаны один раз для всех интервалов этого дня/набора дней ниже. */
+const TrainingSlotDaysHeader = ({ days }) => (
+  <span className="client-form-modal__slot-days-header">
+    {(days || []).map((d) => (
+      <span key={d.weekday} className="client-form-modal__slot-day-badge">{d.short}</span>
+    ))}
+  </span>
+);
+
+/** Интервал внутри группы дней — без повторного бейджа дня, с отступом под заголовком. */
+const TrainingSlotTimeRow = ({ start, end }) => (
+  <span className="client-form-modal__slot-time-row">{start}–{end}</span>
+);
+
 // Маппинг API-полей → русские названия
+// Иконка на кнопку способа оплаты — по коду значения (договор с бэком: receipt | cash)
+const PAYMENT_KIND_ICONS = {
+  receipt: Receipt,
+  cash: Banknote,
+};
+
 const FIELD_LABELS = {
   sportId:       'Вид спорта',
   sport_id:      'Вид спорта',
@@ -171,6 +207,31 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const [commentAuto, setCommentAuto] = useState([]);
   const [trainingSlotKey, setTrainingSlotKey] = useState('');
   const [scheduleSlots, setScheduleSlots] = useState([]);
+  /**
+   * Несколько разных интервалов на одном и том же наборе дней (напр. 3 варианта времени по Пн)
+   * группируются под один заголовок дней — без повтора бейджа дня на каждую строку.
+   * Закрытый select всегда показывает полный вид (дни + время), т.к. заголовок группы виден только в открытом списке.
+   */
+  const trainingSlotSelectOptions = useMemo(() => {
+    const groups = groupSlotOptionsByDays(scheduleSlots);
+    const out = [];
+    for (const g of groups) {
+      const grouped = g.options.length > 1;
+      if (grouped) {
+        out.push({ header: true, key: `slot-h-${g.key}`, render: <TrainingSlotDaysHeader days={g.days} /> });
+      }
+      for (const opt of g.options) {
+        out.push({
+          ...opt,
+          render: grouped
+            ? <TrainingSlotTimeRow start={opt.start} end={opt.end} />
+            : <TrainingSlotOption days={opt.days} start={opt.start} end={opt.end} />,
+          triggerRender: <TrainingSlotOption days={opt.days} start={opt.start} end={opt.end} />,
+        });
+      }
+    }
+    return out;
+  }, [scheduleSlots]);
   const [scheduleSlotsLoading, setScheduleSlotsLoading] = useState(false);
   const [oneTimePayments, setOneTimePayments] = useState([]);
   const [oneTimeLoading, setOneTimeLoading] = useState(false);
@@ -747,7 +808,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                   onChange={(v) => setTrainingSlotKey(v)}
                   options={[
                     { value: '', label: scheduleSlotsLoading ? 'Загрузка…' : '—' },
-                    ...scheduleSlots,
+                    ...trainingSlotSelectOptions,
                   ]}
                   placeholder={scheduleSlotsLoading ? 'Загрузка…' : '—'}
                   disabled={!trainerId || scheduleSlotsLoading}
@@ -971,20 +1032,31 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
           <div className={sectionClass('paymentKind')} ref={paymentKindRef}>
             <h3 className="client-form-modal__section-title"><Wallet size={14} /> Способ оплаты</h3>
             <div className="client-form-modal__row">
-              <label className="client-form-modal__label client-form-modal__label--full">
+              <div className="client-form-modal__label client-form-modal__label--full">
                 <span className="client-form-modal__label-text">Способ оплаты <span className="form-label-required" aria-hidden="true">*</span></span>
-                <Select
-                  value={paymentKind}
-                  onChange={(v) => {
-                    setPaymentKind(v);
-                    setHighlightSection((cur) => (cur === 'paymentKind' ? null : cur));
-                  }}
-                  options={CLIENT_PHOTO_KIND_OPTIONS}
-                  placeholder="Выберите..."
-                  className="client-form-modal__select"
-                  icon={<Wallet size={15} />}
-                />
-              </label>
+                <div className="client-form-modal__payment-kind-toggle" role="radiogroup" aria-label="Способ оплаты">
+                  {CLIENT_PHOTO_KIND_OPTIONS.map((opt) => {
+                    const Icon = PAYMENT_KIND_ICONS[opt.value] ?? Wallet;
+                    const active = paymentKind === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        className={`client-form-modal__payment-kind-btn${active ? ' client-form-modal__payment-kind-btn--active' : ''}`}
+                        onClick={() => {
+                          setPaymentKind(opt.value);
+                          setHighlightSection((cur) => (cur === 'paymentKind' ? null : cur));
+                        }}
+                      >
+                        <Icon size={16} strokeWidth={1.75} />
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
 

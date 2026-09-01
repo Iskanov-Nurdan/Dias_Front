@@ -41,7 +41,12 @@ const EntityNameModal = ({
       <div className="enm" onClick={(e) => e.stopPropagation()}>
 
         <div className="enm__header">
-          <div>
+          {Icon && (
+            <div className="enm__header-icon" aria-hidden>
+              <Icon size={20} strokeWidth={1.75} />
+            </div>
+          )}
+          <div className="enm__header-text">
             <p className="enm__header-sub">{isEdit ? editEyebrow : newEyebrow}</p>
             <h2 id="enm-title" className="enm__title">{isEdit ? (item?.name || noun) : addTitle}</h2>
           </div>
@@ -54,7 +59,6 @@ const EntityNameModal = ({
           <div className="enm__body">
             <div className="enm__field">
               <label className="enm__label" htmlFor="enm-name">
-                {Icon && <Icon size={14} className="enm__label-icon" />}
                 Название <span className="enm__required">*</span>
               </label>
               <input

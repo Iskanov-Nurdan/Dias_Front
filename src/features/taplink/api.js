@@ -46,3 +46,17 @@ export const submitBooking = async (payload) => {
   const { data } = await apiClient.post('/taplink/booking/', payload);
   return data;
 };
+
+/**
+ * GET /api/taplink/trainers/{id}/schedule/ — публичный график тренера для формы записи
+ * (без авторизации; тот же формат ответа, что и авторизованный /trainers/{id}/schedule/).
+ * Нужен, чтобы «Удобное время занятий» на лендинге показывало реальный график из CRM,
+ * а не вручную вписанный в редакторе текст.
+ */
+export const fetchPublicTrainerSchedule = async (crmTrainerId, signal) => {
+  const { data } = await apiClient.get(
+    `/taplink/trainers/${crmTrainerId}/schedule/`,
+    signal ? { signal } : {}
+  );
+  return data;
+};

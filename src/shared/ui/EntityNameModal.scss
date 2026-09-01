@@ -8,33 +8,49 @@
 .enm {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 16px;
+  border-radius: var(--radius-xl);
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-  animation: enm-scale-in 0.18s ease;
+  box-shadow: var(--shadow-xl);
+  animation: enm-scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 
   // ── Header ────────────────────────────────────────────────
   &__header {
     display: flex;
     align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 18px 20px 16px;
+    gap: var(--space-3);
+    padding: var(--space-5) var(--space-5) var(--space-4);
     flex-shrink: 0;
     border-bottom: 1px solid var(--color-border);
   }
 
+  &__header-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    flex-shrink: 0;
+  }
+
+  &__header-text {
+    flex: 1;
+    min-width: 0;
+  }
+
   &__header-sub {
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--color-text-muted);
-    margin: 0 0 4px;
+    margin: 0 0 3px;
   }
 
   &__title {
@@ -42,41 +58,29 @@
     font-size: 18px;
     font-weight: 700;
     color: var(--color-text);
-    letter-spacing: -0.02em;
-    line-height: 1.2;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
   }
 
   &__close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border: none;
-    background: transparent;
-    border-radius: 8px;
-    color: var(--color-text-muted);
-    cursor: pointer;
+    @include mixins.modal-close-btn;
     flex-shrink: 0;
-    transition: background 0.15s, color 0.15s;
-
-    &:hover {
-      background: var(--color-bg);
-      color: var(--color-text);
-    }
+    margin-top: 2px;
   }
 
   // ── Error ─────────────────────────────────────────────────
   &__error {
-    margin: 12px 20px 0;
+    margin: var(--space-3) var(--space-5) 0;
     padding: 10px 14px;
-    background: rgba(239, 68, 68, 0.08);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    border-radius: 10px;
-    color: #f87171;
+    background: var(--color-danger-soft);
+    border: 1px solid rgba(220, 38, 38, 0.3);
+    border-radius: var(--radius-md);
+    color: var(--color-danger);
     font-size: 13px;
+    font-weight: 500;
     line-height: 1.5;
     flex-shrink: 0;
+    animation: enm-error-in 0.15s ease;
   }
 
   // ── Form ──────────────────────────────────────────────────
@@ -87,10 +91,10 @@
   }
 
   &__body {
-    padding: 16px 20px 8px;
+    padding: var(--space-4) var(--space-5) var(--space-2);
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: var(--space-4);
   }
 
   // ── Field ─────────────────────────────────────────────────
@@ -104,18 +108,19 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 13px;
+    font-size: var(--input-label-size);
     font-weight: 600;
-    color: var(--color-text-muted);
+    color: var(--color-text-secondary);
   }
 
   &__label-icon {
     flex-shrink: 0;
-    opacity: 0.7;
+    opacity: 0.75;
+    color: var(--color-text-muted);
   }
 
   &__required {
-    color: var(--color-primary, #ef4444);
+    color: var(--color-primary);
     font-weight: 700;
     margin-left: 1px;
   }
@@ -123,22 +128,30 @@
   &__input {
     height: 42px;
     padding: 0 14px;
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
-    background: var(--color-bg);
+    border: 1.5px solid var(--input-border);
+    border-radius: var(--input-radius);
+    background: var(--input-bg);
     color: var(--color-text);
     font-size: 14px;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 
     &::placeholder {
-      color: var(--color-text-muted);
-      opacity: 0.5;
+      color: var(--input-placeholder);
+    }
+
+    &:hover:not(:focus) {
+      border-color: var(--input-border-hover);
     }
 
     &:focus {
       outline: none;
-      border-color: var(--color-primary, #ef4444);
-      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+      border-color: var(--color-primary);
+      box-shadow: var(--input-shadow-focus);
+    }
+
+    &:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
     }
   }
 
@@ -148,10 +161,10 @@
     align-items: center;
     gap: 10px;
     justify-content: flex-end;
-    padding: 14px 20px;
+    padding: var(--space-4) var(--space-5);
     flex-shrink: 0;
     border-top: 1px solid var(--color-border);
-    background: var(--color-surface);
+    background: var(--color-surface-secondary);
   }
 
   // Кнопки — общие .ui-modal-btn/.ui-modal-btn--primary, см. shared/styles/index.scss.
@@ -165,4 +178,17 @@
 @keyframes enm-scale-in {
   from { opacity: 0; transform: scale(0.97) translateY(6px); }
   to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+
+@keyframes enm-error-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enm__backdrop,
+  .enm,
+  .enm__error {
+    animation: none;
+  }
 }

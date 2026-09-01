@@ -904,3 +904,124 @@ textarea.client-form-modal__input {
     box-shadow: 0 -1px 0 var(--color-border);
   }
 }
+
+// ── Способ оплаты: сегментированный переключатель вместо dropdown — бинарный выбор виден целиком,
+// без лишнего клика на открытие списка. Иконки различают Чек/Наличные с первого взгляда.
+.client-form-modal__payment-kind-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.client-form-modal__payment-kind-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--input-radius, 10px);
+  border: 1.5px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--color-text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+
+  svg { flex-shrink: 0; }
+
+  &:hover:not(&--active) {
+    border-color: var(--input-border-hover);
+    background: var(--color-surface-secondary);
+    color: var(--color-text);
+  }
+
+  &--active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff;
+  }
+}
+
+// ── Слот времени занятия: все дни повторения видны сразу (бейджи), без «скрытого знания» ──
+.client-form-modal__slot-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.client-form-modal__slot-days {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.client-form-modal__slot-day-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 5px;
+  background: rgba(229, 72, 77, 0.12);
+  border: 1px solid rgba(229, 72, 77, 0.35);
+  color: var(--color-primary, #e5484d);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.client-form-modal__slot-time {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+// В закрытом select-триггере бейджи чуть плотнее, чтобы влезали рядом со стрелкой
+.select__value .client-form-modal__slot-option {
+  overflow: hidden;
+}
+.select__value .client-form-modal__slot-days {
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
+// Заголовок группы (дни, общие для нескольких строк времени ниже) + сами строки времени с отступом под ним
+.client-form-modal__slot-days-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.client-form-modal__slot-time-row {
+  display: block;
+  // Компенсируем вертикальный padding кнопки-опции (8px сверху/снизу) — иначе группа из N интервалов
+  // занимает больше места, чем N обычных строк, и группировка теряет смысл экономии высоты.
+  margin: -4px 0;
+  padding-left: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--color-text);
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--color-border);
+    transform: translateY(-50%);
+  }
+}

@@ -35,7 +35,10 @@ const TrainerFormModal = ({ trainer, sports, onSave, onClose, error, saving }) =
       <div className="enm trainer-form-modal" onClick={(e) => e.stopPropagation()}>
 
         <div className="enm__header">
-          <div>
+          <div className="enm__header-icon" aria-hidden>
+            <User size={20} strokeWidth={1.75} />
+          </div>
+          <div className="enm__header-text">
             <p className="enm__header-sub">{isEdit ? 'Редактирование' : 'Новый тренер'}</p>
             <h2 id="trainer-form-modal-title" className="enm__title">{isEdit ? (trainer?.fio || 'Тренер') : 'Добавить тренера'}</h2>
           </div>
@@ -67,15 +70,22 @@ const TrainerFormModal = ({ trainer, sports, onSave, onClose, error, saving }) =
               <label className="enm__label">
                 <Dumbbell size={14} className="enm__label-icon" />
                 Виды спорта
+                {sportIds.length > 0 && (
+                  <span className="trainer-form-modal__count">{sportIds.length}</span>
+                )}
               </label>
-              <div className="trainer-form-modal__checkboxes">
-                {(sports || []).map((s) => (
-                  <label key={s.id} className="trainer-form-modal__checkbox">
-                    <input type="checkbox" checked={sportIds.includes(s.id)} onChange={() => toggleSport(s.id)} />
-                    <span>{s.name}</span>
-                  </label>
-                ))}
-              </div>
+              {(sports || []).length === 0 ? (
+                <p className="trainer-form-modal__empty">Сначала добавьте виды спорта во вкладке «Виды спорта»</p>
+              ) : (
+                <div className="trainer-form-modal__checkboxes">
+                  {(sports || []).map((s) => (
+                    <label key={s.id} className="trainer-form-modal__checkbox">
+                      <input type="checkbox" checked={sportIds.includes(s.id)} onChange={() => toggleSport(s.id)} />
+                      <span>{s.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

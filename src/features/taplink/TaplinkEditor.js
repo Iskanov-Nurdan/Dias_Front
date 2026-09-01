@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trash2 } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { loadTaplinkData, saveTaplinkDataAsync, loadTaplinkDataAsync, setSessionData } from './taplinkStore';
 import { BACKEND_ENABLED, uploadFile } from './api';
-import Select from '../../shared/ui/Select';
-import { ConfirmModal, Field, PhotoUpload, VideoUpload } from '../../shared/ui';
+import { fetchSports as fetchCrmSports, fetchTrainers as fetchCrmTrainers, fetchTrainerSchedule } from '../sports-trainers/api';
+import { WEEKDAYS, scheduleFromApiResponse, groupScheduleRows } from '../sports-trainers/scheduleConstants';
+import { Field, PhotoUpload, VideoUpload } from '../../shared/ui';
 import './TaplinkEditor.scss';
 
 const TABS = [
@@ -16,15 +17,15 @@ const TABS = [
   { id: 'footer',   label: 'Контакты',   icon: '📞' },
 ];
 
-const SCHED_GROUP_OPTIONS = [
-  { value: 'Взрослые',      label: 'Взрослые' },
-  { value: 'Дети (5–17)',   label: 'Дети (5–17)' },
-];
-
-const SCHED_DAYS_OPTIONS = [
-  { value: 'Пн, Ср, Пт', label: 'Пн, Ср, Пт' },
-  { value: 'Вт, Чт, Сб', label: 'Вт, Чт, Сб' },
-];
+/** Первый вид спорта тренера (объект или id) → название, по списку секций CRM. */
+const resolveTrainerSportName = (t, crmSports) => {
+  const arr = t.sportIds ?? t.sport_ids ?? t.sports ?? [];
+  const first = arr[0];
+  if (first == null) return '';
+  if (typeof first === 'object') return first.name || '';
+  const sport = crmSports.find((s) => String(s.id) === String(first));
+  return sport?.name || '';
+};
 
 // Держим карточку смонтированной ещё ACCORDION_CLOSE_MS после закрытия,
 // чтобы max-height/opacity успели доиграть анимацию, а не пропадали рывком.
@@ -176,66 +177,12 @@ const StatsTab = ({ data, setData }) => {
   );
 };
 
-// ─── Trainer multi-select ─────────────────────────────────────────────────────
-
-const TrainerMultiSelect = ({ value = [], onChange, trainers }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
-
-  const arr = Array.isArray(value) ? value : (value ? [value] : []);
-
-  const toggle = (name) => {
-    onChange(arr.includes(name) ? arr.filter(n => n !== name) : [...arr, name]);
-  };
-
-  return (
-    <div className="tpe-trainer-sel tpe-sched-entry__trainer" ref={ref}>
-      <button type="button" className="tpe-trainer-sel__btn" onClick={() => setOpen(o => !o)}>
-        {arr.length === 0 ? (
-          <span className="tpe-trainer-sel__placeholder">Тренер</span>
-        ) : (
-          <div className="tpe-trainer-sel__chips">
-            {arr.map(name => (
-              <span key={name} className="tpe-trainer-sel__chip">
-                {name}
-                <span
-                  className="tpe-trainer-sel__chip-del"
-                  onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); toggle(name); }}
-                >✕</span>
-              </span>
-            ))}
-          </div>
-        )}
-        <span className="tpe-trainer-sel__arrow">▾</span>
-      </button>
-      {open && (
-        <div className="tpe-trainer-sel__dropdown">
-          {trainers.length === 0 ? (
-            <span className="tpe-trainer-sel__empty">Сначала добавьте тренеров во вкладке «Тренеры»</span>
-          ) : trainers.map((t) => (
-            <label key={t.id || t.name} className={`tpe-trainer-sel__opt${arr.includes(t.name) ? ' tpe-trainer-sel__opt--checked' : ''}`}>
-              <input type="checkbox" checked={arr.includes(t.name)} onChange={() => toggle(t.name)} />
-              {t.photo && <img src={t.photo} alt="" className="tpe-trainer-sel__ava" />}
-              {t.name}
-            </label>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
 // ─── Sports tab ───────────────────────────────────────────────────────────────
 
 const SportsTab = ({ data, setData }) => {
-  const { open, setOpen, toggle, isRendered } = useAccordion();
-  const [confirmIdx, setConfirmIdx] = useState(null);
+  const { open, toggle, isRendered } = useAccordion();
+  /** sportName → { loading, rows } — живой график из CRM для развёрнутой секции. */
+  const [liveSchedules, setLiveSchedules] = useState({});
 
   const set = (i, field, val) =>
     setData(d => {
@@ -253,48 +200,59 @@ const SportsTab = ({ data, setData }) => {
       return { ...d, sports };
     });
 
-  const setSched = (si, fn) =>
-    setData(d => {
-      const sports = [...d.sports];
-      sports[si] = { ...sports[si], schedule: fn(sports[si].schedule || []) };
-      return { ...d, sports };
+  /** Тренеры этой секции — все они привязаны к CRM автоматически (см. верхний уровень редактора). */
+  const trainersFor = (sportName) =>
+    (data.trainers || []).filter(t => t.sportName === sportName && t.published !== false);
+
+  /** Как только секция раскрыта — тянем настоящий график её тренеров из CRM. Ничего не сохраняется
+   * в data.sports[].schedule — такого поля больше нет, сайт всегда показывает живые данные. */
+  useEffect(() => {
+    if (open == null) return undefined;
+    const sport = data.sports[open];
+    if (!sport) return undefined;
+    const linked = trainersFor(sport.name);
+    if (!linked.length) {
+      setLiveSchedules(prev => ({ ...prev, [sport.name]: { loading: false, rows: [] } }));
+      return undefined;
+    }
+
+    let cancelled = false;
+    setLiveSchedules(prev => ({ ...prev, [sport.name]: { loading: true, rows: prev[sport.name]?.rows || [] } }));
+
+    Promise.all(
+      linked.map(t =>
+        fetchTrainerSchedule(t.crmTrainerId, null)
+          .then(schedData => ({ trainerId: t.crmTrainerId, trainerName: t.name, schedData }))
+          .catch(() => null)
+      )
+    ).then(results => {
+      if (cancelled) return;
+      const rows = [];
+      for (const r of results) {
+        if (!r) continue;
+        const scheduleRows = scheduleFromApiResponse(r.schedData || {});
+        for (const g of groupScheduleRows(scheduleRows)) {
+          const dayShorts = g.weekdays.map(wd => WEEKDAYS.find(w => w.weekday === wd)?.short ?? String(wd));
+          const daysStr = dayShorts.join(', ');
+          for (const int of g.intervals) {
+            const time = `${int.start}–${int.end}`;
+            rows.push({ trainerId: r.trainerId, trainerName: r.trainerName, days: daysStr, time, ageGroup: int.ageGroup || '', weekday: g.weekdays[0] });
+          }
+        }
+      }
+      rows.sort((a, b) => a.weekday - b.weekday || a.time.localeCompare(b.time) || a.trainerName.localeCompare(b.trainerName));
+      setLiveSchedules(prev => ({ ...prev, [sport.name]: { loading: false, rows } }));
     });
 
-  const addSchedRow = (si) => setSched(si, arr => [
-    ...arr,
-    { id: Date.now(), group: '', days: '', time: '', trainers: [] },
-  ]);
-
-  const removeSchedRow = (si, ri) => setSched(si, arr => arr.filter((_, i) => i !== ri));
-
-  const updateSchedRow = (si, ri, field, val) => setSched(si, arr =>
-    arr.map((row, i) => i === ri ? { ...row, [field]: val } : row)
-  );
-
-  const add = () => {
-    const idx = data.sports.length;
-    setData(d => ({
-      ...d,
-      sports: [...d.sports, {
-        id: Date.now(), name: 'Новая секция', emoji: '🥋', photo: null,
-        gradient: 'linear-gradient(145deg, #1a0505 0%, #6b1414 60%, #8b1a1a 100%)',
-        desc: '', schedule: [], videos: ['', '', '', '', ''],
-      }],
-    }));
-    setOpen(idx);
-  };
-
-  const remove = i => {
-    setData(d => ({ ...d, sports: d.sports.filter((_, idx) => idx !== i) }));
-    setOpen(null);
-    setConfirmIdx(null);
-  };
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, data.sports, data.trainers]);
 
   return (
     <div className="tpe-section">
       <div className="tpe-section__hd">
         <h2 className="tpe-section__title">Секции ({data.sports.length})</h2>
-        <button className="tpe-add-btn" type="button" onClick={add}>+ Добавить</button>
+        <span className="tpe-section__crm-note">Список берётся из CRM «Спорт и тренеры» — создать или удалить секцию здесь нельзя</span>
       </div>
       <div className="tpe-list">
         {data.sports.map((sport, i) => (
@@ -307,14 +265,20 @@ const SportsTab = ({ data, setData }) => {
                 }
               </span>
               <span className="tpe-item__name">{sport.name}</span>
+              {sport.published === false && <span className="tpe-item__hidden-badge">Скрыто</span>}
               <span className="tpe-item__arrow">{open === i ? '▲' : '▼'}</span>
             </button>
 
             {isRendered(i) && (
               <div className="tpe-item__body">
-                <Field label="Название секции">
-                  <input className="tpe-input" value={sport.name} onChange={e => set(i, 'name', e.target.value)} />
-                </Field>
+                <label className="tpe-publish-toggle">
+                  <input
+                    type="checkbox"
+                    checked={sport.published !== false}
+                    onChange={e => set(i, 'published', e.target.checked)}
+                  />
+                  Показывать секцию на сайте
+                </label>
 
                 <Field label="Фото секции (баннер)">
                   <PhotoUpload
@@ -337,53 +301,39 @@ const SportsTab = ({ data, setData }) => {
                   />
                 </Field>
 
-                {/* ── Schedule ── */}
-                <div className="tpe-sched-block">
-                  <div className="tpe-sched-block__hd">
-                    <span className="tpe-sched-block__label">Расписание</span>
-                    <button className="tpe-sched-block__add" type="button" onClick={() => addSchedRow(i)}>
-                      + Добавить время
-                    </button>
-                  </div>
-                  {(sport.schedule || []).length === 0 && (
-                    <p className="tpe-sched-block__empty">Расписание не добавлено</p>
-                  )}
-                  {(sport.schedule || []).map((row, ri) => (
-                    <div key={row.id || ri} className="tpe-sched-entry">
-                      <Select
-                        className="tpe-sched-entry__group"
-                        value={row.group}
-                        onChange={v => updateSchedRow(i, ri, 'group', v)}
-                        placeholder="Группа"
-                        options={SCHED_GROUP_OPTIONS}
-                      />
-                      <Select
-                        className="tpe-sched-entry__days"
-                        value={row.days}
-                        onChange={v => updateSchedRow(i, ri, 'days', v)}
-                        placeholder="Дни"
-                        options={SCHED_DAYS_OPTIONS}
-                      />
-                      <input
-                        className="tpe-input tpe-sched-entry__time"
-                        placeholder="Время (18:00–20:00)"
-                        value={row.time}
-                        onChange={e => updateSchedRow(i, ri, 'time', e.target.value)}
-                      />
-                      <TrainerMultiSelect
-                        value={row.trainers ?? (row.trainer ? [row.trainer] : [])}
-                        onChange={v => updateSchedRow(i, ri, 'trainers', v)}
-                        trainers={data.trainers}
-                      />
-                      <button
-                        className="tpe-icon-btn tpe-icon-btn--danger"
-                        type="button"
-                        onClick={() => removeSchedRow(i, ri)}
-                        title="Удалить"
-                      >✕</button>
+                {/* ── Schedule: всегда живьём из CRM, ручного ввода больше нет ── */}
+                {(() => {
+                  const live = liveSchedules[sport.name];
+                  return (
+                    <div className="tpe-sched-block">
+                      <div className="tpe-sched-block__hd">
+                        <span className="tpe-sched-block__label">Расписание</span>
+                        <span className="tpe-sched-block__live-badge">
+                          <RefreshCw size={11} className={live?.loading ? 'tpe-spin' : ''} />
+                          Живьём из CRM
+                        </span>
+                      </div>
+                      <p className="tpe-sched-block__live-note">
+                        Дни, время и возрастная категория берутся из настоящего графика тренеров этой секции —
+                        задаются в разделе «Спорт и тренеры» → «Настройка графика».
+                      </p>
+                      {live?.loading && !live.rows.length ? (
+                        <p className="tpe-sched-block__empty">Загрузка графика из CRM…</p>
+                      ) : !live?.rows.length ? (
+                        <p className="tpe-sched-block__empty">У тренеров этой секции пока нет графика в CRM.</p>
+                      ) : (
+                        live.rows.map((row, ri) => (
+                          <div key={ri} className="tpe-sched-entry tpe-sched-entry--readonly">
+                            {row.ageGroup && <span className="tpe-sched-readonly__chip">{row.ageGroup}</span>}
+                            <span className="tpe-sched-readonly__chip tpe-sched-readonly__chip--days">{row.days}</span>
+                            <span className="tpe-sched-readonly__time">{row.time}</span>
+                            <span className="tpe-sched-readonly__trainers">{row.trainerName}</span>
+                          </div>
+                        ))
+                      )}
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
 
                 <div className="tpe-videos-block">
                   <p className="tpe-videos-block__label">Видео секции</p>
@@ -406,25 +356,11 @@ const SportsTab = ({ data, setData }) => {
                     </p>
                   )}
                 </div>
-
-                <button className="tpe-delete-btn" type="button" onClick={() => setConfirmIdx(i)}>
-                  <Trash2 size={14} strokeWidth={1.75} /> Удалить секцию
-                </button>
               </div>
             )}
           </div>
         ))}
       </div>
-      {confirmIdx !== null && (
-        <ConfirmModal
-          title={`Удалить секцию «${data.sports[confirmIdx]?.name}»?`}
-          message="Это действие нельзя отменить."
-          confirmText="Удалить"
-          onConfirm={() => remove(confirmIdx)}
-          onCancel={() => setConfirmIdx(null)}
-          danger
-        />
-      )}
     </div>
   );
 };
@@ -432,8 +368,7 @@ const SportsTab = ({ data, setData }) => {
 // ─── Trainers tab ─────────────────────────────────────────────────────────────
 
 const TrainersTab = ({ data, setData }) => {
-  const { open, setOpen, toggle, isRendered } = useAccordion();
-  const [confirmIdx, setConfirmIdx] = useState(null);
+  const { open, toggle, isRendered } = useAccordion();
 
   const set = (i, field, val) =>
     setData(d => {
@@ -477,29 +412,11 @@ const TrainersTab = ({ data, setData }) => {
       return { ...d, trainers };
     });
 
-  const add = () => {
-    const idx = data.trainers.length;
-    setData(d => ({
-      ...d,
-      trainers: [...d.trainers, {
-        id: Date.now(), name: 'Новый тренер', sportName: '', emoji: '👤', photo: null,
-        experience: '1 год', shortBio: '', bio: '', achievements: [''], videos: ['', '', '', '', ''],
-      }],
-    }));
-    setOpen(idx);
-  };
-
-  const remove = i => {
-    setData(d => ({ ...d, trainers: d.trainers.filter((_, idx) => idx !== i) }));
-    setOpen(null);
-    setConfirmIdx(null);
-  };
-
   return (
     <div className="tpe-section">
       <div className="tpe-section__hd">
         <h2 className="tpe-section__title">Тренеры ({data.trainers.length})</h2>
-        <button className="tpe-add-btn" type="button" onClick={add}>+ Добавить</button>
+        <span className="tpe-section__crm-note">Список берётся из CRM «Спорт и тренеры» — создать или удалить тренера здесь нельзя</span>
       </div>
       <div className="tpe-list">
         {data.trainers.map((t, i) => (
@@ -515,11 +432,21 @@ const TrainersTab = ({ data, setData }) => {
                 <span className="tpe-item__name">{t.name}</span>
                 <span className="tpe-item__sport">{t.sportName}</span>
               </span>
+              {t.published === false && <span className="tpe-item__hidden-badge">Скрыт</span>}
               <span className="tpe-item__arrow">{open === i ? '▲' : '▼'}</span>
             </button>
 
             {isRendered(i) && (
               <div className="tpe-item__body">
+                <label className="tpe-publish-toggle">
+                  <input
+                    type="checkbox"
+                    checked={t.published !== false}
+                    onChange={e => set(i, 'published', e.target.checked)}
+                  />
+                  Показывать тренера на сайте
+                </label>
+
                 <div className="tpe-two-col">
                   <Field label="Фото тренера">
                     <PhotoUpload
@@ -533,19 +460,22 @@ const TrainersTab = ({ data, setData }) => {
                     />
                   </Field>
                   <div className="tpe-trainer-fields">
-                    <Field label="ФИО тренера">
-                      <input className="tpe-input" value={t.name} onChange={e => set(i, 'name', e.target.value)} />
+                    <Field label="ФИО тренера" hint="Из CRM «Спорт и тренеры» — изменить можно только там.">
+                      <input className="tpe-input" value={t.name} disabled readOnly />
                     </Field>
-                    <Field label="Вид спорта">
-                      <Select
-                        value={t.sportName}
-                        onChange={v => set(i, 'sportName', v)}
-                        placeholder="— выберите секцию —"
-                        options={data.sports.map(s => ({ value: s.name, label: s.name }))}
-                      />
+                    <Field label="Вид спорта" hint="Из CRM «Спорт и тренеры» — изменить можно только там.">
+                      <input className="tpe-input" value={t.sportName || '—'} disabled readOnly />
                     </Field>
                     <Field label="Тренерский стаж (напр. 10 лет)">
                       <input className="tpe-input" value={t.experience} onChange={e => set(i, 'experience', e.target.value)} />
+                    </Field>
+                    <Field label="Instagram (username без @)">
+                      <input
+                        className="tpe-input"
+                        placeholder="username"
+                        value={t.instagram || ''}
+                        onChange={e => set(i, 'instagram', e.target.value)}
+                      />
                     </Field>
                   </div>
                 </div>
@@ -606,25 +536,11 @@ const TrainersTab = ({ data, setData }) => {
                     </p>
                   )}
                 </div>
-
-                <button className="tpe-delete-btn" type="button" onClick={() => setConfirmIdx(i)}>
-                  <Trash2 size={14} strokeWidth={1.75} /> Удалить тренера
-                </button>
               </div>
             )}
           </div>
         ))}
       </div>
-      {confirmIdx !== null && (
-        <ConfirmModal
-          title={`Удалить тренера «${data.trainers[confirmIdx]?.name}»?`}
-          message="Это действие нельзя отменить."
-          confirmText="Удалить"
-          onConfirm={() => remove(confirmIdx)}
-          onCancel={() => setConfirmIdx(null)}
-          danger
-        />
-      )}
     </div>
   );
 };
@@ -756,6 +672,64 @@ const TaplinkEditor = () => {
   const [dirty,   setDirty]   = useState(false);
   const skipDirtyRef = useRef(true);
   const navigate = useNavigate();
+
+  // Секции и тренеры на сайте — только из CRM («Спорт и тренеры»). Создавать/удалять их
+  // вручную здесь нельзя: список всегда 1:1 отражает то, что реально настроено в CRM.
+  const [crmSports, setCrmSports] = useState([]);
+  const [crmTrainers, setCrmTrainers] = useState([]);
+  const [crmLoading, setCrmLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      fetchCrmSports({}, null).then((d) => (Array.isArray(d) ? d : d?.results ?? d?.items ?? [])).catch(() => []),
+      fetchCrmTrainers({ perPage: 500 }, null).then((d) => d?.items ?? d?.results ?? (Array.isArray(d) ? d : [])).catch(() => []),
+    ]).then(([sports, trainers]) => {
+      if (cancelled) return;
+      setCrmSports(sports);
+      setCrmTrainers(trainers);
+      setCrmLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Приводим data.sports/data.trainers в соответствие с CRM: новые секции/тренеры добавляются
+  // автоматически с пустым маркетинговым контентом, удалённые в CRM — пропадают и здесь.
+  // Название/вид спорта всегда обновляются из CRM (не редактируются вручную).
+  useEffect(() => {
+    // Ждём и CRM-списки, и (если включён бэкенд) загрузку сохранённого конфига —
+    // иначе более поздний setData из loadTaplinkDataAsync затрёт результат сверки.
+    if (crmLoading || loading) return;
+    setData((d) => {
+      const existingSportById = new Map((d.sports || []).map((s) => [String(s.crmSportId), s]));
+      const sports = crmSports.map((cs) => {
+        const existing = existingSportById.get(String(cs.id));
+        return existing
+          ? { ...existing, name: cs.name }
+          : {
+              id: `crm-sport-${cs.id}`, crmSportId: cs.id, name: cs.name, emoji: '🥋', photo: null,
+              gradient: 'linear-gradient(145deg, #1a0505 0%, #6b1414 60%, #8b1a1a 100%)',
+              desc: '', videos: ['', '', '', '', ''], published: true,
+            };
+      });
+
+      const existingTrainerById = new Map((d.trainers || []).map((t) => [String(t.crmTrainerId), t]));
+      const trainers = crmTrainers.map((ct) => {
+        const sportName = resolveTrainerSportName(ct, crmSports);
+        const existing = existingTrainerById.get(String(ct.id));
+        return existing
+          ? { ...existing, name: ct.fio || ct.name || existing.name, sportName }
+          : {
+              id: `crm-trainer-${ct.id}`, crmTrainerId: ct.id, name: ct.fio || ct.name || '', sportName,
+              emoji: '👤', photo: null, experience: '', shortBio: '', bio: '', instagram: '',
+              achievements: [''], videos: ['', '', '', '', ''], published: true,
+            };
+      });
+
+      return { ...d, sports, trainers };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [crmSports, crmTrainers, crmLoading, loading]);
 
   // Load from API on mount (if backend is enabled and no fresh session data)
   useEffect(() => {

@@ -11,4 +11,11 @@
     font-weight: var(--input-label-weight);
     color: var(--input-label-color);
   }
+
+  &__hint {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--color-text-muted);
+  }
 }

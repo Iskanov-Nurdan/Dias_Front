@@ -10,7 +10,13 @@ export const WEEKDAYS = [
   { weekday: 7, short: 'Вс', label: 'Воскресенье' },
 ];
 
-const emptyRow = () => ({ start: '', end: '' });
+/** Категории занятия — общий словарь для CRM-графика и Taplink (расписание на сайте берёт это же поле). */
+export const AGE_GROUP_OPTIONS = [
+  { value: 'Взрослые',    label: 'Взрослые' },
+  { value: 'Дети (5–17)', label: 'Дети (5–17)' },
+];
+
+const emptyRow = () => ({ start: '', end: '', ageGroup: '' });
 
 export const createEmptyScheduleState = () =>
   WEEKDAYS.map(({ weekday }) => ({
@@ -19,10 +25,44 @@ export const createEmptyScheduleState = () =>
     intervals: [emptyRow()],
   }));
 
+/**
+ * Группирует дни редактора графика по ИДЕНТИЧНОМУ набору интервалов — «занятие Ср+Пт 10:00–12:00»
+ * вместо двух отдельных одинаковых блоков. Дни с уникальным временем остаются каждый в своей группе
+ * (одиночная группа = сегодняшнее поведение «один день»). Чистая функция от `rows`,
+ * никакой отдельной сущности «группа» в API нет — при сохранении rows разворачиваются обратно как раньше.
+ */
+export function groupScheduleRows(rows) {
+  const enabledRows = (rows || []).filter((r) => r.enabled);
+  // Категория — часть сигнатуры: Пн 18:00–19:30 «Взрослые» и Ср 18:00–19:30 «Дети» — разные занятия,
+  // их нельзя схлопывать в одну группу, даже если время совпадает.
+  const signature = (intervals) =>
+    (intervals || [])
+      .filter((i) => i.start && i.end)
+      .map((i) => `${i.start}-${i.end}-${i.ageGroup || ''}`)
+      .sort()
+      .join(',');
+
+  const groups = [];
+  for (const row of enabledRows) {
+    const sig = signature(row.intervals);
+    // Пустой/недозаполненный день не сливаем с другими такими же пустыми — только настоящее совпадение времени группируем.
+    let group = sig ? groups.find((g) => g.sig === sig) : null;
+    if (!group) {
+      group = { sig, weekdays: [], intervals: row.intervals?.length ? row.intervals : [{ start: '', end: '' }] };
+      groups.push(group);
+    }
+    group.weekdays.push(row.weekday);
+  }
+  groups.forEach((g) => g.weekdays.sort((a, b) => a - b));
+  groups.sort((a, b) => a.weekdays[0] - b.weekdays[0]);
+  return groups;
+}
+
 const normalizeInterval = (raw) => {
   const start = raw?.start ?? raw?.time_from ?? raw?.timeFrom ?? '';
   const end = raw?.end ?? raw?.time_to ?? raw?.timeTo ?? '';
-  return { start: String(start).slice(0, 5), end: String(end).slice(0, 5) };
+  const ageGroup = raw?.ageGroup ?? raw?.age_group ?? '';
+  return { start: String(start).slice(0, 5), end: String(end).slice(0, 5), ageGroup };
 };
 
 /** Собрать состояние модалки из ответа API (weekdays / weekdays snake). */
@@ -56,32 +96,70 @@ export function scheduleToApiPayload(rows) {
       intervals: row.enabled
         ? (row.intervals || [])
             .filter((i) => i.start && i.end)
-            .map((i) => ({ start: i.start, end: i.end }))
+            .map((i) => ({ start: i.start, end: i.end, ageGroup: i.ageGroup || '' }))
         : [],
     })),
   };
 }
 
 /**
- * Слоты для формы клиента: label «Пн 12:00–14:00», value «weekday|start|end» (1–7, HH:mm).
+ * Слоты для формы клиента: value «weekday|start|end» (1–7, HH:mm) по первому дню группы.
+ * Если один и тот же интервал повторяется в нескольких днях (напр. Пн/Ср/Пт 20:00–21:30 —
+ * одна и та же группа/тренировка), эти дни схлопываются в ОДИН слот с общим `days`,
+ * чтобы это было видно сразу, а не терялось за одним случайно выбранным днём.
  * data — ответ GET /trainers/{id}/schedule/
  */
 export function flattenScheduleToSlotOptions(data) {
   const rows = scheduleFromApiResponse(data || {});
-  const options = [];
+  const groups = new Map(); // "start|end|ageGroup" → { days: [{weekday, short}], start, end, ageGroup }
+
   for (const row of rows) {
     if (!row.enabled) continue;
     for (const int of row.intervals || []) {
       if (!int.start || !int.end) continue;
       const meta = WEEKDAYS.find((w) => w.weekday === row.weekday);
-      const label = `${meta?.short ?? row.weekday} ${int.start}–${int.end}`;
-      options.push({
-        value: `${row.weekday}|${int.start}|${int.end}`,
-        label,
-      });
+      // Категория — часть ключа: тот же час, но «Взрослые» и «Дети» — разные занятия, не сливаем.
+      const key = `${int.start}|${int.end}|${int.ageGroup || ''}`;
+      if (!groups.has(key)) groups.set(key, { days: [], start: int.start, end: int.end, ageGroup: int.ageGroup || '' });
+      groups.get(key).days.push({ weekday: row.weekday, short: meta?.short ?? String(row.weekday) });
     }
   }
+
+  const options = [];
+  for (const { days, start, end, ageGroup } of groups.values()) {
+    days.sort((a, b) => a.weekday - b.weekday);
+    const primaryWeekday = days[0].weekday;
+    const label = [ageGroup, `${days.map((d) => d.short).join(', ')} ${start}–${end}`].filter(Boolean).join(' — ');
+    options.push({
+      value: `${primaryWeekday}|${start}|${end}`,
+      label,
+      days,
+      start,
+      end,
+      ageGroup,
+    });
+  }
+  options.sort((a, b) => a.days[0].weekday - b.days[0].weekday || a.start.localeCompare(b.start));
   return options;
+}
+
+/**
+ * Группирует уже собранные слоты (flattenScheduleToSlotOptions) по набору дней:
+ * несколько разных интервалов на одних и тех же днях (напр. 3 варианта времени по Пн)
+ * идут под ОДНИМ общим заголовком дней, а не отдельной строкой с повтором бейджа дня на каждую.
+ */
+export function groupSlotOptionsByDays(options) {
+  const groups = [];
+  for (const opt of options || []) {
+    const key = (opt.days || []).map((d) => d.weekday).join(',');
+    let group = groups.find((g) => g.key === key);
+    if (!group) {
+      group = { key, days: opt.days, options: [] };
+      groups.push(group);
+    }
+    group.options.push(opt);
+  }
+  return groups;
 }
 
 export function parseTrainingSlotKey(key) {

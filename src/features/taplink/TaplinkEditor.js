@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Eye, Check, AlertTriangle, House, BarChart3, Swords, Users, Wallet, Phone, Plus, X, Camera, ChevronDown, Video, Clock, Lock, Star, MessageCircle, AtSign, MapPin } from 'lucide-react';
 import { loadTaplinkData, saveTaplinkDataAsync, loadTaplinkDataAsync, setSessionData } from './taplinkStore';
 import { BACKEND_ENABLED, uploadFile } from './api';
 import { fetchSports as fetchCrmSports, fetchTrainers as fetchCrmTrainers, fetchTrainerSchedule } from '../sports-trainers/api';
@@ -9,12 +9,12 @@ import { Field, PhotoUpload, VideoUpload } from '../../shared/ui';
 import './TaplinkEditor.scss';
 
 const TABS = [
-  { id: 'hero',     label: 'Главная',    icon: '🏠' },
-  { id: 'stats',    label: 'Статистика', icon: '📊' },
-  { id: 'sports',   label: 'Секции',     icon: '🥋' },
-  { id: 'trainers', label: 'Тренеры',    icon: '👤' },
-  { id: 'prices',   label: 'Цены',       icon: '💰' },
-  { id: 'footer',   label: 'Контакты',   icon: '📞' },
+  { id: 'hero',     label: 'Главная',    icon: House },
+  { id: 'stats',    label: 'Статистика', icon: BarChart3 },
+  { id: 'sports',   label: 'Секции',     icon: Swords },
+  { id: 'trainers', label: 'Тренеры',    icon: Users },
+  { id: 'prices',   label: 'Цены',       icon: Wallet },
+  { id: 'footer',   label: 'Контакты',   icon: Phone },
 ];
 
 /** Первый вид спорта тренера (объект или id) → название, по списку секций CRM. */
@@ -105,13 +105,15 @@ const HeroTab = ({ data, setData }) => {
       <div className="tpe-card">
         <div className="tpe-offer-hd">
           <span className="tpe-card__subtitle">Акция / специальное предложение</span>
-          <label className="tpe-toggle">
+          <label className="tpe-switch">
             <input
               type="checkbox"
+              className="tpe-switch__input"
               checked={!!(data.offer && data.offer.enabled)}
               onChange={e => setData(d => ({ ...d, offer: { ...(d.offer || {}), enabled: e.target.checked } }))}
             />
-            <span>{(data.offer && data.offer.enabled) ? 'Показывать' : 'Скрыто'}</span>
+            <span className="tpe-switch__track"><span className="tpe-switch__thumb" /></span>
+            <span className="tpe-switch__label">{(data.offer && data.offer.enabled) ? 'Показывать' : 'Скрыто'}</span>
           </label>
         </div>
         {data.offer && data.offer.enabled && (
@@ -151,25 +153,39 @@ const StatsTab = ({ data, setData }) => {
   return (
     <div className="tpe-section">
       <div className="tpe-section__hd">
-        <h2 className="tpe-section__title">Статистика</h2>
-        <button className="tpe-add-btn" type="button" onClick={addStat}>+ Добавить</button>
+        <div>
+          <h2 className="tpe-section__title">Статистика</h2>
+          <p className="tpe-section__desc">Цифры на главном экране публичной страницы.</p>
+        </div>
+        <button className="tpe-add-btn" type="button" onClick={addStat}>
+          <Plus size={14} strokeWidth={2.5} /> Добавить
+        </button>
       </div>
       <div className="tpe-stats-grid">
         {data.stats.map((s, i) => (
           <div key={i} className="tpe-stat-card">
+            {data.stats.length > 1 && (
+              <button
+                type="button"
+                className="tpe-stat-card__remove"
+                onClick={() => removeStat(i)}
+                aria-label="Удалить карточку статистики"
+                title="Удалить"
+              >
+                <X size={13} strokeWidth={2.5} />
+              </button>
+            )}
+            <span className="tpe-stat-card__preview-label">Предпросмотр</span>
             <div className="tpe-stat-card__preview">
               <span className="tpe-stat-card__n">{s.n || '—'}</span>
               <span className="tpe-stat-card__l">{s.l || 'подпись'}</span>
             </div>
             <Field label="Число / текст">
-              <input className="tpe-input" value={s.n} onChange={e => set(i, 'n', e.target.value)} />
+              <input className="tpe-input" value={s.n} onChange={e => set(i, 'n', e.target.value)} placeholder="напр. 500+" />
             </Field>
             <Field label="Подпись">
-              <input className="tpe-input" value={s.l} onChange={e => set(i, 'l', e.target.value)} />
+              <input className="tpe-input" value={s.l} onChange={e => set(i, 'l', e.target.value)} placeholder="напр. Учеников" />
             </Field>
-            {data.stats.length > 1 && (
-              <button className="tpe-delete-sm" type="button" onClick={() => removeStat(i)}>Удалить</button>
-            )}
           </div>
         ))}
       </div>
@@ -257,27 +273,29 @@ const SportsTab = ({ data, setData }) => {
       <div className="tpe-list">
         {data.sports.map((sport, i) => (
           <div key={sport.id || i} className={`tpe-item${open === i ? ' tpe-item--open' : ''}`}>
-            <button type="button" className="tpe-item__head" onClick={() => toggle(i)}>
+            <button type="button" className="tpe-item__head" onClick={() => toggle(i)} aria-expanded={open === i}>
               <span className="tpe-item__thumb-wrap">
                 {sport.photo
                   ? <img src={sport.photo} alt="" className="tpe-item__thumb-img" />
-                  : <span className="tpe-item__thumb-empty">📷</span>
+                  : <span className="tpe-item__thumb-empty"><Camera size={16} strokeWidth={1.75} /></span>
                 }
               </span>
               <span className="tpe-item__name">{sport.name}</span>
               {sport.published === false && <span className="tpe-item__hidden-badge">Скрыто</span>}
-              <span className="tpe-item__arrow">{open === i ? '▲' : '▼'}</span>
+              <ChevronDown size={16} strokeWidth={2} className={`tpe-item__arrow${open === i ? ' tpe-item__arrow--open' : ''}`} />
             </button>
 
             {isRendered(i) && (
               <div className="tpe-item__body">
-                <label className="tpe-publish-toggle">
+                <label className="tpe-switch tpe-switch--block">
                   <input
                     type="checkbox"
+                    className="tpe-switch__input"
                     checked={sport.published !== false}
                     onChange={e => set(i, 'published', e.target.checked)}
                   />
-                  Показывать секцию на сайте
+                  <span className="tpe-switch__track"><span className="tpe-switch__thumb" /></span>
+                  <span className="tpe-switch__label">Показывать секцию на сайте</span>
                 </label>
 
                 <Field label="Фото секции (баннер)">
@@ -307,7 +325,7 @@ const SportsTab = ({ data, setData }) => {
                   return (
                     <div className="tpe-sched-block">
                       <div className="tpe-sched-block__hd">
-                        <span className="tpe-sched-block__label">Расписание</span>
+                        <span className="tpe-sched-block__label"><Clock size={13} strokeWidth={2} /> Расписание</span>
                         <span className="tpe-sched-block__live-badge">
                           <RefreshCw size={11} className={live?.loading ? 'tpe-spin' : ''} />
                           Живьём из CRM
@@ -336,7 +354,7 @@ const SportsTab = ({ data, setData }) => {
                 })()}
 
                 <div className="tpe-videos-block">
-                  <p className="tpe-videos-block__label">Видео секции</p>
+                  <p className="tpe-videos-block__label"><Video size={13} strokeWidth={2} /> Видео секции</p>
                   <div className="tpe-videos-grid">
                     {[0, 1, 2, 3, 4].map(vi => (
                       <VideoUpload
@@ -421,11 +439,11 @@ const TrainersTab = ({ data, setData }) => {
       <div className="tpe-list">
         {data.trainers.map((t, i) => (
           <div key={t.id || i} className={`tpe-item${open === i ? ' tpe-item--open' : ''}`}>
-            <button type="button" className="tpe-item__head" onClick={() => toggle(i)}>
+            <button type="button" className="tpe-item__head" onClick={() => toggle(i)} aria-expanded={open === i}>
               <span className="tpe-item__ava-wrap">
                 {t.photo
                   ? <img src={t.photo} alt="" className="tpe-item__ava-img" />
-                  : <span className="tpe-item__ava-empty">📷</span>
+                  : <span className="tpe-item__ava-empty"><Camera size={16} strokeWidth={1.75} /></span>
                 }
               </span>
               <span className="tpe-item__info">
@@ -433,18 +451,20 @@ const TrainersTab = ({ data, setData }) => {
                 <span className="tpe-item__sport">{t.sportName}</span>
               </span>
               {t.published === false && <span className="tpe-item__hidden-badge">Скрыт</span>}
-              <span className="tpe-item__arrow">{open === i ? '▲' : '▼'}</span>
+              <ChevronDown size={16} strokeWidth={2} className={`tpe-item__arrow${open === i ? ' tpe-item__arrow--open' : ''}`} />
             </button>
 
             {isRendered(i) && (
               <div className="tpe-item__body">
-                <label className="tpe-publish-toggle">
+                <label className="tpe-switch tpe-switch--block">
                   <input
                     type="checkbox"
+                    className="tpe-switch__input"
                     checked={t.published !== false}
                     onChange={e => set(i, 'published', e.target.checked)}
                   />
-                  Показывать тренера на сайте
+                  <span className="tpe-switch__track"><span className="tpe-switch__thumb" /></span>
+                  <span className="tpe-switch__label">Показывать тренера на сайте</span>
                 </label>
 
                 <div className="tpe-two-col">
@@ -460,11 +480,11 @@ const TrainersTab = ({ data, setData }) => {
                     />
                   </Field>
                   <div className="tpe-trainer-fields">
-                    <Field label="ФИО тренера" hint="Из CRM «Спорт и тренеры» — изменить можно только там.">
-                      <input className="tpe-input" value={t.name} disabled readOnly />
+                    <Field label="ФИО тренера" hint={<><Lock size={11} strokeWidth={2} /> Из CRM «Спорт и тренеры» — изменить можно только там.</>}>
+                      <input className="tpe-input tpe-input--readonly" value={t.name} disabled readOnly />
                     </Field>
-                    <Field label="Вид спорта" hint="Из CRM «Спорт и тренеры» — изменить можно только там.">
-                      <input className="tpe-input" value={t.sportName || '—'} disabled readOnly />
+                    <Field label="Вид спорта" hint={<><Lock size={11} strokeWidth={2} /> Из CRM «Спорт и тренеры» — изменить можно только там.</>}>
+                      <input className="tpe-input tpe-input--readonly" value={t.sportName || '—'} disabled readOnly />
                     </Field>
                     <Field label="Тренерский стаж (напр. 10 лет)">
                       <input className="tpe-input" value={t.experience} onChange={e => set(i, 'experience', e.target.value)} />
@@ -504,19 +524,19 @@ const TrainersTab = ({ data, setData }) => {
                         onChange={e => setAchieve(i, ai, e.target.value)}
                       />
                       {t.achievements.length > 1 && (
-                        <button type="button" className="tpe-achieve-del" onClick={() => removeAchieve(i, ai)}>✕</button>
+                        <button type="button" className="tpe-achieve-del" onClick={() => removeAchieve(i, ai)} aria-label="Удалить достижение"><X size={14} strokeWidth={2.5} /></button>
                       )}
                     </div>
                   ))}
                   {t.achievements.length < 6 && (
                     <button type="button" className="tpe-achieve-add" onClick={() => addAchieve(i)}>
-                      + Добавить достижение
+                      <Plus size={14} strokeWidth={2.5} /> Добавить достижение
                     </button>
                   )}
                 </div>
 
                 <div className="tpe-videos-block">
-                  <p className="tpe-videos-block__label">Видео тренировок</p>
+                  <p className="tpe-videos-block__label"><Video size={13} strokeWidth={2} /> Видео тренировок</p>
                   <div className="tpe-videos-grid">
                     {[0, 1, 2, 3, 4].map(vi => (
                       <VideoUpload
@@ -571,20 +591,22 @@ const PricesTab = ({ data, setData }) => {
 
       <div className="tpe-prices-editor">
         {prices.length === 0 && (
-          <div className="tpe-empty">Нет карточек. Нажмите «+ Добавить», чтобы добавить тарифы.</div>
+          <div className="tpe-empty">Нет карточек. Нажмите «Добавить карточку», чтобы добавить тарифы.</div>
         )}
         {prices.map((card, idx) => (
           <div key={card.id || idx} className={`tpe-price-card${card.hot ? ' tpe-price-card--hot' : ''}`}>
             <div className="tpe-price-card__hd">
-              <label className="tpe-price-card__hot-toggle">
+              <label className={`tpe-price-card__hot-toggle${card.hot ? ' tpe-price-card__hot-toggle--active' : ''}`}>
                 <input
                   type="checkbox"
+                  className="tpe-price-card__hot-input"
                   checked={!!card.hot}
                   onChange={e => update(idx, 'hot', e.target.checked)}
                 />
-                <span>Популярное</span>
+                <Star size={12} strokeWidth={2} fill={card.hot ? 'currentColor' : 'none'} />
+                Популярное
               </label>
-              <button className="tpe-icon-btn tpe-icon-btn--danger" onClick={() => removeCard(idx)} title="Удалить">✕</button>
+              <button className="tpe-icon-btn tpe-icon-btn--danger" onClick={() => removeCard(idx)} title="Удалить" aria-label="Удалить карточку"><X size={14} strokeWidth={2.5} /></button>
             </div>
             <Field label="Название">
               <input className="tpe-input" placeholder="напр. 12 занятий" value={card.name} onChange={e => update(idx, 'name', e.target.value)} />
@@ -599,9 +621,25 @@ const PricesTab = ({ data, setData }) => {
         ))}
       </div>
 
-      <button className="tpe-add-btn" onClick={addCard}>+ Добавить карточку</button>
+      <button className="tpe-add-btn" onClick={addCard}><Plus size={14} strokeWidth={2.5} /> Добавить карточку</button>
     </div>
   );
+};
+
+/** Похоже на ссылку/содержит @ — а поле ждёт «голый» username. Не блокирует сохранение,
+ * только предупреждает: со ссылкой вместо username кнопка на сайте будет вести не туда. */
+const handleFormatWarning = (value) => {
+  const v = (value || '').trim();
+  if (!v) return null;
+  if (/^https?:\/\//i.test(v) || v.includes('/') || v.startsWith('@')) {
+    return 'Похоже на ссылку — нужен только username, без адреса и «@».';
+  }
+  return null;
+};
+
+const handleHint = (value) => {
+  const warning = handleFormatWarning(value);
+  return warning ? <span className="tpe-field-warn"><AlertTriangle size={11} strokeWidth={2} /> {warning}</span> : undefined;
 };
 
 const FooterTab = ({ data, setData }) => {
@@ -612,27 +650,27 @@ const FooterTab = ({ data, setData }) => {
       <h2 className="tpe-section__title">Контакты и мессенджеры</h2>
 
       <div className="tpe-card">
-        <p className="tpe-card__subtitle">Мессенджеры — кнопки внизу страницы</p>
+        <p className="tpe-card__subtitle"><MessageCircle size={13} strokeWidth={2} /> Мессенджеры — кнопки внизу страницы</p>
         <Field label="WhatsApp (номер, напр. 77001234567)">
           <input className="tpe-input" type="tel" placeholder="77001234567" value={f.whatsapp || ''} onChange={e => set('whatsapp', e.target.value)} />
         </Field>
-        <Field label="Telegram (username без @)">
+        <Field label="Telegram (username без @)" hint={handleHint(f.telegram)}>
           <input className="tpe-input" placeholder="rahmanata" value={f.telegram || ''} onChange={e => set('telegram', e.target.value)} />
         </Field>
       </div>
 
       <div className="tpe-card">
-        <p className="tpe-card__subtitle">Социальные сети</p>
-        <Field label="Instagram (username без @)">
+        <p className="tpe-card__subtitle"><AtSign size={13} strokeWidth={2} /> Социальные сети</p>
+        <Field label="Instagram (username без @)" hint={handleHint(f.instagram)}>
           <input className="tpe-input" placeholder="rahmanata_kg" value={f.instagram || ''} onChange={e => set('instagram', e.target.value)} />
         </Field>
-        <Field label="TikTok (username без @)">
+        <Field label="TikTok (username без @)" hint={handleHint(f.tiktok)}>
           <input className="tpe-input" placeholder="rahmanata_kg" value={f.tiktok || ''} onChange={e => set('tiktok', e.target.value)} />
         </Field>
       </div>
 
       <div className="tpe-card">
-        <p className="tpe-card__subtitle">Контактные данные</p>
+        <p className="tpe-card__subtitle"><MapPin size={13} strokeWidth={2} /> Контактные данные</p>
         <Field label="Телефон">
           <input className="tpe-input" type="tel" value={f.phone} onChange={e => set('phone', e.target.value)} />
         </Field>
@@ -789,7 +827,11 @@ const TaplinkEditor = () => {
     );
   }
 
-  const saveBtnLabel = saving ? 'Сохранение…' : saved ? '✓ Сохранено' : 'Сохранить';
+  const saveBtnContent = saving
+    ? 'Сохранение…'
+    : saved
+      ? <><Check size={15} strokeWidth={2.5} /> Сохранено</>
+      : 'Сохранить';
 
   return (
     <div className="tpe">
@@ -803,7 +845,7 @@ const TaplinkEditor = () => {
         </div>
         <div className="tpe__actions">
           <button type="button" className="tpe__preview-btn" onClick={preview}>
-            👁 Предпросмотр
+            <Eye size={15} strokeWidth={2} /> Предпросмотр
           </button>
           <button
             type="button"
@@ -811,18 +853,28 @@ const TaplinkEditor = () => {
             onClick={save}
             disabled={saving}
           >
-            {saveBtnLabel}
+            {saveBtnContent}
           </button>
         </div>
       </div>
 
-      <div className="tpe__tabs">
-        {TABS.map(t => (
-          <button key={t.id} type="button" className={`tpe__tab${tab === t.id ? ' tpe__tab--on' : ''}`} onClick={() => setTab(t.id)}>
-            <span className="tpe__tab-icon">{t.icon}</span>
-            <span>{t.label}</span>
-          </button>
-        ))}
+      <div className="tpe__tabs" role="tablist" aria-label="Разделы редактора">
+        {TABS.map(t => {
+          const Icon = t.icon;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              className={`tpe__tab${tab === t.id ? ' tpe__tab--on' : ''}`}
+              onClick={() => setTab(t.id)}
+            >
+              <Icon size={15} strokeWidth={2} className="tpe__tab-icon" />
+              <span>{t.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="tpe__body">
@@ -834,13 +886,15 @@ const TaplinkEditor = () => {
         {tab === 'footer'   && <FooterTab   data={data} setData={setData} />}
       </div>
 
-      <div className="tpe__bottom-bar">
-        <span className="tpe__bottom-note">
+      <div className={`tpe__bottom-bar${dirty && !saveErr ? ' tpe__bottom-bar--dirty' : ''}`}>
+        <span className={`tpe__bottom-note${saveErr ? ' tpe__bottom-note--error' : saved ? ' tpe__bottom-note--ok' : ''}`}>
           {saveErr
-            ? `⚠ ${saveErr}`
+            ? <><AlertTriangle size={13} strokeWidth={2} /> {saveErr}</>
             : saved
-              ? '✓ Изменения сохранены'
-              : 'Несохранённые изменения будут потеряны при перезагрузке'}
+              ? <><Check size={13} strokeWidth={2.5} /> Изменения сохранены</>
+              : dirty
+                ? <>Несохранённые изменения будут потеряны при перезагрузке</>
+                : 'Все изменения сохранены'}
         </span>
         <button
           type="button"
@@ -848,7 +902,7 @@ const TaplinkEditor = () => {
           onClick={save}
           disabled={saving}
         >
-          {saveBtnLabel}
+          {saveBtnContent}
         </button>
       </div>
     </div>

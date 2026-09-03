@@ -47,10 +47,10 @@ const StatsUnpaidModal = ({ open, year, month, onClose, onOpenClient }) => {
       <div className="sum" onClick={(e) => e.stopPropagation()}>
 
         <div className="sum__header">
+          <span className="sum__header-icon"><UserX size={18} /></span>
           <div className="sum__header-info">
             <div className="sum__header-sub">Статистика · {periodStr}</div>
             <h2 id="sum-title" className="sum__title">
-              <span className="sum__title-icon"><UserX size={18} /></span>
               Не оплатили — {loading ? '…' : clients.length}
             </h2>
           </div>

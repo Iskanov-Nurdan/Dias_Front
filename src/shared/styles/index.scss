@@ -322,7 +322,7 @@ textarea {
   font-weight: 600;
   line-height: 1;
   cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform 0.1s;
   white-space: nowrap;
   flex-shrink: 0;
 
@@ -335,6 +335,10 @@ textarea {
     background: var(--color-surface-secondary);
     border-color: var(--color-text-muted);
     color: var(--color-text);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.95);
   }
 
   // Правка — синий, отдельно от фирменного красного (--primary), чтобы не путать с удалением

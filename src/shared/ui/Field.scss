@@ -13,9 +13,14 @@
   }
 
   &__hint {
+    display: flex;
+    align-items: center;
+    gap: 5px;
     margin: 0;
     font-size: 12px;
     line-height: 1.4;
     color: var(--color-text-muted);
+
+    svg { flex-shrink: 0; opacity: 0.8; }
   }
 }

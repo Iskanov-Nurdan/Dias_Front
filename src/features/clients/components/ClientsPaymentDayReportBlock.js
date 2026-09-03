@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
+import { CalendarRange, ClipboardList, CircleCheck, Wallet } from 'lucide-react';
 import { EmptyState, ErrorState, Spinner } from '../../../shared/ui';
 import { formatMoney } from '../../../shared/constants/common';
 import { normalizeClientsPaymentDayReportResponse } from '../lib/paymentDayReportNormalize';
@@ -77,7 +78,7 @@ const ClientsPaymentDayReportBlock = ({
   if (loading) {
     return (
       <div className="clients-payment-day-report">
-        <h3 className="clients-payment-day-report__title">Записи и оплаты по дням</h3>
+        <h3 className="clients-payment-day-report__title"><CalendarRange size={16} /> Записи и оплаты по дням</h3>
         <p className="clients-payment-day-report__hint">
           По каждому дню: сколько клиентов записали (дата начала) и сколько фактически оплатили в этот день (поле «Фактический день
           оплаты»).
@@ -92,7 +93,7 @@ const ClientsPaymentDayReportBlock = ({
   if (endpointMissing) {
     return (
       <div className="clients-payment-day-report">
-        <h3 className="clients-payment-day-report__title">Записи и оплаты по дням</h3>
+        <h3 className="clients-payment-day-report__title"><CalendarRange size={16} /> Записи и оплаты по дням</h3>
         <p className="clients-payment-day-report__hint">
           Таблица появится после того, как бэкенд отдаст агрегированные данные за выбранный месяц. Поле клиента{' '}
           <code className="clients-payment-day-report__code">actualPaymentDate</code> уже можно заполнять в форме — оно уйдёт в API
@@ -109,7 +110,7 @@ const ClientsPaymentDayReportBlock = ({
   if (errorMessage) {
     return (
       <div className="clients-payment-day-report">
-        <h3 className="clients-payment-day-report__title">Записи и оплаты по дням</h3>
+        <h3 className="clients-payment-day-report__title"><CalendarRange size={16} /> Записи и оплаты по дням</h3>
         <ErrorState compact message={errorMessage} onRetry={onRetry} />
       </div>
     );
@@ -117,24 +118,33 @@ const ClientsPaymentDayReportBlock = ({
 
   return (
     <div className="clients-payment-day-report">
-      <h3 className="clients-payment-day-report__title">Записи и оплаты по дням</h3>
+      <h3 className="clients-payment-day-report__title"><CalendarRange size={16} /> Записи и оплаты по дням</h3>
 
       {rows.length > 0 && (
         <div className="clients-payment-day-report__totals">
-          <span>
-            Всего записей за месяц:
-            <span className="clients-payment-day-report__total-strong">{totals.registered.toLocaleString('ru-RU')}</span>
-          </span>
-          <span>
-            Всего оплат по фактической дате:
-            <span className="clients-payment-day-report__total-strong">{totals.paid.toLocaleString('ru-RU')}</span>
-          </span>
-          <span>
-            Итого по суммам за месяц:
-            <span className="clients-payment-day-report__total-strong">
-              {totals.hasAmount ? formatMoney(totals.amountSum) : '—'}
-            </span>
-          </span>
+          <div className="clients-payment-day-report__total">
+            <span className="clients-payment-day-report__total-icon"><ClipboardList size={15} /></span>
+            <div>
+              <div className="clients-payment-day-report__total-strong">{totals.registered.toLocaleString('ru-RU')}</div>
+              <div className="clients-payment-day-report__total-label">Записей за месяц</div>
+            </div>
+          </div>
+          <div className="clients-payment-day-report__total">
+            <span className="clients-payment-day-report__total-icon clients-payment-day-report__total-icon--success"><CircleCheck size={15} /></span>
+            <div>
+              <div className="clients-payment-day-report__total-strong">{totals.paid.toLocaleString('ru-RU')}</div>
+              <div className="clients-payment-day-report__total-label">Оплат по фактической дате</div>
+            </div>
+          </div>
+          <div className="clients-payment-day-report__total">
+            <span className="clients-payment-day-report__total-icon clients-payment-day-report__total-icon--money"><Wallet size={15} /></span>
+            <div>
+              <div className="clients-payment-day-report__total-strong">
+                {totals.hasAmount ? formatMoney(totals.amountSum) : '—'}
+              </div>
+              <div className="clients-payment-day-report__total-label">Итого за месяц</div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -161,7 +171,13 @@ const ClientsPaymentDayReportBlock = ({
                   <td>{r.dayLabel}</td>
                   <td>{renderCountCell(r.registeredCount, r.dayIso, r.dayLabel, 'registered')}</td>
                   <td>{renderCountCell(r.paidCount, r.dayIso, r.dayLabel, 'paid')}</td>
-                  <td className="clients-payment-day-report__amount-cell">{formatMoney(r.paidTotalAmount)}</td>
+                  <td className="clients-payment-day-report__amount-cell">
+                    {r.paidTotalAmount > 0 ? (
+                      <span className="clients-payment-day-report__amount">{formatMoney(r.paidTotalAmount)}</span>
+                    ) : (
+                      <span className="clients-payment-day-report__count--zero">{formatMoney(r.paidTotalAmount)}</span>
+                    )}
+                  </td>
                 </tr>
               ))
             )}

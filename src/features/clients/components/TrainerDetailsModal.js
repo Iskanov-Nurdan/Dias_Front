@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Eye } from 'lucide-react';
+import { X, Eye, Users } from 'lucide-react';
 import { isClientPaid } from '../../../shared/constants/common';
 import { composeClientDataRowClass } from '../lib/clientRowHighlight';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
@@ -76,6 +76,7 @@ const TrainerDetailsModal = ({
       <div className="tdm" onClick={(e) => e.stopPropagation()}>
 
         <div className="tdm__header">
+          <span className="tdm__header-icon"><Users size={18} /></span>
           <div className="tdm__header-info">
             <div className="tdm__header-sub">Ученики тренера</div>
             <h2 id="tdm-title" className="tdm__title">{trainerName || '—'}</h2>

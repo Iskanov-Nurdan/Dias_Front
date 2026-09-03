@@ -47,10 +47,10 @@ const NotRenewedListModal = ({ open, year, month, onClose, onOpenClient, onExten
       <div className="sum nrl__modal" onClick={(e) => e.stopPropagation()}>
 
         <div className="sum__header">
+          <span className="sum__header-icon"><UserX size={18} /></span>
           <div className="sum__header-info">
             <div className="sum__header-sub">Не продлили · {periodStr}</div>
             <h2 id="nrl-title" className="sum__title">
-              <span className="sum__title-icon"><UserX size={18} /></span>
               Не продлили — {loading ? '…' : clients.length}
             </h2>
           </div>

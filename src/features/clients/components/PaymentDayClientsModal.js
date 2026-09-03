@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, CalendarRange, CircleCheck } from 'lucide-react';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { EmptyState, ErrorState, Spinner } from '../../../shared/ui';
 import { fetchClientsPaymentDayClients } from '../api';
@@ -103,7 +103,10 @@ const PaymentDayClientsModal = ({
     >
       <div className="payment-day-clients-modal" onClick={(e) => e.stopPropagation()}>
         <div className="payment-day-clients-modal__header">
-          <div>
+          <span className="payment-day-clients-modal__header-icon">
+            {kind === 'paid' ? <CircleCheck size={18} /> : <CalendarRange size={18} />}
+          </span>
+          <div className="payment-day-clients-modal__header-info">
             <h2 id="payment-day-clients-modal-title" className="payment-day-clients-modal__title">
               {kindTitle}
             </h2>
@@ -206,7 +209,7 @@ const PaymentDayClientsModal = ({
                             })()}
                       </td>
                       <td className="payment-day-clients-modal__date">{r.phone || '—'}</td>
-                      <td style={{ fontSize: 13, color: 'var(--color-text)' }}>{r.trainerName || '—'}</td>
+                      <td className="payment-day-clients-modal__trainer">{r.trainerName || '—'}</td>
                       <td>
                         {r.sportName
                           ? <span className="ui-pill">{r.sportName}</span>

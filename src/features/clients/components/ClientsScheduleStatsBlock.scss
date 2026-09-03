@@ -1,18 +1,25 @@
 .clients-schedule-stats {
-  margin-top: 20px;
-  background: var(--color-surface);
+  margin-top: 22px;
+  background: var(--color-bg-card);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
   overflow: hidden;
 }
 
 .clients-schedule-stats__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
   padding: 14px 18px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 14.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--color-text);
   border-bottom: 1px solid var(--color-border);
+
+  svg { color: var(--color-text-muted); flex-shrink: 0; }
 }
 
 .clients-schedule-stats__hint {
@@ -33,8 +40,8 @@
   padding: 12px 16px;
   font-size: 13px;
   color: var(--color-text-muted);
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
+  background: var(--color-surface-secondary);
+  border-radius: var(--radius-sm);
   border: 1px dashed var(--color-border);
 }
 
@@ -57,7 +64,7 @@
   border-collapse: collapse;
 
   th, td {
-    padding: 11px 18px;
+    padding: 12px 18px;
     text-align: left;
     border-bottom: 1px solid var(--color-border);
     vertical-align: middle;
@@ -65,41 +72,48 @@
 
   th {
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--color-text-muted);
-    background: var(--color-surface);
+    background: var(--color-surface-secondary);
     white-space: nowrap;
   }
 
   tbody tr:last-child td { border-bottom: none; }
 
   // ── Тренер-строка ────────────────────────────────────
-  tbody tr:not(.clients-schedule-stats__row--slot) td {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--color-text);
+  tbody tr:not(.clients-schedule-stats__row--slot) {
+    transition: background 0.15s ease;
+
+    td {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--color-text);
+    }
   }
 
   // ── Открытый тренер ──────────────────────────────────
   tbody tr.clients-schedule-stats__row--open td {
-    background: rgba(239, 68, 68, 0.04);
+    background: var(--color-primary-soft);
     border-bottom-color: transparent;
   }
 
   // ── Slot-строки ──────────────────────────────────────
   tbody tr.clients-schedule-stats__row--slot {
+    animation: schedule-slot-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--row-i, 0) * 25ms);
+
     td {
-      background: rgba(255, 255, 255, 0.02);
+      background: var(--color-surface-secondary);
       font-size: 13px;
-      color: var(--color-text-muted);
-      padding-top: 8px;
-      padding-bottom: 8px;
+      color: var(--color-text-secondary);
+      padding-top: 9px;
+      padding-bottom: 9px;
     }
 
     td:first-child {
-      border-left: 2px solid rgba(239, 68, 68, 0.3);
+      border-left: 2px solid var(--color-primary);
       padding-left: 16px;
     }
 
@@ -109,7 +123,7 @@
     }
 
     &:hover td {
-      background: rgba(255, 255, 255, 0.045);
+      background: color-mix(in srgb, var(--color-surface-secondary) 60%, var(--color-border) 40%);
     }
   }
 }
@@ -122,10 +136,15 @@
 }
 
 .clients-schedule-stats__expand-icon {
-  font-size: 11px;
+  display: inline-flex;
   color: var(--color-text-muted);
   flex-shrink: 0;
-  transition: transform 0.15s;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.15s ease;
+
+  &--open {
+    transform: rotate(90deg);
+    color: var(--color-primary);
+  }
 }
 
 // ── Clickable ────────────────────────────────────────────
@@ -133,7 +152,7 @@
   cursor: pointer;
 
   &:hover:not(.clients-schedule-stats__row--slot) td {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--color-surface-secondary);
   }
 }
 
@@ -144,6 +163,23 @@
   color: var(--color-text-muted);
 }
 
+// ── Числовые колонки ─────────────────────────────────────
+.clients-schedule-stats__num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+
+  &--paid { color: var(--color-success); }
+  &--unpaid {
+    color: var(--color-danger);
+    font-weight: 700;
+  }
+}
+
+.clients-schedule-stats__table th:nth-child(n+3),
+.clients-schedule-stats__table td:nth-child(n+3) {
+  text-align: right;
+}
+
 .clients-schedule-stats__empty {
   text-align: center;
   color: var(--color-text-muted);
@@ -152,4 +188,9 @@
   border-bottom: none !important;
 
   .empty-state { padding: 0; }
+}
+
+@keyframes schedule-slot-in {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
 }

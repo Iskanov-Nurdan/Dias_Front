@@ -20,7 +20,7 @@ import { MONTHS, STATS_YEARS } from '../../shared/constants/common';
 import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiError';
 import { prepareClientSavePayload } from './lib/prepareClientSavePayload';
 import { MAX_WARNINGS } from './lib/clientWarnings';
-import { UserX, BarChart2, Calendar, CalendarDays, Search, Plus, AlertTriangle } from 'lucide-react';
+import { UserX, BarChart2, Calendar, CalendarDays, Search, AlertTriangle, Users, CircleCheck, CircleX, Info, UserCheck, Percent } from 'lucide-react';
 import { Select, ConfirmModal, Pagination, FilterBar, EmptyState, Spinner } from '../../shared/ui';
 import {
   ClientsList,
@@ -444,17 +444,11 @@ const ClientsReportsPage = () => {
                 className="clients-page__not-renewed-select"
                 icon={<CalendarDays size={15} />}
               />
-              <button
-                type="button"
-                className="clients-page__add clients-page__add--desktop filter-bar__action clients-page__not-renewed-add"
-                onClick={() => setFormClient({})}
-              >
-                <Plus size={16} /> Добавить клиента
-              </button>
             </div>
           </FilterBar>
           {nrNextPeriod && (
-            <p className="clients-page__not-renewed-period">
+            <p className="clients-page__stats-info" role="status">
+              <span className="clients-page__stats-info-icon"><Info size={14} /></span>
               Учитываются записи за <strong>{MONTHS[Number(nrMonth)]} {nrYear}</strong>
               {' — '}без продления на <strong>{MONTHS[nrNextPeriod.month]} {nrNextPeriod.year}</strong>
             </p>
@@ -462,12 +456,18 @@ const ClientsReportsPage = () => {
           {!notRenewedLoading && notRenewedSummary && (
             <div className="clients-page__not-renewed-cards">
               <div className="clients-page__not-renewed-card">
-                <div className="clients-page__not-renewed-card-value">{notRenewedSummary.base != null ? notRenewedSummary.base.toLocaleString('ru-RU') : '—'}</div>
-                <div className="clients-page__not-renewed-card-label">Учеников в базовом месяце</div>
+                <span className="clients-page__not-renewed-card-icon"><Users size={17} /></span>
+                <div className="clients-page__stats-card-body">
+                  <div className="clients-page__not-renewed-card-value">{notRenewedSummary.base != null ? notRenewedSummary.base.toLocaleString('ru-RU') : '—'}</div>
+                  <div className="clients-page__not-renewed-card-label">Учеников в базовом месяце</div>
+                </div>
               </div>
               <div className="clients-page__not-renewed-card">
-                <div className="clients-page__not-renewed-card-value">{notRenewedSummary.next != null ? notRenewedSummary.next.toLocaleString('ru-RU') : '—'}</div>
-                <div className="clients-page__not-renewed-card-label">Учеников в следующем месяце</div>
+                <span className="clients-page__not-renewed-card-icon"><UserCheck size={17} /></span>
+                <div className="clients-page__stats-card-body">
+                  <div className="clients-page__not-renewed-card-value">{notRenewedSummary.next != null ? notRenewedSummary.next.toLocaleString('ru-RU') : '—'}</div>
+                  <div className="clients-page__not-renewed-card-label">Учеников в следующем месяце</div>
+                </div>
               </div>
               <button
                 type="button"
@@ -475,14 +475,21 @@ const ClientsReportsPage = () => {
                 onClick={() => setShowNotRenewedModal(true)}
                 title="Нажмите, чтобы увидеть список"
               >
-                <div className="clients-page__not-renewed-card-value">{notRenewedSummary.notRen != null ? notRenewedSummary.notRen.toLocaleString('ru-RU') : '—'}</div>
-                <div className="clients-page__not-renewed-card-label">Не продлили</div>
+                <span className="clients-page__not-renewed-card-icon"><UserX size={17} /></span>
+                <div className="clients-page__stats-card-body">
+                  <div className="clients-page__not-renewed-card-value">{notRenewedSummary.notRen != null ? notRenewedSummary.notRen.toLocaleString('ru-RU') : '—'}</div>
+                  <div className="clients-page__not-renewed-card-label">Не продлили</div>
+                </div>
+                <span className="clients-page__stats-card-cta">Список →</span>
               </button>
               <div className="clients-page__not-renewed-card">
-                <div className="clients-page__not-renewed-card-value">
-                  {notRenewedSummary.pct != null && !Number.isNaN(notRenewedSummary.pct) ? `${String(notRenewedSummary.pct).replace('.', ',')}%` : '—'}
+                <span className="clients-page__not-renewed-card-icon"><Percent size={17} /></span>
+                <div className="clients-page__stats-card-body">
+                  <div className="clients-page__not-renewed-card-value">
+                    {notRenewedSummary.pct != null && !Number.isNaN(notRenewedSummary.pct) ? `${String(notRenewedSummary.pct).replace('.', ',')}%` : '—'}
+                  </div>
+                  <div className="clients-page__not-renewed-card-label">Доля не продливших</div>
                 </div>
-                <div className="clients-page__not-renewed-card-label">Доля не продливших</div>
               </div>
             </div>
           )}
@@ -531,12 +538,18 @@ const ClientsReportsPage = () => {
             <>
               <div className="clients-page__stats-cards">
                 <div className="clients-page__stats-card">
-                  <div className="clients-page__stats-card-value">{statsData.summary?.total ?? 0}</div>
-                  <div className="clients-page__stats-card-label">Учеников</div>
+                  <span className="clients-page__stats-card-icon"><Users size={17} /></span>
+                  <div className="clients-page__stats-card-body">
+                    <div className="clients-page__stats-card-value">{statsData.summary?.total ?? 0}</div>
+                    <div className="clients-page__stats-card-label">Учеников</div>
+                  </div>
                 </div>
                 <div className="clients-page__stats-card">
-                  <div className="clients-page__stats-card-value">{statsData.summary?.paid ?? 0}</div>
-                  <div className="clients-page__stats-card-label">Оплатили</div>
+                  <span className="clients-page__stats-card-icon"><CircleCheck size={17} /></span>
+                  <div className="clients-page__stats-card-body">
+                    <div className="clients-page__stats-card-value">{statsData.summary?.paid ?? 0}</div>
+                    <div className="clients-page__stats-card-label">Оплатили</div>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -544,8 +557,12 @@ const ClientsReportsPage = () => {
                   onClick={() => setShowUnpaidModal(true)}
                   title="Нажмите, чтобы увидеть список"
                 >
-                  <div className="clients-page__stats-card-value">{statsData.summary?.unpaid ?? 0}</div>
-                  <div className="clients-page__stats-card-label">Не оплатили</div>
+                  <span className="clients-page__stats-card-icon"><CircleX size={17} /></span>
+                  <div className="clients-page__stats-card-body">
+                    <div className="clients-page__stats-card-value">{statsData.summary?.unpaid ?? 0}</div>
+                    <div className="clients-page__stats-card-label">Не оплатили</div>
+                  </div>
+                  <span className="clients-page__stats-card-cta">Список →</span>
                 </button>
               </div>
 
@@ -602,6 +619,7 @@ const ClientsReportsPage = () => {
           </FilterBar>
           {!paymentDayYear || !paymentDayMonth ? (
             <p className="clients-page__stats-info" role="status">
+              <span className="clients-page__stats-info-icon"><Info size={14} /></span>
               Выберите <strong>год</strong> и <strong>месяц</strong>, чтобы построить отчёт по дням.
             </p>
           ) : (
@@ -624,6 +642,7 @@ const ClientsReportsPage = () => {
       {activeTab === TAB_WARNINGS && (
         <>
           <p className="clients-page__stats-info" role="status">
+            <span className="clients-page__stats-info-icon"><Info size={14} /></span>
             Клиенты с предупреждениями за неоплату (максимум {MAX_WARNINGS} на клиента). Предупреждение можно поставить в списке «Клиенты» у тех, кто не оплатил, но срок абонемента ещё не истёк.
           </p>
           <ClientsList

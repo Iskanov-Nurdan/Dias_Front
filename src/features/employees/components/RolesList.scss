@@ -4,6 +4,11 @@
   // Обёртка/таблица/аватар/название/кнопки — общие .ui-list__*/.ui-avatar/.ui-pill/.ui-list-btn,
   // см. shared/styles/index.scss. Тут только уникальное для ролей.
   &__table {
+    tbody tr {
+      animation: roles-row-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation-delay: calc(var(--row-i, 0) * 30ms);
+    }
+
     @include mixins.mobile {
       display: block;
       background: transparent;
@@ -45,18 +50,15 @@
     &:hover { background: transparent !important; }
   }
 
-  &__dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: rgba(59, 130, 246, 0.5);
-    flex-shrink: 0;
-  }
-
   &__system-note {
     font-size: 12px;
     color: var(--color-text-muted);
     opacity: 0.6;
     font-style: italic;
   }
+}
+
+@keyframes roles-row-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AlertCircle, CalendarDays } from 'lucide-react';
+import { AlertCircle, CalendarDays, Check, Loader2 } from 'lucide-react';
 import { fetchSalary, saveSalary } from './api';
 import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
@@ -101,6 +101,7 @@ const SalaryPage = () => {
     <div className="salary-page">
       <FilterBar className="salary-page__filter-bar">
         <div className="salary-page__filter-item">
+          <span className="salary-page__filter-label">Год</span>
           <input
             type="number"
             placeholder="Год"
@@ -112,6 +113,7 @@ const SalaryPage = () => {
           />
         </div>
         <div className="salary-page__filter-item salary-page__filter-month">
+          <span className="salary-page__filter-label">Месяц</span>
           <Select
             value={queryState.month ? String(queryState.month) : String(new Date().getMonth() + 1)}
             onChange={(v) => setQueryState((q) => ({ ...q, month: v ? Number(v) : new Date().getMonth() + 1 }))}
@@ -122,9 +124,10 @@ const SalaryPage = () => {
           />
         </div>
         <div className="salary-page__filter-item">
+          <span className="salary-page__filter-label">День</span>
           <input
             type="number"
-            placeholder="День"
+            placeholder="Все"
             value={queryState.day}
             onChange={(e) => setQueryState((q) => ({ ...q, day: e.target.value }))}
             className="salary-page__input"
@@ -139,7 +142,7 @@ const SalaryPage = () => {
 
       {!isMonthEnded && !error && (
         <div className="salary-page__hint">
-          <AlertCircle size={15} className="salary-page__hint-icon" />
+          <span className="salary-page__hint-icon"><AlertCircle size={14} /></span>
           <span>Сохранять зарплату можно только за прошедший месяц (после его окончания).</span>
         </div>
       )}
@@ -203,7 +206,11 @@ const SalaryPage = () => {
               const fmt = (v) => typeof v === 'number' && !Number.isNaN(v) ? `${Number(v).toLocaleString('ru-RU')} сом` : (v ?? '—');
 
               return (
-                <tr key={trainerId} className={`salary-page__row salary-page__row--${saved ? 'saved' : 'pending'}`}>
+                <tr
+                  key={trainerId}
+                  className={`salary-page__row salary-page__row--${saved ? 'saved' : 'pending'}`}
+                  style={{ '--row-i': index }}
+                >
                   <td className="salary-page__td-name" data-label="Тренер">
                     <div className="salary-page__trainer-cell">
                       <span className="salary-page__avatar">{getInitials(trainerName)}</span>
@@ -212,19 +219,24 @@ const SalaryPage = () => {
                   </td>
                   <td className="salary-page__td-num" data-label="Всего">{totalCount ?? '—'}</td>
                   <td className="salary-page__td-num" data-label="Оплатили">{paidCount ?? '—'}</td>
-                  <td className={`salary-page__td-num${hasUnpaid ? ' salary-page__td-num--unpaid' : ''}`} data-label="Не оплатили">{unpaidCount ?? '—'}</td>
-                  <td className="salary-page__td-money" data-label="Доход">{fmt(income)}</td>
+                  <td className="salary-page__td-num" data-label="Не оплатили">
+                    {hasUnpaid ? <span className="salary-page__unpaid-badge">{unpaidCount}</span> : unpaidCount ?? '—'}
+                  </td>
+                  <td className="salary-page__td-money salary-page__td-income" data-label="Доход">{fmt(income)}</td>
                   <td className="salary-page__percent-cell" data-label="% тренеру">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={percent === '' ? '' : percent}
-                      onChange={(e) => setTrainerPercent(row, e.target.value)}
-                      className="salary-page__percent-input"
-                      placeholder="0"
-                      aria-label="Процент тренеру"
-                      disabled={saved}
-                    />
+                    <div className="salary-page__percent-field">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={percent === '' ? '' : percent}
+                        onChange={(e) => setTrainerPercent(row, e.target.value)}
+                        className="salary-page__percent-input"
+                        placeholder="0"
+                        aria-label="Процент тренеру"
+                        disabled={saved}
+                      />
+                      <span className="salary-page__percent-suffix">%</span>
+                    </div>
                   </td>
                   <td className="salary-page__td-money" data-label="Тренеру">{fmt(trainerShare)}</td>
                   <td className="salary-page__td-money" data-label="Клубу">{fmt(clubShare)}</td>
@@ -238,10 +250,16 @@ const SalaryPage = () => {
                         disabled={isSaving || !canSave}
                         title={!isMonthEnded ? 'Сохранять можно только за прошедший месяц' : hasUnpaid ? 'Все клиенты должны оплатить' : undefined}
                       >
+                        {isSaving ? <Loader2 size={13} className="salary-page__spin" /> : <Check size={13} />}
                         {isSaving ? 'Сохранение…' : 'Сохранить'}
                       </button>
                     )}
-                    {saved && <span className="salary-page__saved-badge">Сохранено</span>}
+                    {saved && (
+                      <span className="salary-page__saved-badge">
+                        <Check size={12} />
+                        Сохранено
+                      </span>
+                    )}
                   </td>
                 </tr>
               );

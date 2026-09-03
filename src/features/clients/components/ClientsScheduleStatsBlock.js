@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ChevronRight, ListTree } from 'lucide-react';
 import { EmptyState, ErrorState, Spinner } from '../../../shared/ui';
 import {
   normalizeClientsScheduleStatsResponse,
@@ -69,7 +70,7 @@ const ClientsScheduleStatsBlock = ({
   if (loading) {
     return (
       <div className="clients-schedule-stats">
-        <h3 className="clients-schedule-stats__title">По графику тренеров</h3>
+        <h3 className="clients-schedule-stats__title"><ListTree size={16} /> По графику тренеров</h3>
         <div className="clients-schedule-stats__loading">
           <Spinner label="Загрузка статистики по графику…" />
         </div>
@@ -80,7 +81,7 @@ const ClientsScheduleStatsBlock = ({
   if (endpointMissing) {
     return (
       <div className="clients-schedule-stats">
-        <h3 className="clients-schedule-stats__title">По графику тренеров</h3>
+        <h3 className="clients-schedule-stats__title"><ListTree size={16} /> По графику тренеров</h3>
         <div className="clients-schedule-stats__placeholder" role="status">
           Ожидается API: <code className="clients-schedule-stats__code">GET /api/clients/stats/schedule/</code>
         </div>
@@ -91,7 +92,7 @@ const ClientsScheduleStatsBlock = ({
   if (errorMessage) {
     return (
       <div className="clients-schedule-stats">
-        <h3 className="clients-schedule-stats__title">По графику тренеров</h3>
+        <h3 className="clients-schedule-stats__title"><ListTree size={16} /> По графику тренеров</h3>
         <ErrorState compact message={errorMessage} onRetry={onRetry} />
       </div>
     );
@@ -99,7 +100,7 @@ const ClientsScheduleStatsBlock = ({
 
   return (
     <div className="clients-schedule-stats">
-      <h3 className="clients-schedule-stats__title">По графику тренеров</h3>
+      <h3 className="clients-schedule-stats__title"><ListTree size={16} /> По графику тренеров</h3>
 
       <div className="clients-schedule-stats__table-wrap">
         <table className="clients-schedule-stats__table">
@@ -145,13 +146,15 @@ const ClientsScheduleStatsBlock = ({
                     }
                   >
                     <td className="clients-schedule-stats__trainer-cell">
-                      <span className="clients-schedule-stats__expand-icon">{isOpen ? '▾' : '▸'}</span>
+                      <span className={`clients-schedule-stats__expand-icon${isOpen ? ' clients-schedule-stats__expand-icon--open' : ''}`}>
+                        <ChevronRight size={14} />
+                      </span>
                       {t.trainerName}
                     </td>
-                    <td className="clients-schedule-stats__slot">{isOpen ? '' : ''}</td>
-                    <td>{t.total}</td>
-                    <td>{t.paid}</td>
-                    <td>{t.unpaid}</td>
+                    <td className="clients-schedule-stats__slot" />
+                    <td className="clients-schedule-stats__num">{t.total}</td>
+                    <td className="clients-schedule-stats__num clients-schedule-stats__num--paid">{t.paid}</td>
+                    <td className="clients-schedule-stats__num clients-schedule-stats__num--unpaid">{t.unpaid}</td>
                   </tr>
                 );
 
@@ -160,6 +163,7 @@ const ClientsScheduleStatsBlock = ({
                       <tr
                         key={`slot-${tid}-${r.weekday}-${r.timeFrom}-${r.timeTo}-${idx}`}
                         className={['clients-schedule-stats__row--slot', r.trainerId ? 'clients-schedule-stats__row--clickable' : ''].filter(Boolean).join(' ')}
+                        style={{ '--row-i': idx }}
                         onClick={
                           r.trainerId && onTrainerRowClick
                             ? () =>
@@ -187,11 +191,11 @@ const ClientsScheduleStatsBlock = ({
                             : undefined
                         }
                       >
-                        <td>{''}</td>
+                        <td />
                         <td className="clients-schedule-stats__slot">{r.slotLabel}</td>
-                        <td>{r.total}</td>
-                        <td>{r.paid}</td>
-                        <td>{r.unpaid}</td>
+                        <td className="clients-schedule-stats__num">{r.total}</td>
+                        <td className="clients-schedule-stats__num clients-schedule-stats__num--paid">{r.paid}</td>
+                        <td className="clients-schedule-stats__num clients-schedule-stats__num--unpaid">{r.unpaid}</td>
                       </tr>
                     ))
                   : [];

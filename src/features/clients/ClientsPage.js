@@ -11,10 +11,13 @@ import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiErr
 import { filterClientsByPeriod, getExactDuplicates, getSimilarGroups } from '../../shared/lib/duplicates';
 import { prepareClientSavePayload } from './lib/prepareClientSavePayload';
 import { getClientCorrectionReasons, clientNeedsCorrection } from './lib/needsCorrection';
-import { UsersRound, Copy, Ticket, Wrench, Search, Dumbbell, UserCheck, CreditCard, Tag, Calendar, CalendarDays, CalendarClock, Plus } from 'lucide-react';
+import { UsersRound, Copy, Ticket, Wrench, Search, Dumbbell, UserCheck, CreditCard, Tag, Calendar, CalendarDays, CalendarClock, Plus, ScanSearch, SpellCheck2, ChevronDown, Filter } from 'lucide-react';
 import { Select, ConfirmModal, Pagination, FiltersModal, FilterBar, EmptyState, Spinner } from '../../shared/ui';
 import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal, DuplicateGroup } from './components';
 import './ClientsPage.scss';
+
+const getInitials = (fio) =>
+  (fio || '').split(' ').slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
 
 const TAB_LIST = 'list';
 const TAB_DUPS = 'dups';
@@ -82,7 +85,10 @@ const ClientsPage = () => {
   // ── Разовые оплаты ──
   const [oneTimeSearch, setOneTimeSearch] = useState('');
   const oneTimeDebounced = useDebounce(oneTimeSearch, SEARCH_DEBOUNCE_MS);
-  const [oneTimeYear, setOneTimeYear] = useState('');
+  const [oneTimeYear, setOneTimeYear] = useState(() => {
+    const y = String(new Date().getFullYear());
+    return STATS_YEARS.includes(y) ? y : '';
+  });
   const [oneTimeMonth, setOneTimeMonth] = useState('');
   const [oneTimePage, setOneTimePage] = useState(1);
   const [oneTimeData, setOneTimeData] = useState(null);
@@ -390,13 +396,14 @@ const ClientsPage = () => {
                     className={`clients-page__filter-drop-btn${filtersDropOpen ? ' clients-page__filter-drop-btn--open' : ''}`}
                     onClick={() => setFiltersDropOpen((v) => !v)}
                   >
+                    <Filter size={14} />
                     Фильтры
                     {[queryState.sportId, queryState.trainerId, queryState.paid, queryState.clientType, queryState.year, queryState.month, queryState.day].filter(Boolean).length > 0 && (
                       <span className="clients-page__filter-drop-count">
                         {[queryState.sportId, queryState.trainerId, queryState.paid, queryState.clientType, queryState.year, queryState.month, queryState.day].filter(Boolean).length}
                       </span>
                     )}
-                    <span className="clients-page__filter-drop-arrow">{filtersDropOpen ? '▲' : '▼'}</span>
+                    <span className={`clients-page__filter-drop-arrow${filtersDropOpen ? ' clients-page__filter-drop-arrow--open' : ''}`}><ChevronDown size={14} /></span>
                   </button>
 
                   {filtersDropOpen && (
@@ -519,8 +526,8 @@ const ClientsPage = () => {
           </FilterBar>
           {/* Подтабы */}
           <div className="clients-page__subtabs">
-            <button type="button" className={`clients-page__subtab${activeDupTab === SUBTAB_EXACT ? ' clients-page__subtab--active' : ''}`} onClick={() => setActiveDupTab(SUBTAB_EXACT)}>Точные дубликаты</button>
-            <button type="button" className={`clients-page__subtab${activeDupTab === SUBTAB_SIMILAR ? ' clients-page__subtab--active' : ''}`} onClick={() => setActiveDupTab(SUBTAB_SIMILAR)}>Похожие имена</button>
+            <button type="button" className={`clients-page__subtab${activeDupTab === SUBTAB_EXACT ? ' clients-page__subtab--active' : ''}`} onClick={() => setActiveDupTab(SUBTAB_EXACT)}><ScanSearch size={14} /> Точные дубликаты</button>
+            <button type="button" className={`clients-page__subtab${activeDupTab === SUBTAB_SIMILAR ? ' clients-page__subtab--active' : ''}`} onClick={() => setActiveDupTab(SUBTAB_SIMILAR)}><SpellCheck2 size={14} /> Похожие имена</button>
           </div>
 
           {allLoading ? (
@@ -539,7 +546,7 @@ const ClientsPage = () => {
                   <span className="clients-page__dup-stats-sep">·</span>
                   <span>Групп с одинаковым ФИО: <strong>{exactGroups.length}</strong></span>
                 </div>
-                {exactGroups.map((group, i) => <DuplicateGroup key={i} group={group} label={group[0].fio} onDetails={handleOpenCard} />)}
+                {exactGroups.map((group, i) => <DuplicateGroup key={i} index={i} group={group} label={group[0].fio} onDetails={handleOpenCard} />)}
               </>
             )
           ) : (
@@ -554,7 +561,7 @@ const ClientsPage = () => {
                   <span className="clients-page__dup-stats-sep">·</span>
                   <span>Групп с похожими именами: <strong>{similarGroups.length}</strong></span>
                 </div>
-                {similarGroups.map((group, i) => <DuplicateGroup key={i} group={group} label={`${group[0].fio} / ${group[1].fio}${group.length > 2 ? ` +${group.length - 2}` : ''}`} onDetails={handleOpenCard} />)}
+                {similarGroups.map((group, i) => <DuplicateGroup key={i} index={i} group={group} label={`${group[0].fio} / ${group[1].fio}${group.length > 2 ? ` +${group.length - 2}` : ''}`} onDetails={handleOpenCard} />)}
               </>
             )
           )}
@@ -564,7 +571,7 @@ const ClientsPage = () => {
       {/* ── Разовый ── */}
       {activeTab === TAB_ONETIME && (
         <div className="clients-page__onetime-section">
-          <FilterBar className="clients-page__onetime-toolbar">
+          <FilterBar className="clients-page__onetime-toolbar clients-page__dup-toolbar">
             <div className="ui-search clients-page__onetime-search">
               <Search size={15} className="ui-search__icon" />
               <input
@@ -632,7 +639,7 @@ const ClientsPage = () => {
                         </td>
                       </tr>
                     ) : (
-                      (oneTimeData.items ?? oneTimeData.results ?? []).map((c) => {
+                      (oneTimeData.items ?? oneTimeData.results ?? []).map((c, idx) => {
                         const ds = c.dateStart ?? c.date_start;
                         const d = ds ? new Date(ds) : null;
                         const yearStr = d && !isNaN(d.getTime()) ? String(d.getFullYear()) : '—';
@@ -646,24 +653,32 @@ const ClientsPage = () => {
                         const isLoading = oneTimeAddLoading[c.id];
                         const inputVal = oneTimeAddInputs[c.id] ?? '';
                         return (
-                          <tr key={c.id}>
-                            <td className="clients-page__onetime-name">{c.fio || '—'}</td>
+                          <tr key={c.id} style={{ '--row-i': idx }}>
+                            <td className="clients-page__onetime-name">
+                              <div className="ui-list__name-cell">
+                                <span className="ui-avatar">{getInitials(c.fio)}</span>
+                                <span className="ui-list__title">{c.fio || '—'}</span>
+                              </div>
+                            </td>
                             <td className="clients-page__onetime-period">
                               <span className="clients-page__onetime-month">{monthName}</span>
                               <span className="clients-page__onetime-year">{yearStr}</span>
                             </td>
                             <td className="clients-page__onetime-amount">{amountStr}</td>
                             <td>
-                              <div className="clients-page__onetime-actions">
-                                <input
-                                  type="number"
-                                  min="1"
-                                  placeholder="Сумма"
-                                  value={inputVal}
-                                  onChange={(e) => setOneTimeAddInputs((prev) => ({ ...prev, [c.id]: e.target.value }))}
-                                  className="clients-page__onetime-input"
-                                  disabled={isLoading}
-                                />
+                              <div className={`clients-page__onetime-combo${isLoading ? ' clients-page__onetime-combo--loading' : ''}`}>
+                                <div className="clients-page__onetime-field">
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    placeholder="Сумма"
+                                    value={inputVal}
+                                    onChange={(e) => setOneTimeAddInputs((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                                    className="clients-page__onetime-input"
+                                    disabled={isLoading}
+                                  />
+                                  <span className="clients-page__onetime-input-unit">сом</span>
+                                </div>
                                 <button
                                   type="button"
                                   className="clients-page__onetime-add-btn"
@@ -678,7 +693,8 @@ const ClientsPage = () => {
                                   }}
                                   disabled={isLoading}
                                 >
-                                  {isLoading ? '…' : '+ Доплата'}
+                                  {isLoading ? <span className="clients-page__onetime-spin" /> : <Plus size={14} />}
+                                  <span className="clients-page__onetime-add-btn-label">Доплата</span>
                                 </button>
                               </div>
                             </td>
@@ -741,6 +757,7 @@ const ClientsPage = () => {
           ) : (
             <>
               <div className="clients-page__dup-stats">
+                <Wrench size={13} />
                 <span><strong>{fixYear || 'Все годы'}</strong>{fixMonth ? ` · ${MONTHS[Number(fixMonth)]}` : ''}{fixDay ? ` · ${fixDay}` : ''}</span>
                 <span className="clients-page__dup-stats-sep">·</span>
                 <span>Требуют исправления: <strong>{fixClients.length}</strong></span>
@@ -758,13 +775,13 @@ const ClientsPage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {fixClients.map((c) => {
+                    {fixClients.map((c, idx) => {
                       const dateStart = c.dateStart ?? c.date_start;
                       const sportName = c.sportName ?? c.sport?.name;
                       const paid = c.paid === true || c.paid === 'true';
                       const reasons = getClientCorrectionReasons(c);
                       return (
-                        <tr key={c.id}>
+                        <tr key={c.id} style={{ '--row-i': idx }}>
                           <td className="clients-page__onetime-name">{c.fio || '—'}</td>
                           <td>{dateStart ? new Date(dateStart).toLocaleDateString('ru-RU') : '—'}</td>
                           <td>{sportName ?? '—'}</td>
@@ -784,7 +801,7 @@ const ClientsPage = () => {
                               className="clients-page__fix-btn"
                               onClick={() => (isAdmin ? setFormClient(c) : showAccessDenied())}
                             >
-                              Исправить
+                              <Wrench size={12} /> Исправить
                             </button>
                           </td>
                         </tr>

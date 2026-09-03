@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Phone, Calendar, User, Dumbbell, Clock, CreditCard, MessageSquare, Snowflake, Pencil, Trash2 } from 'lucide-react';
+import { X, Phone, Calendar, User, Clock, CreditCard, MessageSquare, Snowflake, Pencil, Trash2, CircleCheck, CircleAlert, Ticket } from 'lucide-react';
 import { formatMoney, isClientPaid } from '../../../shared/constants/common';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { useToast } from '../../../app/providers/ToastProvider';
@@ -69,7 +69,10 @@ const ClientCardModal = ({
   const [freezeSaving, setFreezeSaving] = useState(false);
   const [deleteFreezeOpen, setDeleteFreezeOpen] = useState(false);
 
-  const paymentKindLabel = getClientPhotoKindLabel(client?.paymentKind ?? client?.payment_kind ?? '') || '';
+  const paymentKindRaw = client?.paymentKind ?? client?.payment_kind ?? '';
+  const paymentKindLabel = getClientPhotoKindLabel(paymentKindRaw) || '';
+  const paymentKindReceiptAmount = client?.paymentKindReceiptAmount ?? client?.payment_kind_receipt_amount;
+  const paymentKindCashAmount = client?.paymentKindCashAmount ?? client?.payment_kind_cash_amount;
 
   const applyClientFromServer = useCallback(async (payload) => {
     let next = payload;
@@ -140,12 +143,14 @@ const ClientCardModal = ({
         <div className="ccm__header">
           <div className="ccm__header-info">
             <div className="ccm__avatar">{initials || <User size={18} />}</div>
-            <div>
+            <div className="ccm__header-text">
               <h2 id="ccm-title" className="ccm__name">{client.fio || '—'}</h2>
-              {client.phone && (
+              {client.phone ? (
                 <a href={`tel:${client.phone}`} className="ccm__phone">
                   <Phone size={12} />{client.phone}
                 </a>
+              ) : (
+                <span className="ccm__phone ccm__phone--empty">Телефон не указан</span>
               )}
             </div>
           </div>
@@ -156,7 +161,10 @@ const ClientCardModal = ({
 
           {/* ── Абонемент ── */}
           <section className="ccm__section">
-            <h3 className="ccm__section-title"><Dumbbell size={13} />Абонемент</h3>
+            <h3 className="ccm__section-title">
+              <span className="ccm__section-icon"><Ticket size={13} /></span>
+              Абонемент
+            </h3>
             <div className="ccm__info-grid">
               {(client.sportName ?? client.sport?.name) && (
                 <div className="ccm__info-row">
@@ -192,19 +200,23 @@ const ClientCardModal = ({
           </section>
 
           {/* ── Оплата ── */}
-          <section className="ccm__section">
-            <h3 className="ccm__section-title"><CreditCard size={13} />Оплата</h3>
+          <section className="ccm__section ccm__section--payment">
+            <h3 className="ccm__section-title">
+              <span className="ccm__section-icon"><CreditCard size={13} /></span>
+              Оплата
+            </h3>
+            <div className="ccm__price-hero">
+              <span className="ccm__price-hero-label">Цена абонемента</span>
+              <span className="ccm__price-hero-row">
+                <strong className="ccm__price-hero-value">{formatMoney(priceFinal)}</strong>
+                {discountPct > 0 && <span className="ccm__discount-badge">−{discountPct}%</span>}
+              </span>
+            </div>
             <div className="ccm__info-grid">
-              <div className="ccm__info-row">
-                <span className="ccm__info-label">Цена</span>
-                <span className="ccm__info-val ccm__price">
-                  {formatMoney(priceFinal)}
-                  {discountPct > 0 && <span className="ccm__discount-badge">−{discountPct}%</span>}
-                </span>
-              </div>
               <div className="ccm__info-row">
                 <span className="ccm__info-label">Статус</span>
                 <span className={`ccm__badge ${paid ? 'ccm__badge--paid' : 'ccm__badge--unpaid'}`}>
+                  {paid ? <CircleCheck size={12} /> : <CircleAlert size={12} />}
                   {paid ? 'Оплачено' : 'Не оплачено'}
                 </span>
               </div>
@@ -212,6 +224,15 @@ const ClientCardModal = ({
                 <div className="ccm__info-row">
                   <span className="ccm__info-label">Способ оплаты</span>
                   <span className="ccm__info-val">{paymentKindLabel}</span>
+                </div>
+              )}
+              {paymentKindRaw === 'mixed' && (paymentKindReceiptAmount != null || paymentKindCashAmount != null) && (
+                <div className="ccm__info-row">
+                  <span className="ccm__info-label" />
+                  <span className="ccm__info-val ccm__mixed-split">
+                    <span className="ccm__mixed-split-item">Чек: {formatMoney(paymentKindReceiptAmount || 0)}</span>
+                    <span className="ccm__mixed-split-item">Наличные: {formatMoney(paymentKindCashAmount || 0)}</span>
+                  </span>
                 </div>
               )}
               {paymentParts.length > 0 && (
@@ -240,17 +261,24 @@ const ClientCardModal = ({
           {/* ── Заморозка ── */}
           <section className="ccm__section ccm__section--freeze">
             <div className="ccm__freeze-head">
-              <h3 className="ccm__section-title"><Snowflake size={13} />Заморозка</h3>
+              <h3 className="ccm__section-title">
+                <span className="ccm__section-icon ccm__section-icon--freeze"><Snowflake size={13} /></span>
+                Заморозка
+              </h3>
               {canManageFreeze && (
                 <div className="ccm__freeze-btns">
                   {!hasFreeze ? (
                     <button type="button" className="ccm__btn-mini ccm__btn-mini--freeze" onClick={() => openFreezeModal('create')}>
-                      Заморозить
+                      <Snowflake size={12} /> Заморозить
                     </button>
                   ) : (
                     <>
-                      <button type="button" className="ccm__btn-mini ccm__btn-mini--edit" onClick={() => openFreezeModal('edit')}>Изменить</button>
-                      <button type="button" className="ccm__btn-mini ccm__btn-mini--danger" onClick={() => setDeleteFreezeOpen(true)}>Удалить</button>
+                      <button type="button" className="ccm__btn-mini ccm__btn-mini--edit" onClick={() => openFreezeModal('edit')}>
+                        <Pencil size={12} /> Изменить
+                      </button>
+                      <button type="button" className="ccm__btn-mini ccm__btn-mini--danger" onClick={() => setDeleteFreezeOpen(true)}>
+                        <Trash2 size={12} /> Удалить
+                      </button>
                     </>
                   )}
                 </div>
@@ -298,7 +326,10 @@ const ClientCardModal = ({
           {/* ── Комментарий ── */}
           {client.comment && (
             <section className="ccm__section">
-              <h3 className="ccm__section-title"><MessageSquare size={13} />Комментарий</h3>
+              <h3 className="ccm__section-title">
+                <span className="ccm__section-icon"><MessageSquare size={13} /></span>
+                Комментарий
+              </h3>
               <p className="ccm__comment">{client.comment}</p>
             </section>
           )}

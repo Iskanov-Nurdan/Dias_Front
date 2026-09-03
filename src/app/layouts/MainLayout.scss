@@ -111,12 +111,16 @@
     border: none;
     border-radius: var(--radius-lg);
     color: var(--color-text-muted);
-    transition: color var(--transition-fast), background var(--transition-fast);
+    transition: color var(--transition-fast), background var(--transition-fast), transform 0.1s;
     flex-shrink: 0;
 
     &:hover {
       color: var(--color-primary);
       background: var(--color-primary-soft);
+    }
+
+    &:active {
+      transform: scale(0.92);
     }
 
     @include mixins.xs {
@@ -162,11 +166,16 @@
     border-radius: var(--radius-lg);
     background: transparent;
     color: var(--color-text-muted);
-    transition: color var(--transition-fast), background var(--transition-fast);
+    transition: color var(--transition-fast), background var(--transition-fast), transform 0.2s;
 
     &:hover {
       color: var(--color-primary);
       background: var(--color-primary-soft);
+      transform: rotate(-14deg);
+    }
+
+    &:active {
+      transform: scale(0.9);
     }
   }
 
@@ -406,7 +415,7 @@
     color: var(--color-sidebar-muted);
     flex-shrink: 0;
     margin-left: auto;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.15s, color 0.15s, transform 0.1s;
 
     .main-layout--sidebar-collapsed & {
       width: 28px;
@@ -415,8 +424,12 @@
     }
 
     &:hover {
-      background: rgba(239, 68, 68, 0.15);
-      color: #f87171;
+      background: var(--color-primary-soft);
+      color: #ff8080;
+    }
+
+    &:active {
+      transform: scale(0.9);
     }
   }
 
@@ -470,6 +483,10 @@
       color: var(--color-sidebar-text);
     }
 
+    &:active {
+      transform: scale(0.98);
+    }
+
     &--active {
       background: rgba(197, 48, 48, 0.18);
       color: #fff;
@@ -485,6 +502,7 @@
         height: 24px;
         background: var(--color-primary);
         border-radius: 0 3px 3px 0;
+        animation: main-layout-active-bar-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
       .main-layout__nav-icon {
@@ -595,4 +613,9 @@
 @keyframes main-layout-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+@keyframes main-layout-active-bar-in {
+  from { transform: translateY(-50%) scaleY(0.3); opacity: 0; }
+  to { transform: translateY(-50%) scaleY(1); opacity: 1; }
 }

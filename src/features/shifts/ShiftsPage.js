@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Clock, Plus, Banknote, CreditCard, TrendingUp, TrendingDown, Coins, ImagePlus, X as XIcon, Camera, FileText, Filter, Pencil, History, Calendar, CalendarDays, CalendarClock } from 'lucide-react';
+import { Clock, Plus, Banknote, CreditCard, TrendingUp, TrendingDown, Coins, ImagePlus, X as XIcon, Camera, FileText, Filter, Pencil, History, Calendar, CalendarDays, CalendarClock, Maximize2, Images } from 'lucide-react';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { fetchShifts, closeShift, updateShift, fetchPhotoReports, addPhotoReport } from './api';
 import { Select, Spinner, EmptyState, ErrorState } from '../../shared/ui';
@@ -157,7 +157,9 @@ const AddPhotoModal = ({ open, onClose, onSubmit }) => {
             onDragOver={(e) => e.preventDefault()}
             onClick={() => fileInputRef.current?.click()}
           >
-            <ImagePlus size={28} className="shift-modal__drop-icon" />
+            <span className="shift-modal__drop-icon-wrap">
+              <ImagePlus size={20} className="shift-modal__drop-icon" />
+            </span>
             <span className="shift-modal__drop-text">
               {photos.length > 0 ? `Добавить ещё · уже ${photos.length}` : 'Нажмите или перетащите фото'}
             </span>
@@ -261,48 +263,52 @@ const CloseShiftModal = ({ open, onClose, onSubmit, initial = null, title = 'З�
         </div>
 
         <form className="shift-modal__form" onSubmit={handleSubmit}>
-          <label className="shift-modal__field">
-            <span className="shift-modal__label"><Banknote size={15} /> Наличка</span>
-            <div className="shift-modal__input-wrap">
-              <input type="number" min="0" step="1" placeholder="0" value={cash}
-                onChange={(e) => setCash(e.target.value)} className="shift-modal__input" autoFocus />
-              <span className="shift-modal__currency">сом</span>
-            </div>
-          </label>
+          <div className="shift-modal__row">
+            <label className="shift-modal__field">
+              <span className="shift-modal__label"><Banknote size={13} /> Наличка</span>
+              <div className="shift-modal__input-wrap">
+                <input type="number" min="0" step="1" placeholder="0" value={cash}
+                  onChange={(e) => setCash(e.target.value)} className="shift-modal__input" autoFocus />
+                <span className="shift-modal__currency">сом</span>
+              </div>
+            </label>
+
+            <label className="shift-modal__field">
+              <span className="shift-modal__label"><CreditCard size={13} /> Карта</span>
+              <div className="shift-modal__input-wrap">
+                <input type="number" min="0" step="1" placeholder="0" value={card}
+                  onChange={(e) => setCard(e.target.value)} className="shift-modal__input" />
+                <span className="shift-modal__currency">сом</span>
+              </div>
+            </label>
+          </div>
+
+          <div className="shift-modal__row">
+            <label className="shift-modal__field">
+              <span className="shift-modal__label shift-modal__label--muted"><TrendingDown size={13} /> Расход</span>
+              <div className="shift-modal__input-wrap shift-modal__input-wrap--sub">
+                <input type="number" min="0" step="1" placeholder="0" value={expense}
+                  onChange={(e) => setExpense(e.target.value)} className="shift-modal__input shift-modal__input--sub" />
+                <span className="shift-modal__currency">сом</span>
+              </div>
+            </label>
+
+            <label className="shift-modal__field">
+              <span className="shift-modal__label shift-modal__label--muted"><Coins size={13} /> Аванс</span>
+              <div className="shift-modal__input-wrap shift-modal__input-wrap--sub">
+                <input type="number" min="0" step="1" placeholder="0" value={advance}
+                  onChange={(e) => setAdvance(e.target.value)} className="shift-modal__input shift-modal__input--sub" />
+                <span className="shift-modal__currency">сом</span>
+              </div>
+            </label>
+          </div>
 
           <label className="shift-modal__field">
-            <span className="shift-modal__label"><CreditCard size={15} /> Карта</span>
-            <div className="shift-modal__input-wrap">
-              <input type="number" min="0" step="1" placeholder="0" value={card}
-                onChange={(e) => setCard(e.target.value)} className="shift-modal__input" />
-              <span className="shift-modal__currency">сом</span>
-            </div>
-          </label>
-
-          <label className="shift-modal__field">
-            <span className="shift-modal__label"><TrendingDown size={15} /> Расход</span>
-            <div className="shift-modal__input-wrap">
-              <input type="number" min="0" step="1" placeholder="0" value={expense}
-                onChange={(e) => setExpense(e.target.value)} className="shift-modal__input" />
-              <span className="shift-modal__currency">сом</span>
-            </div>
-          </label>
-
-          <label className="shift-modal__field">
-            <span className="shift-modal__label"><Coins size={15} /> Аванс</span>
-            <div className="shift-modal__input-wrap">
-              <input type="number" min="0" step="1" placeholder="0" value={advance}
-                onChange={(e) => setAdvance(e.target.value)} className="shift-modal__input" />
-              <span className="shift-modal__currency">сом</span>
-            </div>
-          </label>
-
-          <label className="shift-modal__field">
-            <span className="shift-modal__label"><FileText size={15} /> Описание</span>
+            <span className="shift-modal__label shift-modal__label--muted"><FileText size={13} /> Описание</span>
             <textarea
               className="shift-modal__textarea"
               placeholder="Комментарий к смене (необязательно)"
-              rows={3}
+              rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -545,16 +551,22 @@ const ShiftsPage = () => {
             <EmptyState compact message="Фото отчётов пока нет — нажмите «Добавить фото», чтобы загрузить первый отчёт" />
           ) : (
             <div className="photo-reports">
-              {photoReports.map((r) => (
-                <div key={r.id} className="photo-card">
+              {photoReports.map((r, idx) => (
+                <div key={r.id} className="photo-card" style={{ '--row-i': idx }}>
                   <div className="photo-card__header">
-                    <div className="shift-card__avatar" style={{ background: getAvatarColor(r.employeeName), width: 34, height: 34, fontSize: 12 }}>
+                    <div className="shift-card__avatar" style={{ background: getAvatarColor(r.employeeName), width: 36, height: 36, fontSize: 12.5 }}>
                       {getInitials(r.employeeName)}
                     </div>
                     <div className="photo-card__who">
                       <span className="photo-card__name">{r.employeeName}</span>
                       <span className="photo-card__date">{formatDate(r.createdAt)}</span>
                     </div>
+                    {(r.photos || []).length > 0 && (
+                      <span className="photo-card__count">
+                        <Images size={12} />
+                        {r.photos.length}
+                      </span>
+                    )}
                   </div>
                   {r.description && <p className="photo-card__desc">{r.description}</p>}
                   <div className="photo-card__photos">
@@ -578,6 +590,9 @@ const ShiftsPage = () => {
                               e.currentTarget.closest('.photo-card__thumb-btn').classList.add('photo-card__thumb-btn--loaded');
                             }}
                           />
+                          <span className="photo-card__thumb-overlay">
+                            <Maximize2 size={15} />
+                          </span>
                         </button>
                       );
                     })}
@@ -606,8 +621,8 @@ const ShiftsPage = () => {
             <EmptyState compact message="Смен пока нет — нажмите «Завершить смену», чтобы добавить первую запись" />
           ) : (
             <div className="shifts-page__list">
-              {shifts.map((s) => (
-                <div key={s.id} className="shift-card">
+              {shifts.map((s, idx) => (
+                <div key={s.id} className="shift-card" style={{ '--row-i': idx }}>
                   <div className="shift-card__left">
                     <div className="shift-card__avatar" style={{ background: getAvatarColor(s.employeeName) }}>
                       {getInitials(s.employeeName)}

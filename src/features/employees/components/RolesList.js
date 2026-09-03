@@ -54,16 +54,20 @@ const RolesList = ({
                     <EmptyState compact tableCell message="Нет ролей" />
                   </td>
                 </tr>
-              ) : list.map((role) => {
+              ) : list.map((role, idx) => {
                 const system = isSystemRole(role);
                 return (
-                  <tr key={role.id} className={system ? 'roles-list__row--system' : ''}>
+                  <tr
+                    key={role.id}
+                    className={system ? 'roles-list__row--system' : ''}
+                    style={{ '--row-i': idx }}
+                  >
                     <td>
                       <div className="ui-list__name-cell">
                         {system ? (
                           <span className="ui-avatar ui-avatar--icon"><Lock size={14} /></span>
                         ) : (
-                          <span className="roles-list__dot" />
+                          <span className="ui-avatar">{(role.name || '?').slice(0, 1).toUpperCase()}</span>
                         )}
                         <span className="ui-list__title">{role.name || '—'}</span>
                         {system && <span className="ui-pill">Системная</span>}

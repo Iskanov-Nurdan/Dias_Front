@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye } from 'lucide-react';
+import { Eye, Users } from 'lucide-react';
 import { isClientPaid } from '../../../shared/constants/common';
 import { composeClientDataRowClass } from '../lib/clientRowHighlight';
 
@@ -12,9 +12,10 @@ const TYPE_MAP = {
   'one-time': { label: 'Разовый',   cls: 'dup-group__type-badge--onetime'    },
 };
 
-const DuplicateGroup = ({ group, label, onDetails }) => (
-  <div className="dup-group">
+const DuplicateGroup = ({ group, label, onDetails, index = 0 }) => (
+  <div className="dup-group" style={{ '--group-i': index }}>
     <div className="dup-group__header">
+      <span className="dup-group__header-icon"><Users size={15} /></span>
       <span className="dup-group__label">{label}</span>
       <span className="dup-group__count">{group.length} клиента</span>
     </div>

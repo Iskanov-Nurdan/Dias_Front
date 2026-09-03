@@ -86,7 +86,7 @@ const ClientsList = ({
                   />
                 </td>
               </tr>
-            ) : list.map((c) => {
+            ) : list.map((c, idx) => {
               const paid = isClientPaid(c);
               const dateStart = c.dateStart ?? c.date_start;
               const rowClass = composeClientDataRowClass(c, 'clients-list__row');
@@ -99,7 +99,11 @@ const ClientsList = ({
               // (для просроченных/не продливших это уже "Не продлили", не сюда).
               const canWarn = !paid && !isClientSubscriptionExpired(c);
               return (
-                <tr key={c.id} className={`${rowClass}${isMaxWarned ? ' clients-list__row--warned-max' : ''}`}>
+                <tr
+                  key={c.id}
+                  className={`${rowClass}${isMaxWarned ? ' clients-list__row--warned-max' : ''}`}
+                  style={{ '--row-i': idx }}
+                >
                   <td data-label="ФИО">
                     <div className="ui-list__name-cell clients-list__name-cell">
                       <span className="ui-avatar">{initials}</span>

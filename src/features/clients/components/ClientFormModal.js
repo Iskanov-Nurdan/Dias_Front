@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Trash2, X, UserPlus, User, Ticket, CreditCard, Wallet, Receipt, Banknote, SlidersHorizontal, MessageSquare, Check, Dumbbell, UserCheck, Clock, Tag } from 'lucide-react';
+import { Plus, Trash2, X, UserPlus, User, Ticket, CreditCard, Wallet, Receipt, Banknote, SlidersHorizontal, MessageSquare, Check, Dumbbell, UserCheck, Clock, Tag, SplitSquareHorizontal, CircleAlert, CircleCheck } from 'lucide-react';
 import { useToast } from '../../../app/providers/ToastProvider';
 import { Select, SubmitButton, ConfirmModal, PhoneInput, MoneyInput } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
@@ -58,9 +58,19 @@ const TrainingSlotTimeRow = ({ start, end }) => (
 
 // Маппинг API-полей → русские названия
 // Иконка на кнопку способа оплаты — по коду значения (договор с бэком: receipt | cash)
+/** Сегодняшняя дата в формате YYYY-MM-DD по локальному времени (без сдвига от toISOString/UTC). */
+const todayIso = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 const PAYMENT_KIND_ICONS = {
   receipt: Receipt,
   cash: Banknote,
+  mixed: SplitSquareHorizontal,
 };
 
 const FIELD_LABELS = {
@@ -240,6 +250,8 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const [confirmDeleteOneTime, setConfirmDeleteOneTime] = useState(null);
   const [deletingOneTimeId, setDeletingOneTimeId] = useState(null);
   const [paymentKind, setPaymentKind] = useState('');
+  const [mixedReceiptAmount, setMixedReceiptAmount] = useState('');
+  const [mixedCashAmount, setMixedCashAmount] = useState('');
   const paymentKindRef = useRef(null);
   const personalSectionRef = useRef(null);
   const subscriptionSectionRef = useRef(null);
@@ -259,6 +271,10 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const sectionClass = (key) =>
     `client-form-modal__section${highlightSection === key ? ' client-form-modal__section--highlight' : ''}`;
 
+  /** Для двух зон внутри объединённой карточки «Оплата» — подсветка полосой слева, а не целой карточки. */
+  const subsectionClass = (key) =>
+    `client-form-modal__subsection${highlightSection === key ? ' client-form-modal__subsection--highlight' : ''}`;
+
   const sectionRefsByKey = {
     personal: personalSectionRef,
     subscription: subscriptionSectionRef,
@@ -266,7 +282,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
     paymentKind: paymentKindRef,
   };
   /** Порядок секций сверху вниз, как они идут в форме — определяет, к какому полю скроллить первым. */
-  const SECTION_ORDER = ['personal', 'subscription', 'payment', 'paymentKind'];
+  const SECTION_ORDER = ['personal', 'subscription', 'paymentKind', 'payment'];
 
   /** Ошибка с бэка (после неудачного сохранения) — скроллим к самому верхнему по форме невалидному полю, а не к тому, что бэк перечислил первым. */
   useEffect(() => {
@@ -349,6 +365,10 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
     setInstallments(getInitialInstallmentRows(client));
     setGender(client.gender || '');
     setPaymentKind(client.paymentKind ?? client.payment_kind ?? '');
+    const initReceiptAmount = client.paymentKindReceiptAmount ?? client.payment_kind_receipt_amount;
+    const initCashAmount = client.paymentKindCashAmount ?? client.payment_kind_cash_amount;
+    setMixedReceiptAmount(initReceiptAmount != null ? String(initReceiptAmount) : '');
+    setMixedCashAmount(initCashAmount != null ? String(initCashAmount) : '');
     const { auto, manual } = parseComment(client.comment);
     setCommentAuto(auto);
     setCommentManual(manual);
@@ -505,6 +525,41 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
 
   const formatSum = (v) => (v != null && !Number.isNaN(v) ? `${Number(v).toLocaleString('ru-RU')} сом` : '—');
 
+  /** Сумма к оплате, с которой сверяем фактически внесённые деньги (со скидкой, если есть). */
+  const paymentTargetTotal = amountAfterDiscount > 0 ? amountAfterDiscount : contractBaseAmount;
+  const mixedPaidSum = (Number(mixedReceiptAmount) || 0) + (Number(mixedCashAmount) || 0);
+  const installmentsPaidSum = installments.reduce((sum, row) => {
+    const n = Number(row.amount);
+    return Number.isFinite(n) && n > 0 ? sum + n : sum;
+  }, 0);
+  /**
+   * «Способ оплаты» (смешанный чек+наличные) и «Частичные оплаты» — независимые записи
+   * (см. обсуждение): каждая, если заполнена, должна сама по себе сходиться с ценой абонемента.
+   * Статус «Оплачено» разрешён, только если ни одна из заполненных записей не расходится с ценой.
+   */
+  const mixedCoversTarget =
+    paymentKind !== 'mixed' || paymentTargetTotal <= 0 || mixedPaidSum === paymentTargetTotal;
+  const installmentsCoverTarget =
+    installmentsPaidSum <= 0 || paymentTargetTotal <= 0 || installmentsPaidSum === paymentTargetTotal;
+  const paymentCoverageOk = mixedCoversTarget && installmentsCoverTarget;
+  /** Реальный статус к отправке/отображению: мисматч сумм всегда «перебивает» ручной тумблер. */
+  const effectivePaid = paymentCoverageOk && paid;
+  const paymentCoverageIssues = [];
+  if (!mixedCoversTarget) paymentCoverageIssues.push(`способ оплаты — ${formatSum(mixedPaidSum)}`);
+  if (!installmentsCoverTarget) paymentCoverageIssues.push(`частичные оплаты — ${formatSum(installmentsPaidSum)}`);
+
+  /** Полоска покрытия суммы: доля внесённых денег от цены абонемента (для mixed и общего статуса). */
+  const renderCoverageBar = (collected, target, { compareIsEqual = true } = {}) => {
+    if (!(target > 0) || !(collected > 0)) return null;
+    const pct = Math.max(0, Math.min(100, Math.round((collected / target) * 100)));
+    const state = compareIsEqual ? (collected === target ? 'ok' : 'warn') : (pct >= 100 ? 'ok' : 'warn');
+    return (
+      <div className={`client-form-modal__coverage-bar client-form-modal__coverage-bar--${state}`} role="img" aria-label={`Внесено ${pct}% от суммы абонемента`}>
+        <div className="client-form-modal__coverage-bar-fill" style={{ width: `${Math.min(100, pct)}%` }} />
+      </div>
+    );
+  };
+
   const trainingSlotHint = trainerId
     ? scheduleSlots.length
       ? 'Выберите слот из графика тренера (настраивается в разделе «Спорт и тренеры»).'
@@ -526,7 +581,15 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
 
   const updateInstallment = (key, field, value) => {
     setInstallments((prev) =>
-      prev.map((r) => (r._key === key ? { ...r, [field]: value } : r))
+      prev.map((r) => {
+        if (r._key !== key) return r;
+        const next = { ...r, [field]: value };
+        // Ввели сумму, а дату ещё не трогали — подставляем сегодня, чтобы не выбирать её руками каждый раз.
+        if (field === 'amount' && value !== '' && !r.date) {
+          next.date = todayIso();
+        }
+        return next;
+      })
     );
   };
 
@@ -644,6 +707,12 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       return;
     }
 
+    if (paymentKind === 'mixed' && (Number(mixedReceiptAmount) || 0) + (Number(mixedCashAmount) || 0) <= 0) {
+      toast.error('Укажите суммы чеком и наличными');
+      focusSection(paymentKindRef, 'paymentKind');
+      return;
+    }
+
     if (isIndividualClient) {
       const club = Number(String(price).trim());
       const tr = Number(String(trainerPrice).trim());
@@ -708,13 +777,15 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       clubPrice: isIndividualClient ? Math.round(rawPriceInput) : undefined,
       trainerPrice: isIndividualClient ? Math.round(rawTrainerPriceInput) : undefined,
       discount: discount ? Number(discount) : undefined,
-      paid,
+      paid: effectivePaid,
       ...paymentsPayload,
       clientType,
       gender: gender || undefined,
       comment: commentValue,
       ...trainingPayload,
       paymentKind,
+      paymentKindReceiptAmount: paymentKind === 'mixed' ? (Number(mixedReceiptAmount) || 0) : undefined,
+      paymentKindCashAmount: paymentKind === 'mixed' ? (Number(mixedCashAmount) || 0) : undefined,
     });
   };
 
@@ -729,8 +800,15 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       <div ref={panelRef} className={`client-form-modal${fullscreen ? ' client-form-modal--fullscreen' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className="client-form-modal__header">
           <h2 id="client-form-modal-title" className="client-form-modal__title">
-            {client?.id ? <User size={18} /> : <UserPlus size={18} />}
-            {client?.id ? 'Редактировать клиента' : 'Добавить клиента'}
+            <span className="client-form-modal__title-icon">
+              {client?.id ? <User size={17} /> : <UserPlus size={17} />}
+            </span>
+            <span className="client-form-modal__title-text">
+              {client?.id ? 'Редактировать клиента' : 'Добавить клиента'}
+              <span className="client-form-modal__title-sub">
+                {client?.id ? 'Изменение данных и оплаты абонемента' : 'Заполните данные — статус оплаты рассчитается автоматически'}
+              </span>
+            </span>
           </h2>
           <button type="button" className="client-form-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
         </div>
@@ -755,8 +833,13 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
         })()}
         <form onSubmit={handleSubmit} className="client-form-modal__form">
           <div className="client-form-modal__scroll">
+          <div className="client-form-modal__columns">
+          <div className="client-form-modal__col-left">
           <div className={sectionClass('personal')} ref={personalSectionRef}>
-            <h3 className="client-form-modal__section-title"><User size={14} /> Личные данные</h3>
+            <h3 className="client-form-modal__section-title">
+              <span className="client-form-modal__section-icon"><User size={14} /></span>
+              Личные данные
+            </h3>
             <div className="client-form-modal__row">
               <label className="client-form-modal__label">
                 <span className="client-form-modal__label-text">ФИО <span className="form-label-required" aria-hidden="true">*</span></span>
@@ -778,7 +861,10 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
             </div>
           </div>
           <div className={sectionClass('subscription')} ref={subscriptionSectionRef}>
-            <h3 className="client-form-modal__section-title"><Ticket size={14} /> Абонемент</h3>
+            <h3 className="client-form-modal__section-title">
+              <span className="client-form-modal__section-icon"><Ticket size={14} /></span>
+              Абонемент
+            </h3>
             <div className="client-form-modal__row">
               <label className="client-form-modal__label">
                 <span className="client-form-modal__label-text">Вид спорта</span>
@@ -843,21 +929,31 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               </label>
             </div>
           </div>
-          <div className={sectionClass('payment')} ref={paymentSectionRef}>
-            <h3 className="client-form-modal__section-title"><CreditCard size={14} /> Оплата</h3>
+          </div>
+          <div className="client-form-modal__col-right">
+          <div className="client-form-modal__section client-form-modal__section--payment">
+            <h3 className="client-form-modal__section-title">
+              <span className="client-form-modal__section-icon"><CreditCard size={14} /></span>
+              Оплата
+            </h3>
+
+            <div className={subsectionClass('payment')} ref={paymentSectionRef}>
             <div className="client-form-modal__row">
               <label className="client-form-modal__label client-form-modal__label--full">
                 <span className="client-form-modal__label-text">
                   {isIndividualClient ? 'Цена клубу, сом' : (discountPct > 0 ? 'К оплате (со скидкой), сом' : 'Цена абонемента, сом')}
                 </span>
-                <MoneyInput
-                  value={price}
-                  onChange={setPrice}
-                  onBlur={() => markTouched('price')}
-                  className={`client-form-modal__input${priceError ? ' client-form-modal__input--invalid' : ''}`}
-                  placeholder="0"
-                  autoComplete="off"
-                />
+                <span className="client-form-modal__input-wrap">
+                  <MoneyInput
+                    value={price}
+                    onChange={setPrice}
+                    onBlur={() => markTouched('price')}
+                    className={`client-form-modal__input client-form-modal__input--suffixed${priceError ? ' client-form-modal__input--invalid' : ''}`}
+                    placeholder="0"
+                    autoComplete="off"
+                  />
+                  <span className="client-form-modal__input-suffix">сом</span>
+                </span>
                 {priceError && <span className="client-form-modal__field-error">{priceError}</span>}
                 {!compactHints && (
                   <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
@@ -875,14 +971,17 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               <div className="client-form-modal__row">
                 <label className="client-form-modal__label client-form-modal__label--full">
                   <span className="client-form-modal__label-text">Цена тренеру, сом</span>
-                  <MoneyInput
-                    value={trainerPrice}
-                    onChange={setTrainerPrice}
-                    onBlur={() => markTouched('trainerPrice')}
-                    className={`client-form-modal__input${trainerPriceError ? ' client-form-modal__input--invalid' : ''}`}
-                    placeholder="0"
-                    autoComplete="off"
-                  />
+                  <span className="client-form-modal__input-wrap">
+                    <MoneyInput
+                      value={trainerPrice}
+                      onChange={setTrainerPrice}
+                      onBlur={() => markTouched('trainerPrice')}
+                      className={`client-form-modal__input client-form-modal__input--suffixed${trainerPriceError ? ' client-form-modal__input--invalid' : ''}`}
+                      placeholder="0"
+                      autoComplete="off"
+                    />
+                    <span className="client-form-modal__input-suffix">сом</span>
+                  </span>
                   {trainerPriceError && <span className="client-form-modal__field-error">{trainerPriceError}</span>}
                   {!compactHints && (
                     <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
@@ -893,10 +992,98 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               </div>
             )}
 
+            <div className={subsectionClass('paymentKind')} ref={paymentKindRef}>
+              <div className="client-form-modal__row">
+                <div className="client-form-modal__label client-form-modal__label--full">
+                  <span className="client-form-modal__label-text">Способ оплаты <span className="form-label-required" aria-hidden="true">*</span></span>
+                  <div className="client-form-modal__payment-kind-toggle" role="radiogroup" aria-label="Способ оплаты">
+                    {CLIENT_PHOTO_KIND_OPTIONS.map((opt) => {
+                      const Icon = PAYMENT_KIND_ICONS[opt.value] ?? Wallet;
+                      const active = paymentKind === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          className={`client-form-modal__payment-kind-btn${active ? ' client-form-modal__payment-kind-btn--active' : ''}`}
+                          onClick={() => {
+                            setPaymentKind(opt.value);
+                            setHighlightSection((cur) => (cur === 'paymentKind' ? null : cur));
+                          }}
+                        >
+                          {active && <CircleCheck size={13} className="client-form-modal__payment-kind-check" strokeWidth={2} />}
+                          <Icon size={19} strokeWidth={1.75} />
+                          <span>{opt.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {paymentKind === 'mixed' && (
+                <div className="client-form-modal__mixed-payment">
+                  <div className="client-form-modal__mixed-payment-grid">
+                    <label className="client-form-modal__label">
+                      <span className="client-form-modal__label-text"><Receipt size={13} /> Чеком</span>
+                      <span className="client-form-modal__input-wrap">
+                        <MoneyInput
+                          value={mixedReceiptAmount}
+                          onChange={setMixedReceiptAmount}
+                          className="client-form-modal__input client-form-modal__input--suffixed"
+                          placeholder="0"
+                          autoComplete="off"
+                        />
+                        <span className="client-form-modal__input-suffix">сом</span>
+                      </span>
+                    </label>
+                    <label className="client-form-modal__label">
+                      <span className="client-form-modal__label-text"><Banknote size={13} /> Наличными</span>
+                      <span className="client-form-modal__input-wrap">
+                        <MoneyInput
+                          value={mixedCashAmount}
+                          onChange={setMixedCashAmount}
+                          className="client-form-modal__input client-form-modal__input--suffixed"
+                          placeholder="0"
+                          autoComplete="off"
+                        />
+                        <span className="client-form-modal__input-suffix">сом</span>
+                      </span>
+                    </label>
+                  </div>
+                  {mixedPaidSum > 0 && (() => {
+                    const matches = paymentTargetTotal > 0 && mixedPaidSum === paymentTargetTotal;
+                    return (
+                      <div className="client-form-modal__mixed-payment-summary">
+                        {renderCoverageBar(mixedPaidSum, paymentTargetTotal)}
+                        <div className={`client-form-modal__mixed-payment-hint${matches ? ' client-form-modal__mixed-payment-hint--ok' : paymentTargetTotal > 0 ? ' client-form-modal__mixed-payment-hint--warn' : ''}`}>
+                          {paymentTargetTotal > 0 ? (matches ? <CircleCheck size={13} /> : <CircleAlert size={13} />) : null}
+                          <span>
+                            Итого: <strong>{formatSum(mixedPaidSum)}</strong>
+                            {paymentTargetTotal > 0 && !matches && <> — не совпадает с суммой абонемента ({formatSum(paymentTargetTotal)})</>}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+
+            <div className="client-form-modal__section-divider" />
+
             <div className="client-form-modal__installments">
               <div className="client-form-modal__installments-header">
-                <span className="client-form-modal__installments-title">Частичные оплаты</span>
+                <span className="client-form-modal__installments-title"><SplitSquareHorizontal size={12} /> Частичные оплаты</span>
+                {installmentsPaidSum > 0 && (
+                  <span className={`client-form-modal__installments-total${installmentsCoverTarget ? '' : ' client-form-modal__installments-total--warn'}`}>
+                    {formatSum(installmentsPaidSum)}
+                    {paymentTargetTotal > 0 && !installmentsCoverTarget && ` из ${formatSum(paymentTargetTotal)}`}
+                  </span>
+                )}
               </div>
+              {installmentsPaidSum > 0 && renderCoverageBar(installmentsPaidSum, paymentTargetTotal)}
               <div className="client-form-modal__installments-grid client-form-modal__installments-grid--head" aria-hidden>
                 <span>Сумма, сом</span>
                 <span>Дата оплаты</span>
@@ -943,7 +1130,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
             {client?.id && clientType === 'one-time' ? (
               <div className="client-form-modal__installments client-form-modal__onetime-wrap">
                 <div className="client-form-modal__installments-header">
-                  <span className="client-form-modal__installments-title">Разовые доплаты</span>
+                  <span className="client-form-modal__installments-title"><Plus size={12} /> Разовые доплаты</span>
                 </div>
                 {!compactHints && (
                   <p className="client-form-modal__installments-hint">
@@ -999,72 +1186,81 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               </div>
             ) : null}
 
-            <label className="client-form-modal__paid-toggle" aria-label="Статус оплаты">
-              <input
-                type="checkbox"
-                className="client-form-modal__paid-input"
-                checked={paid}
-                onChange={e => setPaid(e.target.checked)}
-              />
-              <span className="client-form-modal__paid-track">
-                <span className="client-form-modal__paid-thumb" />
-              </span>
-              <span className={`client-form-modal__paid-label ${paid ? 'client-form-modal__paid-label--yes' : 'client-form-modal__paid-label--no'}`}>
-                {paid ? 'Оплачено' : 'Не оплачено'}
-              </span>
-            </label>
+            <div className={`client-form-modal__paid-status${!paymentCoverageOk ? ' client-form-modal__paid-status--locked' : ''}`}>
+              <div className="client-form-modal__paid-status-row">
+                <span className="client-form-modal__paid-status-label">Статус оплаты</span>
+                <div
+                  className="client-form-modal__paid-toggle"
+                  role="radiogroup"
+                  aria-label="Статус оплаты"
+                  title={!paymentCoverageOk ? 'Сумма не совпадает с ценой абонемента — статус будет «Не оплачено»' : undefined}
+                >
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={!effectivePaid}
+                    className={`client-form-modal__paid-btn client-form-modal__paid-btn--no${!effectivePaid ? ' client-form-modal__paid-btn--active' : ''}`}
+                    onClick={() => setPaid(false)}
+                  >
+                    Не оплачено
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={effectivePaid}
+                    disabled={!paymentCoverageOk}
+                    className={`client-form-modal__paid-btn client-form-modal__paid-btn--yes${effectivePaid ? ' client-form-modal__paid-btn--active' : ''}`}
+                    onClick={() => setPaid(true)}
+                  >
+                    <CircleCheck size={14} strokeWidth={2} />
+                    Оплачено
+                  </button>
+                </div>
+              </div>
+              {!paymentCoverageOk && (
+                <div className="client-form-modal__paid-coverage-hint">
+                  <CircleAlert size={13} />
+                  <span>
+                    Нельзя отметить «Оплачено»: сумма не совпадает с ценой абонемента ({formatSum(paymentTargetTotal)}) — {paymentCoverageIssues.join('; ')}.
+                  </span>
+                </div>
+              )}
+            </div>
             {(contractBaseAmount > 0 || rawPriceInput > 0) && (
             <div className="client-form-modal__price-summary">
-              <div className="client-form-modal__price-row">
-                <span>До скидки</span>
-                <strong>{formatSum(contractBaseAmount)}</strong>
+              <div className="client-form-modal__price-summary-main">
+                <span className="client-form-modal__price-summary-label">
+                  {discountPct > 0 ? 'К оплате со скидкой' : 'Итого к оплате'}
+                </span>
+                <strong className="client-form-modal__price-summary-value">
+                  {formatSum(discountPct > 0 ? amountAfterDiscount : contractBaseAmount)}
+                </strong>
               </div>
               {discountPct > 0 && (
-                <div className="client-form-modal__price-row client-form-modal__price-row--discount">
-                  <span>Со скидкой ({discountPct}%)</span>
-                  <strong>{formatSum(amountAfterDiscount)}</strong>
+                <div className="client-form-modal__price-row">
+                  <span className="client-form-modal__price-row-label">
+                    Без скидки
+                    <span className="client-form-modal__price-summary-badge">−{discountPct}%</span>
+                  </span>
+                  <strong>{formatSum(contractBaseAmount)}</strong>
                 </div>
               )}
             </div>
             )}
-          </div>
-
-          <div className={sectionClass('paymentKind')} ref={paymentKindRef}>
-            <h3 className="client-form-modal__section-title"><Wallet size={14} /> Способ оплаты</h3>
-            <div className="client-form-modal__row">
-              <div className="client-form-modal__label client-form-modal__label--full">
-                <span className="client-form-modal__label-text">Способ оплаты <span className="form-label-required" aria-hidden="true">*</span></span>
-                <div className="client-form-modal__payment-kind-toggle" role="radiogroup" aria-label="Способ оплаты">
-                  {CLIENT_PHOTO_KIND_OPTIONS.map((opt) => {
-                    const Icon = PAYMENT_KIND_ICONS[opt.value] ?? Wallet;
-                    const active = paymentKind === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        role="radio"
-                        aria-checked={active}
-                        className={`client-form-modal__payment-kind-btn${active ? ' client-form-modal__payment-kind-btn--active' : ''}`}
-                        onClick={() => {
-                          setPaymentKind(opt.value);
-                          setHighlightSection((cur) => (cur === 'paymentKind' ? null : cur));
-                        }}
-                      >
-                        <Icon size={16} strokeWidth={1.75} />
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
+          </div>
+          </div>
           </div>
 
           <details
             className="client-form-modal__more"
             key={isMobileFormLayout ? 'extra-mobile' : 'extra-desktop'}
           >
-            <summary className="client-form-modal__more-summary">Дополнительно</summary>
+            <summary className="client-form-modal__more-summary">
+              <span className="client-form-modal__more-summary-text">
+                <SlidersHorizontal size={13} /> Дополнительно
+              </span>
+            </summary>
             <div className="client-form-modal__more-inner">
               <div className="client-form-modal__section client-form-modal__section--flush">
                 <h3 className="client-form-modal__section-title"><SlidersHorizontal size={14} /> Поля</h3>
@@ -1085,17 +1281,20 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                     />
                   </label>
                   <label className="client-form-modal__label">
-                    <span className="client-form-modal__label-text">Скидка, %</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={discount}
-                      onChange={handleDiscountChange}
-                      className="client-form-modal__input"
-                      placeholder="0"
-                      disabled={isIndividualClient}
-                    />
+                    <span className="client-form-modal__label-text">Скидка</span>
+                    <span className="client-form-modal__input-wrap">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={discount}
+                        onChange={handleDiscountChange}
+                        className="client-form-modal__input client-form-modal__input--suffixed client-form-modal__input--no-spin"
+                        placeholder="0"
+                        disabled={isIndividualClient}
+                      />
+                      <span className="client-form-modal__input-suffix">%</span>
+                    </span>
                   </label>
                 </div>
                 {isMobileFormLayout && !compactHints && (

@@ -96,7 +96,7 @@ const ActivityLogPage = () => {
   return (
     <div className="activity-log-page">
       <div className="activity-log-page__notice">
-        <History size={15} />
+        <span className="activity-log-page__notice-icon"><History size={15} /></span>
         Здесь отображаются действия всех сотрудников на сайте — создание, изменение, удаление, предупреждения и оплаты.
       </div>
 
@@ -178,12 +178,12 @@ const ActivityLogPage = () => {
                     <EmptyState compact tableCell message="Ничего не найдено" />
                   </td>
                 </tr>
-              ) : items.map((e) => {
+              ) : items.map((e, idx) => {
                 const actionInfo = ACTION_TYPES[e.actionType];
                 const Icon = ACTION_ICON[e.actionType] ?? History;
                 const hasDetail = (e.changes?.length || e.snapshot?.length) > 0;
                 return (
-                  <tr key={e.id}>
+                  <tr key={e.id} style={{ '--row-i': idx }}>
                     <td data-label="Сотрудник">
                       <div className="ui-list__name-cell">
                         <span className="ui-avatar">{getInitials(e.actorName)}</span>

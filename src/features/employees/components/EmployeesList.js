@@ -73,11 +73,11 @@ const EmployeesList = ({
 
   const renderMobileCards = () => (
     <div className="employees-list__cards">
-      {list.map((emp) => {
+      {list.map((emp, idx) => {
         const initials = getInitials(emp.fio);
         const roleName = emp.roleName ?? emp.role?.name;
         return (
-          <article key={emp.id} className="employees-list__card">
+          <article key={emp.id} className="employees-list__card" style={{ '--row-i': idx }}>
             <div className="employees-list__card-head">
               <span className="ui-avatar ui-avatar--lg">{initials}</span>
               <div>
@@ -156,11 +156,11 @@ const EmployeesList = ({
                 </tr>
               </thead>
               <tbody>
-                {list.map((emp) => {
+                {list.map((emp, idx) => {
                   const initials = getInitials(emp.fio);
                   const roleName = emp.roleName ?? emp.role?.name;
                   return (
-                    <tr key={emp.id}>
+                    <tr key={emp.id} style={{ '--row-i': idx }}>
                       <td>
                         <div className="ui-list__name-cell">
                           <span className="ui-avatar">{initials}</span>

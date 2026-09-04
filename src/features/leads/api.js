@@ -19,6 +19,17 @@ export const fetchLeads = async (queryState, signal) => {
   return data;
 };
 
+/** GET /api/leads/stats/ — сводные счётчики по статусам одним запросом (GROUP BY на бэке).
+ * query: channel, date_from, date_to — те же фильтры, что и у fetchLeads. */
+export const fetchLeadStats = async (queryState, signal) => {
+  const params = {};
+  if (queryState?.channel)    params.channel    = queryState.channel;
+  if (queryState?.date_from)  params.date_from  = queryState.date_from;
+  if (queryState?.date_to)    params.date_to    = queryState.date_to;
+  const { data } = await apiClient.get('/leads/stats/', { params, ...withSignal({}, signal) });
+  return data;
+};
+
 export const fetchLead = async (id, signal) => {
   const { data } = await apiClient.get(`/leads/${id}/`, withSignal({}, signal));
   return data;

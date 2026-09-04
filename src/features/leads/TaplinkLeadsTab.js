@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { fetchLeads, updateLead } from './api';
+import { fetchLeads, fetchLeadStats, updateLead } from './api';
 import { useToast } from '../../app/providers/ToastProvider';
 import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { ErrorState, EmptyState, Pagination, SkeletonTable } from '../../shared/ui';
 import Select from '../../shared/ui/Select';
-import { Calendar, CalendarDays, CalendarClock } from 'lucide-react';
+import { Calendar, CalendarDays, CalendarClock, Check, X, AlertTriangle, Undo2, MessageCircle, ChevronDown, Dumbbell, UserCheck, Clock, MessageSquare } from 'lucide-react';
 import { STATS_YEARS } from '../../shared/constants/common';
 
 // ─── Константы ────────────────────────────────────────────────────────────────
@@ -18,10 +18,10 @@ const STATUS = {
 };
 
 const STATUS_BADGE = {
-  pending:  { text: 'Новая',     cls: 'tlt__badge--new'      },
-  accepted: { text: 'Запишется', cls: 'tlt__badge--accepted' },
-  rejected: { text: 'Отказался', cls: 'tlt__badge--rejected' },
-  spam:     { text: 'Спам',      cls: 'tlt__badge--spam'     },
+  pending:  { text: 'Новая',     cls: 'tlt__badge--new',      Icon: null           },
+  accepted: { text: 'Запишется', cls: 'tlt__badge--accepted', Icon: Check          },
+  rejected: { text: 'Отказался', cls: 'tlt__badge--rejected', Icon: X              },
+  spam:     { text: 'Спам',      cls: 'tlt__badge--spam',     Icon: AlertTriangle  },
 };
 
 const MONTHS = [
@@ -31,28 +31,19 @@ const MONTHS = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const isSuspect = (lead) => {
-  if (lead.isDuplicate ?? lead.is_duplicate) return true;
-  const phone = (lead.phone || '').replace(/[\s\-()]/g, '');
-  if (phone && !/^\+996\d{9}$|^0\d{9}$/.test(phone)) return true;
-  if (!lead.name || lead.name.trim().length < 2) return true;
-  return false;
-};
+// Подозрительность теперь считает бэкенд (Lead.save(), поля isSuspect/suspectReason) —
+// одно правило для всех клиентов API, а не отдельная копия regex во фронте.
+const isSuspect = (lead) => Boolean(lead.isSuspect ?? lead.is_suspect ?? (lead.isDuplicate ?? lead.is_duplicate));
 
 const suspectReason = (lead) => {
   if (lead.isDuplicate ?? lead.is_duplicate) return 'Повторная заявка с этим телефоном';
-  const phone = (lead.phone || '').replace(/[\s\-()]/g, '');
-  if (phone && !/^\+996\d{9}$|^0\d{9}$/.test(phone)) return 'Номер не в кыргызском формате';
-  if (!lead.name || lead.name.trim().length < 2) return 'Слишком короткое имя';
-  return 'Подозрительная заявка';
+  return lead.suspectReason ?? lead.suspect_reason ?? 'Подозрительная заявка';
 };
 
 const fmt = (iso) => {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' });
 };
-
-const getTotal = (res) => res?.meta?.total ?? res?.count ?? res?.total ?? 0;
 
 // Строим date_from / date_to из выбранных фильтров
 const buildDateRange = (year, month, day) => {
@@ -95,6 +86,14 @@ const TaplinkLeadsTab = () => {
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState(null);
   const [saving,    setSaving]    = useState(null);
+  // Второстепенные поля заявки (секция/тренер/время/комментарий) скрыты по умолчанию —
+  // Set, а не один id, чтобы можно было сравнить сразу несколько раскрытых заявок.
+  const [expanded,  setExpanded]  = useState(() => new Set());
+  const toggleExpanded = (id) => setExpanded((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   // Статистика
   const [stats,        setStats]        = useState(null);
@@ -135,25 +134,18 @@ const TaplinkLeadsTab = () => {
 
   useEffect(() => { load(); }, [load]);
 
-  // ─── Загрузка статистики (5 параллельных запросов) ──────────────────────────
+  // ─── Загрузка статистики — один агрегирующий запрос на бэке (GROUP BY status) ──
 
   const loadStats = useCallback(async () => {
     setStatsLoading(true);
-    const base = { channel: 'taplink', page: 1, perPage: 1, ...dateRange };
     try {
-      const [all, pending, accepted, rejected, spam] = await Promise.all([
-        fetchLeads(base),
-        fetchLeads({ ...base, status: 'pending'  }),
-        fetchLeads({ ...base, status: 'accepted' }),
-        fetchLeads({ ...base, status: 'rejected' }),
-        fetchLeads({ ...base, status: 'spam'     }),
-      ]);
+      const res = await fetchLeadStats({ channel: 'taplink', ...dateRange });
       setStats({
-        total:    getTotal(all),
-        pending:  getTotal(pending),
-        accepted: getTotal(accepted),
-        rejected: getTotal(rejected),
-        spam:     getTotal(spam),
+        total:    res?.total ?? 0,
+        pending:  res?.pending ?? 0,
+        accepted: res?.accepted ?? 0,
+        rejected: res?.rejected ?? 0,
+        spam:     res?.spam ?? 0,
       });
     } catch {
       setStats(null);
@@ -284,25 +276,22 @@ const TaplinkLeadsTab = () => {
             <tr>
               <th>ФИО</th>
               <th>Телефон</th>
-              <th>Секция</th>
-              <th>Тренер</th>
-              <th>Время</th>
-              <th>Комментарий</th>
               <th>Дата</th>
               <th>Статус</th>
+              <th className="tlt__th-more"></th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9} className="ui-list__skeleton-cell tlt__skeleton-cell">
-                  <SkeletonTable rows={6} cols={9} />
+                <td colSpan={6} className="ui-list__skeleton-cell tlt__skeleton-cell">
+                  <SkeletonTable rows={6} cols={6} />
                 </td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={9} className="ui-list__empty-cell tlt__empty-cell">
+                <td colSpan={6} className="ui-list__empty-cell tlt__empty-cell">
                   <EmptyState compact tableCell message="Нет заявок" />
                 </td>
               </tr>
@@ -310,12 +299,19 @@ const TaplinkLeadsTab = () => {
               const status  = lead.status || 'pending';
               const badge   = STATUS_BADGE[status] ?? STATUS_BADGE.pending;
               const suspect = isSuspect(lead);
+              const isOpen  = expanded.has(lead.id);
+              const sport   = lead.taplinkSport ?? lead.taplink_sport ?? '';
+              const trainer = lead.taplinkTrainer ?? lead.taplink_trainer ?? '';
+              const time    = lead.preferredTime ?? lead.preferred_time ?? '';
+              const comment = lead.comment ?? '';
+              const hasDetails = Boolean(sport || trainer || time || comment);
               return (
-                <tr key={lead.id} className={suspect && status === 'pending' ? 'tlt__row--suspect' : ''}>
+                <React.Fragment key={lead.id}>
+                <tr className={suspect && status === 'pending' ? 'tlt__row--suspect' : ''}>
                   <td>
                     <span className="tlt__name">
                       {suspect && status === 'pending' && (
-                        <span className="tlt__suspect-icon" title={suspectReason(lead)}>⚠</span>
+                        <span className="tlt__suspect-icon" title={suspectReason(lead)}><AlertTriangle size={13} strokeWidth={2.25} /></span>
                       )}
                       {lead.name || '—'}
                     </span>
@@ -326,60 +322,111 @@ const TaplinkLeadsTab = () => {
                         href={`https://wa.me/${(lead.phone).replace(/\D/g, '')}`}
                         target="_blank" rel="noreferrer"
                         className="tlt__phone"
+                        title="Написать в WhatsApp"
                       >
+                        <MessageCircle size={12} strokeWidth={2} />
                         {lead.phone}
                       </a>
                     ) : '—'}
                   </td>
-                  <td>{lead.taplinkSport ?? lead.taplink_sport ?? '—'}</td>
-                  <td>{lead.taplinkTrainer ?? lead.taplink_trainer ?? '—'}</td>
-                  <td className="tlt__time">{lead.preferredTime ?? lead.preferred_time ?? '—'}</td>
-                  <td className="tlt__comment" title={lead.comment || ''}>{lead.comment || '—'}</td>
                   <td className="tlt__date">{fmt(lead.createdAt ?? lead.created_at)}</td>
                   <td>
-                    <span className={`tlt__badge ${badge.cls}`}>{badge.text}</span>
+                    <span className={`tlt__badge ${badge.cls}`}>
+                      {badge.Icon && <badge.Icon size={11} strokeWidth={2.5} />}
+                      {badge.text}
+                    </span>
+                  </td>
+                  <td className="tlt__th-more">
+                    {hasDetails && (
+                      <button
+                        type="button"
+                        className={`tlt__more-btn${isOpen ? ' tlt__more-btn--open' : ''}`}
+                        onClick={() => toggleExpanded(lead.id)}
+                        aria-expanded={isOpen}
+                        title={isOpen ? 'Скрыть подробности' : 'Подробнее: секция, тренер, время, комментарий'}
+                      >
+                        Подробнее <ChevronDown size={13} strokeWidth={2.25} />
+                      </button>
+                    )}
                   </td>
                   <td className="tlt__actions">
                     {status === 'pending' && (
                       <div className="tlt__action-group">
-                        <button type="button" className="tlt__btn tlt__btn--accept"
+                        <button type="button" className="tlt__btn tlt__btn--accept tlt__btn--wide"
                           disabled={saving === lead.id}
                           onClick={() => setStatus(lead, 'accepted')}
                           title="Запишется — клиент решил заниматься">
-                          ✓ Запись
+                          <Check size={13} strokeWidth={2.5} /> Запись
                         </button>
-                        <button type="button" className="tlt__btn tlt__btn--reject"
+                        <button type="button" className="tlt__btn tlt__btn--reject tlt__btn--wide"
                           disabled={saving === lead.id}
                           onClick={() => setStatus(lead, 'rejected')}
                           title="Отказался — не захотел">
-                          ✕ Отказ
+                          <X size={13} strokeWidth={2.5} /> Отказ
                         </button>
-                        <button type="button" className="tlt__btn tlt__btn--spam"
+                        <button type="button" className="tlt__btn tlt__btn--spam tlt__btn--wide"
                           disabled={saving === lead.id}
                           onClick={() => setStatus(lead, 'spam')}
                           title="Пометить как спам">
-                          ⚠ Спам
+                          <AlertTriangle size={13} strokeWidth={2.25} /> Спам
                         </button>
                       </div>
                     )}
                     {status === 'spam' && (
-                      <button type="button" className="tlt__btn tlt__btn--undo"
+                      <button type="button" className="tlt__btn tlt__btn--undo tlt__btn--wide"
                         disabled={saving === lead.id}
                         onClick={() => setStatus(lead, 'pending')}
                         title="Не спам — вернуть в новые">
-                        ↩ Не спам
+                        <Undo2 size={13} strokeWidth={2.25} /> Не спам
                       </button>
                     )}
                     {(status === 'accepted' || status === 'rejected') && (
-                      <button type="button" className="tlt__btn tlt__btn--undo"
+                      <button type="button" className="tlt__btn tlt__btn--undo tlt__btn--wide"
                         disabled={saving === lead.id}
                         onClick={() => setStatus(lead, 'pending')}
                         title="Вернуть в новые">
-                        ↩ Вернуть
+                        <Undo2 size={13} strokeWidth={2.25} /> Вернуть
                       </button>
                     )}
                   </td>
                 </tr>
+                {isOpen && hasDetails && (
+                  <tr className="tlt__detail-row">
+                    <td colSpan={6}>
+                      <div className="tlt__detail">
+                        {sport && (
+                          <span className="tlt__detail-item">
+                            <Dumbbell size={13} strokeWidth={2} />
+                            <span className="tlt__detail-label">Секция</span>
+                            <span className="tlt__detail-val">{sport}</span>
+                          </span>
+                        )}
+                        {trainer && (
+                          <span className="tlt__detail-item">
+                            <UserCheck size={13} strokeWidth={2} />
+                            <span className="tlt__detail-label">Тренер</span>
+                            <span className="tlt__detail-val">{trainer}</span>
+                          </span>
+                        )}
+                        {time && (
+                          <span className="tlt__detail-item">
+                            <Clock size={13} strokeWidth={2} />
+                            <span className="tlt__detail-label">Время</span>
+                            <span className="tlt__detail-val">{time}</span>
+                          </span>
+                        )}
+                        {comment && (
+                          <span className="tlt__detail-item tlt__detail-item--comment">
+                            <MessageSquare size={13} strokeWidth={2} />
+                            <span className="tlt__detail-label">Комментарий</span>
+                            <span className="tlt__detail-val">{comment}</span>
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               );
             })}
           </tbody>

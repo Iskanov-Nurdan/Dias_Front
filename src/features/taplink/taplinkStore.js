@@ -12,6 +12,9 @@ export const GRADIENT_PRESETS = [
 ];
 
 export const DEFAULT_DATA = {
+  // Когда сервер последний раз реально сохранял конфиг (ISO-строка) — приходит с бэка
+  // в ответах GET/PUT /api/taplink/, null пока ничего не сохранено.
+  updatedAt: null,
   hero: {
     title: 'Рахман Ата',
     subtitle: 'Спорт Клубу',
@@ -181,6 +184,7 @@ export function hasSessionData() {
 function mergeWithDefaults(p) {
   const nonEmpty = (arr, def) => (Array.isArray(arr) && arr.length > 0) ? arr : def;
   return {
+    updatedAt: p.updatedAt ?? null,
     hero:     { ...DEFAULT_DATA.hero,     ...(p.hero     || {}) },
     stats:    nonEmpty(p.stats,    DEFAULT_DATA.stats),
     sports:   nonEmpty(p.sports,   DEFAULT_DATA.sports).map(s => {
@@ -238,11 +242,26 @@ export async function loadTaplinkDataAsync() {
   }
 }
 
+/**
+ * Строгая загрузка для редактора — ошибку НЕ проглатывает (в отличие от loadTaplinkDataAsync
+ * выше, которая тихо подменяет её локальным кэшем — это ок для публичной страницы,
+ * но не ок для админки: там нельзя молча редактировать неизвестно чей черновик).
+ * Вызывающий сам решает, что показать при ошибке (баннер + повтор), а не получает
+ * замаскированный сбой в виде «как будто всё загрузилось».
+ */
+export async function loadTaplinkConfigStrict(signal) {
+  const { fetchConfig } = await import('./api.js');
+  const raw = await fetchConfig(signal);
+  const merged = mergeWithDefaults(raw);
+  saveTaplinkData(merged);
+  return merged;
+}
+
 export async function saveTaplinkDataAsync(data) {
   const { BACKEND_ENABLED, saveConfig } = await import('./api.js');
   // Always persist locally first (instant feedback, offline safety)
   saveTaplinkData(data);
-  if (!BACKEND_ENABLED) return;
+  if (!BACKEND_ENABLED) return null;
   // Strip blob: URLs before sending to server
   const cleanVids = arr => (arr || []).map(v => (v && v.startsWith('blob:')) ? '' : (v || ''));
   const payload = {
@@ -250,5 +269,8 @@ export async function saveTaplinkDataAsync(data) {
     sports:   data.sports.map(s => ({ ...s, videos: cleanVids(s.videos) })),
     trainers: data.trainers.map(t => ({ ...t, videos: cleanVids(t.videos) })),
   };
-  return saveConfig(payload);
+  const res = await saveConfig(payload);
+  // Сервер вернул свежий updatedAt — кэшируем его же, чтобы бейдж «Сохранено: …» не отставал
+  if (res?.updatedAt) saveTaplinkData({ ...data, updatedAt: res.updatedAt });
+  return res;
 }

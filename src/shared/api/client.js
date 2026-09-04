@@ -4,7 +4,7 @@ import { isForbiddenError } from '../lib/apiError';
 // --- Выбор API: меняй когда нужно ---
 // true  = запросы на локальный бэкенд (127.0.0.1:8000)
 // false = запросы на бэкенд по домену (rahmanata.kg)
-const USE_LOCAL_API = true;
+const USE_LOCAL_API = false;
 
 // Taplink использует бэкенд (а не localStorage).
 // false = демо-режим (только localStorage, без сервера)

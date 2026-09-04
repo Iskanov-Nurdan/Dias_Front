@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RefreshCw, Eye, Check, AlertTriangle, House, BarChart3, Swords, Users, Wallet, Phone, Plus, X, Camera, ChevronDown, Video, Clock, Lock, Star, MessageCircle, AtSign, MapPin } from 'lucide-react';
-import { loadTaplinkData, saveTaplinkDataAsync, loadTaplinkDataAsync, setSessionData } from './taplinkStore';
+import { loadTaplinkData, saveTaplinkDataAsync, loadTaplinkConfigStrict, setSessionData } from './taplinkStore';
 import { BACKEND_ENABLED, uploadFile } from './api';
 import { fetchSports as fetchCrmSports, fetchTrainers as fetchCrmTrainers, fetchTrainerSchedule } from '../sports-trainers/api';
 import { WEEKDAYS, scheduleFromApiResponse, groupScheduleRows } from '../sports-trainers/scheduleConstants';
@@ -59,7 +59,7 @@ const useAccordion = () => {
 
 // ─── Hero tab ─────────────────────────────────────────────────────────────────
 
-const HeroTab = ({ data, setData }) => {
+const HeroTab = ({ data, setData, onUploadingChange }) => {
   const set = (field, val) => setData(d => ({ ...d, hero: { ...d.hero, [field]: val } }));
   return (
     <div className="tpe-section">
@@ -74,6 +74,7 @@ const HeroTab = ({ data, setData }) => {
           context="hero-bg"
           backendEnabled={BACKEND_ENABLED}
           uploadFile={uploadFile}
+          onUploadingChange={onUploadingChange}
         />
       </Field>
 
@@ -195,7 +196,7 @@ const StatsTab = ({ data, setData }) => {
 
 // ─── Sports tab ───────────────────────────────────────────────────────────────
 
-const SportsTab = ({ data, setData }) => {
+const SportsTab = ({ data, setData, onUploadingChange }) => {
   const { open, toggle, isRendered } = useAccordion();
   /** sportName → { loading, rows } — живой график из CRM для развёрнутой секции. */
   const [liveSchedules, setLiveSchedules] = useState({});
@@ -307,6 +308,7 @@ const SportsTab = ({ data, setData }) => {
                     context="sport-photo"
                     backendEnabled={BACKEND_ENABLED}
                     uploadFile={uploadFile}
+                    onUploadingChange={onUploadingChange}
                   />
                 </Field>
 
@@ -365,6 +367,7 @@ const SportsTab = ({ data, setData }) => {
                         context="sport-video"
                         backendEnabled={BACKEND_ENABLED}
                         uploadFile={uploadFile}
+                        onUploadingChange={onUploadingChange}
                       />
                     ))}
                   </div>
@@ -385,7 +388,7 @@ const SportsTab = ({ data, setData }) => {
 
 // ─── Trainers tab ─────────────────────────────────────────────────────────────
 
-const TrainersTab = ({ data, setData }) => {
+const TrainersTab = ({ data, setData, onUploadingChange }) => {
   const { open, toggle, isRendered } = useAccordion();
 
   const set = (i, field, val) =>
@@ -477,6 +480,7 @@ const TrainersTab = ({ data, setData }) => {
                       context="trainer-photo"
                       backendEnabled={BACKEND_ENABLED}
                       uploadFile={uploadFile}
+                      onUploadingChange={onUploadingChange}
                     />
                   </Field>
                   <div className="tpe-trainer-fields">
@@ -547,6 +551,7 @@ const TrainersTab = ({ data, setData }) => {
                         context="trainer-video"
                         backendEnabled={BACKEND_ENABLED}
                         uploadFile={uploadFile}
+                        onUploadingChange={onUploadingChange}
                       />
                     ))}
                   </div>
@@ -707,7 +712,13 @@ const TaplinkEditor = () => {
   const [saving,  setSaving]  = useState(false);
   const [saveErr, setSaveErr] = useState(null);
   const [loading, setLoading] = useState(BACKEND_ENABLED);
+  const [loadError, setLoadError] = useState(null);
   const [dirty,   setDirty]   = useState(false);
+  // Сколько фото/видео сейчас грузится на сервер — пока не 0, «Сохранить» заблокирована,
+  // иначе можно успеть сохранить конфиг до того, как upload доедет и заменит blob/пустое
+  // значение на реальный URL (бэкенд синхронный, но гонка кликов всё равно возможна).
+  const [uploadingCount, setUploadingCount] = useState(0);
+  const bumpUploading = (isUploading) => setUploadingCount((c) => Math.max(0, c + (isUploading ? 1 : -1)));
   const skipDirtyRef = useRef(true);
   const navigate = useNavigate();
 
@@ -769,13 +780,25 @@ const TaplinkEditor = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [crmSports, crmTrainers, crmLoading, loading]);
 
-  // Load from API on mount (if backend is enabled and no fresh session data)
+  // Загрузка с сервера при монтировании — строгая: при сбое НЕ подменяем данные молча
+  // локальным кэшем (тот мог быть от другого админа/устройства и незаметно разъехаться
+  // с реальным сайтом), а показываем баннер с ошибкой и кнопкой «Повторить».
+  const loadFromServer = () => {
+    setLoading(true);
+    setLoadError(null);
+    loadTaplinkConfigStrict()
+      .then((d) => { skipDirtyRef.current = true; setData(d); setLoading(false); })
+      .catch((e) => {
+        setLoadError(e?.response?.data?.error?.message ?? e?.message ?? 'Не удалось загрузить данные с сервера');
+        setLoading(false);
+      });
+  };
+
   useEffect(() => {
     if (!BACKEND_ENABLED) return;
-    loadTaplinkDataAsync()
-      .then(d => { skipDirtyRef.current = true; setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    loadFromServer();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Keep session store in sync so TaplinkPage can access blob: video URLs
   useEffect(() => {
@@ -796,11 +819,12 @@ const TaplinkEditor = () => {
   }, [dirty]);
 
   const save = async () => {
-    if (saving) return;
+    if (saving || uploadingCount > 0) return;
     setSaving(true);
     setSaveErr(null);
     try {
-      await saveTaplinkDataAsync(data);
+      const res = await saveTaplinkDataAsync(data);
+      if (res?.updatedAt) setData((d) => ({ ...d, updatedAt: res.updatedAt }));
       setSaved(true);
       setDirty(false);
       setTimeout(() => setSaved(false), 2500);
@@ -811,6 +835,10 @@ const TaplinkEditor = () => {
       setSaving(false);
     }
   };
+
+  const lastSavedLabel = data.updatedAt
+    ? new Date(data.updatedAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+    : null;
 
   const preview = () => {
     // Navigate within the SPA so blob: URLs remain valid in the same tab
@@ -840,7 +868,10 @@ const TaplinkEditor = () => {
           <img src="/rahman.png" alt="Рахман Ата" className="tpe__logo" />
           <div>
             <p className="tpe__title">Редактор Taplink</p>
-            <p className="tpe__subtitle">Редактируйте все элементы публичной страницы</p>
+            <p className="tpe__subtitle">
+              Редактируйте все элементы публичной страницы
+              {lastSavedLabel && <span className="tpe__last-saved"> · Сохранено: {lastSavedLabel}</span>}
+            </p>
           </div>
         </div>
         <div className="tpe__actions">
@@ -851,12 +882,26 @@ const TaplinkEditor = () => {
             type="button"
             className={`tpe__save-btn${saved ? ' tpe__save-btn--done' : ''}`}
             onClick={save}
-            disabled={saving}
+            disabled={saving || uploadingCount > 0}
+            title={uploadingCount > 0 ? 'Дождитесь загрузки файла' : undefined}
           >
             {saveBtnContent}
           </button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="tpe__load-error">
+          <AlertTriangle size={15} strokeWidth={2} />
+          <span>
+            {loadError} — показаны последние открытые вами данные, они могут отличаться от
+            того, что реально опубликовано на сайте.
+          </span>
+          <button type="button" className="tpe__load-error-retry" onClick={loadFromServer}>
+            <RefreshCw size={13} strokeWidth={2.25} /> Повторить
+          </button>
+        </div>
+      )}
 
       <div className="tpe__tabs" role="tablist" aria-label="Разделы редактора">
         {TABS.map(t => {
@@ -878,10 +923,10 @@ const TaplinkEditor = () => {
       </div>
 
       <div className="tpe__body">
-        {tab === 'hero'     && <HeroTab     data={data} setData={setData} />}
+        {tab === 'hero'     && <HeroTab     data={data} setData={setData} onUploadingChange={bumpUploading} />}
         {tab === 'stats'    && <StatsTab    data={data} setData={setData} />}
-        {tab === 'sports'   && <SportsTab   data={data} setData={setData} />}
-        {tab === 'trainers' && <TrainersTab data={data} setData={setData} />}
+        {tab === 'sports'   && <SportsTab   data={data} setData={setData} onUploadingChange={bumpUploading} />}
+        {tab === 'trainers' && <TrainersTab data={data} setData={setData} onUploadingChange={bumpUploading} />}
         {tab === 'prices'   && <PricesTab   data={data} setData={setData} />}
         {tab === 'footer'   && <FooterTab   data={data} setData={setData} />}
       </div>
@@ -890,17 +935,20 @@ const TaplinkEditor = () => {
         <span className={`tpe__bottom-note${saveErr ? ' tpe__bottom-note--error' : saved ? ' tpe__bottom-note--ok' : ''}`}>
           {saveErr
             ? <><AlertTriangle size={13} strokeWidth={2} /> {saveErr}</>
-            : saved
-              ? <><Check size={13} strokeWidth={2.5} /> Изменения сохранены</>
-              : dirty
-                ? <>Несохранённые изменения будут потеряны при перезагрузке</>
-                : 'Все изменения сохранены'}
+            : uploadingCount > 0
+              ? <><RefreshCw size={13} strokeWidth={2.25} className="tpe-spin" /> Загрузка файла… «Сохранить» станет доступна, когда она закончится</>
+              : saved
+                ? <><Check size={13} strokeWidth={2.5} /> Изменения сохранены</>
+                : dirty
+                  ? <>Несохранённые изменения будут потеряны при перезагрузке</>
+                  : 'Все изменения сохранены'}
         </span>
         <button
           type="button"
           className={`tpe__save-btn${saved ? ' tpe__save-btn--done' : ''}`}
           onClick={save}
-          disabled={saving}
+          disabled={saving || uploadingCount > 0}
+          title={uploadingCount > 0 ? 'Дождитесь загрузки файла' : undefined}
         >
           {saveBtnContent}
         </button>

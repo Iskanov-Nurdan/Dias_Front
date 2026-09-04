@@ -6,6 +6,14 @@ export const login = async (loginData, signal) => {
   return data;
 };
 
+/** GET /api/auth/me — текущий пользователь по токену: роль/доступы читаются заново на
+ * сервере, а не доверяются кэшу в localStorage (там могли остаться права, отозванные
+ * после последнего логина). */
+export const fetchMe = async (signal) => {
+  const { data } = await apiClient.get('/auth/me', { signal });
+  return data;
+};
+
 /** POST /api/auth/refresh — обновить access token. Не требует Authorization. */
 export const refreshToken = async (refresh, signal) => {
   const { data } = await apiClient.post('/auth/refresh', { refresh }, { signal });

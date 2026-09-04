@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { PAGE_IDS, PAGE_ROUTES } from '../../shared/constants/pages';
-import { logout as logoutApi } from '../../features/auth/api';
+import { logout as logoutApi, fetchMe } from '../../features/auth/api';
 import { setAuthTokens, clearAuth } from '../../shared/api/client';
 
 const ADMIN_ROLE_NAME = 'Администратор';
@@ -51,6 +51,28 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('user', JSON.stringify(normalized));
     } catch {}
     setUser(normalized);
+  }, []);
+
+  // При старте приложения перечитываем роль/доступы с сервера (GET /auth/me) — localStorage
+  // мог сохранить права, отозванные после последнего логина (например, сотруднику закрыли
+  // доступ к разделу). Тихо: не разлогиниваем при сетевой ошибке, интерцептор в client.js
+  // сам обработает истёкший/невалидный токен при следующем реальном запросе.
+  useEffect(() => {
+    if (!localStorage.getItem('token')) return;
+    let cancelled = false;
+    fetchMe(null)
+      .then((res) => {
+        if (cancelled) return;
+        const payload = res?.data ?? res;
+        const fresh = normalizeUserAccess(payload);
+        setUser((prev) => {
+          const merged = { ...prev, ...fresh };
+          try { localStorage.setItem('user', JSON.stringify(merged)); } catch {}
+          return merged;
+        });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   const logout = useCallback(async () => {

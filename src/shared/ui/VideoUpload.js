@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './VideoUpload.scss';
 
-const VideoUpload = ({ value, onChange, num, context = '', backendEnabled = false, uploadFile }) => {
+const VideoUpload = ({ value, onChange, num, context = '', backendEnabled = false, uploadFile, onUploadingChange }) => {
   const ref = useRef();
   const [uploading, setUploading] = useState(false);
 
@@ -9,12 +9,17 @@ const VideoUpload = ({ value, onChange, num, context = '', backendEnabled = fals
   // не удалив и не заменив видео) — иначе она остаётся висеть в памяти.
   const valueRef = useRef(value);
   valueRef.current = value;
+  const uploadingRef = useRef(false);
   useEffect(() => {
     return () => {
       if (valueRef.current && valueRef.current.startsWith('blob:')) {
         URL.revokeObjectURL(valueRef.current);
       }
+      // Если размонтировались посреди загрузки — снимаем «занято», иначе счётчик
+      // у родителя (блокирующий «Сохранить») останется висеть навсегда.
+      if (uploadingRef.current) onUploadingChange?.(false);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleFile = async e => {
@@ -25,6 +30,8 @@ const VideoUpload = ({ value, onChange, num, context = '', backendEnabled = fals
     if (backendEnabled && uploadFile) {
       if (value && value.startsWith('blob:')) URL.revokeObjectURL(value);
       setUploading(true);
+      uploadingRef.current = true;
+      onUploadingChange?.(true);
       try {
         const url = await uploadFile(file, context);
         onChange(url);
@@ -32,6 +39,8 @@ const VideoUpload = ({ value, onChange, num, context = '', backendEnabled = fals
         alert('Ошибка загрузки видео. Попробуйте ещё раз.');
       } finally {
         setUploading(false);
+        uploadingRef.current = false;
+        onUploadingChange?.(false);
       }
     } else {
       if (value && value.startsWith('blob:')) URL.revokeObjectURL(value);

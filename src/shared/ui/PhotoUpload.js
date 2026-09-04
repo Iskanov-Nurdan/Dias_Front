@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './PhotoUpload.scss';
 
 const PhotoUpload = ({
@@ -9,9 +9,18 @@ const PhotoUpload = ({
   context = '',
   backendEnabled = false,
   uploadFile,
+  onUploadingChange,
 }) => {
   const ref = useRef();
   const [uploading, setUploading] = useState(false);
+  const uploadingRef = useRef(false);
+
+  // Если размонтировались посреди загрузки — снимаем «занято» у родителя,
+  // иначе счётчик, блокирующий «Сохранить», останется висеть навсегда.
+  useEffect(() => () => {
+    if (uploadingRef.current) onUploadingChange?.(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleFile = async e => {
     const file = e.target.files[0];
@@ -24,6 +33,8 @@ const PhotoUpload = ({
 
     if (backendEnabled && uploadFile) {
       setUploading(true);
+      uploadingRef.current = true;
+      onUploadingChange?.(true);
       try {
         const url = await uploadFile(file, context);
         onChange(url);
@@ -31,6 +42,8 @@ const PhotoUpload = ({
         alert('Ошибка загрузки файла. Попробуйте ещё раз.');
       } finally {
         setUploading(false);
+        uploadingRef.current = false;
+        onUploadingChange?.(false);
       }
     } else {
       const reader = new FileReader();

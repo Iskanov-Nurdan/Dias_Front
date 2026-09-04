@@ -18,6 +18,8 @@
 }
 
 // ─── Stats cards ──────────────────────────────────────────────────────────────
+// Тонкая цветная полоска сверху вместо сплошной цветной рамки по периметру —
+// сигнал есть, но карточка не выглядит как цветная плашка.
 .tlt__stats {
   display: flex;
   gap: 10px;
@@ -25,6 +27,7 @@
 }
 
 .tlt__stat-card {
+  position: relative;
   flex: 1 1 120px;
   min-width: 100px;
   padding: 16px 18px;
@@ -34,29 +37,47 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 
-  &--new     { border-color: rgba(59,130,246,0.3);  }
-  &--accept  { border-color: rgba(34,197,94,0.3);   }
-  &--reject  { border-color: rgba(239,68,68,0.25);  }
-  &--spam    { border-color: rgba(156,163,175,0.2); }
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--color-border-strong);
+  }
+
+  &:hover {
+    border-color: var(--color-border-strong);
+    box-shadow: var(--shadow-xs);
+  }
+
+  &--new::before     { background: var(--color-info); }
+  &--accept::before  { background: var(--color-success); }
+  &--reject::before  { background: var(--color-danger); }
+  &--spam::before    { background: var(--color-text-muted); }
 }
 
 .tlt__stat-num {
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
   color: var(--color-text);
 
-  .tlt__stat-card--new    & { color: #60A5FA; }
-  .tlt__stat-card--accept & { color: #4ADE80; }
-  .tlt__stat-card--reject & { color: #F87171; }
-  .tlt__stat-card--spam   & { color: #9CA3AF; }
+  .tlt__stat-card--new    & { color: var(--color-info); }
+  .tlt__stat-card--accept & { color: var(--color-success); }
+  .tlt__stat-card--reject & { color: var(--color-danger); }
+  .tlt__stat-card--spam   & { color: var(--color-text-muted); }
 }
 
 .tlt__stat-lbl {
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 600;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--color-text-muted);
 }
@@ -69,24 +90,27 @@
 }
 
 .tlt__status-tab {
-  padding: 6px 16px;
+  padding: 7px 16px;
   border-radius: var(--radius-sm, 6px);
   border: 1px solid var(--color-border);
   background: transparent;
   color: var(--color-text-muted);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 
-  &:hover {
-    background: var(--color-surface-hover, rgba(255,255,255,0.04));
+  &:hover:not(&--on) {
+    background: var(--color-surface-secondary);
+    border-color: var(--color-border-strong);
     color: var(--color-text);
   }
 
+  &:active { transform: scale(0.97); }
+
   &--on {
-    background: var(--color-primary, #E63946);
-    border-color: var(--color-primary, #E63946);
+    background: var(--color-primary);
+    border-color: var(--color-primary);
     color: #fff;
   }
 }
@@ -96,15 +120,14 @@
   font-size: 13px;
   table-layout: fixed;
 
-  th:nth-child(1) { width: 140px; }
-  th:nth-child(2) { width: 130px; }
-  th:nth-child(3) { width: 110px; }
-  th:nth-child(4) { width: 120px; }
-  th:nth-child(5) { width: 165px; }
-  th:nth-child(6) { width: 110px; }
-  th:nth-child(7) { width: 68px;  }
-  th:nth-child(8) { width: 76px;  }
-  th:nth-child(9) { width: 86px;  }
+  // В % от ширины таблицы — раньше первая колонка (width:auto) забирала весь свободный
+  // остаток себе одна, и вместо ровных отступов получался один гигантский разрыв после ФИО.
+  th:nth-child(1) { width: 17%; } // ФИО
+  th:nth-child(2) { width: 15%; } // Телефон
+  th:nth-child(3) { width: 9%;  } // Дата
+  th:nth-child(4) { width: 11%; } // Статус
+  th:nth-child(5) { width: 12%; } // Подробнее
+  th:nth-child(6) { width: 36%; } // Действия
 
   td {
     color: var(--color-text);
@@ -112,6 +135,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     max-width: 0;
+    transition: background 0.12s ease;
   }
 
   td.tlt__actions {
@@ -129,97 +153,214 @@
   max-width: none !important;
 }
 
-.tlt__row--suspect td { background: rgba(251,191,36,0.04); }
+.tlt__row--suspect td {
+  background: color-mix(in srgb, var(--color-warning) 6%, transparent);
+}
 
 // ─── Cell content ─────────────────────────────────────────────────────────────
 .tlt__name {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   font-weight: 600;
   font-size: 13px;
 }
 
-.tlt__suspect-icon { color: #F59E0B; font-size: 11px; flex-shrink: 0; }
-
-.tlt__phone {
-  color: var(--color-primary, #E63946);
-  text-decoration: none;
-  font-size: 12.5px;
-  &:hover { text-decoration: underline; }
+.tlt__suspect-icon {
+  display: inline-flex;
+  color: var(--color-warning);
+  flex-shrink: 0;
 }
 
-.tlt__time,
+.tlt__phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-primary);
+  text-decoration: none;
+  font-size: 12.5px;
+  font-weight: 500;
+  transition: color 0.15s ease;
+
+  svg { flex-shrink: 0; opacity: 0.8; }
+
+  &:hover { color: var(--color-primary-hover); text-decoration: underline; }
+}
+
 .tlt__date { color: var(--color-text-muted); font-size: 12px; }
 
-.tlt__comment { color: var(--color-text-muted); font-size: 12px; }
+// ─── «Подробнее» — раскрывает второстепенные поля второй строкой ─────────────
+.tlt__th-more { width: 108px; }
+
+.tlt__more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+
+  svg { flex-shrink: 0; transition: transform 0.2s ease; }
+
+  &:hover {
+    background: var(--color-surface-secondary);
+    border-color: var(--color-border-strong);
+    color: var(--color-text);
+  }
+
+  &--open {
+    color: var(--color-primary);
+    border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
+    background: var(--color-primary-soft);
+
+    svg { transform: rotate(180deg); }
+  }
+}
+
+// Раскрытая строка с деталями — отдельная приглушённая «карточка» под основной строкой
+// (не сплошная, т.к. общий .ui-list__table задаёт vertical border-spacing между всеми <tr>)
+tr.tlt__detail-row td {
+  height: auto;
+  padding: 10px 16px;
+  background: var(--color-surface-secondary) !important;
+  animation: tlt-detail-in 0.16s ease both;
+}
+
+@keyframes tlt-detail-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tlt__detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+
+.tlt__detail-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--color-text-muted);
+
+  svg { flex-shrink: 0; opacity: 0.7; }
+
+  &--comment {
+    flex-basis: 100%;
+    align-items: flex-start;
+
+    svg { margin-top: 1px; }
+  }
+}
+
+.tlt__detail-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.tlt__detail-val {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 .tlt__badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  border-radius: 10px;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
 
-  &--new      { background: rgba(59,130,246,0.14);  color: #60A5FA; }
-  &--accepted { background: rgba(34,197,94,0.14);   color: #4ADE80; }
-  &--rejected { background: rgba(239,68,68,0.1);    color: #F87171; }
-  &--spam     { background: rgba(156,163,175,0.12); color: #9CA3AF; }
+  svg { flex-shrink: 0; }
+
+  &--new      { background: var(--color-info-soft);    color: var(--color-info); }
+  &--accepted { background: var(--color-success-soft); color: var(--color-success); }
+  &--rejected { background: var(--color-danger-soft);  color: var(--color-danger); }
+  &--spam     { background: var(--color-surface-secondary); color: var(--color-text-muted); border: 1px solid var(--color-border); }
 }
 
-// ─── Action buttons — вертикальный стек ──────────────────────────────────────
+// ─── Action buttons — компактный ряд иконок вместо стека текстовых плашек ─────
 .tlt__actions { vertical-align: middle !important; }
 
 .tlt__action-group {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .tlt__btn {
-  display: block;
-  width: 100%;
-  padding: 3px 6px;
-  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: var(--radius-sm, 6px);
   border: 1px solid transparent;
-  font-size: 11px;
-  font-weight: 600;
   cursor: pointer;
-  white-space: nowrap;
-  text-align: center;
-  line-height: 1.5;
-  transition: background 0.12s, opacity 0.12s;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+
+  &:hover:not(:disabled) { transform: translateY(-1px); }
+  &:active:not(:disabled) { transform: scale(0.93); }
 
   &:disabled { opacity: 0.42; cursor: not-allowed; }
 
   &--accept {
-    background: rgba(34,197,94,0.12);
-    color: #4ADE80;
-    border-color: rgba(34,197,94,0.2);
-    &:hover:not(:disabled) { background: rgba(34,197,94,0.22); }
+    background: var(--color-success-soft);
+    color: var(--color-success);
+    border-color: color-mix(in srgb, var(--color-success) 25%, transparent);
+    &:hover:not(:disabled) { background: color-mix(in srgb, var(--color-success) 20%, var(--color-success-soft)); }
   }
 
   &--reject {
-    background: rgba(239,68,68,0.1);
-    color: #F87171;
-    border-color: rgba(239,68,68,0.18);
-    &:hover:not(:disabled) { background: rgba(239,68,68,0.2); }
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+    border-color: color-mix(in srgb, var(--color-danger) 25%, transparent);
+    &:hover:not(:disabled) { background: color-mix(in srgb, var(--color-danger) 20%, var(--color-danger-soft)); }
   }
 
   &--spam {
-    background: rgba(156,163,175,0.1);
-    color: #9CA3AF;
-    border-color: rgba(156,163,175,0.18);
-    &:hover:not(:disabled) { background: rgba(156,163,175,0.2); }
+    background: var(--color-surface-secondary);
+    color: var(--color-text-secondary);
+    border-color: var(--color-border);
+    &:hover:not(:disabled) { color: var(--color-text); border-color: var(--color-border-strong); }
   }
 
   &--undo {
     background: transparent;
     color: var(--color-text-muted);
     border-color: var(--color-border);
-    &:hover:not(:disabled) { color: var(--color-text); }
+    &:hover:not(:disabled) { color: var(--color-text); border-color: var(--color-border-strong); }
+  }
+
+  // «Не спам» / «Вернуть» — с текстом, поэтому шире и не квадратные
+  &--wide {
+    width: auto;
+    height: auto;
+    padding: 5px 10px;
+    gap: 5px;
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+
+    &:hover:not(:disabled) { transform: none; }
   }
 }

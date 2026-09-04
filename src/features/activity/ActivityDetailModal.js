@@ -37,6 +37,47 @@ const FIELD_LABELS = {
   time: 'Время',
   schedule: 'График',
   sportIds: 'Виды спорта', sport_ids: 'Виды спорта',
+  status: 'Статус',
+  channel: 'Канал',
+  source: 'Источник',
+  targetType: 'Кому', target_type: 'Кому',
+  stageId: 'Этап воронки', stage_id: 'Этап воронки',
+};
+
+// Значения enum-полей приходят с бэка на английском — сотрудники должны видеть их на русском.
+// Ключи из разных доменов (лиды/заморозка/...) не пересекаются, поэтому один общий словарь безопасен.
+const STATUS_VALUE_LABELS = {
+  // Лиды
+  pending: 'Новая',
+  accepted: 'Запишется',
+  rejected: 'Отказался',
+  spam: 'Спам',
+  // Заморозка абонемента
+  active: 'Активна',
+  inactive: 'Неактивна',
+  cancelled: 'Отменена',
+  ended: 'Завершена',
+};
+
+const CHANNEL_VALUE_LABELS = {
+  instagram: 'Instagram',
+  whatsapp: 'WhatsApp',
+  tiktok: 'TikTok',
+  taplink: 'Taplink',
+  other: 'Другое',
+};
+
+const SOURCE_VALUE_LABELS = {
+  target: 'Реклама (таргет)',
+  reels: 'Reels',
+  stories: 'Stories',
+  direct: 'Direct',
+  post: 'Пост/лента',
+};
+
+const TARGET_TYPE_VALUE_LABELS = {
+  adult: 'Взрослый',
+  children: 'Дети',
 };
 
 const ID_FIELDS = new Set(['sport', 'sportId', 'sport_id', 'trainer', 'trainerId', 'trainer_id', 'added_by', 'addedBy']);
@@ -79,6 +120,10 @@ const formatFieldValue = (field, value, ctx = {}) => {
   if (field === 'paid') return value === true || value === 'true' ? 'Да' : 'Нет';
   if (field === 'gender') return GENDER_LABELS[value] ?? value;
   if (field === 'client_type' || field === 'clientType') return CLIENT_TYPE_LABELS[value] ?? value;
+  if (field === 'status') return STATUS_VALUE_LABELS[String(value).toLowerCase()] ?? value;
+  if (field === 'channel') return CHANNEL_VALUE_LABELS[String(value).toLowerCase()] ?? value;
+  if (field === 'source') return SOURCE_VALUE_LABELS[String(value).toLowerCase()] ?? value;
+  if (field === 'targetType' || field === 'target_type') return TARGET_TYPE_VALUE_LABELS[String(value).toLowerCase()] ?? value;
   if (field === 'training_weekday' || field === 'trainingWeekday' || field === 'weekday') {
     const w = WEEKDAYS.find((x) => String(x.weekday) === String(value));
     return w ? w.label : value;

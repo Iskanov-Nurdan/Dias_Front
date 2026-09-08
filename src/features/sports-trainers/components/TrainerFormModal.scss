@@ -3,13 +3,385 @@
 @use '../../../shared/styles/mixins';
 
 .trainer-form-modal.enm {
-  max-width: 480px;
+  max-width: 560px;
   max-height: 90vh;
+
+  // Полей стало много (CRM + публичная страница) — на широком экране раскладываем
+  // в две колонки, иначе получается три экрана вертикального скролла подряд.
+  @media (min-width: 1040px) {
+    max-width: 980px;
+  }
 
   .enm__form {
     overflow-y: auto;
     min-height: 0;
     @include mixins.scrollbar;
+  }
+}
+
+// ── CRM-поля тренера: слева ФИО + фото (профиль человека), справа виды спорта ──
+// Фото стоит под ФИО намеренно: раньше там оставалась заметная пустота, потому что
+// правая колонка (7 чипов) вдвое выше одного поля ввода.
+.trainer-form-modal__crm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-5);
+  align-items: flex-start;
+}
+
+// Фото — узкая колонка слева, чтобы не тянуть за собой пустое место
+.trainer-form-modal__photo-field {
+  flex: 0 0 auto;
+  width: 128px;
+
+  .ui-photo { margin-top: 2px; }
+}
+
+.trainer-form-modal__crm-main {
+  flex: 1 1 320px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+// ── Виды спорта: чипы-теги вместо прямоугольных чекбоксов с пустым квадратом ──
+.trainer-form-modal__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.trainer-form-modal__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color var(--transition-fast), background var(--transition-fast),
+              color var(--transition-fast), transform 0.12s ease, box-shadow var(--transition-fast);
+
+  &:hover:not(&--on) {
+    border-color: var(--input-border-hover);
+    background: var(--color-surface-secondary);
+    color: var(--color-text);
+    transform: translateY(-1px);
+  }
+
+  &:active { transform: scale(0.96); }
+
+  &--on {
+    border-color: var(--color-primary);
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 16%, transparent);
+  }
+}
+
+.trainer-form-modal__chip-check {
+  flex-shrink: 0;
+  animation: trainer-form-modal-check-in 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes trainer-form-modal-check-in {
+  from { opacity: 0; transform: scale(0.4); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+// ── Публичная страница (Taplink) — отдельная «карточка в карточке»: явно другой домен
+// данных (контент сайта), не CRM-поля тренера, поэтому не сливается с ними визуально ──
+.trainer-form-modal__tl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-1);
+  padding: var(--space-4);
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.trainer-form-modal__tl-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.trainer-form-modal__tl-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+
+  svg { color: var(--color-primary); opacity: 0.85; }
+}
+
+.trainer-form-modal__tl-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: var(--space-4);
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.trainer-form-modal__tl-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border-strong);
+  border-top-color: var(--color-primary);
+  animation: trainer-form-modal-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes trainer-form-modal-spin {
+  to { transform: rotate(360deg); }
+}
+
+// В две колонки идут только компактные группы (профиль | описание). Достижения и видео —
+// на всю ширину: они растут списком и в колонке оставляли соседнюю половину пустой.
+.trainer-form-modal__tl-cols {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+
+  @media (min-width: 1040px) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-5);
+    // stretch, а не start: иначе разделительные линии двух групп окажутся
+    // на разной высоте и будут выглядеть как ошибка вёрстки
+    align-items: stretch;
+  }
+}
+
+// Логические подгруппы внутри карточки Taplink — разделены тонкой линией и подписью,
+// чтобы 10+ полей не читались одной сплошной простынёй
+.trainer-form-modal__tl-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+
+  // Только явный модификатор: полагаться на :last-child нельзя — группы лежат
+  // в разных родителях (двухколоночная сетка и сама карточка), и линия пропадала бы
+  // у случайной группы, а не у последней в карточке.
+  &--last {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+}
+
+.trainer-form-modal__tl-group-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+
+  svg { opacity: 0.7; }
+}
+
+// Счётчик «N из 5» в заголовке группы — сразу видно, сколько слотов уже занято
+.trainer-form-modal__group-count {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.trainer-form-modal__limit-note {
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.trainer-form-modal__tl-profile-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.trainer-form-modal__textarea {
+  height: auto;
+  min-height: 72px;
+  padding: 10px 14px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+// Тумблер «Показывается / Скрыт» — тот же язык, что и в редакторе Taplink
+.trainer-form-modal__switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.trainer-form-modal__switch-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.trainer-form-modal__switch-track {
+  position: relative;
+  width: 32px;
+  height: 19px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--color-border-strong);
+  transition: background 0.18s ease;
+
+  .trainer-form-modal__switch-input:checked ~ & {
+    background: var(--color-primary);
+  }
+}
+
+.trainer-form-modal__switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  .trainer-form-modal__switch-input:checked ~ .trainer-form-modal__switch-track & {
+    transform: translateX(13px);
+  }
+}
+
+.trainer-form-modal__switch-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+
+  .trainer-form-modal__switch-input:checked ~ & {
+    color: var(--color-text);
+  }
+}
+
+// Достижения — в две колонки: шесть строк подряд занимали пол-экрана по высоте
+.trainer-form-modal__achieve-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px 14px;
+
+  @media (min-width: 1040px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.trainer-form-modal__achieve-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+
+  .enm__input { flex: 1; min-width: 0; }
+}
+
+.trainer-form-modal__achieve-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.trainer-form-modal__achieve-del {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+
+  &:hover {
+    color: var(--color-danger);
+    border-color: color-mix(in srgb, var(--color-danger) 35%, transparent);
+    background: var(--color-danger-soft);
+  }
+}
+
+.trainer-form-modal__add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1.5px dashed var(--color-border-strong);
+  background: none;
+  color: var(--color-primary);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &:hover {
+    border-color: var(--color-primary);
+    border-style: solid;
+    background: var(--color-primary-soft);
+  }
+}
+
+// Блок на всю ширину, поэтому все 5 роликов помещаются в один ряд — нет ни «сироты»
+// во втором ряду, ни тесных карточек, в которых обрезались кнопки действий.
+.trainer-form-modal__videos-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+
+  @media (max-width: 1039px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  @include mixins.mobile {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -39,63 +411,3 @@
   text-align: center;
 }
 
-.trainer-form-modal__checkboxes {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
-  gap: 8px;
-}
-
-.trainer-form-modal__checkbox {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 12px;
-  border-radius: var(--radius-sm);
-  border: 1.5px solid var(--input-border);
-  background: var(--input-bg);
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-text);
-  transition: border-color var(--transition-fast), background var(--transition-fast), transform 0.1s ease;
-  user-select: none;
-
-  input[type="checkbox"] {
-    position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;
-  }
-
-  &::before {
-    content: '';
-    flex-shrink: 0;
-    width: 16px;
-    height: 16px;
-    border-radius: 5px;
-    border: 1.5px solid var(--input-border);
-    background: var(--color-surface);
-    transition: all var(--transition-fast);
-  }
-
-  &:has(input:checked) {
-    border-color: var(--color-primary);
-    background: var(--color-primary-soft);
-
-    &::before {
-      background: var(--color-primary);
-      border-color: var(--color-primary);
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 8'%3E%3Cpath d='M1 4l3 3 5-6' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: center;
-      background-size: 9px 7px;
-    }
-  }
-
-  &:hover:not(:has(input:checked)) {
-    border-color: var(--input-border-hover);
-    background: var(--color-surface-secondary);
-  }
-
-  &:active {
-    transform: scale(0.98);
-  }
-}

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Film, Loader2, RefreshCw, Trash2 } from 'lucide-react';
 import './VideoUpload.scss';
 
 const VideoUpload = ({ value, onChange, num, context = '', backendEnabled = false, uploadFile, onUploadingChange }) => {
@@ -60,19 +61,47 @@ const VideoUpload = ({ value, onChange, num, context = '', backendEnabled = fals
       {value ? (
         <div className="ui-vid__has">
           <video src={value} controls className="ui-vid__player" />
+          {num != null && <span className="ui-vid__badge">{num}</span>}
           {!uploading && (
+            // Действия — компактными иконками поверх превью: текстовые кнопки
+            // не помещались в узкой карточке и обрезались на «Удали…».
             <div className="ui-vid__actions">
-              <button type="button" onClick={() => ref.current.click()}>Заменить</button>
-              <button type="button" className="ui-vid__del" onClick={remove}>Удалить</button>
+              <button
+                type="button"
+                className="ui-vid__act"
+                onClick={() => ref.current.click()}
+                title="Заменить видео"
+                aria-label="Заменить видео"
+              >
+                <RefreshCw size={13} strokeWidth={2.25} />
+              </button>
+              <button
+                type="button"
+                className="ui-vid__act ui-vid__act--del"
+                onClick={remove}
+                title="Удалить видео"
+                aria-label="Удалить видео"
+              >
+                <Trash2 size={13} strokeWidth={2.25} />
+              </button>
             </div>
           )}
         </div>
       ) : (
-        <div className="ui-vid__empty" onClick={() => !uploading && ref.current.click()}>
-          <span className="ui-vid__ic">{uploading ? '⏳' : '🎬'}</span>
-          <span className="ui-vid__txt">{uploading ? 'Загружается...' : `Видео ${num}`}</span>
+        <button
+          type="button"
+          className="ui-vid__empty"
+          onClick={() => !uploading && ref.current.click()}
+          disabled={uploading}
+        >
+          <span className="ui-vid__ic">
+            {uploading
+              ? <Loader2 size={18} strokeWidth={2} className="ui-vid__spin" />
+              : <Film size={18} strokeWidth={1.75} />}
+          </span>
+          <span className="ui-vid__txt">{uploading ? 'Загружается…' : (num != null ? `Видео ${num}` : 'Добавить видео')}</span>
           {!uploading && <span className="ui-vid__hint">MP4, WEBM</span>}
-        </div>
+        </button>
       )}
     </div>
   );

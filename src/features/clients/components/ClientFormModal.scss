@@ -97,6 +97,170 @@
   margin-top: 2px;
 }
 
+// ── Прогресс по обязательным полям ──────────────────────────────────────────
+// Тонкая полоса под шапкой: сколько этапов формы уже пройдено. Не кричит,
+// но всегда на виду — заменяет догадки «а что ещё нужно?».
+.client-form-modal__progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: -8px 0 14px;
+}
+
+.client-form-modal__progress-track {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--color-surface-secondary);
+  overflow: hidden;
+}
+
+.client-form-modal__progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 65%, transparent), var(--color-primary));
+  transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1), background 0.3s ease;
+}
+
+.client-form-modal__progress-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.01em;
+
+  strong { color: var(--color-text); font-weight: 800; }
+  svg { flex-shrink: 0; }
+}
+
+.client-form-modal__progress--done {
+  .client-form-modal__progress-fill { background: var(--color-success); }
+  .client-form-modal__progress-label { color: var(--color-success); }
+}
+
+// ── Сводка валидации: все незаполненные поля разом, по порядку формы ─────────
+.client-form-modal__validation {
+  margin: 0 0 14px;
+  padding: 13px 15px 14px;
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-danger) 7%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-danger) 28%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  animation: client-form-modal-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.client-form-modal__validation-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.client-form-modal__validation-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.client-form-modal__validation-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-danger);
+  line-height: 1.3;
+}
+
+.client-form-modal__validation-sub {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.client-form-modal__validation-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 0;
+  padding: 0 0 0 36px;
+  list-style: none;
+
+  @include mixins.mobile {
+    padding-left: 0;
+  }
+}
+
+// Каждый пункт — не просто текст, а кнопка перехода к своему полю.
+.client-form-modal__validation-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 11px 0 5px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+
+  &:hover {
+    border-color: var(--color-danger);
+    color: var(--color-text);
+  }
+
+  &:active { transform: scale(0.96); }
+
+  svg { flex-shrink: 0; }
+}
+
+.client-form-modal__validation-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+// Текущий шаг — тот, к которому форма уводит по «Сохранить».
+.client-form-modal__validation-chip--current {
+  border-color: var(--color-danger);
+  background: var(--color-danger);
+  color: #fff;
+
+  .client-form-modal__validation-step {
+    background: rgba(255, 255, 255, 0.22);
+    color: #fff;
+  }
+
+  &:hover {
+    color: #fff;
+    background: color-mix(in srgb, var(--color-danger) 88%, #000);
+  }
+}
+
 // Сырая ошибка (fallback)
 .client-form-modal__error {
   margin: 0 0 16px;
@@ -214,75 +378,6 @@
   }
 }
 
-.client-form-modal__more {
-  margin: 0;
-  border: none;
-  padding: 0;
-}
-
-.client-form-modal__more-summary {
-  display: flex;
-  list-style: none;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-text-secondary);
-  padding: var(--space-3) 0;
-  margin: 0 0 var(--space-2);
-  border-bottom: 1px solid var(--color-border);
-  user-select: none;
-  transition: color var(--transition-fast);
-
-  &:hover { color: var(--color-text); }
-
-  &::-webkit-details-marker {
-    display: none;
-  }
-
-  .client-form-modal__more-summary-text {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-
-    svg { opacity: 0.75; }
-  }
-
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-
-  &::after {
-    content: '›';
-    font-size: 1.25rem;
-    line-height: 1;
-    color: var(--color-text-muted);
-    transition: transform var(--transition-fast);
-  }
-}
-
-.client-form-modal__more[open] .client-form-modal__more-summary::after {
-  transform: rotate(90deg);
-}
-
-.client-form-modal__more-inner {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding-top: var(--space-2);
-}
-
-.client-form-modal__section--flush {
-  padding: var(--space-3);
-}
-
-.client-form-modal__slot-hint-mobile {
-  margin: var(--space-2) 0 0;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--color-text-muted);
-}
 
 .client-form-modal__section {
   display: flex;
@@ -356,6 +451,18 @@
   color: var(--color-text-secondary);
 }
 
+// Тег «необязательно» в заголовке целой секции (Комментарий)
+.client-form-modal__section-optional {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
 .client-form-modal__section-icon {
   display: inline-flex;
   align-items: center;
@@ -391,27 +498,197 @@
   color: var(--color-text);
 }
 
+// ── Подпись поля: иконка → название → статус (звёздочка / галочка / «необязательно») ──
 .client-form-modal__label-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
   font-size: var(--font-label);
   font-weight: var(--font-weight-label);
   color: var(--color-text-muted);
+  transition: color 0.15s ease;
+
+  &--invalid {
+    color: var(--color-danger);
+
+    .client-form-modal__label-icon { color: var(--color-danger); opacity: 1; }
+  }
+}
+
+.client-form-modal__label-icon {
+  flex-shrink: 0;
+  opacity: 0.65;
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.client-form-modal__label-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Галочка вместо звёздочки — поле закрыто, шаг пройден
+.client-form-modal__label-done {
+  flex-shrink: 0;
+  color: var(--color-success);
+  animation: client-form-modal-pop 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes client-form-modal-pop {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+// Явный тег вместо молчания: обязательное поле помечено «*», необязательное — словом,
+// чтобы «что можно пропустить» не приходилось выяснять сабмитом.
+.client-form-modal__label-optional {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+// Поле, к которому валидация только что перевела фокус
+.client-form-modal__label--step {
+  animation: client-form-modal-step 1.5s ease-out 1;
+  border-radius: var(--radius-md);
+}
+
+@keyframes client-form-modal-step {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-danger) 45%, transparent); }
+  60% { box-shadow: 0 0 0 7px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .client-form-modal__label--step,
+  .client-form-modal__label-done { animation: none; }
 }
 
 .client-form-modal__label--full {
   grid-column: 1 / -1;
 }
 
+// Цена + скидка в одной строке: скидка узкая, цене нужно место под сумму
+.client-form-modal__row--price {
+  grid-template-columns: minmax(0, 1fr) 116px;
+
+  @include mixins.mobile {
+    grid-template-columns: minmax(0, 1fr) 104px;
+  }
+}
+
+.client-form-modal__label--discount {
+  min-width: 0;
+}
+
+// ── Пол: сегменты вместо выпадающего списка (выбор в один клик) ──
+.client-form-modal__gender {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.client-form-modal__gender-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 42px;
+  padding: 0 10px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--color-text-secondary);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+
+  svg { flex-shrink: 0; opacity: 0.7; transition: opacity 0.15s ease; }
+
+  &:hover:not(&--active) {
+    border-color: var(--input-border-hover);
+    background: var(--color-surface);
+    color: var(--color-text);
+
+    svg { opacity: 1; }
+  }
+
+  &:active { transform: scale(0.97); }
+
+  &--active {
+    border-color: var(--color-primary);
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+
+    svg { opacity: 1; }
+  }
+
+  &--invalid:not(&--active) {
+    border-color: color-mix(in srgb, var(--color-danger) 45%, transparent);
+  }
+}
+
 .client-form-modal__label--toggle {
   justify-content: flex-start;
 }
 
+// ── Ошибка поля: одинаковый вид у всех полей формы ──
 .client-form-modal__field-error {
-  font-size: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  margin-top: 1px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.35;
   color: var(--color-danger);
+  animation: client-form-modal-err-in 0.18s ease-out both;
+
+  svg { flex-shrink: 0; margin-top: 1.5px; }
+}
+
+@keyframes client-form-modal-err-in {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .client-form-modal__field-error { animation: none; }
 }
 
 .client-form-modal__input--invalid {
   border-color: var(--color-danger) !important;
+  background: color-mix(in srgb, var(--color-danger) 4%, var(--input-bg)) !important;
+
+  &:focus {
+    box-shadow: 0 0 0 3px var(--color-danger-soft) !important;
+  }
+}
+
+// Select — общий примитив, его самого не трогаем: докрашиваем только через свой класс.
+.client-form-modal__select--invalid .select__trigger {
+  border-color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 4%, var(--input-bg));
+}
+
+.client-form-modal__payment-kind-toggle--invalid {
+  .client-form-modal__payment-kind-btn {
+    border-color: color-mix(in srgb, var(--color-danger) 45%, transparent);
+  }
 }
 
 .client-form-modal__input {
@@ -496,6 +773,9 @@
 .client-form-modal__input--suffixed {
   padding-right: 44px;
 }
+
+// Иконки внутри текстовых полей не используем: значок уже стоит в подписи над полем,
+// а внутри он дублировался и сливался с placeholder. Слева — только текст.
 
 .client-form-modal__input-suffix {
   position: absolute;
@@ -593,6 +873,51 @@ textarea.client-form-modal__input {
     color: var(--color-warning);
     background: var(--color-warning-soft);
   }
+}
+
+// Быстрое заполнение реестра: зелёный контур — действие «деньги получены»,
+// а не фирменное красное действие формы, чтобы не спорить с «Сохранить».
+.client-form-modal__installments-fill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: flex-start;
+  height: 34px;
+  margin: 0 0 10px;
+  padding: 0 13px;
+  border-radius: var(--radius-md);
+  border: 1px dashed color-mix(in srgb, var(--color-success) 45%, transparent);
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+
+  svg { flex-shrink: 0; }
+
+  &:hover {
+    border-style: solid;
+    background: color-mix(in srgb, var(--color-success) 14%, var(--color-success-soft));
+  }
+
+  &:active { transform: scale(0.97); }
+}
+
+.client-form-modal__installments-restored {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.4;
+
+  svg { flex-shrink: 0; margin-top: 1px; }
 }
 
 .client-form-modal__installments-hint {
@@ -866,10 +1191,12 @@ textarea.client-form-modal__input {
 
   &:active:not(:disabled) { transform: scale(0.96); }
 
+  // Оба состояния — равноправные и одинаково «весомые»: красное «нет» / зелёное «да».
+  // Раньше активное «Не оплачено» выглядело как невыбранное и читалось как «ничего не задано».
   &--no.client-form-modal__paid-btn--active {
-    background: var(--color-surface);
-    color: var(--color-text);
-    box-shadow: var(--shadow-xs);
+    background: var(--color-danger);
+    color: #fff;
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--color-danger) 35%, transparent);
   }
 
   &--yes.client-form-modal__paid-btn--active {
@@ -994,7 +1321,43 @@ textarea.client-form-modal__input {
   }
 }
 
+// Счётчик незаполненного слева от кнопок — причина, по которой «Сохранить» не пройдёт.
+.client-form-modal__actions-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-danger);
+
+  svg { flex-shrink: 0; }
+
+  @include mixins.xs {
+    display: none;
+  }
+}
+
 // Кнопки — общие .ui-modal-btn/.ui-modal-btn--primary, см. shared/styles/index.scss.
+
+// «Отложить» — промежуточное по весу действие между «Отмена» и «Сохранить»:
+// не разрушающее, но и не основное, поэтому мягкий акцент, а не красная заливка.
+.client-form-modal__draft-btn.ui-modal-btn {
+  border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-primary) 16%, var(--color-primary-soft));
+    border-color: var(--color-primary);
+  }
+
+  @include mixins.xs {
+    // На узком экране в один ряд три кнопки не помещаются — оставляем текст,
+    // но убираем лишние отступы, чтобы ничего не обрезалось
+    padding: 0 12px;
+  }
+}
 
 .client-form-modal__photos-hint {
   margin: 0 0 var(--space-3);

@@ -18,6 +18,7 @@ import { Trophy, UserCheck, Search, Plus, Dumbbell, CalendarClock } from 'lucide
 import { Select, Pagination, FilterBar, FiltersModal } from '../../shared/ui';
 import { SportsList, TrainersList, SportFormModal, TrainerFormModal, TrainerScheduleModal } from './components';
 import { WEEKDAYS } from './scheduleConstants';
+import { loadTaplinkDataAsync, saveTaplinkDataAsync } from '../taplink/taplinkStore';
 import './SportsTrainersPage.scss';
 
 const TAB_SPORTS = 'sports';
@@ -160,10 +161,22 @@ const SportsTrainersPage = () => {
   const handleDeleteTrainer = () => {
     if (!confirmDeleteTrainer) return;
     setTrainersError(null);
-    deleteTrainer(confirmDeleteTrainer.id, null)
+    const deletedId = confirmDeleteTrainer.id;
+    deleteTrainer(deletedId, null)
       .then(() => {
         setConfirmDeleteTrainer(null);
         fetchTrainersSafe();
+        // Best-effort: убираем карточку тренера и с публичной страницы (Taplink) — иначе
+        // удалённый в CRM тренер продолжит висеть на сайте, редактировать его будет уже негде.
+        loadTaplinkDataAsync()
+          .then((cfg) => {
+            const trainers = (cfg?.trainers || []).filter((t) => String(t.crmTrainerId) !== String(deletedId));
+            if (trainers.length !== (cfg?.trainers || []).length) {
+              return saveTaplinkDataAsync({ ...cfg, trainers });
+            }
+            return null;
+          })
+          .catch(() => {});
       })
       .catch((e) => {
         setTrainersError(getApiErrorMessage(e));

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Trash2, X, UserPlus, User, Ticket, CreditCard, Wallet, Receipt, Banknote, SlidersHorizontal, MessageSquare, Check, Dumbbell, UserCheck, Clock, Tag, SplitSquareHorizontal, CircleAlert, CircleCheck } from 'lucide-react';
+import { Plus, Trash2, X, UserPlus, User, Ticket, CreditCard, Wallet, Receipt, Banknote, MessageSquare, Check, Dumbbell, UserCheck, Clock, Tag, SplitSquareHorizontal, CircleAlert, CircleCheck, CircleX, Bookmark, Phone, CalendarDays, Coins, Percent, Mars, Venus, TriangleAlert, ArrowRight } from 'lucide-react';
 import { useToast } from '../../../app/providers/ToastProvider';
 import { Select, SubmitButton, ConfirmModal, PhoneInput, MoneyInput } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
@@ -22,6 +22,7 @@ import {
 import {
   buildActualPaymentsPayload,
   emptyInstallmentRow,
+  getClientFinalPriceForList,
   getInitialInstallmentRows,
   getPriceFieldInitialForForm,
 } from '../lib/clientActualPayments';
@@ -55,6 +56,31 @@ const TrainingSlotDaysHeader = ({ days }) => (
 const TrainingSlotTimeRow = ({ start, end }) => (
   <span className="client-form-modal__slot-time-row">{start}–{end}</span>
 );
+
+/**
+ * Подпись поля с единым визуальным контрактом: иконка → название → статус.
+ * Статус ровно один: «*» (обязательное, ещё не заполнено), галочка (заполнено верно)
+ * или тег «необязательно». Так по одному взгляду на форму видно, что осталось.
+ */
+const FieldLabel = ({ icon: Icon, children, required = false, done = false, optional = false, invalid = false }) => (
+  <span className={`client-form-modal__label-text${invalid ? ' client-form-modal__label-text--invalid' : ''}`}>
+    {Icon && <Icon size={13} className="client-form-modal__label-icon" aria-hidden />}
+    <span className="client-form-modal__label-name">{children}</span>
+    {optional && <span className="client-form-modal__label-optional">необязательно</span>}
+    {required && !done && <span className="form-label-required" aria-hidden="true">*</span>}
+    {required && done && (
+      <CircleCheck size={13} className="client-form-modal__label-done" aria-label="Заполнено" />
+    )}
+  </span>
+);
+
+const digitsOf = (v) => String(v ?? '').replace(/\D/g, '');
+
+/** Непустое корректное неотрицательное число (суммы в форме). */
+const isFilledAmount = (v) => {
+  const t = String(v ?? '').trim();
+  return t !== '' && Number.isFinite(Number(t)) && Number(t) >= 0;
+};
 
 // Маппинг API-полей → русские названия
 // Иконка на кнопку способа оплаты — по коду значения (договор с бэком: receipt | cash)
@@ -172,7 +198,12 @@ const getDateStartFieldValue = (c) => {
 
 const MOBILE_FORM_MQ = '(max-width: 768px)';
 
-const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave, onClose, error, saving, fullscreen = false }) => {
+const ClientFormModal = ({
+  client, sports, fetchTrainers, currentUserFio, onSave, onClose, error, saving, fullscreen = false,
+  // Черновик: сырой снимок полей формы. Восстанавливаем ровно то, что было набрано,
+  // без обратных пересчётов цены/скидки — снимок и восстановление симметричны.
+  draft = null, onSaveDraft, savingDraft = false,
+}) => {
   const toast = useToast();
   const firstInputRef = useRef(null);
   const [isMobileFormLayout, setIsMobileFormLayout] = useState(
@@ -199,6 +230,11 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const [fio, setFio] = useState('');
   const [touched, setTouched] = useState({});
   const markTouched = (field) => setTouched((t) => (t[field] ? t : { ...t, [field]: true }));
+  /** Попытка сохранения была — раскрываем ошибки всех полей разом, а не только тронутых. */
+  const [showAllErrors, setShowAllErrors] = useState(false);
+  /** Поле, на которое нас только что «перевела» валидация — подсвечиваем как текущий шаг. */
+  const [stepFieldKey, setStepFieldKey] = useState(null);
+  const stepTimeoutRef = useRef(null);
   const [phone, setPhone] = useState('');
   const [sportId, setSportId] = useState('');
   const [trainerId, setTrainerId] = useState('');
@@ -209,6 +245,8 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const [discount, setDiscount] = useState('');
   const [paid, setPaid] = useState(false);
   const [installments, setInstallments] = useState(() => [emptyInstallmentRow()]);
+  /** Платёж восстановлен из статуса старой карточки — предупреждаем, что цифру надо сверить. */
+  const [installmentsRestored, setInstallmentsRestored] = useState(false);
   const [clientType, setClientType] = useState(
     () => client?.clientType || client?.client_type || 'regular',
   );
@@ -332,6 +370,33 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const clientFormSyncKey = client?.id != null && client?.id !== '' ? String(client.id) : 'new';
 
   useEffect(() => {
+    // Восстановление отложенного черновика: подставляем сырые значения полей как есть.
+    if (draft) {
+      setFio(draft.fio || '');
+      setPhone(draft.phone || '');
+      setSportId(draft.sportId ?? '');
+      setTrainerId(draft.trainerId ?? '');
+      setDateStart(draft.dateStart || '');
+      setClientType(draft.clientType || 'regular');
+      setPrice(draft.price ?? '');
+      setTrainerPrice(draft.trainerPrice ?? '');
+      setDiscount(draft.discount ?? '');
+      setPaid(Boolean(draft.paid));
+      setInstallments(
+        Array.isArray(draft.installments) && draft.installments.length
+          ? draft.installments
+          : [emptyInstallmentRow()],
+      );
+      setInstallmentsRestored(false);
+      setGender(draft.gender || '');
+      setPaymentKind(draft.paymentKind || '');
+      setMixedReceiptAmount(draft.mixedReceiptAmount ?? '');
+      setMixedCashAmount(draft.mixedCashAmount ?? '');
+      setCommentManual(draft.commentManual || '');
+      setCommentAuto([]);
+      setTrainingSlotKey(draft.trainingSlotKey || '');
+      return;
+    }
     if (!client) return;
     setTrainingSlotKey('');
     setFio(capitalizeWords(client.fio || ''));
@@ -362,7 +427,27 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
     }
     setDiscount(client.discount ?? '');
     setPaid(isClientPaid(client));
-    setInstallments(getInitialInstallmentRows(client));
+    /**
+     * Старые карточки: клиент помечен оплаченным, но реестр платежей пуст (данные завели
+     * до того, как статус стал опираться на реестр). Молча слететь в «Не оплачено» при
+     * сохранении такая карточка не должна — восстанавливаем платёж из цены и явно
+     * говорим об этом под реестром, чтобы цифру проверили, а не приняли на веру.
+     */
+    const initialRows = getInitialInstallmentRows(client);
+    const hasAnyAmount = initialRows.some((r) => Number(r.amount) > 0);
+    const legacyTarget = getClientFinalPriceForList(client);
+    if (isClientPaid(client) && !hasAnyAmount && legacyTarget > 0) {
+      const legacyDate = client.actualPaymentDate ?? client.actual_payment_date ?? getDateStartFieldValue(client);
+      setInstallments([{
+        ...emptyInstallmentRow(),
+        amount: String(legacyTarget),
+        date: legacyDate ? String(legacyDate).slice(0, 10) : todayIso(),
+      }]);
+      setInstallmentsRestored(true);
+    } else {
+      setInstallments(initialRows);
+      setInstallmentsRestored(false);
+    }
     setGender(client.gender || '');
     setPaymentKind(client.paymentKind ?? client.payment_kind ?? '');
     const initReceiptAmount = client.paymentKindReceiptAmount ?? client.payment_kind_receipt_amount;
@@ -495,11 +580,6 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
   const trainerPriceNum = Number(trainerPrice);
   const rawTrainerPriceInput = Number.isFinite(trainerPriceNum) ? trainerPriceNum : 0;
   const isIndividualClient = clientType === 'individual';
-  const fioError = touched.fio && !fio.trim() ? 'Укажите ФИО' : null;
-  const priceIsValid = Number.isFinite(Number(String(price).trim())) && Number(String(price).trim()) >= 0;
-  const trainerPriceIsValid = Number.isFinite(Number(String(trainerPrice).trim())) && Number(String(trainerPrice).trim()) >= 0;
-  const priceError = touched.price && isIndividualClient && !priceIsValid ? 'Введите корректную сумму' : null;
-  const trainerPriceError = touched.trainerPrice && isIndividualClient && !trainerPriceIsValid ? 'Введите корректную сумму' : null;
   const individualTotal = Math.max(0, Math.round(rawPriceInput + rawTrainerPriceInput));
   const discountFactor = discountPct >= 100 ? 0 : 1 - discountPct / 100;
 
@@ -533,24 +613,151 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
     return Number.isFinite(n) && n > 0 ? sum + n : sum;
   }, 0);
   /**
-   * «Способ оплаты» (смешанный чек+наличные) и «Частичные оплаты» — независимые записи
-   * (см. обсуждение): каждая, если заполнена, должна сама по себе сходиться с ценой абонемента.
-   * Статус «Оплачено» разрешён, только если ни одна из заполненных записей не расходится с ценой.
+   * «Способ оплаты» (смешанный чек+наличные) и «Частичные оплаты» — независимые записи:
+   * каждая должна сама по себе сходиться с ценой абонемента.
+   *
+   * Частичные оплаты — это реестр фактически полученных денег: он уходит на бэкенд
+   * (actualPayments) и питает отчёты. Поэтому пустой реестр — это не «нет данных»,
+   * а «денег не получено», и статус «Оплачено» на нём стоять не может.
+   * Раньше пустой реестр молча пропускал проверку — отсюда и ломалась логика.
    */
   const mixedCoversTarget =
     paymentKind !== 'mixed' || paymentTargetTotal <= 0 || mixedPaidSum === paymentTargetTotal;
   const installmentsCoverTarget =
-    installmentsPaidSum <= 0 || paymentTargetTotal <= 0 || installmentsPaidSum === paymentTargetTotal;
+    paymentTargetTotal <= 0 || installmentsPaidSum === paymentTargetTotal;
   const paymentCoverageOk = mixedCoversTarget && installmentsCoverTarget;
   /** Реальный статус к отправке/отображению: мисматч сумм всегда «перебивает» ручной тумблер. */
   const effectivePaid = paymentCoverageOk && paid;
   const paymentCoverageIssues = [];
   if (!mixedCoversTarget) paymentCoverageIssues.push(`способ оплаты — ${formatSum(mixedPaidSum)}`);
-  if (!installmentsCoverTarget) paymentCoverageIssues.push(`частичные оплаты — ${formatSum(installmentsPaidSum)}`);
+  if (!installmentsCoverTarget) {
+    paymentCoverageIssues.push(
+      installmentsPaidSum > 0
+        ? `частичные оплаты — ${formatSum(installmentsPaidSum)}`
+        : 'частичные оплаты не заполнены',
+    );
+  }
+  /** Сколько ещё не внесено — из этой цифры собирается кнопка быстрого заполнения реестра. */
+  const installmentsRemaining = Math.max(0, paymentTargetTotal - installmentsPaidSum);
+
+  /**
+   * ── Обязательные поля: один декларативный реестр ──
+   * Порядок = порядок полей в форме сверху вниз. Из него разом получаются:
+   * поэтапная подсветка, прогресс в шапке, сводка ошибок и переход к первому пустому полю.
+   * Добавить поле = добавить строку сюда, ничего больше править не нужно.
+   *
+   * Условные пункты — не «поблажки», а недостижимые иначе состояния:
+   * слот нельзя выбрать, если у тренера пустой график; цены тренеру нет у обычного клиента;
+   * чек/наличные существуют только у смешанной оплаты.
+   */
+  const slotIsRequired = Boolean(trainerId) && scheduleSlots.length > 0;
+  const phoneDigits = digitsOf(phone);
+  const requiredFields = [
+    { key: 'fio', label: 'ФИО', section: 'personal', invalid: !fio.trim(), message: 'Укажите ФИО клиента' },
+    {
+      key: 'phone',
+      label: 'Телефон',
+      section: 'personal',
+      invalid: phoneDigits.length < 9,
+      message: phoneDigits.length ? 'Введите номер полностью' : 'Укажите телефон',
+    },
+    { key: 'gender', label: 'Пол', section: 'personal', invalid: !gender, message: 'Выберите пол' },
+    { key: 'sportId', label: 'Вид спорта', section: 'subscription', invalid: !sportId, message: 'Выберите вид спорта' },
+    { key: 'trainerId', label: 'Тренер', section: 'subscription', invalid: !trainerId, message: 'Выберите тренера' },
+    ...(slotIsRequired
+      ? [{ key: 'trainingSlot', label: 'Время занятия', section: 'subscription', invalid: !trainingSlotKey, message: 'Выберите слот из графика тренера' }]
+      : []),
+    { key: 'dateStart', label: 'Дата начала', section: 'subscription', invalid: !dateStart, message: 'Укажите дату начала' },
+    { key: 'clientType', label: 'Тип клиента', section: 'subscription', invalid: !clientType, message: 'Выберите тип клиента' },
+    {
+      key: 'price',
+      label: isIndividualClient ? 'Цена клубу' : 'Цена абонемента',
+      section: 'payment',
+      invalid: !isFilledAmount(price),
+      message: String(price).trim() === '' ? 'Укажите сумму' : 'Введите корректную сумму',
+    },
+    ...(isIndividualClient
+      ? [{
+        key: 'trainerPrice',
+        label: 'Цена тренеру',
+        section: 'payment',
+        invalid: !isFilledAmount(trainerPrice),
+        message: String(trainerPrice).trim() === '' ? 'Укажите сумму' : 'Введите корректную сумму',
+      }]
+      : []),
+    { key: 'paymentKind', label: 'Способ оплаты', section: 'paymentKind', invalid: !paymentKind, message: 'Выберите способ оплаты' },
+    ...(paymentKind === 'mixed'
+      ? [{ key: 'mixedAmounts', label: 'Чеком и наличными', section: 'paymentKind', invalid: mixedPaidSum <= 0, message: 'Укажите суммы чеком и наличными' }]
+      : []),
+  ];
+
+  const missingFields = requiredFields.filter((f) => f.invalid);
+  const requiredTotal = requiredFields.length;
+  const requiredFilled = requiredTotal - missingFields.length;
+  const requiredPct = requiredTotal ? Math.round((requiredFilled / requiredTotal) * 100) : 100;
+
+  /**
+   * Поэтапность: ошибка поля видна, если поле тронуто, если была попытка сохранить —
+   * или если пользователь ушёл дальше по форме, оставив его пустым. Так «первым делом ФИО,
+   * потом телефон» работает само, без блокировки следующих полей (блокировка ломала бы
+   * редактирование уже существующей карточки, где поля заполняют не по порядку).
+   */
+  const lastTouchedIndex = requiredFields.reduce(
+    (acc, f, i) => (touched[f.key] ? i : acc),
+    -1,
+  );
+  const fieldState = (key) => {
+    const idx = requiredFields.findIndex((f) => f.key === key);
+    if (idx === -1) return { required: false, done: false, error: null };
+    const f = requiredFields[idx];
+    const revealed = showAllErrors || touched[key] || idx < lastTouchedIndex;
+    return {
+      required: true,
+      done: !f.invalid,
+      error: f.invalid && revealed ? f.message : null,
+    };
+  };
+
+  /** Перевод пользователя к конкретному полю: скролл к нему, подсветка «шага» и фокус. */
+  const focusField = (key) => {
+    const host = document.querySelector(`[data-field="${key}"]`);
+    if (!host) return;
+    host.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setStepFieldKey(key);
+    if (stepTimeoutRef.current) window.clearTimeout(stepTimeoutRef.current);
+    stepTimeoutRef.current = window.setTimeout(() => {
+      setStepFieldKey((cur) => (cur === key ? null : cur));
+    }, 2400);
+    window.setTimeout(() => {
+      const focusable = host.querySelector('input:not([disabled]), textarea, button:not([disabled])');
+      focusable?.focus({ preventScroll: true });
+    }, 240);
+  };
+
+  useEffect(() => () => {
+    if (stepTimeoutRef.current) window.clearTimeout(stepTimeoutRef.current);
+  }, []);
+
+  const fieldClass = (key, base = 'client-form-modal__label') => {
+    const { error } = fieldState(key);
+    return `${base}${error ? ' client-form-modal__label--invalid' : ''}${stepFieldKey === key ? ' client-form-modal__label--step' : ''}`;
+  };
+
+  /** Сообщение об ошибке под полем — единый вид у всех полей формы. */
+  const renderFieldError = (key) => {
+    const { error } = fieldState(key);
+    if (!error) return null;
+    return (
+      <span className="client-form-modal__field-error" role="alert">
+        <CircleAlert size={12} aria-hidden />
+        {error}
+      </span>
+    );
+  };
 
   /** Полоска покрытия суммы: доля внесённых денег от цены абонемента (для mixed и общего статуса). */
   const renderCoverageBar = (collected, target, { compareIsEqual = true } = {}) => {
-    if (!(target > 0) || !(collected > 0)) return null;
+    if (!(target > 0)) return null;
     const pct = Math.max(0, Math.min(100, Math.round((collected / target) * 100)));
     const state = compareIsEqual ? (collected === target ? 'ok' : 'warn') : (pct >= 100 ? 'ok' : 'warn');
     return (
@@ -570,6 +777,21 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
 
   const addInstallmentRow = () => {
     setInstallments((prev) => [...prev, emptyInstallmentRow()]);
+  };
+
+  /**
+   * Реестр платежей — единственное доказательство оплаты, но типовой случай
+   * «заплатил всё сразу» не должен стоить ручного ввода суммы и даты.
+   * Пустой реестр — ставим полную сумму, частично заполненный — дописываем остаток,
+   * не трогая уже введённые строки.
+   */
+  const fillInstallmentsToTarget = () => {
+    if (installmentsRemaining <= 0) return;
+    const row = { ...emptyInstallmentRow(), amount: String(installmentsRemaining), date: todayIso() };
+    setInstallments((prev) => {
+      const filled = prev.filter((r) => String(r.amount ?? '').trim() !== '' || String(r.date ?? '').trim() !== '');
+      return [...filled, row];
+    });
   };
 
   const removeInstallmentRow = (key) => {
@@ -692,8 +914,46 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
     }
   };
 
+  /** Снимок формы «как есть» для черновика: без валидации и пересчётов — отложить
+   * можно и наполовину заполненную карточку, это её штатное состояние. */
+  const buildDraftSnapshot = () => ({
+    fio,
+    phone,
+    sportId,
+    trainerId,
+    dateStart,
+    clientType,
+    price,
+    trainerPrice,
+    discount,
+    paid,
+    installments,
+    gender,
+    paymentKind,
+    mixedReceiptAmount,
+    mixedCashAmount,
+    commentManual,
+    trainingSlotKey,
+  });
+
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    /** Шаг 1 — обязательные поля по порядку формы: ведём к первому незаполненному. */
+    setShowAllErrors(true);
+    if (missingFields.length > 0) {
+      const first = missingFields[0];
+      const sectionRef = sectionRefsByKey[first.section];
+      if (sectionRef) focusSection(sectionRef, first.section);
+      focusField(first.key);
+      toast.error(
+        missingFields.length === 1
+          ? `${first.label}: ${first.message.toLowerCase()}`
+          : `Не заполнено полей: ${missingFields.length}. Начните с «${first.label}»`,
+      );
+      return;
+    }
+
     const built = buildActualPaymentsPayload(installments);
     if (!built.ok) {
       toast.error(built.message);
@@ -701,28 +961,9 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
       return;
     }
 
-    if (!paymentKind) {
-      toast.error('Выберите способ оплаты');
-      focusSection(paymentKindRef, 'paymentKind');
-      return;
-    }
-
-    if (paymentKind === 'mixed' && (Number(mixedReceiptAmount) || 0) + (Number(mixedCashAmount) || 0) <= 0) {
-      toast.error('Укажите суммы чеком и наличными');
-      focusSection(paymentKindRef, 'paymentKind');
-      return;
-    }
-
     if (isIndividualClient) {
       const club = Number(String(price).trim());
       const tr = Number(String(trainerPrice).trim());
-      const clubOk = Number.isFinite(club) && club >= 0;
-      const trOk = Number.isFinite(tr) && tr >= 0;
-      if (!clubOk || !trOk) {
-        toast.error('Укажите корректные суммы: клуб и тренеру');
-        focusSection(paymentSectionRef, 'payment');
-        return;
-      }
       if (Math.round(club + tr) <= 0) {
         toast.error('Общая сумма должна быть больше ноля');
         focusSection(paymentSectionRef, 'payment');
@@ -812,6 +1053,54 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
           </h2>
           <button type="button" className="client-form-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
         </div>
+
+        {/* Прогресс по обязательным полям: видно, сколько осталось, ещё до попытки сохранить. */}
+        <div className={`client-form-modal__progress${missingFields.length === 0 ? ' client-form-modal__progress--done' : ''}`}>
+          <div className="client-form-modal__progress-track">
+            <div className="client-form-modal__progress-fill" style={{ width: `${requiredPct}%` }} />
+          </div>
+          <span className="client-form-modal__progress-label">
+            {missingFields.length === 0 ? (
+              <><CircleCheck size={13} aria-hidden /> Обязательные поля заполнены</>
+            ) : (
+              <>Заполнено <strong>{requiredFilled}</strong> из {requiredTotal}</>
+            )}
+          </span>
+        </div>
+
+        {/* Сводка валидации: все незаполненные поля сразу, по порядку формы.
+            Первое помечено как текущий шаг — «по этапно», но без насильной блокировки
+            остальных полей. Любой пункт кликабелен и уводит прямо к своему полю. */}
+        {showAllErrors && missingFields.length > 0 && (
+          <div className="client-form-modal__validation" role="alert">
+            <div className="client-form-modal__validation-head">
+              <span className="client-form-modal__validation-icon"><TriangleAlert size={15} /></span>
+              <span className="client-form-modal__validation-title">
+                Заполните обязательные поля
+                <span className="client-form-modal__validation-sub">
+                  Осталось {missingFields.length} — начните с первого, остальные можно нажать и перейти сразу к ним
+                </span>
+              </span>
+            </div>
+            <ol className="client-form-modal__validation-list">
+              {missingFields.map((f, i) => (
+                <li key={f.key}>
+                  <button
+                    type="button"
+                    className={`client-form-modal__validation-chip${i === 0 ? ' client-form-modal__validation-chip--current' : ''}`}
+                    onClick={() => focusField(f.key)}
+                    title={f.message}
+                  >
+                    <span className="client-form-modal__validation-step">{i + 1}</span>
+                    {f.label}
+                    {i === 0 && <ArrowRight size={13} aria-hidden />}
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+
         {error && (() => {
           const parsed = parseApiError(error);
           if (parsed) {
@@ -831,7 +1120,9 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
           }
           return <p className="client-form-modal__error" role="alert">{error}</p>;
         })()}
-        <form onSubmit={handleSubmit} className="client-form-modal__form">
+        {/* noValidate — валидацию ведём сами: у нативной нет ни порядка этапов,
+            ни поддержки кастомных Select, а её всплывашки выпадают из стиля. */}
+        <form onSubmit={handleSubmit} className="client-form-modal__form" noValidate>
           <div className="client-form-modal__scroll">
           <div className="client-form-modal__columns">
           <div className="client-form-modal__col-left">
@@ -841,23 +1132,62 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               Личные данные
             </h3>
             <div className="client-form-modal__row">
-              <label className="client-form-modal__label">
-                <span className="client-form-modal__label-text">ФИО <span className="form-label-required" aria-hidden="true">*</span></span>
-                <input
-                  ref={firstInputRef}
-                  type="text"
-                  value={fio}
-                  onChange={(e) => setFio(capitalizeWords(e.target.value))}
-                  onBlur={() => markTouched('fio')}
-                  required
-                  className={`client-form-modal__input${fioError ? ' client-form-modal__input--invalid' : ''}`}
-                />
-                {fioError && <span className="client-form-modal__field-error">{fioError}</span>}
+              <label className={fieldClass('fio')} data-field="fio">
+                <FieldLabel icon={User} required {...fieldState('fio')} invalid={!!fieldState('fio').error}>ФИО</FieldLabel>
+                <span className="client-form-modal__input-wrap">
+                  <input
+                    ref={firstInputRef}
+                    type="text"
+                    value={fio}
+                    onChange={(e) => setFio(capitalizeWords(e.target.value))}
+                    onBlur={() => markTouched('fio')}
+                    aria-required="true"
+                    placeholder="Иванов Иван"
+                    className={`client-form-modal__input${fieldState('fio').error ? ' client-form-modal__input--invalid' : ''}`}
+                  />
+                </span>
+                {renderFieldError('fio')}
               </label>
-              <label className="client-form-modal__label">
-                <span className="client-form-modal__label-text">Телефон</span>
-                <PhoneInput value={phone} onChange={setPhone} className="client-form-modal__input" />
+              <label className={fieldClass('phone')} data-field="phone">
+                <FieldLabel icon={Phone} required {...fieldState('phone')} invalid={!!fieldState('phone').error}>Телефон</FieldLabel>
+                <span className="client-form-modal__input-wrap">
+                  <PhoneInput
+                    value={phone}
+                    onChange={setPhone}
+                    onBlur={() => markTouched('phone')}
+                    aria-required="true"
+                    className={`client-form-modal__input${fieldState('phone').error ? ' client-form-modal__input--invalid' : ''}`}
+                  />
+                </span>
+                {renderFieldError('phone')}
               </label>
+            </div>
+            {/* Пол — те же личные данные, что ФИО и телефон, поэтому стоит здесь.
+                Два сегмента, а не выпадающий список: выбор в один клик. Варианта
+                «Не указан» больше нет — поле обязательное, «не указано» ему противоречит. */}
+            <div className="client-form-modal__row">
+              <div className={`${fieldClass('gender')} client-form-modal__label--full`} data-field="gender">
+                <FieldLabel icon={Venus} required {...fieldState('gender')} invalid={!!fieldState('gender').error}>Пол</FieldLabel>
+                <div className="client-form-modal__gender" role="radiogroup" aria-label="Пол">
+                  {[
+                    { value: 'male', label: 'Мужской', Icon: Mars },
+                    { value: 'female', label: 'Женский', Icon: Venus },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={gender === opt.value}
+                      className={`client-form-modal__gender-btn${gender === opt.value ? ' client-form-modal__gender-btn--active' : ''}${fieldState('gender').error ? ' client-form-modal__gender-btn--invalid' : ''}`}
+                      onClick={() => { setGender(opt.value); markTouched('gender'); }}
+                    >
+                      <opt.Icon size={15} strokeWidth={1.9} aria-hidden />
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {renderFieldError('gender')}
+              </div>
             </div>
           </div>
           <div className={sectionClass('subscription')} ref={subscriptionSectionRef}>
@@ -866,58 +1196,84 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               Абонемент
             </h3>
             <div className="client-form-modal__row">
-              <label className="client-form-modal__label">
-                <span className="client-form-modal__label-text">Вид спорта</span>
-              <Select value={String(sportId)} onChange={(v) => { setSportId(v); setTrainerId(''); setTrainingSlotKey(''); setHighlightSection((cur) => (cur === 'subscription' ? null : cur)); }} options={[{ value: '', label: '—' }, ...(sports || []).map((s) => ({ value: String(s.id), label: s.name || '' }))]} placeholder="—" className="client-form-modal__select" icon={<Dumbbell size={15} />} />
-            </label>
-            <label className="client-form-modal__label">
-              <span className="client-form-modal__label-text">Тренер</span>
-              <Select
-                value={String(trainerId)}
-                onChange={(v) => {
-                  setTrainerId(v);
-                  setTrainingSlotKey('');
-                  setHighlightSection((cur) => (cur === 'subscription' ? null : cur));
-                }}
-                options={[{ value: '', label: '—' }, ...(trainersList || []).map((t) => ({ value: String(t.id), label: t.fio || '' }))]}
-                placeholder="—"
-                className="client-form-modal__select"
-                icon={<UserCheck size={15} />}
-              />
-            </label>
+              <div className={fieldClass('sportId')} data-field="sportId">
+                <FieldLabel icon={Dumbbell} required {...fieldState('sportId')} invalid={!!fieldState('sportId').error}>Вид спорта</FieldLabel>
+                <Select
+                  value={String(sportId)}
+                  onChange={(v) => { setSportId(v); setTrainerId(''); setTrainingSlotKey(''); markTouched('sportId'); setHighlightSection((cur) => (cur === 'subscription' ? null : cur)); }}
+                  options={[{ value: '', label: '—' }, ...(sports || []).map((s) => ({ value: String(s.id), label: s.name || '' }))]}
+                  placeholder="Выберите вид спорта"
+                  className={`client-form-modal__select${fieldState('sportId').error ? ' client-form-modal__select--invalid' : ''}`}
+                  icon={<Dumbbell size={15} />}
+                />
+                {renderFieldError('sportId')}
+              </div>
+              <div className={fieldClass('trainerId')} data-field="trainerId">
+                <FieldLabel icon={UserCheck} required {...fieldState('trainerId')} invalid={!!fieldState('trainerId').error}>Тренер</FieldLabel>
+                <Select
+                  value={String(trainerId)}
+                  onChange={(v) => {
+                    setTrainerId(v);
+                    setTrainingSlotKey('');
+                    markTouched('trainerId');
+                    setHighlightSection((cur) => (cur === 'subscription' ? null : cur));
+                  }}
+                  options={[{ value: '', label: '—' }, ...(trainersList || []).map((t) => ({ value: String(t.id), label: t.fio || '' }))]}
+                  placeholder={sportId ? 'Выберите тренера' : 'Сначала вид спорта'}
+                  className={`client-form-modal__select${fieldState('trainerId').error ? ' client-form-modal__select--invalid' : ''}`}
+                  icon={<UserCheck size={15} />}
+                />
+                {renderFieldError('trainerId')}
+              </div>
             </div>
             <div className="client-form-modal__row">
-              <label className="client-form-modal__label client-form-modal__label--full">
-                <span className="client-form-modal__label-text">Время занятия</span>
+              <div className={`${fieldClass('trainingSlot')} client-form-modal__label--full`} data-field="trainingSlot">
+                <FieldLabel
+                  icon={Clock}
+                  required={slotIsRequired}
+                  {...(slotIsRequired ? fieldState('trainingSlot') : {})}
+                  invalid={!!fieldState('trainingSlot').error}
+                >
+                  Время занятия
+                </FieldLabel>
                 <Select
                   value={String(trainingSlotKey)}
-                  onChange={(v) => setTrainingSlotKey(v)}
+                  onChange={(v) => { setTrainingSlotKey(v); markTouched('trainingSlot'); }}
                   options={[
                     { value: '', label: scheduleSlotsLoading ? 'Загрузка…' : '—' },
                     ...trainingSlotSelectOptions,
                   ]}
-                  placeholder={scheduleSlotsLoading ? 'Загрузка…' : '—'}
+                  placeholder={scheduleSlotsLoading ? 'Загрузка…' : (trainerId ? 'Выберите слот' : 'Сначала тренер')}
                   disabled={!trainerId || scheduleSlotsLoading}
-                  className="client-form-modal__select"
+                  className={`client-form-modal__select${fieldState('trainingSlot').error ? ' client-form-modal__select--invalid' : ''}`}
                   icon={<Clock size={15} />}
                 />
-                {!compactHints && (
+                {renderFieldError('trainingSlot')}
+                {!compactHints && !fieldState('trainingSlot').error && (
                   <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
                     {trainingSlotHint}
                   </span>
                 )}
-              </label>
+              </div>
             </div>
             <div className="client-form-modal__row">
-              <label className="client-form-modal__label">
-                <span className="client-form-modal__label-text">Дата начала</span>
-                <input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} className="client-form-modal__input" />
+              <label className={fieldClass('dateStart')} data-field="dateStart">
+                <FieldLabel icon={CalendarDays} required {...fieldState('dateStart')} invalid={!!fieldState('dateStart').error}>Дата начала</FieldLabel>
+                <input
+                  type="date"
+                  value={dateStart}
+                  onChange={(e) => { setDateStart(e.target.value); markTouched('dateStart'); }}
+                  onBlur={() => markTouched('dateStart')}
+                  aria-required="true"
+                  className={`client-form-modal__input${fieldState('dateStart').error ? ' client-form-modal__input--invalid' : ''}`}
+                />
+                {renderFieldError('dateStart')}
               </label>
-              <label className="client-form-modal__label">
-                <span className="client-form-modal__label-text">Тип</span>
+              <div className={fieldClass('clientType')} data-field="clientType">
+                <FieldLabel icon={Tag} required {...fieldState('clientType')} invalid={!!fieldState('clientType').error}>Тип клиента</FieldLabel>
                 <Select
                   value={clientType}
-                  onChange={setClientType}
+                  onChange={(v) => { setClientType(v); markTouched('clientType'); }}
                   options={[
                     { value: 'regular', label: 'Регулярный' },
                     { value: 'individual', label: 'Индивидуальный' },
@@ -926,8 +1282,33 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                   className="client-form-modal__select"
                   icon={<Tag size={15} />}
                 />
-              </label>
+                {renderFieldError('clientType')}
+              </div>
             </div>
+          </div>
+
+          {/* Комментарий занимает место, которое раньше пустовало под «Абонементом»:
+              правая колонка (оплата) заметно выше, и низ левой оставался дырой. */}
+          <div className="client-form-modal__section">
+            <h3 className="client-form-modal__section-title">
+              <span className="client-form-modal__section-icon"><MessageSquare size={14} /></span>
+              Комментарий
+              <span className="client-form-modal__section-optional">необязательно</span>
+            </h3>
+            {commentAuto.length > 0 && (
+              <div className="client-form-modal__comment-auto" aria-readonly="true">
+                {commentAuto.map((line, i) => (
+                  <div key={i} className="client-form-modal__comment-auto-line">{line}</div>
+                ))}
+              </div>
+            )}
+            <textarea
+              value={commentManual}
+              onChange={(e) => setCommentManual(e.target.value)}
+              className="client-form-modal__input"
+              rows={3}
+              placeholder="Например: пришёл по акции, оплата частями до 15-го"
+            />
           </div>
           </div>
           <div className="client-form-modal__col-right">
@@ -938,23 +1319,27 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
             </h3>
 
             <div className={subsectionClass('payment')} ref={paymentSectionRef}>
-            <div className="client-form-modal__row">
-              <label className="client-form-modal__label client-form-modal__label--full">
-                <span className="client-form-modal__label-text">
-                  {isIndividualClient ? 'Цена клубу, сом' : (discountPct > 0 ? 'К оплате (со скидкой), сом' : 'Цена абонемента, сом')}
-                </span>
+            {/* Скидка стоит вплотную к цене: она напрямую меняет и подпись поля цены,
+                и итог внизу — спрятанная в «Дополнительно», она делала эти изменения
+                необъяснимыми для того, кто её не открывал. */}
+            <div className="client-form-modal__row client-form-modal__row--price">
+              <label className={fieldClass('price')} data-field="price">
+                <FieldLabel icon={Coins} required {...fieldState('price')} invalid={!!fieldState('price').error}>
+                  {isIndividualClient ? 'Цена клубу' : (discountPct > 0 ? 'К оплате (со скидкой)' : 'Цена абонемента')}
+                </FieldLabel>
                 <span className="client-form-modal__input-wrap">
                   <MoneyInput
                     value={price}
                     onChange={setPrice}
                     onBlur={() => markTouched('price')}
-                    className={`client-form-modal__input client-form-modal__input--suffixed${priceError ? ' client-form-modal__input--invalid' : ''}`}
+                    aria-required="true"
+                    className={`client-form-modal__input client-form-modal__input--suffixed${fieldState('price').error ? ' client-form-modal__input--invalid' : ''}`}
                     placeholder="0"
                     autoComplete="off"
                   />
                   <span className="client-form-modal__input-suffix">сом</span>
                 </span>
-                {priceError && <span className="client-form-modal__field-error">{priceError}</span>}
+                {renderFieldError('price')}
                 {!compactHints && (
                   <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
                     {isIndividualClient
@@ -965,24 +1350,48 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                   </span>
                 )}
               </label>
+
+              <label className="client-form-modal__label client-form-modal__label--discount">
+                <FieldLabel icon={Percent} optional>Скидка</FieldLabel>
+                <span className="client-form-modal__input-wrap">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={discount}
+                    onChange={handleDiscountChange}
+                    className="client-form-modal__input client-form-modal__input--suffixed client-form-modal__input--no-spin"
+                    placeholder="0"
+                    disabled={isIndividualClient}
+                    title={isIndividualClient ? 'Для индивидуальных клиентов скидка не применяется' : undefined}
+                  />
+                  <span className="client-form-modal__input-suffix">%</span>
+                </span>
+                {isIndividualClient && !compactHints && (
+                  <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
+                    Недоступна для индивидуальных
+                  </span>
+                )}
+              </label>
             </div>
 
             {isIndividualClient && (
               <div className="client-form-modal__row">
-                <label className="client-form-modal__label client-form-modal__label--full">
-                  <span className="client-form-modal__label-text">Цена тренеру, сом</span>
+                <label className={`${fieldClass('trainerPrice')} client-form-modal__label--full`} data-field="trainerPrice">
+                  <FieldLabel icon={Coins} required {...fieldState('trainerPrice')} invalid={!!fieldState('trainerPrice').error}>Цена тренеру</FieldLabel>
                   <span className="client-form-modal__input-wrap">
                     <MoneyInput
                       value={trainerPrice}
                       onChange={setTrainerPrice}
                       onBlur={() => markTouched('trainerPrice')}
-                      className={`client-form-modal__input client-form-modal__input--suffixed${trainerPriceError ? ' client-form-modal__input--invalid' : ''}`}
+                      aria-required="true"
+                      className={`client-form-modal__input client-form-modal__input--suffixed${fieldState('trainerPrice').error ? ' client-form-modal__input--invalid' : ''}`}
                       placeholder="0"
                       autoComplete="off"
                     />
                     <span className="client-form-modal__input-suffix">сом</span>
                   </span>
-                  {trainerPriceError && <span className="client-form-modal__field-error">{trainerPriceError}</span>}
+                  {renderFieldError('trainerPrice')}
                   {!compactHints && (
                     <span className="client-form-modal__field-hint client-form-modal__hint--desktop-only">
                       Итого: <strong>{individualTotal.toLocaleString('ru-RU')} сом</strong>
@@ -994,9 +1403,13 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
 
             <div className={subsectionClass('paymentKind')} ref={paymentKindRef}>
               <div className="client-form-modal__row">
-                <div className="client-form-modal__label client-form-modal__label--full">
-                  <span className="client-form-modal__label-text">Способ оплаты <span className="form-label-required" aria-hidden="true">*</span></span>
-                  <div className="client-form-modal__payment-kind-toggle" role="radiogroup" aria-label="Способ оплаты">
+                <div className={`${fieldClass('paymentKind')} client-form-modal__label--full`} data-field="paymentKind">
+                  <FieldLabel icon={Wallet} required {...fieldState('paymentKind')} invalid={!!fieldState('paymentKind').error}>Способ оплаты</FieldLabel>
+                  <div
+                    className={`client-form-modal__payment-kind-toggle${fieldState('paymentKind').error ? ' client-form-modal__payment-kind-toggle--invalid' : ''}`}
+                    role="radiogroup"
+                    aria-label="Способ оплаты"
+                  >
                     {CLIENT_PHOTO_KIND_OPTIONS.map((opt) => {
                       const Icon = PAYMENT_KIND_ICONS[opt.value] ?? Wallet;
                       const active = paymentKind === opt.value;
@@ -1009,6 +1422,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                           className={`client-form-modal__payment-kind-btn${active ? ' client-form-modal__payment-kind-btn--active' : ''}`}
                           onClick={() => {
                             setPaymentKind(opt.value);
+                            markTouched('paymentKind');
                             setHighlightSection((cur) => (cur === 'paymentKind' ? null : cur));
                           }}
                         >
@@ -1019,19 +1433,21 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                       );
                     })}
                   </div>
+                  {renderFieldError('paymentKind')}
                 </div>
               </div>
 
               {paymentKind === 'mixed' && (
-                <div className="client-form-modal__mixed-payment">
+                <div className="client-form-modal__mixed-payment" data-field="mixedAmounts">
                   <div className="client-form-modal__mixed-payment-grid">
-                    <label className="client-form-modal__label">
-                      <span className="client-form-modal__label-text"><Receipt size={13} /> Чеком</span>
+                    <label className={fieldClass('mixedAmounts')}>
+                      <FieldLabel icon={Receipt} required done={mixedPaidSum > 0} invalid={!!fieldState('mixedAmounts').error}>Чеком</FieldLabel>
                       <span className="client-form-modal__input-wrap">
                         <MoneyInput
                           value={mixedReceiptAmount}
                           onChange={setMixedReceiptAmount}
-                          className="client-form-modal__input client-form-modal__input--suffixed"
+                          onBlur={() => markTouched('mixedAmounts')}
+                          className={`client-form-modal__input client-form-modal__input--suffixed${fieldState('mixedAmounts').error ? ' client-form-modal__input--invalid' : ''}`}
                           placeholder="0"
                           autoComplete="off"
                         />
@@ -1039,12 +1455,13 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                       </span>
                     </label>
                     <label className="client-form-modal__label">
-                      <span className="client-form-modal__label-text"><Banknote size={13} /> Наличными</span>
+                      <FieldLabel icon={Banknote} required done={mixedPaidSum > 0} invalid={!!fieldState('mixedAmounts').error}>Наличными</FieldLabel>
                       <span className="client-form-modal__input-wrap">
                         <MoneyInput
                           value={mixedCashAmount}
                           onChange={setMixedCashAmount}
-                          className="client-form-modal__input client-form-modal__input--suffixed"
+                          onBlur={() => markTouched('mixedAmounts')}
+                          className={`client-form-modal__input client-form-modal__input--suffixed${fieldState('mixedAmounts').error ? ' client-form-modal__input--invalid' : ''}`}
                           placeholder="0"
                           autoComplete="off"
                         />
@@ -1052,6 +1469,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                       </span>
                     </label>
                   </div>
+                  {renderFieldError('mixedAmounts')}
                   {mixedPaidSum > 0 && (() => {
                     const matches = paymentTargetTotal > 0 && mixedPaidSum === paymentTargetTotal;
                     return (
@@ -1075,15 +1493,43 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
 
             <div className="client-form-modal__installments">
               <div className="client-form-modal__installments-header">
-                <span className="client-form-modal__installments-title"><SplitSquareHorizontal size={12} /> Частичные оплаты</span>
-                {installmentsPaidSum > 0 && (
+                <span className="client-form-modal__installments-title">
+                  <SplitSquareHorizontal size={12} /> Частичные оплаты
+                  {/* Не «необязательно»: сохранить без реестра можно, но клиент останется
+                      неоплаченным — подпись говорит ровно это, чтобы правило не было сюрпризом. */}
+                  <span className="client-form-modal__label-optional">нужны для «Оплачено»</span>
+                </span>
+                {paymentTargetTotal > 0 && (
                   <span className={`client-form-modal__installments-total${installmentsCoverTarget ? '' : ' client-form-modal__installments-total--warn'}`}>
                     {formatSum(installmentsPaidSum)}
-                    {paymentTargetTotal > 0 && !installmentsCoverTarget && ` из ${formatSum(paymentTargetTotal)}`}
+                    {!installmentsCoverTarget && ` из ${formatSum(paymentTargetTotal)}`}
                   </span>
                 )}
               </div>
-              {installmentsPaidSum > 0 && renderCoverageBar(installmentsPaidSum, paymentTargetTotal)}
+              {paymentTargetTotal > 0 && renderCoverageBar(installmentsPaidSum, paymentTargetTotal)}
+              {installmentsRestored && (
+                <p className="client-form-modal__installments-restored">
+                  <CircleAlert size={13} aria-hidden />
+                  <span>
+                    Платёж восстановлен из статуса «Оплачено» — в карточке не было записей.
+                    Проверьте сумму и дату перед сохранением.
+                  </span>
+                </p>
+              )}
+              {/* Один клик вместо ручного ввода суммы и даты — иначе строгое правило
+                  превращает типовую разовую оплату в лишнюю работу. */}
+              {installmentsRemaining > 0 && (
+                <button
+                  type="button"
+                  className="client-form-modal__installments-fill"
+                  onClick={fillInstallmentsToTarget}
+                >
+                  <CircleCheck size={14} strokeWidth={2} aria-hidden />
+                  {installmentsPaidSum > 0
+                    ? `Добавить остаток ${formatSum(installmentsRemaining)}`
+                    : `Оплачено полностью — ${formatSum(paymentTargetTotal)}`}
+                </button>
+              )}
               <div className="client-form-modal__installments-grid client-form-modal__installments-grid--head" aria-hidden>
                 <span>Сумма, сом</span>
                 <span>Дата оплаты</span>
@@ -1091,16 +1537,17 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
               </div>
               {installments.map((row) => (
                 <div key={row._key} className="client-form-modal__installments-grid">
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={row.amount}
-                    onChange={(e) => updateInstallment(row._key, 'amount', e.target.value)}
-                    className="client-form-modal__input"
-                    placeholder="0"
-                    aria-label="Сумма частичной оплаты"
-                  />
+                  <span className="client-form-modal__input-wrap">
+                    <MoneyInput
+                      value={row.amount}
+                      onChange={(v) => updateInstallment(row._key, 'amount', v)}
+                      className="client-form-modal__input client-form-modal__input--suffixed"
+                      placeholder="0"
+                      autoComplete="off"
+                      aria-label="Сумма частичной оплаты"
+                    />
+                    <span className="client-form-modal__input-suffix">сом</span>
+                  </span>
                   <input
                     type="date"
                     value={row.date}
@@ -1202,6 +1649,7 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
                     className={`client-form-modal__paid-btn client-form-modal__paid-btn--no${!effectivePaid ? ' client-form-modal__paid-btn--active' : ''}`}
                     onClick={() => setPaid(false)}
                   >
+                    <CircleX size={14} strokeWidth={2} />
                     Не оплачено
                   </button>
                   <button
@@ -1252,74 +1700,31 @@ const ClientFormModal = ({ client, sports, fetchTrainers, currentUserFio, onSave
           </div>
           </div>
 
-          <details
-            className="client-form-modal__more"
-            key={isMobileFormLayout ? 'extra-mobile' : 'extra-desktop'}
-          >
-            <summary className="client-form-modal__more-summary">
-              <span className="client-form-modal__more-summary-text">
-                <SlidersHorizontal size={13} /> Дополнительно
-              </span>
-            </summary>
-            <div className="client-form-modal__more-inner">
-              <div className="client-form-modal__section client-form-modal__section--flush">
-                <h3 className="client-form-modal__section-title"><SlidersHorizontal size={14} /> Поля</h3>
-                <div className="client-form-modal__row">
-                  <label className="client-form-modal__label">
-                    <span className="client-form-modal__label-text">Пол</span>
-                    <Select
-                      value={gender}
-                      onChange={setGender}
-                      options={[
-                        { value: '', label: '—' },
-                        { value: 'male', label: 'М' },
-                        { value: 'female', label: 'Ж' },
-                      ]}
-                      placeholder="—"
-                      className="client-form-modal__select"
-                      icon={<User size={15} />}
-                    />
-                  </label>
-                  <label className="client-form-modal__label">
-                    <span className="client-form-modal__label-text">Скидка</span>
-                    <span className="client-form-modal__input-wrap">
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={discount}
-                        onChange={handleDiscountChange}
-                        className="client-form-modal__input client-form-modal__input--suffixed client-form-modal__input--no-spin"
-                        placeholder="0"
-                        disabled={isIndividualClient}
-                      />
-                      <span className="client-form-modal__input-suffix">%</span>
-                    </span>
-                  </label>
-                </div>
-                {isMobileFormLayout && !compactHints && (
-                  <p className="client-form-modal__slot-hint-mobile">{trainingSlotHint}</p>
-                )}
-              </div>
-              <div className="client-form-modal__section client-form-modal__section--flush">
-                <h3 className="client-form-modal__section-title"><MessageSquare size={14} /> Комментарий</h3>
-                <div className="client-form-modal__label client-form-modal__label--full">
-                  {commentAuto.length > 0 && (
-                    <div className="client-form-modal__comment-auto" aria-readonly="true">
-                      {commentAuto.map((line, i) => (
-                        <div key={i} className="client-form-modal__comment-auto-line">{line}</div>
-                      ))}
-                    </div>
-                  )}
-                  <textarea value={commentManual} onChange={(e) => setCommentManual(e.target.value)} className="client-form-modal__input" rows={2} placeholder="Комментарий" />
-                </div>
-              </div>
-            </div>
-          </details>
           </div>
           <div className="client-form-modal__actions">
-            <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving}><X size={15} /> Отмена</button>
-            <SubmitButton loading={saving} className="ui-modal-btn ui-modal-btn--primary">
+            {/* Счётчик у кнопки, а не disabled: заблокированная кнопка молчит о причине,
+                а так по клику форма сама доведёт до первого незаполненного поля. */}
+            {missingFields.length > 0 && (
+              <span className="client-form-modal__actions-status">
+                <CircleAlert size={13} aria-hidden />
+                Не заполнено: {missingFields.length}
+              </span>
+            )}
+            <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving || savingDraft}><X size={15} /> Отмена</button>
+            {/* «Отложить» только при создании: сохранённого клиента откладывать некуда —
+                он уже в базе, его правки сохраняются обычной кнопкой. */}
+            {!client?.id && onSaveDraft && (
+              <button
+                type="button"
+                className="ui-modal-btn client-form-modal__draft-btn"
+                onClick={() => onSaveDraft(buildDraftSnapshot())}
+                disabled={saving || savingDraft}
+                title="Сохранить как черновик и вернуться к нему позже"
+              >
+                <Bookmark size={15} /> {savingDraft ? 'Откладываем…' : 'Отложить'}
+              </button>
+            )}
+            <SubmitButton loading={saving} disabled={savingDraft} className="ui-modal-btn ui-modal-btn--primary">
               <Check size={15} /> Сохранить
             </SubmitButton>
           </div>

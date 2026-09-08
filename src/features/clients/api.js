@@ -321,3 +321,29 @@ export const fetchAllClientsPaginated = async (queryOverrides, signal) => {
   }
   return all;
 };
+
+// ─── Черновики карточки клиента ──────────────────────────────────────────────
+// Незаконченная форма, отложенная «на потом». Хранится на сервере, а не в браузере:
+// черновик должен пережить очистку кэша и открываться с любого устройства.
+
+/** GET /api/clients/drafts/ — свои черновики, свежие сверху. */
+export const fetchClientDrafts = async (signal) => {
+  const { data } = await apiClient.get('/clients/drafts/', withSignal({}, signal));
+  return data?.items ?? data?.results ?? (Array.isArray(data) ? data : []);
+};
+
+/** POST /api/clients/drafts/ — { title, payload } */
+export const createClientDraft = async (body, signal) => {
+  const { data } = await apiClient.post('/clients/drafts/', body, withSignal({}, signal));
+  return data;
+};
+
+/** PATCH /api/clients/drafts/:id/ — обновить отложенный черновик на месте. */
+export const updateClientDraft = async (id, body, signal) => {
+  const { data } = await apiClient.patch(`/clients/drafts/${id}/`, body, withSignal({}, signal));
+  return data;
+};
+
+export const deleteClientDraft = async (id, signal) => {
+  await apiClient.delete(`/clients/drafts/${id}/`, withSignal({}, signal));
+};

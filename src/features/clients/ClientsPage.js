@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { fetchClients, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchAllClientsPaginated, createOneTimePayment, uploadClientPhotos } from './api';
+import { fetchClients, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchAllClientsPaginated, createOneTimePayment, uploadClientPhotos, fetchClientDrafts, createClientDraft, updateClientDraft, deleteClientDraft } from './api';
 import { fetchSports } from '../sports-trainers/api';
 import { fetchTrainers } from '../sports-trainers/api';
 import { useAuth } from '../../app/providers/AuthProvider';
@@ -11,9 +11,9 @@ import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiErr
 import { filterClientsByPeriod, getExactDuplicates, getSimilarGroups } from '../../shared/lib/duplicates';
 import { prepareClientSavePayload } from './lib/prepareClientSavePayload';
 import { getClientCorrectionReasons, clientNeedsCorrection } from './lib/needsCorrection';
-import { UsersRound, Copy, Ticket, Wrench, Search, Dumbbell, UserCheck, CreditCard, Tag, Calendar, CalendarDays, CalendarClock, Plus, ScanSearch, SpellCheck2, ChevronDown, Filter } from 'lucide-react';
+import { UsersRound, Copy, Ticket, Wrench, Search, Dumbbell, UserCheck, CreditCard, Tag, Calendar, CalendarDays, CalendarClock, Plus, ScanSearch, SpellCheck2, ChevronDown, Filter, Bookmark } from 'lucide-react';
 import { Select, ConfirmModal, Pagination, FiltersModal, FilterBar, EmptyState, Spinner } from '../../shared/ui';
-import { ClientsList, ClientCardModal, ClientFormModal, ExtendModal, DuplicateGroup } from './components';
+import { ClientsList, ClientCardModal, ClientFormModal, ClientDraftsModal, ExtendModal, DuplicateGroup } from './components';
 import './ClientsPage.scss';
 
 const getInitials = (fio) =>
@@ -104,6 +104,15 @@ const ClientsPage = () => {
   const [extendClientObj, setExtendClientObj] = useState(null);
   const [clientFormError, setClientFormError] = useState(null);
   const [clientFormSaving, setClientFormSaving] = useState(false);
+
+  // ── Черновики карточки клиента (хранятся на сервере) ──
+  const [drafts, setDrafts] = useState([]);
+  const [draftsOpen, setDraftsOpen] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [deletingDraftId, setDeletingDraftId] = useState(null);
+  // Черновик, который сейчас открыт в форме: при успешном сохранении клиента удаляем его,
+  // при повторном «Отложить» — обновляем на месте, а не плодим копии.
+  const [activeDraft, setActiveDraft] = useState(null);
   const [extendFormError, setExtendFormError] = useState(null);
   const [extendFormSaving, setExtendFormSaving] = useState(false);
   const [filtersModalOpen, setFiltersModalOpen] = useState(false);
@@ -286,6 +295,60 @@ const ClientsPage = () => {
   );
 
 
+  // ── Черновики ───────────────────────────────────────────────────────────────
+
+  const loadDrafts = useCallback(async () => {
+    try {
+      setDrafts(await fetchClientDrafts(null));
+    } catch {
+      // Черновики — вспомогательная функция: молча пропускаем сбой, чтобы не мешать
+      // работе со списком клиентов (ошибку покажем, только если пользователь сам их откроет).
+      setDrafts([]);
+    }
+  }, []);
+
+  useEffect(() => { if (isAdmin) loadDrafts(); }, [isAdmin, loadDrafts]);
+
+  /** «Отложить» из формы: новый черновик или обновление уже открытого. */
+  const handleSaveDraft = async (snapshot) => {
+    setSavingDraft(true);
+    try {
+      const body = { title: (snapshot.fio || '').trim(), payload: snapshot };
+      if (activeDraft?.id) await updateClientDraft(activeDraft.id, body, null);
+      else await createClientDraft(body, null);
+      await loadDrafts();
+      setFormClient(null);
+      setActiveDraft(null);
+      setClientFormError(null);
+      toast.success('Черновик отложен — вернуться к нему можно кнопкой «Черновики»');
+    } catch (e) {
+      toast.error(getApiErrorMessage(e) || 'Не удалось отложить черновик');
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
+  const handleOpenDraft = (draft) => {
+    setDraftsOpen(false);
+    setActiveDraft(draft);
+    setClientFormError(null);
+    setFormClient({});
+  };
+
+  const handleDeleteDraft = async (draft) => {
+    setDeletingDraftId(draft.id);
+    try {
+      await deleteClientDraft(draft.id, null);
+      setDrafts((prev) => prev.filter((d) => d.id !== draft.id));
+      if (activeDraft?.id === draft.id) setActiveDraft(null);
+      toast.success('Черновик удалён');
+    } catch (e) {
+      toast.error(getApiErrorMessage(e) || 'Не удалось удалить черновик');
+    } finally {
+      setDeletingDraftId(null);
+    }
+  };
+
   const handleSaveClient = async (payload) => {
     setClientFormError(null);
     setClientFormSaving(true);
@@ -308,6 +371,14 @@ const ClientsPage = () => {
             'ошибка загрузки';
           toast.error(`Клиент сохранён, но фото не загрузились: ${pmsg}`);
         }
+      }
+      // Черновик доведён до реального клиента — убираем его, чтобы не дублировался в списке
+      if (activeDraft?.id) {
+        try {
+          await deleteClientDraft(activeDraft.id, null);
+          setDrafts((prev) => prev.filter((d) => d.id !== activeDraft.id));
+        } catch { /* черновик останется — не повод показывать ошибку поверх успеха */ }
+        setActiveDraft(null);
       }
       setFormClient(null);
       fetchSafe();
@@ -448,7 +519,20 @@ const ClientsPage = () => {
                   )}
                 </div>
 
-                <button type="button" className="clients-page__add clients-page__add--desktop filter-bar__action" onClick={() => setFormClient({})}><Plus size={16} /> Добавить клиента</button>
+                {/* Кнопку показываем только когда черновики есть — пустая кнопка
+                    в панели действий была бы просто шумом. */}
+                {drafts.length > 0 && (
+                  <button
+                    type="button"
+                    className="clients-page__drafts-btn"
+                    onClick={() => setDraftsOpen(true)}
+                    title="Отложенные карточки клиентов"
+                  >
+                    <Bookmark size={15} /> Черновики
+                    <span className="clients-page__drafts-count">{drafts.length}</span>
+                  </button>
+                )}
+                <button type="button" className="clients-page__add clients-page__add--desktop filter-bar__action" onClick={() => { setActiveDraft(null); setFormClient({}); }}><Plus size={16} /> Добавить клиента</button>
               </div>
             </div>
             <div className="clients-page__toolbar-mobile clients-page__toolbar-mobile--filter-bar">
@@ -458,7 +542,13 @@ const ClientsPage = () => {
               </div>
               <div className="clients-page__toolbar-mobile-actions">
                 <button type="button" className="clients-page__filters-btn" onClick={() => setFiltersModalOpen(true)}>Фильтры</button>
-                <button type="button" className="clients-page__add filter-bar__action" onClick={() => setFormClient({})}><Plus size={16} /> Добавить</button>
+                {drafts.length > 0 && (
+                  <button type="button" className="clients-page__drafts-btn" onClick={() => setDraftsOpen(true)} aria-label="Черновики">
+                    <Bookmark size={15} />
+                    <span className="clients-page__drafts-count">{drafts.length}</span>
+                  </button>
+                )}
+                <button type="button" className="clients-page__add filter-bar__action" onClick={() => { setActiveDraft(null); setFormClient({}); }}><Plus size={16} /> Добавить</button>
               </div>
             </div>
           </FilterBar>
@@ -818,16 +908,31 @@ const ClientsPage = () => {
       {/* ── Модалки ── */}
       {formClient && (
         <ClientFormModal
-          key={formClient?.id != null ? String(formClient.id) : 'new-client'}
+          // В ключе и черновик: иначе при переходе от одного отложенного клиента
+          // к другому форма осталась бы с данными предыдущего.
+          key={formClient?.id != null ? String(formClient.id) : `new-client-${activeDraft?.id ?? 'blank'}`}
           client={formClient}
+          draft={activeDraft?.payload ?? null}
           sports={sports}
           fetchTrainers={fetchTrainers}
           currentUserFio={user?.fio || user?.login || ''}
           onSave={handleSaveClient}
-          onClose={() => { setFormClient(null); setClientFormError(null); }}
+          onSaveDraft={handleSaveDraft}
+          savingDraft={savingDraft}
+          onClose={() => { setFormClient(null); setActiveDraft(null); setClientFormError(null); }}
           error={clientFormError}
           saving={clientFormSaving}
           fullscreen
+        />
+      )}
+      {draftsOpen && (
+        <ClientDraftsModal
+          drafts={drafts}
+          sports={sports}
+          onOpen={handleOpenDraft}
+          onDelete={handleDeleteDraft}
+          deletingId={deletingDraftId}
+          onClose={() => setDraftsOpen(false)}
         />
       )}
       {cardClient && (

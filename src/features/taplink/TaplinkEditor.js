@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCw, Eye, Check, AlertTriangle, House, BarChart3, Swords, Users, Wallet, Phone, Plus, X, Camera, ChevronDown, Video, Clock, Lock, Star, MessageCircle, AtSign, MapPin } from 'lucide-react';
+import { RefreshCw, Eye, Check, AlertTriangle, House, BarChart3, Swords, Wallet, Phone, Plus, X, Camera, ChevronDown, Video, Clock, Star, MessageCircle, AtSign, MapPin } from 'lucide-react';
 import { loadTaplinkData, saveTaplinkDataAsync, loadTaplinkConfigStrict, setSessionData } from './taplinkStore';
 import { BACKEND_ENABLED, uploadFile } from './api';
 import { fetchSports as fetchCrmSports, fetchTrainers as fetchCrmTrainers, fetchTrainerSchedule } from '../sports-trainers/api';
@@ -8,11 +8,12 @@ import { WEEKDAYS, scheduleFromApiResponse, groupScheduleRows } from '../sports-
 import { Field, PhotoUpload, VideoUpload } from '../../shared/ui';
 import './TaplinkEditor.scss';
 
+// Вкладки «Тренеры» здесь больше нет — фото/стаж/описание/достижения/видео тренера
+// редактируются в одном месте: «Спорт и тренеры» → карточка тренера → «Публичная страница».
 const TABS = [
   { id: 'hero',     label: 'Главная',    icon: House },
   { id: 'stats',    label: 'Статистика', icon: BarChart3 },
   { id: 'sports',   label: 'Секции',     icon: Swords },
-  { id: 'trainers', label: 'Тренеры',    icon: Users },
   { id: 'prices',   label: 'Цены',       icon: Wallet },
   { id: 'footer',   label: 'Контакты',   icon: Phone },
 ];
@@ -365,190 +366,6 @@ const SportsTab = ({ data, setData, onUploadingChange }) => {
                         value={(sport.videos || [])[vi] || ''}
                         onChange={v => setVideo(i, vi, v)}
                         context="sport-video"
-                        backendEnabled={BACKEND_ENABLED}
-                        uploadFile={uploadFile}
-                        onUploadingChange={onUploadingChange}
-                      />
-                    ))}
-                  </div>
-                  {!BACKEND_ENABLED && (
-                    <p className="tpe-videos-block__note">
-                      Видео сохраняются только в рамках текущей сессии браузера
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// ─── Trainers tab ─────────────────────────────────────────────────────────────
-
-const TrainersTab = ({ data, setData, onUploadingChange }) => {
-  const { open, toggle, isRendered } = useAccordion();
-
-  const set = (i, field, val) =>
-    setData(d => {
-      const trainers = [...d.trainers];
-      trainers[i] = { ...trainers[i], [field]: val };
-      return { ...d, trainers };
-    });
-
-  const setVideo = (ti, vi, val) =>
-    setData(d => {
-      const trainers = [...d.trainers];
-      const videos = [...(trainers[ti].videos || ['', '', '', '', ''])];
-      videos[vi] = val;
-      trainers[ti] = { ...trainers[ti], videos };
-      return { ...d, trainers };
-    });
-
-  const setAchieve = (ti, ai, val) =>
-    setData(d => {
-      const trainers = [...d.trainers];
-      const achievements = [...trainers[ti].achievements];
-      achievements[ai] = val;
-      trainers[ti] = { ...trainers[ti], achievements };
-      return { ...d, trainers };
-    });
-
-  const addAchieve = ti =>
-    setData(d => {
-      const trainers = [...d.trainers];
-      trainers[ti] = { ...trainers[ti], achievements: [...trainers[ti].achievements, ''] };
-      return { ...d, trainers };
-    });
-
-  const removeAchieve = (ti, ai) =>
-    setData(d => {
-      const trainers = [...d.trainers];
-      trainers[ti] = {
-        ...trainers[ti],
-        achievements: trainers[ti].achievements.filter((_, i) => i !== ai),
-      };
-      return { ...d, trainers };
-    });
-
-  return (
-    <div className="tpe-section">
-      <div className="tpe-section__hd">
-        <h2 className="tpe-section__title">Тренеры ({data.trainers.length})</h2>
-        <span className="tpe-section__crm-note">Список берётся из CRM «Спорт и тренеры» — создать или удалить тренера здесь нельзя</span>
-      </div>
-      <div className="tpe-list">
-        {data.trainers.map((t, i) => (
-          <div key={t.id || i} className={`tpe-item${open === i ? ' tpe-item--open' : ''}`}>
-            <button type="button" className="tpe-item__head" onClick={() => toggle(i)} aria-expanded={open === i}>
-              <span className="tpe-item__ava-wrap">
-                {t.photo
-                  ? <img src={t.photo} alt="" className="tpe-item__ava-img" />
-                  : <span className="tpe-item__ava-empty"><Camera size={16} strokeWidth={1.75} /></span>
-                }
-              </span>
-              <span className="tpe-item__info">
-                <span className="tpe-item__name">{t.name}</span>
-                <span className="tpe-item__sport">{t.sportName}</span>
-              </span>
-              {t.published === false && <span className="tpe-item__hidden-badge">Скрыт</span>}
-              <ChevronDown size={16} strokeWidth={2} className={`tpe-item__arrow${open === i ? ' tpe-item__arrow--open' : ''}`} />
-            </button>
-
-            {isRendered(i) && (
-              <div className="tpe-item__body">
-                <label className="tpe-switch tpe-switch--block">
-                  <input
-                    type="checkbox"
-                    className="tpe-switch__input"
-                    checked={t.published !== false}
-                    onChange={e => set(i, 'published', e.target.checked)}
-                  />
-                  <span className="tpe-switch__track"><span className="tpe-switch__thumb" /></span>
-                  <span className="tpe-switch__label">Показывать тренера на сайте</span>
-                </label>
-
-                <div className="tpe-two-col">
-                  <Field label="Фото тренера">
-                    <PhotoUpload
-                      value={t.photo}
-                      onChange={v => set(i, 'photo', v)}
-                      shape="round"
-                      placeholder="Фото тренера"
-                      context="trainer-photo"
-                      backendEnabled={BACKEND_ENABLED}
-                      uploadFile={uploadFile}
-                      onUploadingChange={onUploadingChange}
-                    />
-                  </Field>
-                  <div className="tpe-trainer-fields">
-                    <Field label="ФИО тренера" hint={<><Lock size={11} strokeWidth={2} /> Из CRM «Спорт и тренеры» — изменить можно только там.</>}>
-                      <input className="tpe-input tpe-input--readonly" value={t.name} disabled readOnly />
-                    </Field>
-                    <Field label="Вид спорта" hint={<><Lock size={11} strokeWidth={2} /> Из CRM «Спорт и тренеры» — изменить можно только там.</>}>
-                      <input className="tpe-input tpe-input--readonly" value={t.sportName || '—'} disabled readOnly />
-                    </Field>
-                    <Field label="Тренерский стаж (напр. 10 лет)">
-                      <input className="tpe-input" value={t.experience} onChange={e => set(i, 'experience', e.target.value)} />
-                    </Field>
-                    <Field label="Instagram (username без @)">
-                      <input
-                        className="tpe-input"
-                        placeholder="username"
-                        value={t.instagram || ''}
-                        onChange={e => set(i, 'instagram', e.target.value)}
-                      />
-                    </Field>
-                  </div>
-                </div>
-
-                <Field label="Краткое описание (на карточке слайдера)">
-                  <input className="tpe-input" value={t.shortBio} onChange={e => set(i, 'shortBio', e.target.value)} />
-                </Field>
-
-                <Field label="Полное описание (в детальном окне)">
-                  <textarea
-                    className="tpe-input tpe-ta"
-                    rows={3}
-                    value={t.bio}
-                    onChange={e => set(i, 'bio', e.target.value)}
-                  />
-                </Field>
-
-                <div className="tpe-field">
-                  <label className="tpe-field__label">Достижения</label>
-                  {t.achievements.map((a, ai) => (
-                    <div key={ai} className="tpe-achieve-row">
-                      <input
-                        className="tpe-input"
-                        placeholder={`Достижение ${ai + 1}`}
-                        value={a}
-                        onChange={e => setAchieve(i, ai, e.target.value)}
-                      />
-                      {t.achievements.length > 1 && (
-                        <button type="button" className="tpe-achieve-del" onClick={() => removeAchieve(i, ai)} aria-label="Удалить достижение"><X size={14} strokeWidth={2.5} /></button>
-                      )}
-                    </div>
-                  ))}
-                  {t.achievements.length < 6 && (
-                    <button type="button" className="tpe-achieve-add" onClick={() => addAchieve(i)}>
-                      <Plus size={14} strokeWidth={2.5} /> Добавить достижение
-                    </button>
-                  )}
-                </div>
-
-                <div className="tpe-videos-block">
-                  <p className="tpe-videos-block__label"><Video size={13} strokeWidth={2} /> Видео тренировок</p>
-                  <div className="tpe-videos-grid">
-                    {[0, 1, 2, 3, 4].map(vi => (
-                      <VideoUpload
-                        key={vi}
-                        num={vi + 1}
-                        value={(t.videos || [])[vi] || ''}
-                        onChange={v => setVideo(i, vi, v)}
-                        context="trainer-video"
                         backendEnabled={BACKEND_ENABLED}
                         uploadFile={uploadFile}
                         onUploadingChange={onUploadingChange}
@@ -926,7 +743,6 @@ const TaplinkEditor = () => {
         {tab === 'hero'     && <HeroTab     data={data} setData={setData} onUploadingChange={bumpUploading} />}
         {tab === 'stats'    && <StatsTab    data={data} setData={setData} />}
         {tab === 'sports'   && <SportsTab   data={data} setData={setData} onUploadingChange={bumpUploading} />}
-        {tab === 'trainers' && <TrainersTab data={data} setData={setData} onUploadingChange={bumpUploading} />}
         {tab === 'prices'   && <PricesTab   data={data} setData={setData} />}
         {tab === 'footer'   && <FooterTab   data={data} setData={setData} />}
       </div>

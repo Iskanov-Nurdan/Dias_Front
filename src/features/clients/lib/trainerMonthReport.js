@@ -1,14 +1,18 @@
 /**
  * Отчёт «ученики тренера за месяц»: строка таблицы и агрегаты.
  *
- * Долг считаем как «цена со скидкой минус фактически внесённые деньги», а не по флагу paid:
- * флаг говорит только «да/нет», а вопрос был «сколько именно ученик ещё не заплатил».
- * Источник обеих цифр — тот же, что у карточки клиента, поэтому отчёт и карточка не расходятся.
+ * Цена, внесённая сумма и долг НЕ считаются здесь — они приходят из API готовыми
+ * полями (см. clientMoney.js и clients/pricing.py на бэкенде). Отчёт только
+ * раскладывает их по колонкам и складывает итоги.
  */
 
-import { isClientPaid } from '../../../shared/constants/common';
 import { WEEKDAYS } from '../../sports-trainers/scheduleConstants';
-import { getClientFinalPriceForList, getClientPartialPaymentsSum } from './clientActualPayments';
+import {
+  getClientDebt,
+  getClientPaidAmount,
+  getClientPriceDisplay,
+  isClientFullyPaid,
+} from './clientMoney';
 
 export const CLIENT_TYPE_LABELS = {
   regular: 'Регулярный',
@@ -43,11 +47,12 @@ const formatDate = (v) => {
   return y && m && d ? `${d}.${m}.${y}` : iso;
 };
 
-/** Клиент из API → строка отчёта. */
+/** Клиент из API → строка отчёта. Все суммы — как их прислал сервер. */
 export const buildTrainerReportRow = (client) => {
-  const price = Math.max(0, getClientFinalPriceForList(client));
-  const collected = Math.max(0, getClientPartialPaymentsSum(client));
-  const paid = isClientPaid(client);
+  const price = Math.max(0, getClientPriceDisplay(client) ?? 0);
+  const collected = Math.max(0, getClientPaidAmount(client) ?? 0);
+  const debt = Math.max(0, getClientDebt(client) ?? 0);
+  const paid = isClientFullyPaid(client);
   const rawType = client?.clientType ?? client?.client_type ?? 'regular';
   return {
     id: client?.id,
@@ -60,8 +65,7 @@ export const buildTrainerReportRow = (client) => {
     dateStart: formatDate(client?.dateStart ?? client?.date_start),
     price,
     collected,
-    /** Остаток к доплате: отрицательного долга не бывает, переплату не показываем как минус. */
-    debt: Math.max(0, price - collected),
+    debt,
     paid,
   };
 };

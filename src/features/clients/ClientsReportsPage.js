@@ -24,7 +24,7 @@ import { buildTrainerReportRow, getNextPeriod, sortTrainerReportRows } from './l
 import { exportTrainerMonthReport } from './lib/trainerMonthReportExport';
 import { MAX_WARNINGS } from './lib/clientWarnings';
 import { UserX, BarChart2, Calendar, CalendarDays, Search, AlertTriangle, Users, CircleCheck, CircleX, Info, UserCheck, Percent, ClipboardList, FileSpreadsheet, Dumbbell } from 'lucide-react';
-import { Select, ConfirmModal, Pagination, FilterBar, EmptyState, Spinner } from '../../shared/ui';
+import { Select, ConfirmModal, Pagination, FilterBar, Spinner } from '../../shared/ui';
 import {
   ClientsList,
   ClientCardModal,

@@ -158,21 +158,7 @@ export function getPriceFieldInitialForForm(client) {
   return getInitialSubscriptionPriceInputValue(client);
 }
 
-/** Сумма положительных amount в actualPayments / actual_payments. */
-export function getClientPartialPaymentsSum(client) {
-  const raw = client?.actualPayments ?? client?.actual_payments;
-  if (!Array.isArray(raw) || raw.length === 0) return 0;
-  let s = 0;
-  for (const p of raw) {
-    const n = Number(p.amount);
-    if (Number.isFinite(n) && n > 0) s += n;
-  }
-  return Math.round(s);
-}
-
-/** Сумма частичных оплат покрывает цену (для подсветки строки). */
-export function isClientFullyCoveredByInstallments(client) {
-  const target = getClientFinalPriceForList(client);
-  if (target <= 0) return false;
-  return getClientPartialPaymentsSum(client) >= target;
-}
+// Сумма внесённых денег и признак «долг закрыт» больше здесь не считаются:
+// их отдаёт сервер полями paidAmount / debt / fullyPaid — см. lib/clientMoney.js.
+// Держать вторую реализацию тех же формул в браузере значит гарантированно
+// разойтись с бэкендом при первой же правке скидок или доплат.

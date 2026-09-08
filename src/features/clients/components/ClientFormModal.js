@@ -22,10 +22,10 @@ import {
 import {
   buildActualPaymentsPayload,
   emptyInstallmentRow,
-  getClientFinalPriceForList,
   getInitialInstallmentRows,
   getPriceFieldInitialForForm,
 } from '../lib/clientActualPayments';
+import { getClientPriceDisplay } from '../lib/clientMoney';
 import './ClientFormModal.scss';
 
 /**
@@ -435,7 +435,7 @@ const ClientFormModal = ({
      */
     const initialRows = getInitialInstallmentRows(client);
     const hasAnyAmount = initialRows.some((r) => Number(r.amount) > 0);
-    const legacyTarget = getClientFinalPriceForList(client);
+    const legacyTarget = getClientPriceDisplay(client) ?? 0;
     if (isClientPaid(client) && !hasAnyAmount && legacyTarget > 0) {
       const legacyDate = client.actualPaymentDate ?? client.actual_payment_date ?? getDateStartFieldValue(client);
       setInstallments([{

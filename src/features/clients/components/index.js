@@ -8,3 +8,4 @@ export { default as TrainerDetailsModal } from './TrainerDetailsModal';
 export { default as DuplicateGroup } from './DuplicateGroup';
 export { default as ClientsScheduleStatsBlock } from './ClientsScheduleStatsBlock';
 export { default as ClientsPaymentDayReportBlock } from './ClientsPaymentDayReportBlock';
+export { default as TrainerMonthReportBlock } from './TrainerMonthReportBlock';

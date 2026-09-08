@@ -1,0 +1,644 @@
+@use '../../../shared/styles/mixins';
+
+.trainer-report {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+// ── Шапка отчёта: кто + период слева, деньги за оба месяца справа ───────────
+// Три главные цифры вынесены наверх и укрупнены: до этого они лежали в подвалах
+// панелей 12-м серым текстом, а общего итога за два месяца не было совсем.
+.trainer-report__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xs);
+}
+
+.trainer-report__identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.trainer-report__identity-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.trainer-report__identity-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.trainer-report__identity-name {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trainer-report__identity-period {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+
+  svg { flex-shrink: 0; opacity: 0.6; }
+}
+
+.trainer-report__totals {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  flex-wrap: wrap;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-surface-secondary);
+}
+
+.trainer-report__total {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 16px;
+  min-width: 150px;
+  transition: background 0.2s ease;
+
+  & + & { border-left: 1px solid var(--color-border); }
+
+  &--ok .trainer-report__total-icon {
+    background: var(--color-success-soft);
+    color: var(--color-success);
+  }
+
+  &--debt {
+    background: var(--color-danger-soft);
+
+    .trainer-report__total-icon {
+      background: color-mix(in srgb, var(--color-danger) 18%, transparent);
+      color: var(--color-danger);
+    }
+
+    .trainer-report__total-value { color: var(--color-danger); }
+  }
+}
+
+.trainer-report__total-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}
+
+.trainer-report__total-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.trainer-report__total-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.trainer-report__total-hint {
+  opacity: 0.55;
+  cursor: help;
+}
+
+.trainer-report__total-value {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@include mixins.mobile {
+  .trainer-report__header { align-items: stretch; }
+  .trainer-report__totals { width: 100%; }
+  .trainer-report__total { flex: 1 1 140px; min-width: 0; }
+}
+
+// ── Два месяца рядом ────────────────────────────────────────────────────────
+// Сравнение «кто был / кто продлил» — задача глазами, а не переключателем вкладок,
+// поэтому на широком экране месяцы стоят колонками, а не один под другим.
+.trainer-report__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+
+  @media (min-width: 1180px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+.trainer-report__state {
+  padding: var(--space-8) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  display: flex;
+  justify-content: center;
+}
+
+.trainer-report__panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+.trainer-report__panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 14px 16px 12px;
+}
+
+.trainer-report__panel-title {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+
+.trainer-report__panel-month {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+}
+
+.trainer-report__panel-year {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+// Какой месяц выбран, а какой «следующий» — подпись, а не догадка по позиции
+.trainer-report__panel-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+
+  &--next {
+    background: var(--color-surface-secondary);
+    color: var(--color-text-muted);
+  }
+}
+
+.trainer-report__panel-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+
+  svg { opacity: 0.6; }
+}
+
+.trainer-report__meter {
+  height: 4px;
+  background: var(--color-danger-soft);
+  overflow: hidden;
+}
+
+.trainer-report__meter-fill {
+  height: 100%;
+  background: var(--color-success);
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+// ── KPI: три цифры, каждая со своим смыслом и цветом ────────────────────────
+.trainer-report__kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-bottom: 1px solid var(--color-border);
+}
+
+.trainer-report__kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 12px 8px 13px;
+  color: var(--color-text-muted);
+  transition: background 0.2s ease;
+
+  & + & { border-left: 1px solid var(--color-border); }
+
+  svg { opacity: 0.55; margin-bottom: 2px; }
+
+  &--paid {
+    color: var(--color-success);
+    svg { opacity: 1; }
+  }
+
+  &--unpaid {
+    color: var(--color-danger);
+    svg { opacity: 1; }
+  }
+
+  &--debt {
+    background: color-mix(in srgb, var(--color-danger) 5%, transparent);
+    color: var(--color-danger);
+    svg { opacity: 1; }
+  }
+}
+
+.trainer-report__kpi-value {
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: currentColor;
+}
+
+.trainer-report__kpi-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.trainer-report__kpi--money .trainer-report__kpi-value {
+  font-variant-numeric: tabular-nums;
+}
+
+// ── Фильтр внутри панели ────────────────────────────────────────────────────
+.trainer-report__filters {
+  display: flex;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-secondary);
+}
+
+.trainer-report__filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+
+  &:hover:not(&--active) {
+    color: var(--color-text);
+    background: var(--color-surface);
+  }
+
+  &--active {
+    background: var(--color-surface);
+    border-color: var(--color-border-strong, var(--color-border));
+    color: var(--color-text);
+    box-shadow: var(--shadow-xs);
+  }
+}
+
+.trainer-report__filter-count {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--color-surface-secondary);
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--color-text-muted);
+}
+
+.trainer-report__filter--active .trainer-report__filter-count {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+// ── Таблица: плотная, со «липкой» шапкой и внутренним скроллом ──────────────
+// Общий .ui-list__table здесь не подходит: у него строки 68px, а тут на экране
+// сразу два списка — 40 учеников превратились бы в бесконечную прокрутку страницы.
+.trainer-report__table-wrap {
+  max-height: 520px;
+  overflow-y: auto;
+  overflow-x: auto;
+  @include mixins.scrollbar;
+}
+
+.trainer-report__table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 9px 14px;
+    text-align: left;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 13.5px;
+    color: var(--color-text);
+    vertical-align: middle;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+}
+
+.trainer-report__col-num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.trainer-report__col-slot {
+  white-space: nowrap;
+}
+
+.trainer-report__row {
+  cursor: pointer;
+  transition: background 0.15s ease;
+  position: relative;
+
+  &:hover td,
+  &:focus-visible td {
+    background: var(--color-surface-secondary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+  }
+
+  // Полоса слева — должник виден боковым зрением, без чтения последней колонки
+  &--debt td:first-child {
+    box-shadow: inset 3px 0 0 var(--color-danger);
+  }
+
+  &--paid td:first-child {
+    box-shadow: inset 3px 0 0 var(--color-success);
+  }
+
+  &:hover .trainer-report__row-chevron {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.trainer-report__client {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.trainer-report__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+
+  &--paid {
+    background: var(--color-success-soft);
+    color: var(--color-success);
+  }
+}
+
+.trainer-report__client-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.trainer-report__client-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trainer-report__client-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+
+  svg { flex-shrink: 0; opacity: 0.7; }
+}
+
+.trainer-report__dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.5;
+  margin: 0 2px;
+}
+
+.trainer-report__slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--color-surface-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+
+  svg { opacity: 0.6; }
+}
+
+.trainer-report__muted { color: var(--color-text-muted); }
+
+.trainer-report__price {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.trainer-report__debt {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.trainer-report__paid-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-success);
+}
+
+.trainer-report__row-chevron {
+  margin-left: 6px;
+  vertical-align: middle;
+  color: var(--color-text-muted);
+  opacity: 0;
+  transform: translateX(-3px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+// Компактное пустое состояние: панель остаётся высотой с соседнюю,
+// а не разъезжается на пол-экрана ради одной строки текста.
+.trainer-report__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 34px 20px 38px;
+  text-align: center;
+}
+
+.trainer-report__empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-muted);
+}
+
+.trainer-report__empty-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.trainer-report__empty-hint {
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+}
+
+// Нули пустого месяца не должны выглядеть как настоящие показатели
+.trainer-report__kpis--empty {
+  .trainer-report__kpi,
+  .trainer-report__kpi--paid,
+  .trainer-report__kpi--unpaid {
+    color: var(--color-text-muted);
+    background: transparent;
+  }
+
+  .trainer-report__kpi-value { opacity: 0.45; }
+}
+
+.trainer-report__panel-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  padding: 11px 16px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-secondary);
+  font-size: 12px;
+  color: var(--color-text-muted);
+
+  strong {
+    color: var(--color-text);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.trainer-report__foot-debt strong { color: var(--color-danger); }
+
+@media (prefers-reduced-motion: reduce) {
+  .trainer-report__meter-fill,
+  .trainer-report__row-chevron { transition: none; }
+}

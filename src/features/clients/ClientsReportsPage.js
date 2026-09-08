@@ -10,6 +10,7 @@ import {
   fetchClientsScheduleStats,
   fetchClientsPaymentDayReport,
   fetchClients,
+  fetchAllClientsPaginated,
   uploadClientPhotos,
 } from './api';
 import { fetchSports, fetchTrainers } from '../sports-trainers/api';
@@ -19,8 +20,10 @@ import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { MONTHS, STATS_YEARS } from '../../shared/constants/common';
 import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiError';
 import { prepareClientSavePayload } from './lib/prepareClientSavePayload';
+import { buildTrainerReportRow, getNextPeriod, sortTrainerReportRows } from './lib/trainerMonthReport';
+import { exportTrainerMonthReport } from './lib/trainerMonthReportExport';
 import { MAX_WARNINGS } from './lib/clientWarnings';
-import { UserX, BarChart2, Calendar, CalendarDays, Search, AlertTriangle, Users, CircleCheck, CircleX, Info, UserCheck, Percent } from 'lucide-react';
+import { UserX, BarChart2, Calendar, CalendarDays, Search, AlertTriangle, Users, CircleCheck, CircleX, Info, UserCheck, Percent, ClipboardList, FileSpreadsheet, Dumbbell } from 'lucide-react';
 import { Select, ConfirmModal, Pagination, FilterBar, EmptyState, Spinner } from '../../shared/ui';
 import {
   ClientsList,
@@ -30,6 +33,7 @@ import {
   TrainerDetailsModal,
   ClientsScheduleStatsBlock,
   ClientsPaymentDayReportBlock,
+  TrainerMonthReportBlock,
 } from './components';
 import StatsUnpaidModal from './components/StatsUnpaidModal';
 import NotRenewedListModal from './components/NotRenewedListModal';
@@ -39,6 +43,7 @@ const TAB_NOT_RENEWED = 'not_renewed';
 const TAB_STATS = 'stats';
 const TAB_PAYMENT_DAYS = 'payment_days';
 const TAB_WARNINGS = 'warnings';
+const TAB_TRAINER = 'trainer';
 
 const ClientsReportsPage = () => {
   const { user, isAdmin, showAccessDenied } = useAuth();
@@ -98,6 +103,20 @@ const ClientsReportsPage = () => {
   const [trainerDetails, setTrainerDetails] = useState(null);
   const [showUnpaidModal, setShowUnpaidModal] = useState(false);
   const [showNotRenewedModal, setShowNotRenewedModal] = useState(false);
+
+  // ── Отчёт по тренеру: год → месяц → тренер, два месяца подряд ──────────────
+  const [trYear, setTrYear] = useState(() => {
+    const y = String(new Date().getFullYear());
+    return STATS_YEARS.includes(y) ? y : STATS_YEARS[0];
+  });
+  const [trMonth, setTrMonth] = useState(String(new Date().getMonth() + 1));
+  const [trTrainerId, setTrTrainerId] = useState('');
+  const [trTrainers, setTrTrainers] = useState([]);
+  const [trPeriods, setTrPeriods] = useState(null);
+  const [trLoading, setTrLoading] = useState(false);
+  const [trError, setTrError] = useState(null);
+  const trControllerRef = useRef(null);
+  const trRequestSeq = useRef(0);
 
   const fetchNotRenewedSafe = useCallback(async () => {
     if (!nrYear || !nrMonth) return;
@@ -225,6 +244,101 @@ const ClientsReportsPage = () => {
       paymentDayReportControllerRef.current?.abort();
     };
   }, [activeTab, fetchPaymentDayReport]);
+
+  /** Список тренеров для селекта — грузим один раз при первом открытии вкладки. */
+  useEffect(() => {
+    if (activeTab !== TAB_TRAINER || trTrainers.length > 0) return undefined;
+    let cancelled = false;
+    fetchTrainers({ perPage: 500 }, null)
+      .then((d) => {
+        if (cancelled) return;
+        const list = d?.items ?? d?.results ?? (Array.isArray(d) ? d : []) ?? [];
+        setTrTrainers(list);
+      })
+      .catch((e) => {
+        if (!cancelled) toast.error(e?.userMessage ?? 'Не удалось загрузить список тренеров');
+      });
+    return () => { cancelled = true; };
+  }, [activeTab, trTrainers.length, toast]);
+
+  /**
+   * Два месяца одним заходом: выбранный и следующий. Запрашиваем все страницы —
+   * у тренера бывает больше учеников, чем помещается на одну (бэкенд режет по 100).
+   */
+  const fetchTrainerReport = useCallback(async () => {
+    if (!trYear || !trMonth || !trTrainerId) {
+      trControllerRef.current?.abort();
+      setTrPeriods(null);
+      setTrLoading(false);
+      setTrError(null);
+      return;
+    }
+    const next = getNextPeriod(trYear, trMonth);
+    if (!next) return;
+
+    trControllerRef.current?.abort();
+    trControllerRef.current = new AbortController();
+    const { signal } = trControllerRef.current;
+    const seq = ++trRequestSeq.current;
+    setTrLoading(true);
+    setTrError(null);
+
+    const periods = [
+      { year: Number(trYear), month: Number(trMonth) },
+      next,
+    ];
+
+    try {
+      const results = await Promise.all(
+        periods.map((p) =>
+          fetchAllClientsPaginated(
+            { trainerId: trTrainerId, year: String(p.year), month: String(p.month) },
+            signal,
+          ),
+        ),
+      );
+      if (trRequestSeq.current !== seq) return;
+      setTrPeriods(
+        periods.map((period, i) => ({
+          period,
+          rows: sortTrainerReportRows((results[i] || []).map(buildTrainerReportRow)),
+        })),
+      );
+    } catch (err) {
+      if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
+      if (trRequestSeq.current !== seq) return;
+      setTrError(getApiErrorMessage(err));
+      setTrPeriods(null);
+    } finally {
+      if (trRequestSeq.current === seq) setTrLoading(false);
+    }
+  }, [trYear, trMonth, trTrainerId]);
+
+  useEffect(() => {
+    if (activeTab !== TAB_TRAINER) return undefined;
+    fetchTrainerReport();
+    return () => { trControllerRef.current?.abort(); };
+  }, [activeTab, fetchTrainerReport]);
+
+  const trTrainerName = useMemo(
+    () => trTrainers.find((t) => String(t.id) === String(trTrainerId))?.fio || '',
+    [trTrainers, trTrainerId],
+  );
+
+  /**
+   * В файл уходит только выбранный месяц. Следующий месяц на экране нужен для сравнения
+   * («кто уже продлил»), но выгружают то, что выбрали фильтром — за сентябрём достаточно
+   * переключить месяц и скачать снова.
+   */
+  const handleExportTrainerReport = useCallback(() => {
+    if (!trPeriods?.length) return;
+    try {
+      exportTrainerMonthReport({ trainerName: trTrainerName, periods: [trPeriods[0]] });
+      toast.success(`Excel за ${MONTHS[Number(trMonth)].toLowerCase()} сформирован`);
+    } catch (e) {
+      toast.error('Не удалось сформировать файл');
+    }
+  }, [trPeriods, trTrainerName, trMonth, toast]);
 
   const fetchWarnedClients = useCallback(async () => {
     warningsControllerRef.current?.abort();
@@ -403,6 +517,13 @@ const ClientsReportsPage = () => {
           onClick={() => setActiveTab(TAB_PAYMENT_DAYS)}
         >
           <CalendarDays size={15} /> Записи по дням
+        </button>
+        <button
+          type="button"
+          className={`ui-tabs__tab${activeTab === TAB_TRAINER ? ' ui-tabs__tab--active' : ''}`}
+          onClick={() => setActiveTab(TAB_TRAINER)}
+        >
+          <ClipboardList size={15} /> По тренеру
         </button>
         <button
           type="button"
@@ -636,6 +757,71 @@ const ClientsReportsPage = () => {
               />
             </>
           )}
+        </div>
+      )}
+
+      {activeTab === TAB_TRAINER && (
+        <div className="clients-page__stats-section">
+          <FilterBar className="clients-page__trainer-toolbar">
+            <div className="clients-page__trainer-filters">
+              <Select
+                value={trYear}
+                onChange={setTrYear}
+                options={STATS_YEARS.map((y) => ({ value: y, label: y }))}
+                placeholder="Год"
+                className="clients-page__stats-select"
+                icon={<Calendar size={15} />}
+              />
+              <Select
+                value={trMonth}
+                onChange={setTrMonth}
+                options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: MONTHS[i + 1] }))}
+                placeholder="Месяц"
+                className="clients-page__stats-select"
+                icon={<CalendarDays size={15} />}
+              />
+              <Select
+                value={String(trTrainerId)}
+                onChange={setTrTrainerId}
+                options={[
+                  { value: '', label: 'Выберите тренера' },
+                  ...trTrainers.map((t) => ({ value: String(t.id), label: t.fio || '' })),
+                ]}
+                placeholder="Тренер"
+                className="clients-page__stats-select clients-page__trainer-select"
+                icon={<Dumbbell size={15} />}
+              />
+            </div>
+            <button
+              type="button"
+              className="clients-page__export-btn"
+              onClick={handleExportTrainerReport}
+              disabled={!trPeriods?.length || trLoading}
+              title={
+                trPeriods?.length
+                  ? `Скачать в Excel учеников за ${MONTHS[Number(trMonth)].toLowerCase()} ${trYear}`
+                  : 'Сначала выберите тренера'
+              }
+            >
+              <FileSpreadsheet size={16} aria-hidden />
+              Скачать Excel
+              {/* Подпись месяца прямо на кнопке: раньше она молчала о своей области,
+                  и было непонятно, уйдёт в файл один месяц или оба. */}
+              <span className="clients-page__export-btn-month">{MONTHS[Number(trMonth)]}</span>
+            </button>
+          </FilterBar>
+
+          {/* Отдельный синий баннер убран: он слово в слово повторял фильтры сверху.
+              Кто/за какие месяцы и денежные итоги теперь в шапке самого отчёта —
+              там, где на них смотрят, а пояснение про долг ушло в подсказку у цифры. */}
+          <TrainerMonthReportBlock
+            periods={trTrainerId ? trPeriods : null}
+            loading={trLoading}
+            errorMessage={trError}
+            trainerName={trTrainerName}
+            onRetry={fetchTrainerReport}
+            onOpenClient={handleOpenCard}
+          />
         </div>
       )}
 

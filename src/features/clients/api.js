@@ -296,6 +296,26 @@ export const bulkClientAction = async ({ action, ids, months }, signal) => {
   return data;
 };
 
+/** GET /api/clients/attendance/?date= — отметки посещения за день. */
+export const fetchAttendance = async (dateIso, signal) => {
+  const { data } = await apiClient.get('/clients/attendance/', {
+    params: dateIso ? { date: dateIso } : {}, ...withSignal({}, signal),
+  });
+  return data?.items ?? [];
+};
+
+/** POST /api/clients/attendance/ — отметить «был» / «не пришёл». */
+export const markAttendance = async ({ clientId, date, status }, signal) => {
+  const { data } = await apiClient.post('/clients/attendance/',
+    { clientId, date, status }, withSignal({}, signal));
+  return data;
+};
+
+/** DELETE — снять отметку, поставленную по ошибке. */
+export const clearAttendance = async (clientId, dateIso, signal) => {
+  await apiClient.delete(`/clients/${clientId}/attendance/${dateIso}/`, withSignal({}, signal));
+};
+
 /** Загружает ВСЕ клиенты, проходя по всем страницам (для дубликатов) */
 export const fetchAllClientsPaginated = async (queryOverrides, signal) => {
   const perPage = 100;

@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  CalendarClock, CircleAlert, Clock, MessageCircle, RefreshCw, TriangleAlert, Users, Wallet,
+  CalendarClock, CircleAlert, Clock, MessageCircle, RefreshCw, Wallet, Check, X,
 } from 'lucide-react';
 import { ErrorState, Spinner } from '../../../shared/ui';
 import { formatMoney, formatSubscriptionEnd } from '../../../shared/constants/common';
 import { WEEKDAYS } from '../../sports-trainers/scheduleConstants';
-import { fetchClients, fetchExpiringClients } from '../api';
+import { fetchClients, fetchExpiringClients, fetchAttendance, markAttendance, clearAttendance } from '../api';
 import { getClientDebt } from '../lib/clientMoney';
 import './TodayBoard.scss';
 
@@ -35,6 +35,9 @@ const TodayBoard = ({ onOpenClient, onExtend }) => {
   const [lessons, setLessons] = useState([]);
   const [debtors, setDebtors] = useState([]);
   const [expiring, setExpiring] = useState([]);
+  // Отметки посещения за сегодня: clientId -> 'present' | 'absent'
+  const [marks, setMarks] = useState({});
+  const [markSaving, setMarkSaving] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -48,14 +51,17 @@ const TodayBoard = ({ onOpenClient, onExtend }) => {
     const year = String(now.getFullYear());
     const month = String(now.getMonth() + 1);
     try {
-      const [lessonsRes, debtorsRes, expiringRes] = await Promise.all([
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const [lessonsRes, debtorsRes, expiringRes, attendanceRes] = await Promise.all([
         fetchClients({ weekday, year, month, perPage: 100 }, null),
         fetchClients({ paid: 'false', year, month, perPage: 100 }, null),
         fetchExpiringClients({ days: 7 }, null),
+        fetchAttendance(todayIso, null),
       ]);
       setLessons(lessonsRes?.items ?? lessonsRes?.results ?? []);
       setDebtors(debtorsRes?.items ?? debtorsRes?.results ?? []);
       setExpiring(expiringRes?.items ?? []);
+      setMarks(Object.fromEntries((attendanceRes || []).map((a) => [a.clientId, a.status])));
     } catch (e) {
       setError(e?.userMessage ?? 'Не удалось загрузить сводку за сегодня');
     } finally {
@@ -65,10 +71,37 @@ const TodayBoard = ({ onOpenClient, onExtend }) => {
 
   useEffect(() => { load(); }, [load]);
 
+  /**
+   * Отметить посещение. Повторное нажатие на ту же кнопку снимает отметку —
+   * иначе ошибочный клик было бы нечем исправить.
+   */
+  const toggleMark = async (client, next) => {
+    const dateIso = new Date().toISOString().slice(0, 10);
+    const current = marks[client.id];
+    setMarkSaving(client.id);
+    // Показываем результат сразу, при ошибке возвращаем как было
+    const optimistic = { ...marks };
+    if (current === next) delete optimistic[client.id]; else optimistic[client.id] = next;
+    setMarks(optimistic);
+    try {
+      if (current === next) await clearAttendance(client.id, dateIso, null);
+      else await markAttendance({ clientId: client.id, date: dateIso, status: next }, null);
+    } catch {
+      setMarks(marks);
+    } finally {
+      setMarkSaving(null);
+    }
+  };
+
   /** Занятия — по времени начала: так же, как идёт день. */
   const lessonsSorted = useMemo(
     () => [...lessons].sort((a, b) => timeLabel(a).localeCompare(timeLabel(b))),
     [lessons],
+  );
+
+  const markedCount = useMemo(
+    () => lessonsSorted.filter((c) => marks[c.id]).length,
+    [lessonsSorted, marks],
   );
 
   const debtTotal = useMemo(
@@ -114,6 +147,7 @@ const TodayBoard = ({ onOpenClient, onExtend }) => {
           <header className="today__card-head">
             <span className="today__card-icon"><Clock size={15} /></span>
             <span className="today__card-title">Занятия сегодня</span>
+            {markedCount > 0 && <span className="today__card-sum today__card-sum--ok">отмечено {markedCount}</span>}
             <span className="today__card-count">{lessonsSorted.length}</span>
           </header>
           {!lessonsSorted.length ? (
@@ -121,7 +155,29 @@ const TodayBoard = ({ onOpenClient, onExtend }) => {
           ) : (
             <ul className="today__list">
               {lessonsSorted.map((c) => renderRow(c, (
-                <span className="today__time">{timeLabel(c) || '—'}</span>
+                <>
+                  <span className="today__time">{timeLabel(c) || '—'}</span>
+                  {/* Отметка посещения: до этого система знала только про деньги,
+                      а «перестал ходить» становилось видно лишь при непродлении */}
+                  <button
+                    type="button"
+                    className={`today__mark today__mark--yes${marks[c.id] === 'present' ? ' today__mark--on' : ''}`}
+                    disabled={markSaving === c.id}
+                    onClick={() => toggleMark(c, 'present')}
+                    title="Был на занятии"
+                  >
+                    <Check size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    className={`today__mark today__mark--no${marks[c.id] === 'absent' ? ' today__mark--on' : ''}`}
+                    disabled={markSaving === c.id}
+                    onClick={() => toggleMark(c, 'absent')}
+                    title="Не пришёл"
+                  >
+                    <X size={13} />
+                  </button>
+                </>
               )))}
             </ul>
           )}

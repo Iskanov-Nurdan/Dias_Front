@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { AlertCircle, CalendarDays, Check, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { AlertCircle, CalendarDays, Check, Loader2, Search } from 'lucide-react';
 import { fetchSalary, saveSalary } from './api';
 import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
@@ -66,7 +66,21 @@ const SalaryPage = () => {
   const nowYear = now.getFullYear();
   const nowMonth = now.getMonth() + 1;
   const isMonthEnded = queryState.year < nowYear || (queryState.year === nowYear && queryState.month < nowMonth);
-  const items = getSalaryItems(data);
+  const allItems = getSalaryItems(data);
+
+  /**
+   * Поиск по тренеру. Список за месяц целиком приходит одним ответом, поэтому
+   * фильтруем на месте — искать нужного человека прокруткой было неудобно.
+   */
+  const [search, setSearch] = useState('');
+  const items = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return allItems;
+    return allItems.filter((row) => {
+      const name = row.trainerName ?? row.trainer?.fio ?? row.fio ?? '';
+      return String(name).toLowerCase().includes(q);
+    });
+  }, [allItems, search]);
 
   const getTrainerPercent = (row) => {
     const trainerId = row.trainerId ?? row.trainer_id ?? row.id;
@@ -100,6 +114,16 @@ const SalaryPage = () => {
   return (
     <div className="salary-page">
       <FilterBar className="salary-page__filter-bar">
+        <div className="ui-search salary-page__search">
+          <Search size={15} className="ui-search__icon" />
+          <input
+            type="text"
+            placeholder="Поиск по тренеру"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="ui-search__input"
+          />
+        </div>
         <div className="salary-page__filter-item">
           <span className="salary-page__filter-label">Год</span>
           <input

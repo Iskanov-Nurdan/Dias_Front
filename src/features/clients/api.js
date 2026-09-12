@@ -38,6 +38,10 @@ const buildClientsListParams = (queryState) => {
   if (queryState?.page) params.page = queryState.page;
   if (queryState?.perPage) params.perPage = queryState.perPage;
 
+  // Простой фильтр «занятия в этот день недели» (экран «Сегодня»).
+  // Отдельно от фильтра по слоту ниже — тому нужны ещё время и тренер.
+  if (queryState?.weekday) params.weekday = queryState.weekday;
+
   const twd = queryState?.trainingWeekday ?? queryState?.training_weekday;
   if (twd !== undefined && twd !== null && twd !== '') {
     const n = Number(twd);
@@ -263,6 +267,31 @@ export const fetchClientsNeedsCorrection = async ({ year, month, day, page, perP
   if (page) params.page = page;
   if (perPage) params.perPage = perPage;
   const { data } = await apiClient.get('/clients/needs-correction/', { params, ...withSignal({}, signal) });
+  return data;
+};
+
+/**
+ * GET /api/clients/expiring/?days=N — абонементы, которые скоро заканчиваются
+ * и ещё не продлены. У каждого клиента есть expiryDate и daysLeft.
+ */
+export const fetchExpiringClients = async ({ days = 7 } = {}, signal) => {
+  const { data } = await apiClient.get('/clients/expiring/', {
+    params: { days }, ...withSignal({}, signal),
+  });
+  return { items: data?.items ?? [], meta: data?.meta ?? {} };
+};
+
+/** GET /api/clients/{id}/history/ — все месяцы одного человека. */
+export const fetchClientHistory = async (clientId, signal) => {
+  const { data } = await apiClient.get(`/clients/${clientId}/history/`, withSignal({}, signal));
+  return { items: data?.items ?? [], summary: data?.summary ?? {} };
+};
+
+/** POST /api/clients/bulk/ — групповое продление или отметка оплаты. */
+export const bulkClientAction = async ({ action, ids, months }, signal) => {
+  const body = { action, ids };
+  if (months) body.months = months;
+  const { data } = await apiClient.post('/clients/bulk/', body, withSignal({}, signal));
   return data;
 };
 

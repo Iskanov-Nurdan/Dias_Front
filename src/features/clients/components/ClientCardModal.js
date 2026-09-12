@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Phone, Calendar, User, Clock, CreditCard, MessageSquare, Snowflake, Pencil, Trash2, CircleCheck, CircleAlert, Ticket } from 'lucide-react';
-import { formatMoney, isClientPaid } from '../../../shared/constants/common';
+import { X, Phone, Calendar, User, Clock, CreditCard, MessageSquare, Snowflake, Pencil, Trash2, CircleCheck, CircleAlert, Ticket, History, MessageCircle } from 'lucide-react';
+import { formatMoney, isClientPaid, formatSubscriptionEnd } from '../../../shared/constants/common';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { useToast } from '../../../app/providers/ToastProvider';
 import { getApiErrorMessage, isPeriodClosedError } from '../../../shared/lib/apiError';
@@ -9,6 +9,7 @@ import { WEEKDAYS } from '../../sports-trainers/scheduleConstants';
 import { getClientPaymentsForCard } from '../lib/clientActualPayments';
 import { createClientFreeze, deleteClientFreeze, fetchClient, updateClientFreeze } from '../api';
 import { getPaymentKindLabel } from '../lib/paymentKinds';
+import { fetchClientHistory } from '../api';
 import {
   formatFreezeDateLabel,
   formatFreezeDateTimeLabel,
@@ -71,6 +72,31 @@ const ClientCardModal = ({
 
   const paymentKindRaw = client?.paymentKind ?? client?.payment_kind ?? '';
   const paymentKindLabel = getPaymentKindLabel(paymentKindRaw) || '';
+
+  /**
+   * История периодов. В базе каждый месяц — отдельная запись, поэтому карточка
+   * показывала только текущий период, а прошлые искали поиском по ФИО.
+   * Грузим по требованию: открывать её нужно не всегда.
+   */
+  const [history, setHistory] = useState(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const loadHistory = async () => {
+    if (historyOpen) { setHistoryOpen(false); return; }
+    setHistoryOpen(true);
+    if (history || !client?.id) return;
+    setHistoryLoading(true);
+    try {
+      setHistory(await fetchClientHistory(client.id, null));
+    } catch {
+      setHistory({ items: [], summary: {} });
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const subEnd = formatSubscriptionEnd(client);
   const paymentKindReceiptAmount = client?.paymentKindReceiptAmount ?? client?.payment_kind_receipt_amount;
   const paymentKindCashAmount = client?.paymentKindCashAmount ?? client?.payment_kind_cash_amount;
 
@@ -146,9 +172,23 @@ const ClientCardModal = ({
             <div className="ccm__header-text">
               <h2 id="ccm-title" className="ccm__name">{client.fio || '—'}</h2>
               {client.phone ? (
-                <a href={`tel:${client.phone}`} className="ccm__phone">
-                  <Phone size={12} />{client.phone}
-                </a>
+                <span className="ccm__contacts">
+                  <a href={`tel:${client.phone}`} className="ccm__phone">
+                    <Phone size={12} />{client.phone}
+                  </a>
+                  {/* Написать прямо отсюда: номер уже есть, раньше его копировали руками */}
+                  {String(client.phone).replace(/\D/g, '').length >= 9 && (
+                    <a
+                      href={`https://wa.me/${String(client.phone).replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="ccm__wa"
+                      title="Написать в WhatsApp"
+                    >
+                      <MessageCircle size={12} /> WhatsApp
+                    </a>
+                  )}
+                </span>
               ) : (
                 <span className="ccm__phone ccm__phone--empty">Телефон не указан</span>
               )}
@@ -170,6 +210,16 @@ const ClientCardModal = ({
                 <div className="ccm__info-row">
                   <span className="ccm__info-label">Вид спорта</span>
                   <span className="ccm__info-val">{client.sportName ?? client.sport?.name}</span>
+                </div>
+              )}
+              {/* Дата окончания приходила с сервера, но в карточке не показывалась */}
+              {subEnd && (
+                <div className="ccm__info-row">
+                  <span className="ccm__info-label">Действует до</span>
+                  <span className={`ccm__info-val ccm__until ccm__until--${subEnd.tone}`}>
+                    {subEnd.text}
+                    {subEnd.note && <span className="ccm__until-note">{subEnd.note}</span>}
+                  </span>
                 </div>
               )}
               {(client.trainerName ?? client.trainer?.fio) && (
@@ -335,6 +385,53 @@ const ClientCardModal = ({
           )}
 
         </div>
+
+        {/* ── История периодов ── */}
+        {client?.id && (
+          <div className="ccm__history">
+            <button type="button" className="ccm__history-toggle" onClick={loadHistory}>
+              <History size={14} />
+              {historyOpen ? 'Скрыть историю' : 'История посещений и оплат'}
+              {history?.summary?.periods != null && <span className="ccm__history-count">{history.summary.periods}</span>}
+            </button>
+            {historyOpen && (
+              historyLoading ? (
+                <p className="ccm__history-loading">Загрузка…</p>
+              ) : !history?.items?.length ? (
+                <p className="ccm__history-loading">Других периодов нет</p>
+              ) : (
+                <>
+                  <div className="ccm__history-summary">
+                    <span>Периодов: <strong>{history.summary.periods}</strong></span>
+                    <span>С <strong>{history.summary.firstDate ? new Date(history.summary.firstDate).toLocaleDateString('ru-RU') : '—'}</strong></span>
+                    <span>Оплачено всего: <strong>{formatMoney(history.summary.collectedTotal)}</strong></span>
+                    {history.summary.debtTotal > 0 && (
+                      <span className="ccm__history-debt">Долг: <strong>{formatMoney(history.summary.debtTotal)}</strong></span>
+                    )}
+                  </div>
+                  <ul className="ccm__history-list">
+                    {history.items.map((h) => {
+                      const isCurrent = String(h.id) === String(client.id);
+                      return (
+                        <li key={h.id} className={`ccm__history-row${isCurrent ? ' ccm__history-row--current' : ''}`}>
+                          <span className="ccm__history-date">
+                            {h.dateStart ? new Date(h.dateStart).toLocaleDateString('ru-RU') : '—'}
+                            {isCurrent && <span className="ccm__history-now">сейчас</span>}
+                          </span>
+                          <span className="ccm__history-sport">{h.sportName ?? h.sport?.name ?? '—'}</span>
+                          <span className="ccm__history-price">{formatMoney(h.priceDisplay ?? h.price)}</span>
+                          <span className={`ccm__history-status ccm__history-status--${h.fullyPaid ? 'ok' : 'debt'}`}>
+                            {h.fullyPaid ? 'оплачен' : `долг ${Number(h.debt || 0).toLocaleString('ru-RU')}`}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
+              )
+            )}
+          </div>
+        )}
 
         {/* ── Кнопки ── */}
         {/* Кнопки правки видит только тот, кто может ими пользоваться: раньше они

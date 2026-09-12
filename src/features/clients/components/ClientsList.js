@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Eye, RefreshCw, AlertTriangle, ShieldX } from 'lucide-react';
+import { Eye, RefreshCw, AlertTriangle, ShieldX, MessageCircle } from 'lucide-react';
 import { ErrorState, EmptyState, SkeletonTable, ConfirmModal } from '../../../shared/ui';
-import { isClientPaid, isClientSubscriptionExpired } from '../../../shared/constants/common';
+import { isClientPaid, isClientSubscriptionExpired, formatSubscriptionEnd } from '../../../shared/constants/common';
 import { composeClientDataRowClass } from '../lib/clientRowHighlight';
 import { addClientWarning, resetClientWarning } from '../api';
 import { getApiErrorMessage } from '../../../shared/lib/apiError';
@@ -22,6 +22,9 @@ const TYPE_LABEL = {
 
 const ClientsList = ({
   items,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
   loading,
   error,
   onRetry,
@@ -39,6 +42,9 @@ const ClientsList = ({
   const [warnSaving, setWarnSaving] = useState(false);
   const [warnError, setWarnError] = useState(null);
   const list = items?.items ?? items?.results ?? items ?? [];
+  const picked = selectedIds instanceof Set ? selectedIds : new Set(selectedIds ?? []);
+  const allPicked = list.length > 0 && list.every((c) => picked.has(c.id));
+  const somePicked = list.some((c) => picked.has(c.id));
 
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
 
@@ -77,8 +83,22 @@ const ClientsList = ({
         <table className="ui-list__table clients-list__table">
           <thead>
             <tr>
+              {/* Массовое выделение: раньше 20 клиентов продлевали двадцатью действиями */}
+              {onToggleSelect && (
+                <th className="clients-list__pick-cell">
+                  <input
+                    type="checkbox"
+                    className="clients-list__pick"
+                    checked={allPicked}
+                    ref={(el) => { if (el) el.indeterminate = somePicked && !allPicked; }}
+                    onChange={() => onToggleSelectAll?.(!allPicked)}
+                    aria-label="Выделить все строки"
+                  />
+                </th>
+              )}
               <th>ФИО</th>
               <th>Дата начала</th>
+              <th>Действует до</th>
               <th>Вид спорта</th>
               <th>Оплата</th>
               <th></th>
@@ -87,13 +107,13 @@ const ClientsList = ({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="ui-list__skeleton-cell clients-list__skeleton-cell">
+                <td colSpan={onToggleSelect ? 7 : 6} className="ui-list__skeleton-cell clients-list__skeleton-cell">
                   <SkeletonTable rows={8} cols={5} />
                 </td>
               </tr>
             ) : !list.length ? (
               <tr>
-                <td colSpan={5} className="ui-list__empty-cell clients-list__empty-cell">
+                <td colSpan={onToggleSelect ? 7 : 6} className="ui-list__empty-cell clients-list__empty-cell">
                   <EmptyState
                     compact
                     tableCell
@@ -115,12 +135,25 @@ const ClientsList = ({
               // Предупреждение — для тех, кто не оплатил, но срок абонемента ещё не истёк
               // (для просроченных/не продливших это уже "Не продлили", не сюда).
               const canWarn = !paid && !isClientSubscriptionExpired(c);
+              const subEnd = formatSubscriptionEnd(c);
+              const waPhone = String(c.phone || '').replace(/\D/g, '');
               return (
                 <tr
                   key={c.id}
                   className={`${rowClass}${isMaxWarned ? ' clients-list__row--warned-max' : ''}`}
                   style={{ '--row-i': idx }}
                 >
+                  {onToggleSelect && (
+                    <td className="clients-list__pick-cell" data-label="">
+                      <input
+                        type="checkbox"
+                        className="clients-list__pick"
+                        checked={picked.has(c.id)}
+                        onChange={() => onToggleSelect(c.id)}
+                        aria-label={`Выделить ${c.fio || 'клиента'}`}
+                      />
+                    </td>
+                  )}
                   <td data-label="ФИО">
                     <div className="ui-list__name-cell clients-list__name-cell">
                       <span className="ui-avatar">{initials}</span>
@@ -141,6 +174,16 @@ const ClientsList = ({
                   </td>
                   <td data-label="Дата начала" className="ui-list__muted">
                     {dateStart ? new Date(dateStart).toLocaleDateString('ru-RU') : '—'}
+                  </td>
+                  {/* Срок абонемента: сервер присылал dateEnd, но раньше он нигде
+                      не показывался — сотрудник не знал, у кого заканчивается завтра */}
+                  <td data-label="Действует до">
+                    {subEnd ? (
+                      <span className={`clients-list__until clients-list__until--${subEnd.tone}`}>
+                        {subEnd.text}
+                        {subEnd.note && <span className="clients-list__until-note">{subEnd.note}</span>}
+                      </span>
+                    ) : <span className="ui-list__muted">—</span>}
                   </td>
                   <td data-label="Вид спорта" title={sportName || undefined}>
                     <span className="clients-list__sport">{sportName ?? '—'}</span>
@@ -171,6 +214,20 @@ const ClientsList = ({
                       >
                         <ShieldX size={13} /> Снять
                       </button>
+                    )}
+                    {/* Написать должнику прямо из списка: телефон уже есть,
+                        раньше его копировали вручную в мессенджер */}
+                    {waPhone.length >= 9 && !paid && (
+                      <a
+                        href={`https://wa.me/${waPhone}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="ui-list-btn clients-list__btn clients-list__btn--wa"
+                        onClick={(e) => e.stopPropagation()}
+                        title="Написать в WhatsApp"
+                      >
+                        <MessageCircle size={13} /> WhatsApp
+                      </a>
                     )}
                     <button type="button" className="ui-list-btn clients-list__btn" onClick={() => onDetails(c)}>
                       <Eye size={13} /> Подробнее

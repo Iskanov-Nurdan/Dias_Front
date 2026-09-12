@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { fetchClients, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchClientDuplicates, fetchClientsNeedsCorrection, createOneTimePayment, fetchClientDrafts, createClientDraft, updateClientDraft, deleteClientDraft } from './api';
+import { fetchClients, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchClientDuplicates, fetchClientsNeedsCorrection, bulkClientAction, createOneTimePayment, fetchClientDrafts, createClientDraft, updateClientDraft, deleteClientDraft } from './api';
 import { fetchSports } from '../sports-trainers/api';
 import { fetchTrainers } from '../sports-trainers/api';
 import { useAuth } from '../../app/providers/AuthProvider';
@@ -9,14 +9,15 @@ import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { SEARCH_DEBOUNCE_MS, formatMoney, MONTHS, STATS_YEARS } from '../../shared/constants/common';
 import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiError';
 import { prepareClientSavePayload } from './lib/prepareClientSavePayload';
-import { UsersRound, Copy, Ticket, Wrench, Search, X, Dumbbell, UserCheck, CreditCard, Tag, Calendar, CalendarDays, CalendarClock, Plus, ScanSearch, SpellCheck2, ChevronDown, Filter, Bookmark } from 'lucide-react';
+import { UsersRound, Copy, Ticket, Wrench, Search, X, Sun, CheckCheck, RefreshCw, Dumbbell, UserCheck, CreditCard, Tag, Calendar, CalendarDays, CalendarClock, Plus, ScanSearch, SpellCheck2, ChevronDown, Filter, Bookmark } from 'lucide-react';
 import { Select, ConfirmModal, Pagination, FiltersModal, FilterBar, EmptyState, Spinner } from '../../shared/ui';
-import { ClientsList, ClientCardModal, ClientFormModal, ClientDraftsModal, ExtendModal, DuplicateGroup } from './components';
+import { ClientsList, ClientCardModal, ClientFormModal, ClientDraftsModal, ExtendModal, DuplicateGroup, TodayBoard } from './components';
 import './ClientsPage.scss';
 
 const getInitials = (fio) =>
   (fio || '').split(' ').slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
 
+const TAB_TODAY = 'today';
 const TAB_LIST = 'list';
 const TAB_DUPS = 'dups';
 const TAB_ONETIME = 'onetime';
@@ -38,7 +39,8 @@ const ClientsPage = () => {
 
   const clientListFilterYearValues = useMemo(() => getClientListFilterYearValues(), []);
 
-  const [activeTab, setActiveTab] = useState(TAB_LIST);
+  // «Сегодня» открывается первой: с этих трёх списков начинается рабочий день
+  const [activeTab, setActiveTab] = useState(TAB_TODAY);
   const [activeDupTab, setActiveDupTab] = useState(SUBTAB_EXACT);
 
   // ── Дубликаты: фильтр по году/месяцу (доступные года — STATS_YEARS) ──
@@ -321,6 +323,50 @@ const ClientsPage = () => {
       clientType: '', year: '', month: '', day: '', page: 1,
     }));
   };
+  // ── Массовые операции над выделенными строками ──
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const toggleSelect = useCallback((id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+  const toggleSelectAll = useCallback((checked) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      items.forEach((c) => (checked ? next.add(c.id) : next.delete(c.id)));
+      return next;
+    });
+  }, [items]);
+  // Уходим со страницы или меняем фильтр — выделение сбрасываем, иначе можно
+  // случайно применить действие к тем, кого уже не видно на экране.
+  useEffect(() => { setSelectedIds(new Set()); }, [queryState, activeTab]);
+
+  const runBulk = async (action, months) => {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    setBulkRunning(true);
+    try {
+      const res = await bulkClientAction({ action, ids, months }, null);
+      const done = res?.doneCount ?? 0;
+      const skipped = res?.skippedCount ?? 0;
+      if (done > 0) toast.success(action === 'extend' ? `Продлено: ${done}` : `Отмечено оплаченными: ${done}`);
+      // Пропущенные проговариваем поимённо: молча «сделать не всё» — худший вариант
+      if (skipped > 0) {
+        const names = (res.skipped || []).slice(0, 3).map((r) => `${r.fio} — ${r.reason}`).join('; ');
+        toast.error(`Пропущено ${skipped}: ${names}${skipped > 3 ? '…' : ''}`);
+      }
+      setSelectedIds(new Set());
+      fetchSafe();
+    } catch (e) {
+      toast.error(getApiErrorMessage(e));
+    } finally {
+      setBulkRunning(false);
+    }
+  };
+
   /** Сколько записей нашлось: из meta, а если её нет — по длине текущей страницы. */
   const totalFound = data?.meta?.total ?? data?.meta?.totalCount ?? data?.meta?.count ?? items.length;
 
@@ -462,6 +508,7 @@ const ClientsPage = () => {
 
       {/* Главные табы */}
       <div className="ui-tabs">
+        <button type="button" className={`ui-tabs__tab${activeTab === TAB_TODAY ? ' ui-tabs__tab--active' : ''}`} onClick={() => setActiveTab(TAB_TODAY)}><Sun size={15} /> Сегодня</button>
         <button type="button" className={`ui-tabs__tab${activeTab === TAB_LIST ? ' ui-tabs__tab--active' : ''}`} onClick={() => setActiveTab(TAB_LIST)}><UsersRound size={15} /> Клиенты</button>
         <button type="button" className={`ui-tabs__tab${activeTab === TAB_DUPS ? ' ui-tabs__tab--active' : ''}`} onClick={() => setActiveTab(TAB_DUPS)}><Copy size={15} /> Дубликаты</button>
         <button type="button" className={`ui-tabs__tab${activeTab === TAB_ONETIME ? ' ui-tabs__tab--active' : ''}`} onClick={() => setActiveTab(TAB_ONETIME)}><Ticket size={15} /> Разовый</button>
@@ -470,6 +517,10 @@ const ClientsPage = () => {
           {fixClients.length > 0 && <span className="ui-tabs__badge">{fixClients.length}</span>}
         </button>
       </div>
+
+      {activeTab === TAB_TODAY && (
+        <TodayBoard onOpenClient={handleOpenCard} onExtend={setExtendClientObj} />
+      )}
 
       {/* ── Список клиентов ── */}
       {activeTab === TAB_LIST && (
@@ -612,11 +663,28 @@ const ClientsPage = () => {
               )}
             </div>
           )}
+          {selectedIds.size > 0 && (
+            <div className="clients-page__bulk">
+              <span className="clients-page__bulk-count">Выбрано: <strong>{selectedIds.size}</strong></span>
+              <button type="button" className="clients-page__bulk-btn" disabled={bulkRunning} onClick={() => runBulk('extend', 1)}>
+                <RefreshCw size={14} /> Продлить на месяц
+              </button>
+              <button type="button" className="clients-page__bulk-btn" disabled={bulkRunning} onClick={() => runBulk('mark-paid')}>
+                <CheckCheck size={14} /> Отметить оплаченными
+              </button>
+              <button type="button" className="clients-page__bulk-clear" onClick={() => setSelectedIds(new Set())}>
+                Снять выделение
+              </button>
+            </div>
+          )}
           <ClientsList
             items={items}
             loading={loading}
             error={error}
             onRetry={fetchSafe}
+            selectedIds={selectedIds}
+            onToggleSelect={isAdmin ? toggleSelect : undefined}
+            onToggleSelectAll={toggleSelectAll}
             onDetails={handleOpenCard}
             onWarningError={(m) => toast.error(m)}
             onExtend={setExtendClientObj}

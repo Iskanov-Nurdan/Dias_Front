@@ -517,3 +517,11 @@
 @keyframes salary-spin {
   to { transform: rotate(360deg); }
 }
+
+// Поиск по тренеру: список за месяц приходит целиком, нужного человека
+// раньше искали прокруткой
+.salary-page__search {
+  position: relative;
+  min-width: 220px;
+  flex: 1 1 220px;
+}

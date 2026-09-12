@@ -66,6 +66,38 @@ const startOfLocalToday = () => {
  * Срок абонемента истёк (вчера и раньше по дате окончания).
  * Бэкенд может отдать флаг subscriptionExpired / isSubscriptionExpired или дату в одном из полей выше.
  */
+/**
+ * Дата окончания абонемента и сколько дней осталось.
+ * Сервер отдаёт dateEnd в каждом клиенте, но до этого поле использовалось
+ * только для подсветки строки — саму дату сотрудник нигде не видел.
+ * @returns {{ date: Date, iso: string, daysLeft: number } | null}
+ */
+export const getSubscriptionEnd = (c) => {
+  if (!c) return null;
+  for (const k of SUBSCRIPTION_END_DATE_KEYS) {
+    const endDay = parseLocalDay(c[k]);
+    if (!endDay) continue;
+    const daysLeft = Math.round((endDay - startOfLocalToday()) / 86400000);
+    return { date: endDay, iso: String(c[k]).slice(0, 10), daysLeft };
+  }
+  return null;
+};
+
+/** «до 12.09.2026 · осталось 3 дня» — короткая подпись срока для списка и карточки. */
+export const formatSubscriptionEnd = (c) => {
+  const end = getSubscriptionEnd(c);
+  if (!end) return null;
+  const dateText = end.date.toLocaleDateString('ru-RU');
+  if (end.daysLeft < 0) return { text: dateText, note: 'истёк', tone: 'expired' };
+  if (end.daysLeft === 0) return { text: dateText, note: 'сегодня', tone: 'soon' };
+  if (end.daysLeft <= 7) {
+    const n = end.daysLeft;
+    const word = n === 1 ? 'день' : n >= 2 && n <= 4 ? 'дня' : 'дней';
+    return { text: dateText, note: `${n} ${word}`, tone: 'soon' };
+  }
+  return { text: dateText, note: null, tone: 'ok' };
+};
+
 export const isClientSubscriptionExpired = (c) => {
   if (!c) return false;
   const flag =

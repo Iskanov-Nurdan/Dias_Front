@@ -86,12 +86,11 @@ const ClientsList = ({
         <table className="ui-list__table clients-list__table">
           <thead>
             <tr>
-              <SortTh field="fio">ФИО</SortTh>
-              <SortTh field="dateStart">Дата начала</SortTh>
-              <th>Действует до</th>
-              <SortTh field="sport">Вид спорта</SortTh>
-              <SortTh field="paid">Оплата</SortTh>
-              <th></th>
+              <SortTh field="fio" className="clients-list__col-name">Клиент</SortTh>
+              <SortTh field="dateStart" className="clients-list__col-period">Период</SortTh>
+              <SortTh field="sport" className="clients-list__col-sport">Вид спорта</SortTh>
+              <SortTh field="paid" className="clients-list__col-pay">Оплата</SortTh>
+              <th className="clients-list__col-actions" />
             </tr>
           </thead>
           <tbody>
@@ -154,57 +153,68 @@ const ClientsList = ({
                       </div>
                     </div>
                   </td>
-                  <td data-label="Дата начала" className="ui-list__muted">
-                    {dateStart ? new Date(dateStart).toLocaleDateString('ru-RU') : '—'}
-                  </td>
-                  {/* Срок абонемента: сервер присылал dateEnd, но раньше он нигде
-                      не показывался — сотрудник не знал, у кого заканчивается завтра */}
-                  <td data-label="Действует до">
-                    {subEnd ? (
-                      <span className={`clients-list__until clients-list__until--${subEnd.tone}`}>
-                        {subEnd.text}
-                        {subEnd.note && <span className="clients-list__until-note">{subEnd.note}</span>}
+                  {/* Начало и окончание — одни данные, а не две колонки: так они
+                      читаются как период и освобождают ширину под действия */}
+                  <td data-label="Период" className="clients-list__col-period">
+                    <div className="clients-list__period">
+                      <span className="clients-list__period-dates">
+                        {dateStart ? new Date(dateStart).toLocaleDateString('ru-RU') : '—'}
+                        {subEnd && <span className="clients-list__period-arrow">→</span>}
+                        {subEnd && <span className="clients-list__period-end">{subEnd.text}</span>}
                       </span>
-                    ) : <span className="ui-list__muted">—</span>}
+                      {subEnd?.note && (
+                        <span className={`clients-list__until-note clients-list__until-note--${subEnd.tone}`}>
+                          {subEnd.note}
+                        </span>
+                      )}
+                    </div>
                   </td>
-                  <td data-label="Вид спорта" title={sportName || undefined}>
+                  <td data-label="Вид спорта" className="clients-list__col-sport" title={sportName || undefined}>
                     <span className="clients-list__sport">{sportName ?? '—'}</span>
                   </td>
-                  <td data-label="Оплата">
+                  <td data-label="Оплата" className="clients-list__col-pay">
                     <span className={`ui-pill ${paid ? 'ui-pill--success' : 'ui-pill--danger'}`}>
                       {paid ? 'Оплачено' : 'Не оплачено'}
                     </span>
                   </td>
-                  <td className="ui-list__actions" data-label="">
+                  <td className="ui-list__actions clients-list__col-actions" data-label="">
+                    {/* Текстом — только главное действие. Остальные иконками:
+                        четыре подписи не помещались и вызывали прокрутку вбок */}
                     {canWarn && warningCount < MAX_WARNINGS && (
                       <button
                         type="button"
-                        className="ui-list-btn ui-list-btn--warning clients-list__btn"
+                        className="clients-list__icon-btn clients-list__icon-btn--warn"
                         onClick={() => setConfirmWarnClient(c)}
                         title="Поставить предупреждение за неоплату"
+                        aria-label="Поставить предупреждение за неоплату"
                       >
-                        <AlertTriangle size={13} /> Предупреждение
+                        <AlertTriangle size={15} />
                       </button>
                     )}
-                    {/* Написать должнику прямо из списка: телефон уже есть,
-                        раньше его копировали вручную в мессенджер */}
                     {waPhone.length >= 9 && !paid && (
                       <a
                         href={`https://wa.me/${waPhone}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="ui-list-btn clients-list__btn clients-list__btn--wa"
+                        className="clients-list__icon-btn clients-list__icon-btn--wa"
                         onClick={(e) => e.stopPropagation()}
                         title="Написать в WhatsApp"
+                        aria-label="Написать в WhatsApp"
                       >
-                        <MessageCircle size={13} /> WhatsApp
+                        <MessageCircle size={15} />
                       </a>
                     )}
-                    <button type="button" className="ui-list-btn clients-list__btn" onClick={() => onDetails(c)}>
-                      <Eye size={13} /> Подробнее
+                    <button
+                      type="button"
+                      className="clients-list__icon-btn"
+                      onClick={() => onDetails(c)}
+                      title="Открыть карточку"
+                      aria-label="Открыть карточку клиента"
+                    >
+                      <Eye size={15} />
                     </button>
-                    <button type="button" className="ui-list-btn ui-list-btn--primary clients-list__btn" onClick={() => onExtend(c)}>
-                      <RefreshCw size={13} /> Продлить
+                    <button type="button" className="clients-list__extend-btn" onClick={() => onExtend(c)}>
+                      <RefreshCw size={14} /> Продлить
                     </button>
                   </td>
                 </tr>

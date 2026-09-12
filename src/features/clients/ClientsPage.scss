@@ -24,49 +24,93 @@
   }
 
 
+  // Панель над таблицей: слева — сколько нашлось и сброс, справа — размер
+  // страницы. Правило &__found было случайно удалено вместе с массовыми
+  // операциями, из-за чего вся строка слипалась в одно слово без отступов.
+  &__found {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 0 0 12px;
+    padding: 0 2px;
+    font-size: 13px;
+    color: var(--color-text-muted);
+  }
+
+  &__found-main {
+    strong {
+      color: var(--color-text);
+      font-weight: 800;
+      font-size: 14px;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
   &__per-page {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 8px;
     margin-left: auto;
     font-size: 12.5px;
     color: var(--color-text-muted);
   }
 
+  &__per-page-label {
+    white-space: nowrap;
+  }
+
+  // Сегментированная группа: видно, что варианты связаны и какой активен
+  &__per-page-group {
+    display: inline-flex;
+    padding: 2px;
+    gap: 2px;
+    border-radius: var(--radius-md);
+    background: var(--color-surface-secondary);
+    border: 1px solid var(--color-border);
+  }
+
   &__per-page-btn {
-    min-width: 30px;
-    height: 24px;
-    padding: 0 7px;
+    min-width: 34px;
+    height: 26px;
+    padding: 0 9px;
     border-radius: var(--radius-sm);
-    border: 1px solid transparent;
+    border: none;
     background: none;
     font-size: 12.5px;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-text-muted);
     cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 
-    &:hover { color: var(--color-text); }
+    &:hover:not(&--active) { color: var(--color-text); }
 
     &--active {
-      border-color: var(--color-primary);
-      background: var(--color-primary-soft);
+      background: var(--color-surface);
       color: var(--color-primary);
+      box-shadow: var(--shadow-xs);
     }
   }
 
   &__found-reset {
-    border: none;
-    background: none;
-    padding: 0;
-    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 26px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+    background: var(--color-primary-soft);
+    font-size: 12px;
     font-weight: 600;
     color: var(--color-primary);
     cursor: pointer;
-    text-decoration: underline;
-    text-underline-offset: 2px;
+    transition: background 0.15s ease, border-color 0.15s ease;
 
-    &:hover { color: var(--color-text); }
+    &:hover {
+      background: color-mix(in srgb, var(--color-primary) 15%, var(--color-primary-soft));
+      border-color: var(--color-primary);
+    }
   }
 
   // Крестик очистки поиска

@@ -18,8 +18,15 @@
 
     // ── Row states ──────────────────────────────────────────
     tbody tr.clients-list__row--unpaid td {
-      background: rgba(197, 48, 48, 0.06);
-      border-color: rgba(197, 48, 48, 0.2);
+      background: rgba(197, 48, 48, 0.05);
+      border-color: rgba(197, 48, 48, 0.18);
+    }
+    // Полоса слева — проблемную строку видно, не читая колонку статуса
+    tbody tr.clients-list__row--unpaid td:first-child {
+      box-shadow: inset 3px 0 0 var(--color-danger);
+    }
+    tbody tr.clients-list__row--subscription-expired td:first-child {
+      box-shadow: inset 3px 0 0 var(--color-warning);
     }
     tbody tr.clients-list__row--unpaid:hover td {
       background: rgba(197, 48, 48, 0.1);
@@ -33,28 +40,14 @@
       background: rgba(245, 158, 11, 0.13);
     }
 
-    tbody tr.clients-list__row--installments-complete td {
-      background: rgba(22, 163, 74, 0.07);
-      border-color: rgba(22, 163, 74, 0.2);
-    }
-    tbody tr.clients-list__row--installments-complete:hover td {
-      background: rgba(22, 163, 74, 0.12);
-    }
-
-    tbody tr.clients-list__row--one-time td {
-      background: rgba(37, 99, 235, 0.06);
-      border-color: rgba(37, 99, 235, 0.2);
-    }
-    tbody tr.clients-list__row--one-time:hover td {
-      background: rgba(37, 99, 235, 0.11);
-    }
-
+    // Оплаченный активный клиент, разовый и индивидуальный — это норма.
+    // Раньше они тоже заливались цветом, и вся страница светилась зелёным,
+    // на фоне которого долги и просрочки терялись. Тип клиента и так виден
+    // бейджем рядом с именем, дублировать его фоном строки незачем.
+    tbody tr.clients-list__row--installments-complete td,
+    tbody tr.clients-list__row--one-time td,
     tbody tr.clients-list__row--individual td {
-      background: rgba(109, 40, 217, 0.06);
-      border-color: rgba(109, 40, 217, 0.2);
-    }
-    tbody tr.clients-list__row--individual:hover td {
-      background: rgba(109, 40, 217, 0.11);
+      background: var(--color-surface);
     }
 
     // Максимум предупреждений — срочно связаться с клиентом. Перекрывает
@@ -128,7 +121,8 @@
           }
         }
 
-        // Дата начала — справа, серая, мелкая
+        // Период (начало → окончание) — справа, серым, мелким.
+        // Порядок ячеек: 1 клиент, 2 период, 3 спорт, 4 оплата, 5 действия.
         &:nth-child(2) {
           grid-area: date;
           font-size: 11px;
@@ -136,6 +130,14 @@
           justify-content: flex-end;
           align-self: center;
           white-space: nowrap;
+
+          .clients-list__period {
+            flex-direction: row;
+            align-items: center;
+            gap: 6px;
+          }
+
+          .clients-list__period-dates { font-size: 11px; }
         }
 
         // Вид спорта — слева внизу
@@ -170,10 +172,17 @@
 
           &::before { display: none; }
 
-          .clients-list__btn {
+          // На узком экране палец должен попадать: иконки крупнее,
+          // «Продлить» занимает всю оставшуюся ширину
+          .clients-list__icon-btn {
+            width: 42px;
+            height: 42px;
+            flex-shrink: 0;
+          }
+
+          .clients-list__extend-btn {
             flex: 1;
-            min-height: 40px;
-            height: auto;
+            height: 42px;
             font-size: 13px;
             justify-content: center;
           }
@@ -312,4 +321,165 @@
     color: var(--color-primary);
     svg { opacity: 1; }
   }
+}
+
+// ── Ширины колонок: таблица должна помещаться без прокрутки вбок ───────────
+// Раньше пять колонок данных и четыре кнопки с подписями не влезали в экран,
+// и «Продлить» уезжала за край. Фиксируем доли: имя тянется, остальные — по
+// содержимому, действия — ровно под свои кнопки.
+.clients-list__table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.clients-list__col-name { width: auto; min-width: 200px; }
+.clients-list__col-period { width: 208px; }
+.clients-list__col-sport { width: 136px; }
+.clients-list__col-pay { width: 124px; }
+// Три иконки по 32 + отступы + «Продлить» + внутренние поля ячейки
+.clients-list__col-actions { width: 266px; }
+
+@media (max-width: 1360px) {
+  .clients-list__col-period { width: 176px; }
+  .clients-list__col-sport { width: 112px; }
+  .clients-list__col-pay { width: 112px; }
+}
+
+// Плотнее строка: 68px из общего .ui-list рассчитаны на списки с фото,
+// здесь это лишняя высота — на экран помещается вдвое меньше клиентов.
+// Переопределяем только внутри списка клиентов, общий примитив не трогаем.
+.clients-list__table td {
+  height: 56px;
+  padding: 6px 14px;
+}
+
+.clients-list__table th {
+  padding: 8px 14px 10px;
+}
+
+// ── Период: начало и окончание одной строкой ───────────────────────────────
+.clients-list__period {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.clients-list__period-dates {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.clients-list__period-arrow {
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+.clients-list__period-end {
+  color: var(--color-text-secondary);
+}
+
+.clients-list__until-note {
+  align-self: flex-start;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.6;
+  white-space: nowrap;
+
+  &--soon { background: var(--color-warning-soft); color: var(--color-warning); }
+  &--expired { background: var(--color-danger-soft); color: var(--color-danger); }
+  &--ok { display: none; }
+}
+
+.clients-list__sport {
+  display: block;
+  font-size: 13.5px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// ── Действия: иконки + одно текстовое главное ──────────────────────────────
+.clients-list__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+
+  &:hover {
+    border-color: var(--color-border-strong, var(--color-text-muted));
+    color: var(--color-text);
+  }
+
+  &:active { transform: scale(0.94); }
+
+  &--warn:hover { border-color: var(--color-warning); color: var(--color-warning); background: var(--color-warning-soft); }
+  &--wa {
+    color: #16A34A;
+    border-color: color-mix(in srgb, #16A34A 30%, transparent);
+    &:hover { border-color: #16A34A; background: color-mix(in srgb, #16A34A 10%, transparent); }
+  }
+}
+
+.clients-list__extend-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 13px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-primary) 88%, #000);
+    box-shadow: 0 2px 10px color-mix(in srgb, var(--color-primary) 32%, transparent);
+  }
+
+  &:active { transform: scale(0.96); }
+}
+
+// Аватар чуть меньше под уплотнённую строку
+.clients-list__name-cell .ui-avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 11px;
+}
+
+// Имя крупнее бейджей: в строке это главное, за что цепляется глаз
+.clients-list__name-info .ui-list__title {
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.clients-list__badges {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
 }

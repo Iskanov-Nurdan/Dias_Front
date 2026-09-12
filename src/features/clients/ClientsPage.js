@@ -638,25 +638,33 @@ const ClientsPage = () => {
               и общее число нигде не показывалось. */}
           {!loading && !error && (
             <div className="clients-page__found">
-              Найдено: <strong>{totalFound}</strong>
+              <span className="clients-page__found-main">
+                Найдено <strong>{totalFound.toLocaleString('ru-RU')}</strong>
+              </span>
               {hasActiveFilters && (
                 <button type="button" className="clients-page__found-reset" onClick={resetFilters}>
-                  Сбросить фильтры
+                  <X size={12} /> Сбросить фильтры
                 </button>
               )}
-              {/* Размер страницы: 20 строк мало тем, кто просматривает список целиком */}
+              {/* Размер страницы: 20 строк мало тем, кто просматривает список целиком.
+                  Сегментированный переключатель, а не три текста подряд — иначе
+                  непонятно, что это одна группа и что из неё сейчас выбрано. */}
               <span className="clients-page__per-page">
-                Показывать
-                {[20, 50, 100].map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    className={`clients-page__per-page-btn${queryState.perPage === n ? ' clients-page__per-page-btn--active' : ''}`}
-                    onClick={() => setQueryState((q) => ({ ...q, perPage: n, page: 1 }))}
-                  >
-                    {n}
-                  </button>
-                ))}
+                <span className="clients-page__per-page-label">На странице</span>
+                <span className="clients-page__per-page-group" role="radiogroup" aria-label="Записей на странице">
+                  {[20, 50, 100].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      role="radio"
+                      aria-checked={queryState.perPage === n}
+                      className={`clients-page__per-page-btn${queryState.perPage === n ? ' clients-page__per-page-btn--active' : ''}`}
+                      onClick={() => setQueryState((q) => ({ ...q, perPage: n, page: 1 }))}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </span>
               </span>
             </div>
           )}

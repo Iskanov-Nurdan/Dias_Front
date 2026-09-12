@@ -11,7 +11,6 @@ import {
   fetchClientsPaymentDayReport,
   fetchClients,
   fetchAllClientsPaginated,
-  uploadClientPhotos,
 } from './api';
 import { fetchSports, fetchTrainers } from '../sports-trainers/api';
 import { useAuth } from '../../app/providers/AuthProvider';
@@ -419,24 +418,12 @@ const ClientsReportsPage = () => {
     setClientFormError(null);
     setClientFormSaving(true);
     try {
-      const { body, photoUploads } = prepareClientSavePayload(payload);
+      const { body } = prepareClientSavePayload(payload);
       let targetId = formClient?.id;
       if (targetId) await updateClient(formClient.id, body, null);
       else {
         const created = await createClient(body, null);
         targetId = created?.id ?? created?.data?.id;
-      }
-      if (photoUploads.length > 0 && targetId != null) {
-        try {
-          await uploadClientPhotos(targetId, photoUploads, null);
-        } catch (photoErr) {
-          const pmsg =
-            photoErr?.response?.data?.error?.message ??
-            photoErr?.response?.data?.message ??
-            photoErr?.message ??
-            'ошибка загрузки';
-          toast.error(`Клиент сохранён, но фото не загрузились: ${pmsg}`);
-        }
       }
       setFormClient(null);
       refreshAfterSave();
@@ -619,9 +606,8 @@ const ClientsReportsPage = () => {
             loading={notRenewedLoading}
             error={notRenewedError}
             onRetry={fetchNotRenewedSafe}
-            onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())}
-            onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())}
             onDetails={handleOpenCard}
+            onWarningError={(m) => toast.error(m)}
             onExtend={setExtendClientObj}
             emptyMessage="Нет клиентов без продления на следующий месяц"
           />
@@ -836,9 +822,8 @@ const ClientsReportsPage = () => {
             loading={warningsLoading}
             error={warningsError}
             onRetry={fetchWarnedClients}
-            onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())}
-            onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())}
             onDetails={handleOpenCard}
+            onWarningError={(m) => toast.error(m)}
             onExtend={setExtendClientObj}
             emptyMessage="Пока нет клиентов с предупреждениями"
           />
@@ -862,6 +847,7 @@ const ClientsReportsPage = () => {
       {cardClient && (
         <ClientCardModal
           client={cardClient}
+          canManage={isAdmin}
           onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())}
           onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())}
           onClose={() => setCardClient(null)}

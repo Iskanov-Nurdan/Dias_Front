@@ -2,70 +2,9 @@ import { apiClient } from '../../shared/api/client';
 
 const withSignal = (config, signal) => (signal ? { ...config, signal } : config);
 
-/** Абсолютный URL для путей вида /media/... из ответа API */
-export const resolveClientMediaUrl = (pathOrUrl) => {
-  if (pathOrUrl == null || pathOrUrl === '') return '';
-  const s = String(pathOrUrl);
-  if (/^https?:\/\//i.test(s)) return s;
-  const base = String(apiClient.defaults.baseURL || '').replace(/\/api\/?$/, '');
-  const path = s.startsWith('/') ? s : `/${s}`;
-  return base ? `${base}${path}` : s;
-};
-
-export const normalizeClientPhoto = (raw) => {
-  if (!raw || typeof raw !== 'object') return null;
-  const url =
-    raw.url ??
-    raw.fileUrl ??
-    raw.file_url ??
-    raw.image ??
-    raw.imageUrl ??
-    raw.image_url ??
-    '';
-  return {
-    id: raw.id,
-    kind: raw.kind ?? raw.photoKind ?? raw.photo_kind ?? 'receipt',
-    url: resolveClientMediaUrl(url),
-    createdAt: raw.createdAt ?? raw.created_at ?? null,
-  };
-};
-
-/** GET /api/clients/{id}/photos/ — список вложений (items | results | массив). */
-export const fetchClientPhotos = async (clientId, signal) => {
-  const { data } = await apiClient.get(`/clients/${clientId}/photos/`, withSignal({}, signal));
-  const list = data?.items ?? data?.results ?? (Array.isArray(data) ? data : []) ?? [];
-  return { ...data, items: list.map((p) => normalizeClientPhoto(p)).filter(Boolean) };
-};
-
-/**
- * POST /api/clients/{id}/photos/ — multipart: по одному полю files и kinds на каждый файл (порядок совпадает).
- */
-export const uploadClientPhotos = async (clientId, items, signal) => {
-  const fd = new FormData();
-  for (const { file, kind } of items) {
-    if (!file) continue;
-    fd.append('files', file);
-    fd.append('kinds', kind || 'receipt');
-  }
-  const { data } = await apiClient.post(`/clients/${clientId}/photos/`, fd, {
-    ...withSignal({}, signal),
-    transformRequest: [
-      (body, headers) => {
-        if (body instanceof FormData) {
-          delete headers['Content-Type'];
-        }
-        return body;
-      },
-    ],
-  });
-  const list = data?.items ?? data?.results ?? (Array.isArray(data) ? data : []) ?? [];
-  return { ...data, items: list.map((p) => normalizeClientPhoto(p)).filter(Boolean) };
-};
-
-/** DELETE /api/clients/{id}/photos/{photoId}/ */
-export const deleteClientPhoto = async (clientId, photoId, signal) => {
-  await apiClient.delete(`/clients/${clientId}/photos/${photoId}/`, withSignal({}, signal));
-};
+// Вложения клиента (фото чеков) убраны: в форме клиента нет интерфейса их загрузки,
+// а значит и запросы к /clients/{id}/photos/ никем не вызывались. Если функция вернётся —
+// возвращать вместе с UI, а не держать мёртвый слой запросов.
 
 /** ТЗ: GET /api/clients/ — query: search, sportId, trainerId, paid, clientType, year/month/day, page, perPage (camelCase); опционально trainingWeekday (1–7), trainingTimeFrom, trainingTimeTo — фильтр по слоту графика */
 const getLastDay = (year, month) => new Date(year, month, 0).getDate();

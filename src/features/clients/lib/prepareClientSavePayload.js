@@ -1,14 +1,13 @@
 /**
- * Отделяет файлы фото от JSON-тела и убирает значения, из‑за которых часто падает PATCH на бэке (NOT NULL, сериализатор).
+ * Готовит тело запроса на сохранение клиента: убирает значения, из-за которых
+ * часто падает PATCH на бэке (файлы в JSON, явный null по legacy-полю).
  */
 export function prepareClientSavePayload(payload) {
   if (payload == null || typeof payload !== 'object') {
-    return { body: {}, photoUploads: [] };
+    return { body: {} };
   }
 
-  const { photoUploads: rawUploads, ...rest } = payload;
-  const body = { ...rest };
-  delete body.photoUploads;
+  const body = { ...payload };
 
   for (const key of Object.keys(body)) {
     const v = body[key];
@@ -22,7 +21,5 @@ export function prepareClientSavePayload(payload) {
     delete body.actualPaymentDate;
   }
 
-  const photoUploads = Array.isArray(rawUploads) ? rawUploads : [];
-
-  return { body, photoUploads };
+  return { body };
 }

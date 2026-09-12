@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Eye, RefreshCw, AlertTriangle } from 'lucide-react';
-import { ErrorState, EmptyState, SkeletonTable } from '../../../shared/ui';
+import { Eye, RefreshCw, AlertTriangle, ShieldX } from 'lucide-react';
+import { ErrorState, EmptyState, SkeletonTable, ConfirmModal } from '../../../shared/ui';
 import { isClientPaid, isClientSubscriptionExpired } from '../../../shared/constants/common';
 import { composeClientDataRowClass } from '../lib/clientRowHighlight';
-import { addClientWarning } from '../api';
+import { addClientWarning, resetClientWarning } from '../api';
 import { getApiErrorMessage } from '../../../shared/lib/apiError';
 import { MAX_WARNINGS } from '../lib/clientWarnings';
 import WarnClientModal from './WarnClientModal';
@@ -25,15 +25,17 @@ const ClientsList = ({
   loading,
   error,
   onRetry,
-  onEdit,
-  onDelete,
+  // onEdit/onDelete здесь не нужны: правка и удаление живут в карточке клиента,
+  // в строке списка кнопок для них нет.
   onDetails,
   onExtend,
   emptyMessage,
   emptyStateActionLabel,
   emptyStateOnAction,
+  onWarningError,
 }) => {
   const [confirmWarnClient, setConfirmWarnClient] = useState(null);
+  const [confirmUnwarnClient, setConfirmUnwarnClient] = useState(null);
   const [warnSaving, setWarnSaving] = useState(false);
   const [warnError, setWarnError] = useState(null);
   const list = items?.items ?? items?.results ?? items ?? [];
@@ -49,6 +51,21 @@ const ClientsList = ({
       onRetry?.();
     } catch (e) {
       setWarnError(getApiErrorMessage(e));
+    } finally {
+      setWarnSaving(false);
+    }
+  };
+
+  /** Поставленное по ошибке предупреждение нужно уметь снять — иначе оно висит на клиенте навсегда. */
+  const handleResetWarnings = async (clientId) => {
+    setWarnSaving(true);
+    try {
+      await resetClientWarning(clientId);
+      setConfirmUnwarnClient(null);
+      onRetry?.();
+    } catch (e) {
+      setConfirmUnwarnClient(null);
+      onWarningError?.(getApiErrorMessage(e));
     } finally {
       setWarnSaving(false);
     }
@@ -144,6 +161,17 @@ const ClientsList = ({
                         <AlertTriangle size={13} /> Предупреждение
                       </button>
                     )}
+                    {/* Снять предупреждение: поставленное по ошибке иначе оставалось навсегда */}
+                    {warningCount > 0 && (
+                      <button
+                        type="button"
+                        className="ui-list-btn clients-list__btn"
+                        onClick={() => setConfirmUnwarnClient(c)}
+                        title="Снять все предупреждения с клиента"
+                      >
+                        <ShieldX size={13} /> Снять
+                      </button>
+                    )}
                     <button type="button" className="ui-list-btn clients-list__btn" onClick={() => onDetails(c)}>
                       <Eye size={13} /> Подробнее
                     </button>
@@ -165,6 +193,15 @@ const ClientsList = ({
           error={warnError}
           onConfirm={() => handleAddWarning(confirmWarnClient.id)}
           onClose={() => { setConfirmWarnClient(null); setWarnError(null); }}
+        />
+      )}
+      {confirmUnwarnClient && (
+        <ConfirmModal
+          title="Снять предупреждения?"
+          message={`${confirmUnwarnClient.fio} — счётчик обнулится (было ${getWarningCount(confirmUnwarnClient)} из ${MAX_WARNINGS})`}
+          confirmText={warnSaving ? 'Снимаем…' : 'Снять'}
+          onConfirm={() => handleResetWarnings(confirmUnwarnClient.id)}
+          onCancel={() => setConfirmUnwarnClient(null)}
         />
       )}
     </div>

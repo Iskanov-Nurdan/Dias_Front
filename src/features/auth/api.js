@@ -14,11 +14,8 @@ export const fetchMe = async (signal) => {
   return data;
 };
 
-/** POST /api/auth/refresh — обновить access token. Не требует Authorization. */
-export const refreshToken = async (refresh, signal) => {
-  const { data } = await apiClient.post('/auth/refresh', { refresh }, { signal });
-  return data;
-};
+// Обновление access-токена делает интерцептор в shared/api/client.js — отдельная
+// функция здесь никем не вызывалась и только вводила в заблуждение.
 
 /** POST /api/auth/logout — выход. Требует Authorization. Refresh уходит в blacklist. */
 export const logout = async (refreshToken, signal) => {

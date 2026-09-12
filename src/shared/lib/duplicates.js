@@ -45,6 +45,10 @@ export const getSimilarGroups = (clients) => {
       if (visited.has(j)) continue;
       const b = items[j]._norm;
       if (a === b) continue;
+      // Дешёвая отсечка перед дорогим сравнением: если длины отличаются больше
+      // чем на 2, расстояние заведомо больше 2 — считать его незачем.
+      // Результат тот же, но тяжёлых вычислений остаётся в разы меньше.
+      if (Math.abs(a.length - b.length) > 2) continue;
       const dist = levenshtein(a, b);
       if (dist >= 1 && dist <= 2) {
         group.push(items[j]);

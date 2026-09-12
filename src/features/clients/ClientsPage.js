@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { fetchClients, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchAllClientsPaginated, createOneTimePayment, uploadClientPhotos, fetchClientDrafts, createClientDraft, updateClientDraft, deleteClientDraft } from './api';
+import { fetchClients, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchAllClientsPaginated, createOneTimePayment, fetchClientDrafts, createClientDraft, updateClientDraft, deleteClientDraft } from './api';
 import { fetchSports } from '../sports-trainers/api';
 import { fetchTrainers } from '../sports-trainers/api';
 import { useAuth } from '../../app/providers/AuthProvider';
@@ -11,7 +11,7 @@ import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiErr
 import { filterClientsByPeriod, getExactDuplicates, getSimilarGroups } from '../../shared/lib/duplicates';
 import { prepareClientSavePayload } from './lib/prepareClientSavePayload';
 import { getClientCorrectionReasons, clientNeedsCorrection } from './lib/needsCorrection';
-import { UsersRound, Copy, Ticket, Wrench, Search, Dumbbell, UserCheck, CreditCard, Tag, Calendar, CalendarDays, CalendarClock, Plus, ScanSearch, SpellCheck2, ChevronDown, Filter, Bookmark } from 'lucide-react';
+import { UsersRound, Copy, Ticket, Wrench, Search, X, Dumbbell, UserCheck, CreditCard, Tag, Calendar, CalendarDays, CalendarClock, Plus, ScanSearch, SpellCheck2, ChevronDown, Filter, Bookmark } from 'lucide-react';
 import { Select, ConfirmModal, Pagination, FiltersModal, FilterBar, EmptyState, Spinner } from '../../shared/ui';
 import { ClientsList, ClientCardModal, ClientFormModal, ClientDraftsModal, ExtendModal, DuplicateGroup } from './components';
 import './ClientsPage.scss';
@@ -161,12 +161,24 @@ const ClientsPage = () => {
     }
   }, [runMain, queryState, debouncedSearch]);
 
-  const fetchAllClients = useCallback(async () => {
+  /**
+   * Клиенты для вкладок «Дубликаты» и «Исправление».
+   *
+   * Раньше сюда скачивалась ВСЯ база (страницами по 100, без фильтров) — на большом
+   * клубе это десятки запросов подряд и тяжёлый массив в памяти, после чего браузер
+   * ещё и сравнивал каждого с каждым. Теперь просим у сервера только тот период,
+   * который выбран на вкладке, — объём работы падает до одного месяца.
+   */
+  const fetchAllClients = useCallback(async (period) => {
     allControllerRef.current?.abort();
     allControllerRef.current = new AbortController();
     setAllLoading(true);
     try {
-      const list = await fetchAllClientsPaginated({}, allControllerRef.current.signal);
+      const q = {};
+      if (period?.year) q.year = period.year;
+      if (period?.month) q.month = period.month;
+      if (period?.day) q.day = period.day;
+      const list = await fetchAllClientsPaginated(q, allControllerRef.current.signal);
       setAllClients(list);
     } catch (err) {
       if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
@@ -186,11 +198,16 @@ const ClientsPage = () => {
   }, [activeTab, fetchSafe]);
 
   useEffect(() => {
-    if (activeTab === TAB_DUPS || activeTab === TAB_FIX) {
-      fetchAllClients();
+    if (activeTab === TAB_DUPS) {
+      fetchAllClients({ year: dupYear, month: dupMonth });
       return () => allControllerRef.current?.abort();
     }
-  }, [activeTab, fetchAllClients]);
+    if (activeTab === TAB_FIX) {
+      fetchAllClients({ year: fixYear, month: fixMonth, day: fixDay });
+      return () => allControllerRef.current?.abort();
+    }
+    return undefined;
+  }, [activeTab, fetchAllClients, dupYear, dupMonth, fixYear, fixMonth, fixDay]);
 
   const fetchOneTime = useCallback(async () => {
     oneTimeControllerRef.current?.abort();
@@ -276,6 +293,22 @@ const ClientsPage = () => {
 
   const items = data?.items ?? data?.results ?? (Array.isArray(data) ? data : []) ?? [];
 
+  /** Активные фильтры списка — нужны, чтобы отличить «ничего не найдено» от «клиентов нет вообще». */
+  const activeFilterCount = [
+    queryState.sportId, queryState.trainerId, queryState.paid,
+    queryState.clientType, queryState.year, queryState.month, queryState.day,
+  ].filter(Boolean).length;
+  const hasActiveFilters = activeFilterCount > 0 || Boolean(queryState.search);
+  const resetFilters = () => {
+    setSearchInput('');
+    setQueryState((q) => ({
+      ...q, search: '', sportId: '', trainerId: '', paid: '',
+      clientType: '', year: '', month: '', day: '', page: 1,
+    }));
+  };
+  /** Сколько записей нашлось: из meta, а если её нет — по длине текущей страницы. */
+  const totalFound = data?.meta?.total ?? data?.meta?.totalCount ?? data?.meta?.count ?? items.length;
+
   // Дубликаты только среди клиентов выбранного месяца (по dateStart)
   const dupFilteredClients = useMemo(
     () => filterClientsByPeriod(allClients, dupYear, dupMonth || null),
@@ -353,24 +386,12 @@ const ClientsPage = () => {
     setClientFormError(null);
     setClientFormSaving(true);
     try {
-      const { body, photoUploads } = prepareClientSavePayload(payload);
+      const { body } = prepareClientSavePayload(payload);
       let targetId = formClient?.id;
       if (targetId) await updateClient(formClient.id, body, null);
       else {
         const created = await createClient(body, null);
         targetId = created?.id ?? created?.data?.id;
-      }
-      if (photoUploads.length > 0 && targetId != null) {
-        try {
-          await uploadClientPhotos(targetId, photoUploads, null);
-        } catch (photoErr) {
-          const pmsg =
-            photoErr?.response?.data?.error?.message ??
-            photoErr?.response?.data?.message ??
-            photoErr?.message ??
-            'ошибка загрузки';
-          toast.error(`Клиент сохранён, но фото не загрузились: ${pmsg}`);
-        }
       }
       // Черновик доведён до реального клиента — убираем его, чтобы не дублировался в списке
       if (activeDraft?.id) {
@@ -458,6 +479,11 @@ const ClientsPage = () => {
                 <div className="ui-search clients-page__search">
                   <Search size={15} className="ui-search__icon" />
                   <input type="text" placeholder="Поиск" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="ui-search__input" />
+                  {searchInput && (
+                    <button type="button" className="clients-page__search-clear" onClick={() => setSearchInput('')} aria-label="Очистить поиск">
+                      <X size={14} />
+                    </button>
+                  )}
                 </div>
 
                 {/* Кнопка Фильтры с дропдауном */}
@@ -573,17 +599,29 @@ const ClientsPage = () => {
               {queryState.year && queryState.month && <label className="clients-page__filter-label"><span><CalendarClock size={13} /> День</span><Select value={queryState.day} onChange={(v) => setQueryState((q) => ({ ...q, day: v, page: 1 }))} options={[{ value: '', label: 'Все' }, ...Array.from({ length: 31 }, (_, i) => i + 1).map((d) => ({ value: String(d), label: String(d) }))]} placeholder="Все" className="clients-page__select-wrap" icon={<CalendarClock size={15} />} /></label>}
             </div>
           </FiltersModal>
+          {/* Сколько записей нашлось: раньше при одной странице пагинация скрывалась
+              и общее число нигде не показывалось. */}
+          {!loading && !error && (
+            <div className="clients-page__found">
+              Найдено: <strong>{totalFound}</strong>
+              {hasActiveFilters && (
+                <button type="button" className="clients-page__found-reset" onClick={resetFilters}>
+                  Сбросить фильтры
+                </button>
+              )}
+            </div>
+          )}
           <ClientsList
             items={items}
             loading={loading}
             error={error}
             onRetry={fetchSafe}
-            onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())}
-            onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())}
             onDetails={handleOpenCard}
+            onWarningError={(m) => toast.error(m)}
             onExtend={setExtendClientObj}
-            emptyStateActionLabel="Добавить клиента"
-            emptyStateOnAction={() => (isAdmin ? setFormClient({}) : showAccessDenied())}
+            emptyMessage={hasActiveFilters ? 'По этим фильтрам никого не нашлось' : 'Нет клиентов'}
+            emptyStateActionLabel={hasActiveFilters ? 'Сбросить фильтры' : (isAdmin ? 'Добавить клиента' : undefined)}
+            emptyStateOnAction={hasActiveFilters ? resetFilters : () => (isAdmin ? setFormClient({}) : showAccessDenied())}
           />
           <Pagination meta={data?.meta} currentPage={queryState.page} onPage={(p) => setQueryState((q) => ({ ...q, page: p }))} loading={loading} entityLabel="клиентов" />
         </>
@@ -938,6 +976,7 @@ const ClientsPage = () => {
       {cardClient && (
         <ClientCardModal
           client={cardClient}
+          canManage={isAdmin}
           onEdit={(c) => (isAdmin ? setFormClient(c) : showAccessDenied())}
           onDelete={(c) => (isAdmin ? setConfirmDelete(c) : showAccessDenied())}
           onClose={() => setCardClient(null)}

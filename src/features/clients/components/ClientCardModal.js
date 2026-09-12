@@ -8,7 +8,7 @@ import { getApiErrorMessage, isPeriodClosedError } from '../../../shared/lib/api
 import { WEEKDAYS } from '../../sports-trainers/scheduleConstants';
 import { getClientPaymentsForCard } from '../lib/clientActualPayments';
 import { createClientFreeze, deleteClientFreeze, fetchClient, updateClientFreeze } from '../api';
-import { getClientPhotoKindLabel } from '../lib/clientPhotos';
+import { getPaymentKindLabel } from '../lib/paymentKinds';
 import {
   formatFreezeDateLabel,
   formatFreezeDateTimeLabel,
@@ -58,7 +58,7 @@ const CLIENT_TYPE_MAP = {
 };
 
 const ClientCardModal = ({
-  client, onEdit, onDelete, onClose, onClientUpdated,
+  client, onEdit, onDelete, onClose, onClientUpdated, canManage = true,
   canManageFreeze = false, onFreezeAccessDenied, fullscreen = false,
 }) => {
   const toast = useToast();
@@ -70,7 +70,7 @@ const ClientCardModal = ({
   const [deleteFreezeOpen, setDeleteFreezeOpen] = useState(false);
 
   const paymentKindRaw = client?.paymentKind ?? client?.payment_kind ?? '';
-  const paymentKindLabel = getClientPhotoKindLabel(paymentKindRaw) || '';
+  const paymentKindLabel = getPaymentKindLabel(paymentKindRaw) || '';
   const paymentKindReceiptAmount = client?.paymentKindReceiptAmount ?? client?.payment_kind_receipt_amount;
   const paymentKindCashAmount = client?.paymentKindCashAmount ?? client?.payment_kind_cash_amount;
 
@@ -337,13 +337,19 @@ const ClientCardModal = ({
         </div>
 
         {/* ── Кнопки ── */}
+        {/* Кнопки правки видит только тот, кто может ими пользоваться: раньше они
+            показывались всем и лишь по клику выдавали «У вас нет доступа». */}
         <div className="ccm__actions">
-          <button type="button" className="ui-modal-btn ui-modal-btn--primary" onClick={() => { onEdit(client); onClose(); }}>
-            <Pencil size={15} /> Редактировать
-          </button>
-          <button type="button" className="ui-modal-btn ui-modal-btn--danger" onClick={() => { onDelete(client); onClose(); }}>
-            <Trash2 size={15} /> Удалить
-          </button>
+          {canManage && (
+            <>
+              <button type="button" className="ui-modal-btn ui-modal-btn--primary" onClick={() => { onEdit(client); onClose(); }}>
+                <Pencil size={15} /> Редактировать
+              </button>
+              <button type="button" className="ui-modal-btn ui-modal-btn--danger" onClick={() => { onDelete(client); onClose(); }}>
+                <Trash2 size={15} /> Удалить
+              </button>
+            </>
+          )}
           <button type="button" className="ui-modal-btn" onClick={onClose}><X size={15} /> Закрыть</button>
         </div>
       </div>

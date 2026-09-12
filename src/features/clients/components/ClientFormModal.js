@@ -11,7 +11,7 @@ import {
   deleteOneTimePayment,
   fetchClientOneTimePayments,
 } from '../api';
-import { CLIENT_PHOTO_KIND_OPTIONS } from '../lib/clientPhotos';
+import { PAYMENT_KIND_OPTIONS } from '../lib/paymentKinds';
 import { fetchTrainerSchedule } from '../../sports-trainers/api';
 import {
   flattenScheduleToSlotOptions,
@@ -213,7 +213,18 @@ const ClientFormModal = ({
   const compactHints = fullscreen && isMobileFormLayout;
 
   const panelRef = useRef(null);
-  useModalEffect(true, onClose, panelRef);
+  /**
+   * Защита от потери набранного: форма большая, а закрыть её можно случайно —
+   * клик мимо окна или Escape. Если что-то уже введено, сначала спрашиваем.
+   * Пустую форму закрываем сразу, чтобы не мешать тем, кто просто передумал.
+   */
+  const [confirmClose, setConfirmClose] = useState(false);
+  const hasUnsavedInputRef = useRef(false);
+  const requestClose = () => {
+    if (hasUnsavedInputRef.current) setConfirmClose(true);
+    else onClose();
+  };
+  useModalEffect(true, requestClose, panelRef);
 
   useEffect(() => {
     const mq = window.matchMedia(MOBILE_FORM_MQ);
@@ -936,6 +947,21 @@ const ClientFormModal = ({
     trainingSlotKey,
   });
 
+  /**
+   * «Есть несохранённое» = текущее состояние формы отличается от того, каким она
+   * открылась. Сравниваем тот же снимок, что уходит в черновик, — новые поля
+   * попадают в проверку автоматически, отдельный список поддерживать не нужно.
+   */
+  const currentSnapshot = JSON.stringify(buildDraftSnapshot());
+  const initialSnapshotRef = useRef(null);
+  useEffect(() => {
+    initialSnapshotRef.current = null;
+  }, [clientFormSyncKey]);
+  useEffect(() => {
+    if (initialSnapshotRef.current === null) initialSnapshotRef.current = currentSnapshot;
+    hasUnsavedInputRef.current = initialSnapshotRef.current !== currentSnapshot;
+  });
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -1033,7 +1059,7 @@ const ClientFormModal = ({
   const content = (
     <div
       className={`client-form-modal__backdrop${fullscreen ? ' client-form-modal__backdrop--fullscreen' : ''}`}
-      onClick={onClose}
+      onClick={requestClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="client-form-modal-title"
@@ -1051,7 +1077,7 @@ const ClientFormModal = ({
               </span>
             </span>
           </h2>
-          <button type="button" className="client-form-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
+          <button type="button" className="client-form-modal__close" onClick={requestClose} aria-label="Закрыть"><X size={18} /></button>
         </div>
 
         {/* Прогресс по обязательным полям: видно, сколько осталось, ещё до попытки сохранить. */}
@@ -1410,7 +1436,7 @@ const ClientFormModal = ({
                     role="radiogroup"
                     aria-label="Способ оплаты"
                   >
-                    {CLIENT_PHOTO_KIND_OPTIONS.map((opt) => {
+                    {PAYMENT_KIND_OPTIONS.map((opt) => {
                       const Icon = PAYMENT_KIND_ICONS[opt.value] ?? Wallet;
                       const active = paymentKind === opt.value;
                       return (
@@ -1710,7 +1736,7 @@ const ClientFormModal = ({
                 Не заполнено: {missingFields.length}
               </span>
             )}
-            <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving || savingDraft}><X size={15} /> Отмена</button>
+            <button type="button" className="ui-modal-btn" onClick={requestClose} disabled={saving || savingDraft}><X size={15} /> Отмена</button>
             {/* «Отложить» только при создании: сохранённого клиента откладывать некуда —
                 он уже в базе, его правки сохраняются обычной кнопкой. */}
             {!client?.id && onSaveDraft && (
@@ -1729,6 +1755,16 @@ const ClientFormModal = ({
             </SubmitButton>
           </div>
         </form>
+        {confirmClose && (
+          <ConfirmModal
+            title="Закрыть без сохранения?"
+            message="Введённые данные не сохранятся. Можно вместо этого отложить карточку в черновики."
+            confirmText="Закрыть без сохранения"
+            onConfirm={() => { setConfirmClose(false); onClose(); }}
+            onCancel={() => setConfirmClose(false)}
+            danger
+          />
+        )}
         {confirmDeleteOneTime && (
           <ConfirmModal
             title="Удалить доплату?"

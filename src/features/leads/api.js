@@ -30,10 +30,6 @@ export const fetchLeadStats = async (queryState, signal) => {
   return data;
 };
 
-export const fetchLead = async (id, signal) => {
-  const { data } = await apiClient.get(`/leads/${id}/`, withSignal({}, signal));
-  return data;
-};
 
 export const createLead = async (body, signal) => {
   const { data } = await apiClient.post('/leads/', body, withSignal({}, signal));

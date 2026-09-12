@@ -23,6 +23,61 @@
     }
   }
 
+
+  // Счётчик найденного над списком + быстрый сброс фильтров
+  &__found {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 10px;
+    font-size: 13px;
+    color: var(--color-text-muted);
+
+    strong { color: var(--color-text); font-weight: 700; }
+  }
+
+  &__found-reset {
+    border: none;
+    background: none;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-primary);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+
+    &:hover { color: var(--color-text); }
+  }
+
+  // Крестик очистки поиска
+  &__search-clear {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 50%;
+    background: var(--color-surface-secondary);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+
+    &:hover {
+      background: var(--color-border);
+      color: var(--color-text);
+    }
+  }
+
+  &__search {
+    position: relative;
+  }
+
   &__not-renewed-toolbar {
     margin-bottom: var(--space-4);
     padding: 12px 16px;

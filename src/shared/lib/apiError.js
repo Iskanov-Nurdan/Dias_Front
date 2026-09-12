@@ -20,7 +20,14 @@ export const isTooManyRequestsError = (err) => getApiErrorCode(err) === 'too_man
  * Формат ошибок API по ТЗ: { error: { code, message }, errors?: [{ field, message }] }
  */
 export const getApiErrorMessage = (err) => {
-  if (!err?.response?.data) return err?.message || 'Ошибка запроса';
+  // userMessage ставит интерцептор в client.js (нет сети, нет доступа) — он уже
+  // по-русски и понятнее, чем сырое axios-сообщение вроде «Network Error».
+  if (err?.userMessage) return err.userMessage;
+  if (!err?.response?.data) {
+    // Сеть отвалилась до ответа сервера: response нет вообще.
+    if (!err?.response) return 'Нет соединения с сервером. Проверьте интернет.';
+    return err?.message || 'Ошибка запроса';
+  }
   const d = err.response.data;
   const msg = d.error?.message ?? d.message ?? d.detail;
   if (typeof msg === 'string') return msg;

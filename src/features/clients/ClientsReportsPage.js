@@ -607,7 +607,6 @@ const ClientsReportsPage = () => {
             error={notRenewedError}
             onRetry={fetchNotRenewedSafe}
             onDetails={handleOpenCard}
-            onWarningError={(m) => toast.error(m)}
             onExtend={setExtendClientObj}
             emptyMessage="Нет клиентов без продления на следующий месяц"
           />
@@ -823,7 +822,6 @@ const ClientsReportsPage = () => {
             error={warningsError}
             onRetry={fetchWarnedClients}
             onDetails={handleOpenCard}
-            onWarningError={(m) => toast.error(m)}
             onExtend={setExtendClientObj}
             emptyMessage="Пока нет клиентов с предупреждениями"
           />

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Eye, RefreshCw, AlertTriangle, ShieldX, MessageCircle, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
-import { ErrorState, EmptyState, SkeletonTable, ConfirmModal } from '../../../shared/ui';
+import { Eye, RefreshCw, AlertTriangle, MessageCircle, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { ErrorState, EmptyState, SkeletonTable } from '../../../shared/ui';
 import { isClientPaid, isClientSubscriptionExpired, formatSubscriptionEnd } from '../../../shared/constants/common';
 import { composeClientDataRowClass } from '../lib/clientRowHighlight';
-import { addClientWarning, resetClientWarning } from '../api';
+import { addClientWarning } from '../api';
 import { getApiErrorMessage } from '../../../shared/lib/apiError';
 import { MAX_WARNINGS } from '../lib/clientWarnings';
 import WarnClientModal from './WarnClientModal';
@@ -32,12 +32,10 @@ const ClientsList = ({
   emptyMessage,
   emptyStateActionLabel,
   emptyStateOnAction,
-  onWarningError,
   ordering,
   onSort,
 }) => {
   const [confirmWarnClient, setConfirmWarnClient] = useState(null);
-  const [confirmUnwarnClient, setConfirmUnwarnClient] = useState(null);
   const [warnSaving, setWarnSaving] = useState(false);
   const [warnError, setWarnError] = useState(null);
   const list = items?.items ?? items?.results ?? items ?? [];
@@ -53,21 +51,6 @@ const ClientsList = ({
       onRetry?.();
     } catch (e) {
       setWarnError(getApiErrorMessage(e));
-    } finally {
-      setWarnSaving(false);
-    }
-  };
-
-  /** Поставленное по ошибке предупреждение нужно уметь снять — иначе оно висит на клиенте навсегда. */
-  const handleResetWarnings = async (clientId) => {
-    setWarnSaving(true);
-    try {
-      await resetClientWarning(clientId);
-      setConfirmUnwarnClient(null);
-      onRetry?.();
-    } catch (e) {
-      setConfirmUnwarnClient(null);
-      onWarningError?.(getApiErrorMessage(e));
     } finally {
       setWarnSaving(false);
     }
@@ -141,6 +124,9 @@ const ClientsList = ({
               const isMaxWarned = warningCount >= MAX_WARNINGS;
               // Предупреждение — для тех, кто не оплатил, но срок абонемента ещё не истёк
               // (для просроченных/не продливших это уже "Не продлили", не сюда).
+              // Снимать вручную нечем и не нужно: бэкенд обнуляет счётчик сам,
+              // как только клиент переходит в «оплачено», а от случайного клика
+              // защищает модалка подтверждения.
               const canWarn = !paid && !isClientSubscriptionExpired(c);
               const subEnd = formatSubscriptionEnd(c);
               const waPhone = String(c.phone || '').replace(/\D/g, '');
@@ -200,17 +186,6 @@ const ClientsList = ({
                         <AlertTriangle size={13} /> Предупреждение
                       </button>
                     )}
-                    {/* Снять предупреждение: поставленное по ошибке иначе оставалось навсегда */}
-                    {warningCount > 0 && (
-                      <button
-                        type="button"
-                        className="ui-list-btn clients-list__btn"
-                        onClick={() => setConfirmUnwarnClient(c)}
-                        title="Снять все предупреждения с клиента"
-                      >
-                        <ShieldX size={13} /> Снять
-                      </button>
-                    )}
                     {/* Написать должнику прямо из списка: телефон уже есть,
                         раньше его копировали вручную в мессенджер */}
                     {waPhone.length >= 9 && !paid && (
@@ -246,15 +221,6 @@ const ClientsList = ({
           error={warnError}
           onConfirm={() => handleAddWarning(confirmWarnClient.id)}
           onClose={() => { setConfirmWarnClient(null); setWarnError(null); }}
-        />
-      )}
-      {confirmUnwarnClient && (
-        <ConfirmModal
-          title="Снять предупреждения?"
-          message={`${confirmUnwarnClient.fio} — счётчик обнулится (было ${getWarningCount(confirmUnwarnClient)} из ${MAX_WARNINGS})`}
-          confirmText={warnSaving ? 'Снимаем…' : 'Снять'}
-          onConfirm={() => handleResetWarnings(confirmUnwarnClient.id)}
-          onCancel={() => setConfirmUnwarnClient(null)}
         />
       )}
     </div>

@@ -668,7 +668,6 @@ const ClientsPage = () => {
             ordering={queryState.ordering}
             onSort={(value) => setQueryState((q) => ({ ...q, ordering: value, page: 1 }))}
             onDetails={handleOpenCard}
-            onWarningError={(m) => toast.error(m)}
             onExtend={setExtendClientObj}
             emptyMessage={hasActiveFilters ? 'По этим фильтрам никого не нашлось' : 'Нет клиентов'}
             emptyStateActionLabel={hasActiveFilters ? 'Сбросить фильтры' : (isAdmin ? 'Добавить клиента' : undefined)}

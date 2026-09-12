@@ -108,6 +108,17 @@ const MainLayout = () => {
   const toggleSidebar = () => setSidebarCollapsed((prev) => !prev);
   const toggleMobileMenu = () => setMobileMenuOpen((prev) => !prev);
 
+  /**
+   * Переход по пункту меню сворачивает сайдбар: на мобильном закрывает
+   * выезжающее меню, на десктопе — схлопывает в узкую полосу с иконками,
+   * освобождая ширину под саму страницу. Открыть обратно — кнопкой-стрелкой.
+   */
+  const handleNavigate = (path) => {
+    navigate(path);
+    if (isMobile) setMobileMenuOpen(false);
+    else setSidebarCollapsed(true);
+  };
+
   const sectionTitle = getSectionTitleForPath(location.pathname);
 
   const visiblePages = PAGE_IDS.filter((id) => hasAccess(id));
@@ -175,7 +186,7 @@ const MainLayout = () => {
                     key={pageId}
                     type="button"
                     className={`main-layout__nav-item ${isActive ? 'main-layout__nav-item--active' : ''}`}
-                    onClick={() => { navigate(path); if (isMobile) setMobileMenuOpen(false); }}
+                    onClick={() => handleNavigate(path)}
                     onMouseEnter={() => prefetchRoutePage(pageId)}
                     onFocus={() => prefetchRoutePage(pageId)}
                     title={Label}

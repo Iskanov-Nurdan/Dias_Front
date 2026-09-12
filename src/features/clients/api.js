@@ -42,6 +42,8 @@ const buildClientsListParams = (queryState) => {
   // Простой фильтр «занятия в этот день недели» (экран «Сегодня»).
   // Отдельно от фильтра по слоту ниже — тому нужны ещё время и тренер.
   if (queryState?.weekday) params.weekday = queryState.weekday;
+  // «Абонемент действует в этот день» — не то же, что «начался в этом месяце»
+  if (queryState?.activeOn) params.activeOn = queryState.activeOn;
 
   const twd = queryState?.trainingWeekday ?? queryState?.training_weekday;
   if (twd !== undefined && twd !== null && twd !== '') {
@@ -286,6 +288,18 @@ export const fetchExpiringClients = async ({ days = 7 } = {}, signal) => {
 export const fetchClientHistory = async (clientId, signal) => {
   const { data } = await apiClient.get(`/clients/${clientId}/history/`, withSignal({}, signal));
   return { items: data?.items ?? [], summary: data?.summary ?? {} };
+};
+
+/**
+ * GET /api/clients/lessons/?date= — занятия на день, целиком и по времени.
+ * Обычный список клиентов для этого не подходит: он режется по 100 записей
+ * и сортируется по дате записи, из-за чего расписание дня обрывалось.
+ */
+export const fetchLessonsForDay = async (dateIso, signal) => {
+  const { data } = await apiClient.get('/clients/lessons/', {
+    params: dateIso ? { date: dateIso } : {}, ...withSignal({}, signal),
+  });
+  return data?.items ?? [];
 };
 
 /** GET /api/clients/attendance/?date= — отметки посещения за день. */

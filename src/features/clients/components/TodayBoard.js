@@ -5,9 +5,21 @@ import {
 import { ErrorState, Spinner } from '../../../shared/ui';
 import { formatMoney, formatSubscriptionEnd } from '../../../shared/constants/common';
 import { WEEKDAYS } from '../../sports-trainers/scheduleConstants';
-import { fetchClients, fetchExpiringClients, fetchAttendance, markAttendance, clearAttendance } from '../api';
+import { fetchClients, fetchExpiringClients, fetchAttendance, markAttendance, clearAttendance, fetchLessonsForDay } from '../api';
 import { getClientDebt } from '../lib/clientMoney';
 import './TodayBoard.scss';
+
+/**
+ * Сегодняшняя дата в формате ГГГГ-ММ-ДД по местному времени.
+ * Через toISOString() нельзя: он отдаёт UTC, а в UTC+6 после полуночи это
+ * ещё вчерашний день — экран показывал бы вчерашние занятия и отметки.
+ */
+const localToday = () => {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+};
 
 /** ISO-номер дня недели: 1 = понедельник … 7 = воскресенье. */
 const isoWeekdayToday = () => {
@@ -48,17 +60,18 @@ const TodayBoard = ({ onOpenClient, onExtend }) => {
     setLoading(true);
     setError(null);
     const now = new Date();
+    // Год и месяц нужны только списку должников — он считается по месяцу записи
     const year = String(now.getFullYear());
     const month = String(now.getMonth() + 1);
     try {
-      const todayIso = new Date().toISOString().slice(0, 10);
+      const todayIso = localToday();
       const [lessonsRes, debtorsRes, expiringRes, attendanceRes] = await Promise.all([
-        fetchClients({ weekday, year, month, perPage: 100 }, null),
+        fetchLessonsForDay(todayIso, null),
         fetchClients({ paid: 'false', year, month, perPage: 100 }, null),
         fetchExpiringClients({ days: 7 }, null),
         fetchAttendance(todayIso, null),
       ]);
-      setLessons(lessonsRes?.items ?? lessonsRes?.results ?? []);
+      setLessons(lessonsRes ?? []);
       setDebtors(debtorsRes?.items ?? debtorsRes?.results ?? []);
       setExpiring(expiringRes?.items ?? []);
       setMarks(Object.fromEntries((attendanceRes || []).map((a) => [a.clientId, a.status])));
@@ -67,7 +80,7 @@ const TodayBoard = ({ onOpenClient, onExtend }) => {
     } finally {
       setLoading(false);
     }
-  }, [weekday]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -76,7 +89,7 @@ const TodayBoard = ({ onOpenClient, onExtend }) => {
    * иначе ошибочный клик было бы нечем исправить.
    */
   const toggleMark = async (client, next) => {
-    const dateIso = new Date().toISOString().slice(0, 10);
+    const dateIso = localToday();
     const current = marks[client.id];
     setMarkSaving(client.id);
     // Показываем результат сразу, при ошибке возвращаем как было
@@ -93,7 +106,8 @@ const TodayBoard = ({ onOpenClient, onExtend }) => {
     }
   };
 
-  /** Занятия — по времени начала: так же, как идёт день. */
+  /** Сервер уже отдаёт по времени начала; сортировка здесь — страховка от
+   *  случая, когда данные придут из другого источника. */
   const lessonsSorted = useMemo(
     () => [...lessons].sort((a, b) => timeLabel(a).localeCompare(timeLabel(b))),
     [lessons],
@@ -254,9 +268,9 @@ const TodayBoard = ({ onOpenClient, onExtend }) => {
       </div>
 
       {/* Ограничение выдачи честно проговорено, а не спрятано */}
-      {(lessons.length >= 100 || debtors.length >= 100) && (
+      {debtors.length >= 100 && (
         <p className="today__note">
-          <CircleAlert size={13} /> Показаны первые 100 записей в списке — полный список во вкладке «Клиенты».
+          <CircleAlert size={13} /> В списке должников показаны первые 100 — полный список во вкладке «Клиенты».
         </p>
       )}
     </div>

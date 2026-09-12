@@ -238,6 +238,34 @@ export const fetchClientsPaymentDayClients = async ({ year, month, day, kind }, 
   return data;
 };
 
+/**
+ * GET /api/clients/duplicates/ — дубликаты за период считает сервер.
+ * Возвращает { exact: [{key, clients}], similar: [{key, clients}] }.
+ */
+export const fetchClientDuplicates = async ({ year, month, day }, signal) => {
+  const params = {};
+  if (year) params.year = year;
+  if (month) params.month = month;
+  if (day) params.day = day;
+  const { data } = await apiClient.get('/clients/duplicates/', { params, ...withSignal({}, signal) });
+  return { exact: data?.exact ?? [], similar: data?.similar ?? [] };
+};
+
+/**
+ * GET /api/clients/needs-correction/ — записи с неполными данными.
+ * У каждого клиента поле correctionReasons — список причин.
+ */
+export const fetchClientsNeedsCorrection = async ({ year, month, day, page, perPage }, signal) => {
+  const params = {};
+  if (year) params.year = year;
+  if (month) params.month = month;
+  if (day) params.day = day;
+  if (page) params.page = page;
+  if (perPage) params.perPage = perPage;
+  const { data } = await apiClient.get('/clients/needs-correction/', { params, ...withSignal({}, signal) });
+  return data;
+};
+
 /** Загружает ВСЕ клиенты, проходя по всем страницам (для дубликатов) */
 export const fetchAllClientsPaginated = async (queryOverrides, signal) => {
   const perPage = 100;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { fetchClients, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchAllClientsPaginated, createOneTimePayment, fetchClientDrafts, createClientDraft, updateClientDraft, deleteClientDraft } from './api';
+import { fetchClients, fetchClient, createClient, updateClient, deleteClient, extendClient, fetchClientDuplicates, fetchClientsNeedsCorrection, createOneTimePayment, fetchClientDrafts, createClientDraft, updateClientDraft, deleteClientDraft } from './api';
 import { fetchSports } from '../sports-trainers/api';
 import { fetchTrainers } from '../sports-trainers/api';
 import { useAuth } from '../../app/providers/AuthProvider';
@@ -8,9 +8,7 @@ import { useDebounce } from '../../shared/hooks/useDebounce';
 import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { SEARCH_DEBOUNCE_MS, formatMoney, MONTHS, STATS_YEARS } from '../../shared/constants/common';
 import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiError';
-import { filterClientsByPeriod, getExactDuplicates, getSimilarGroups } from '../../shared/lib/duplicates';
 import { prepareClientSavePayload } from './lib/prepareClientSavePayload';
-import { getClientCorrectionReasons, clientNeedsCorrection } from './lib/needsCorrection';
 import { UsersRound, Copy, Ticket, Wrench, Search, X, Dumbbell, UserCheck, CreditCard, Tag, Calendar, CalendarDays, CalendarClock, Plus, ScanSearch, SpellCheck2, ChevronDown, Filter, Bookmark } from 'lucide-react';
 import { Select, ConfirmModal, Pagination, FiltersModal, FilterBar, EmptyState, Spinner } from '../../shared/ui';
 import { ClientsList, ClientCardModal, ClientFormModal, ClientDraftsModal, ExtendModal, DuplicateGroup } from './components';
@@ -78,7 +76,10 @@ const ClientsPage = () => {
   const { run: runMain } = useAbortSafeFetch();
 
   // ── Все клиенты для дубликатов ──
-  const [allClients, setAllClients] = useState([]);
+  // Дубликаты и «Исправление» считает сервер: браузер больше не выкачивает базу
+  // и не сравнивает каждого с каждым.
+  const [dupGroups, setDupGroups] = useState({ exact: [], similar: [] });
+  const [fixClients, setFixClients] = useState([]);
   const [allLoading, setAllLoading] = useState(false);
   const allControllerRef = useRef(null);
 
@@ -161,31 +162,45 @@ const ClientsPage = () => {
     }
   }, [runMain, queryState, debouncedSearch]);
 
-  /**
-   * Клиенты для вкладок «Дубликаты» и «Исправление».
-   *
-   * Раньше сюда скачивалась ВСЯ база (страницами по 100, без фильтров) — на большом
-   * клубе это десятки запросов подряд и тяжёлый массив в памяти, после чего браузер
-   * ещё и сравнивал каждого с каждым. Теперь просим у сервера только тот период,
-   * который выбран на вкладке, — объём работы падает до одного месяца.
-   */
-  const fetchAllClients = useCallback(async (period) => {
+  /** Дубликаты за выбранный период — группы приходят готовыми с сервера. */
+  const fetchDuplicates = useCallback(async (period) => {
     allControllerRef.current?.abort();
     allControllerRef.current = new AbortController();
     setAllLoading(true);
     try {
-      const q = {};
-      if (period?.year) q.year = period.year;
-      if (period?.month) q.month = period.month;
-      if (period?.day) q.day = period.day;
-      const list = await fetchAllClientsPaginated(q, allControllerRef.current.signal);
-      setAllClients(list);
+      const res = await fetchClientDuplicates(period, allControllerRef.current.signal);
+      setDupGroups({
+        exact: (res.exact || []).map((g) => g.clients),
+        similar: (res.similar || []).map((g) => g.clients),
+      });
     } catch (err) {
       if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
+      setDupGroups({ exact: [], similar: [] });
+      toast.error(getApiErrorMessage(err));
     } finally {
       setAllLoading(false);
     }
-  }, []);
+  }, [toast]);
+
+  /** Записи с неполными данными — причины считает сервер и отдаёт в correctionReasons. */
+  const fetchNeedsCorrection = useCallback(async (period) => {
+    allControllerRef.current?.abort();
+    allControllerRef.current = new AbortController();
+    setAllLoading(true);
+    try {
+      const res = await fetchClientsNeedsCorrection(
+        { ...period, perPage: 200 },
+        allControllerRef.current.signal,
+      );
+      setFixClients(res?.items ?? res?.results ?? []);
+    } catch (err) {
+      if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
+      setFixClients([]);
+      toast.error(getApiErrorMessage(err));
+    } finally {
+      setAllLoading(false);
+    }
+  }, [toast]);
 
   useEffect(() => {
     setQueryState((q) => (q.search === debouncedSearch ? q : { ...q, search: debouncedSearch, page: 1 }));
@@ -199,15 +214,15 @@ const ClientsPage = () => {
 
   useEffect(() => {
     if (activeTab === TAB_DUPS) {
-      fetchAllClients({ year: dupYear, month: dupMonth });
+      fetchDuplicates({ year: dupYear, month: dupMonth });
       return () => allControllerRef.current?.abort();
     }
     if (activeTab === TAB_FIX) {
-      fetchAllClients({ year: fixYear, month: fixMonth, day: fixDay });
+      fetchNeedsCorrection({ year: fixYear, month: fixMonth, day: fixDay });
       return () => allControllerRef.current?.abort();
     }
     return undefined;
-  }, [activeTab, fetchAllClients, dupYear, dupMonth, fixYear, fixMonth, fixDay]);
+  }, [activeTab, fetchDuplicates, fetchNeedsCorrection, dupYear, dupMonth, fixYear, fixMonth, fixDay]);
 
   const fetchOneTime = useCallback(async () => {
     oneTimeControllerRef.current?.abort();
@@ -309,23 +324,9 @@ const ClientsPage = () => {
   /** Сколько записей нашлось: из meta, а если её нет — по длине текущей страницы. */
   const totalFound = data?.meta?.total ?? data?.meta?.totalCount ?? data?.meta?.count ?? items.length;
 
-  // Дубликаты только среди клиентов выбранного месяца (по dateStart)
-  const dupFilteredClients = useMemo(
-    () => filterClientsByPeriod(allClients, dupYear, dupMonth || null),
-    [allClients, dupYear, dupMonth]
-  );
-  const exactGroups  = useMemo(() => getExactDuplicates(dupFilteredClients), [dupFilteredClients]);
-  const similarGroups = useMemo(() => getSimilarGroups(dupFilteredClients), [dupFilteredClients]);
+  const exactGroups = dupGroups.exact;
+  const similarGroups = dupGroups.similar;
 
-  // Клиенты с неполными данными (за выбранный период)
-  const fixPeriodClients = useMemo(
-    () => filterClientsByPeriod(allClients, fixYear, fixMonth || null, fixDay || null),
-    [allClients, fixYear, fixMonth, fixDay]
-  );
-  const fixClients = useMemo(
-    () => fixPeriodClients.filter(clientNeedsCorrection),
-    [fixPeriodClients]
-  );
 
 
   // ── Черновики ───────────────────────────────────────────────────────────────
@@ -907,7 +908,7 @@ const ClientsPage = () => {
                       const dateStart = c.dateStart ?? c.date_start;
                       const sportName = c.sportName ?? c.sport?.name;
                       const paid = c.paid === true || c.paid === 'true';
-                      const reasons = getClientCorrectionReasons(c);
+                      const reasons = c.correctionReasons ?? [];
                       return (
                         <tr key={c.id} style={{ '--row-i': idx }}>
                           <td className="clients-page__onetime-name">{c.fio || '—'}</td>

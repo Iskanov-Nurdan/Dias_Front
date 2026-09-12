@@ -35,6 +35,7 @@ const buildClientsListParams = (queryState) => {
     params.dateTo   = `${y}-${monthEnd}-${dayEnd}`;
   }
 
+  if (queryState?.ordering) params.ordering = queryState.ordering;
   if (queryState?.page) params.page = queryState.page;
   if (queryState?.perPage) params.perPage = queryState.perPage;
 

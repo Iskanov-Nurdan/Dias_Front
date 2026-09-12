@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, RefreshCw, AlertTriangle, ShieldX, MessageCircle } from 'lucide-react';
+import { Eye, RefreshCw, AlertTriangle, ShieldX, MessageCircle, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { ErrorState, EmptyState, SkeletonTable, ConfirmModal } from '../../../shared/ui';
 import { isClientPaid, isClientSubscriptionExpired, formatSubscriptionEnd } from '../../../shared/constants/common';
 import { composeClientDataRowClass } from '../lib/clientRowHighlight';
@@ -36,6 +36,8 @@ const ClientsList = ({
   emptyStateActionLabel,
   emptyStateOnAction,
   onWarningError,
+  ordering,
+  onSort,
 }) => {
   const [confirmWarnClient, setConfirmWarnClient] = useState(null);
   const [confirmUnwarnClient, setConfirmUnwarnClient] = useState(null);
@@ -77,6 +79,30 @@ const ClientsList = ({
     }
   };
 
+
+  /**
+   * Заголовок-кнопка сортировки. Стрелка показывает текущее направление,
+   * серые стрелки — «по этому столбцу можно отсортировать».
+   */
+  const SortTh = ({ field, children, className }) => {
+    if (!onSort) return <th className={className}>{children}</th>;
+    const active = ordering === field || ordering === `-${field}`;
+    const desc = ordering === `-${field}`;
+    return (
+      <th className={className}>
+        <button
+          type="button"
+          className={`clients-list__sort${active ? ' clients-list__sort--active' : ''}`}
+          onClick={() => onSort(active && !desc ? `-${field}` : field)}
+        >
+          {children}
+          {!active && <ChevronsUpDown size={12} />}
+          {active && (desc ? <ChevronDown size={12} /> : <ChevronUp size={12} />)}
+        </button>
+      </th>
+    );
+  };
+
   return (
     <div className="clients-list">
       <div className="ui-list__table-wrap clients-list__table-wrap">
@@ -96,11 +122,11 @@ const ClientsList = ({
                   />
                 </th>
               )}
-              <th>ФИО</th>
-              <th>Дата начала</th>
+              <SortTh field="fio">ФИО</SortTh>
+              <SortTh field="dateStart">Дата начала</SortTh>
               <th>Действует до</th>
-              <th>Вид спорта</th>
-              <th>Оплата</th>
+              <SortTh field="sport">Вид спорта</SortTh>
+              <SortTh field="paid">Оплата</SortTh>
               <th></th>
             </tr>
           </thead>

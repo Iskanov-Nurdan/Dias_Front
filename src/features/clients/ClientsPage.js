@@ -67,6 +67,7 @@ const ClientsPage = () => {
     year: String(new Date().getFullYear()),
     month: '',
     day: '',
+    ordering: '',
     page: 1,
     perPage: 20,
   }));
@@ -308,7 +309,12 @@ const ClientsPage = () => {
       });
   }, []);
 
-  const items = data?.items ?? data?.results ?? (Array.isArray(data) ? data : []) ?? [];
+  // Клиенты, удаление которых ещё можно отменить: строка уже скрыта, запрос
+  // на сервер уйдёт после паузы (см. handleDeleteClient).
+  const [pendingDeleteIds, setPendingDeleteIds] = useState(() => new Set());
+  const itemsRaw = data?.items ?? data?.results ?? (Array.isArray(data) ? data : []) ?? [];
+  // Помеченные к удалению исчезают сразу — иначе непонятно, сработало ли действие
+  const items = pendingDeleteIds.size ? itemsRaw.filter((c) => !pendingDeleteIds.has(c.id)) : itemsRaw;
 
   /** Активные фильтры списка — нужны, чтобы отличить «ничего не найдено» от «клиентов нет вообще». */
   const activeFilterCount = [
@@ -463,20 +469,41 @@ const ClientsPage = () => {
     }
   };
 
+  /**
+   * Удаление с возможностью отмены: строка сразу исчезает из списка, но запрос
+   * на сервер уходит только через несколько секунд. Пока висит тост «Отменить»,
+   * ошибку можно исправить — раньше удаление было мгновенным и необратимым.
+   */
   const handleDeleteClient = () => {
     if (!confirmDelete) return;
-    deleteClient(confirmDelete.id, null)
-      .then(() => {
-        setConfirmDelete(null);
-        fetchSafe();
-        toast.success('Клиент удалён');
-      })
-      .catch((e) => {
-        const msg = isPeriodClosedError(e)
-          ? 'Период закрыт. Изменение финансовых данных запрещено.'
-          : (e.response?.data?.error?.message ?? e.response?.data?.message ?? e.response?.data?.detail ?? e.message ?? 'Ошибка удаления');
-        toast.error(msg);
-      });
+    const target = confirmDelete;
+    setConfirmDelete(null);
+    setPendingDeleteIds((prev) => new Set(prev).add(target.id));
+
+    const forget = () => setPendingDeleteIds((prev) => {
+      const next = new Set(prev);
+      next.delete(target.id);
+      return next;
+    });
+
+    toast.withUndo(`Клиент «${target.fio}» удалён`, {
+      onUndo: () => {
+        forget();
+        toast.success('Удаление отменено');
+      },
+      onExpire: () => {
+        deleteClient(target.id, null)
+          .then(() => { forget(); fetchSafe(); })
+          .catch((e) => {
+            forget();
+            const msg = isPeriodClosedError(e)
+              ? 'Период закрыт. Изменение финансовых данных запрещено.'
+              : (e.response?.data?.error?.message ?? e.response?.data?.message ?? e.response?.data?.detail ?? e.message ?? 'Ошибка удаления');
+            toast.error(`Не удалось удалить «${target.fio}»: ${msg}`);
+            fetchSafe();
+          });
+      },
+    });
   };
 
   const handleOpenCard = (c) =>
@@ -661,6 +688,20 @@ const ClientsPage = () => {
                   Сбросить фильтры
                 </button>
               )}
+              {/* Размер страницы: 20 строк мало тем, кто просматривает список целиком */}
+              <span className="clients-page__per-page">
+                Показывать
+                {[20, 50, 100].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    className={`clients-page__per-page-btn${queryState.perPage === n ? ' clients-page__per-page-btn--active' : ''}`}
+                    onClick={() => setQueryState((q) => ({ ...q, perPage: n, page: 1 }))}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </span>
             </div>
           )}
           {selectedIds.size > 0 && (
@@ -682,6 +723,8 @@ const ClientsPage = () => {
             loading={loading}
             error={error}
             onRetry={fetchSafe}
+            ordering={queryState.ordering}
+            onSort={(value) => setQueryState((q) => ({ ...q, ordering: value, page: 1 }))}
             selectedIds={selectedIds}
             onToggleSelect={isAdmin ? toggleSelect : undefined}
             onToggleSelectAll={toggleSelectAll}

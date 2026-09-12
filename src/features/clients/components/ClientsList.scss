@@ -301,3 +301,28 @@
   accent-color: var(--color-primary);
   cursor: pointer;
 }
+
+// Заголовок-кнопка сортировки
+.clients-list__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  transition: color 0.15s ease;
+
+  svg { opacity: 0.4; flex-shrink: 0; }
+
+  &:hover { color: var(--color-text); svg { opacity: 0.8; } }
+
+  &--active {
+    color: var(--color-primary);
+    svg { opacity: 1; }
+  }
+}

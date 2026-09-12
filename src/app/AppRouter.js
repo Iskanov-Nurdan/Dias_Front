@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './providers/AuthProvider';
 import MainLayout from './layouts/MainLayout';
 import NoAccessPage from './components/NoAccessPage';
@@ -37,19 +37,33 @@ const IndexRedirect = () => {
   return <Navigate to={getFirstAvailableRoute()} replace />;
 };
 
+/**
+ * Корень домена (rahmanata.kg) — это визитка клуба, а не вход в CRM.
+ * Раньше "/" без сессии сразу редиректил на /login: посетитель из поиска
+ * или из ссылки в соцсетях упирался в форму входа сотрудника вместо страницы клуба.
+ *
+ * Особый случай — ровно "/" и только он: анонимный посетитель видит публичную
+ * страницу (ту же, что и по /taplink). Любой другой путь внутри CRM ведёт себя
+ * как раньше — истекшая сессия на /clients уводит на /login, а не молча
+ * подменяется маркетинговой страницей, иначе сотрудник не поймёт, куда логиниться.
+ */
+const RootGate = ({ children }) => {
+  const { user } = useAuth();
+  const location = useLocation();
+  if (!user) {
+    if (location.pathname === '/') return <TaplinkPage />;
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
+
 const AppRouter = () => (
   <BrowserRouter>
     <Routes>
+      {/* /taplink оставлен как алиас — старые ссылки и QR-коды на него не сломаются */}
       <Route path="/taplink" element={<TaplinkPage />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
+      <Route path="/" element={<RootGate><MainLayout /></RootGate>}>
         <Route index element={<IndexRedirect />} />
         <Route
           path="employees"

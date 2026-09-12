@@ -1,9 +1,25 @@
 # https://www.robotstxt.org/robotstxt.html
+#
+# На этом домене одна и та же сборка отдаёт и публичную страницу клуба (/, /taplink),
+# и внутреннюю CRM (/clients, /reports, /taplink-editor и т.д.). CRM закрыта логином,
+# поисковику там нечего индексировать — открываем только то, что реально публично.
+
 User-agent: *
 Allow: /
-
-# Закрыть от индексации служебные/API пути, если они отдаются с того же домена
+Allow: /taplink
 Disallow: /api/
+Disallow: /login
+Disallow: /employees
+Disallow: /sports-trainers
+Disallow: /clients
+Disallow: /reports
+Disallow: /activity-log
+Disallow: /leads
+Disallow: /expenses
+Disallow: /salary
+Disallow: /shifts
+Disallow: /taplink-editor
+Disallow: /spreadsheet
+Disallow: /analytics
 
-# Укажите свой домен после деплоя, например:
-# Sitemap: https://your-domain.com/sitemap.xml
+Sitemap: https://rahmanata.kg/sitemap.xml

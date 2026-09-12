@@ -965,6 +965,29 @@ const TaplinkPage = () => {
   const sports = (pageData.sports || []).filter(s => s.published !== false);
   const trainers = (pageData.trainers || []).filter(t => t.published !== false);
 
+  /**
+   * Вкладка браузера и meta description — вслед за тем, что реально редактируют
+   * в Taplink-редакторе (hero.title/desc), а не статичным текстом из index.html.
+   * index.html остаётся верным для ботов, которые не выполняют JS (превью
+   * в мессенджерах) и для самого первого кадра до гидратации; здесь же —
+   * уточнение для тех, кто JS выполняет (Google, сам браузер), и восстановление
+   * прежнего заголовка при уходе в CRM, чтобы вкладка не осталась "залипшей".
+   */
+  useEffect(() => {
+    const prevTitle = document.title;
+    const descTag = document.querySelector('meta[name="description"]');
+    const prevDesc = descTag?.getAttribute('content') ?? null;
+
+    const title = hero?.title ? `${hero.title} — ${hero.subtitle || 'спортивный клуб'}` : prevTitle;
+    document.title = title;
+    if (descTag && hero?.desc) descTag.setAttribute('content', hero.desc);
+
+    return () => {
+      document.title = prevTitle;
+      if (descTag && prevDesc != null) descTag.setAttribute('content', prevDesc);
+    };
+  }, [hero?.title, hero?.subtitle, hero?.desc]);
+
   const [activeSport,   setActiveSport]   = useState(null);
   const [activeTrainer, setActiveTrainer] = useState(null);
   const [booking,       setBooking]       = useState(null);

@@ -22,9 +22,6 @@ const TYPE_LABEL = {
 
 const ClientsList = ({
   items,
-  selectedIds,
-  onToggleSelect,
-  onToggleSelectAll,
   loading,
   error,
   onRetry,
@@ -44,9 +41,6 @@ const ClientsList = ({
   const [warnSaving, setWarnSaving] = useState(false);
   const [warnError, setWarnError] = useState(null);
   const list = items?.items ?? items?.results ?? items ?? [];
-  const picked = selectedIds instanceof Set ? selectedIds : new Set(selectedIds ?? []);
-  const allPicked = list.length > 0 && list.every((c) => picked.has(c.id));
-  const somePicked = list.some((c) => picked.has(c.id));
 
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
 
@@ -109,19 +103,6 @@ const ClientsList = ({
         <table className="ui-list__table clients-list__table">
           <thead>
             <tr>
-              {/* Массовое выделение: раньше 20 клиентов продлевали двадцатью действиями */}
-              {onToggleSelect && (
-                <th className="clients-list__pick-cell">
-                  <input
-                    type="checkbox"
-                    className="clients-list__pick"
-                    checked={allPicked}
-                    ref={(el) => { if (el) el.indeterminate = somePicked && !allPicked; }}
-                    onChange={() => onToggleSelectAll?.(!allPicked)}
-                    aria-label="Выделить все строки"
-                  />
-                </th>
-              )}
               <SortTh field="fio">ФИО</SortTh>
               <SortTh field="dateStart">Дата начала</SortTh>
               <th>Действует до</th>
@@ -133,13 +114,13 @@ const ClientsList = ({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={onToggleSelect ? 7 : 6} className="ui-list__skeleton-cell clients-list__skeleton-cell">
+                <td colSpan={6} className="ui-list__skeleton-cell clients-list__skeleton-cell">
                   <SkeletonTable rows={8} cols={5} />
                 </td>
               </tr>
             ) : !list.length ? (
               <tr>
-                <td colSpan={onToggleSelect ? 7 : 6} className="ui-list__empty-cell clients-list__empty-cell">
+                <td colSpan={6} className="ui-list__empty-cell clients-list__empty-cell">
                   <EmptyState
                     compact
                     tableCell
@@ -169,17 +150,6 @@ const ClientsList = ({
                   className={`${rowClass}${isMaxWarned ? ' clients-list__row--warned-max' : ''}`}
                   style={{ '--row-i': idx }}
                 >
-                  {onToggleSelect && (
-                    <td className="clients-list__pick-cell" data-label="">
-                      <input
-                        type="checkbox"
-                        className="clients-list__pick"
-                        checked={picked.has(c.id)}
-                        onChange={() => onToggleSelect(c.id)}
-                        aria-label={`Выделить ${c.fio || 'клиента'}`}
-                      />
-                    </td>
-                  )}
                   <td data-label="ФИО">
                     <div className="ui-list__name-cell clients-list__name-cell">
                       <span className="ui-avatar">{initials}</span>

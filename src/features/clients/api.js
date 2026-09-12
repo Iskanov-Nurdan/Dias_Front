@@ -288,14 +288,6 @@ export const fetchClientHistory = async (clientId, signal) => {
   return { items: data?.items ?? [], summary: data?.summary ?? {} };
 };
 
-/** POST /api/clients/bulk/ — групповое продление или отметка оплаты. */
-export const bulkClientAction = async ({ action, ids, months }, signal) => {
-  const body = { action, ids };
-  if (months) body.months = months;
-  const { data } = await apiClient.post('/clients/bulk/', body, withSignal({}, signal));
-  return data;
-};
-
 /** GET /api/clients/attendance/?date= — отметки посещения за день. */
 export const fetchAttendance = async (dateIso, signal) => {
   const { data } = await apiClient.get('/clients/attendance/', {

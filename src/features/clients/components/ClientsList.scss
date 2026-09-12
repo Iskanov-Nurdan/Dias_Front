@@ -289,19 +289,6 @@
   }
 }
 
-// ── Колонка выделения строк ────────────────────────────────────────────────
-.clients-list__pick-cell {
-  width: 40px;
-  text-align: center;
-}
-
-.clients-list__pick {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--color-primary);
-  cursor: pointer;
-}
-
 // Заголовок-кнопка сортировки
 .clients-list__sort {
   display: inline-flex;

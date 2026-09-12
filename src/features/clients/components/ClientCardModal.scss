@@ -566,69 +566,132 @@
 }
 
 .ccm__history-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 16px;
-  padding: 10px 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 1px;
+  padding: 0;
   border-bottom: 1px solid var(--color-border);
-  font-size: 12px;
-  color: var(--color-text-muted);
-
-  strong { color: var(--color-text); font-weight: 700; }
+  background: var(--color-border);
 }
 
-.ccm__history-debt strong { color: var(--color-danger); }
+// Каждый факт — отдельная плитка: раньше четыре значения шли одной строкой
+// подряд и сливались в сплошной текст
+.ccm__history-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 12px;
+  background: var(--color-surface-secondary);
+}
+
+.ccm__history-stat-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.ccm__history-stat-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.ccm__history-stat--debt {
+  background: var(--color-danger-soft);
+
+  .ccm__history-stat-label,
+  .ccm__history-stat-value { color: var(--color-danger); }
+}
 
 .ccm__history-list {
   margin: 0;
   padding: 0;
   list-style: none;
-  max-height: 240px;
+  max-height: 260px;
   overflow-y: auto;
 }
 
+// Слева период и секция, справа деньги. Ширина отдаётся левому блоку,
+// правый занимает ровно столько, сколько нужно, — колонки больше не наезжают.
 .ccm__history-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 1fr);
-  gap: 8px;
+  display: flex;
   align-items: center;
-  padding: 8px 14px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 14px;
   border-bottom: 1px solid var(--color-border);
-  font-size: 12.5px;
+  transition: background 0.15s ease;
 
   &:last-child { border-bottom: none; }
-  &--current { background: var(--color-primary-soft); }
+  &:hover { background: var(--color-surface-secondary); }
+
+  &--current {
+    background: var(--color-primary-soft);
+    box-shadow: inset 3px 0 0 var(--color-primary);
+
+    &:hover { background: color-mix(in srgb, var(--color-primary) 12%, transparent); }
+  }
+}
+
+.ccm__history-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .ccm__history-date {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-weight: 600;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
   color: var(--color-text);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .ccm__history-now {
-  padding: 0 6px;
+  padding: 1px 7px;
   border-radius: 999px;
   background: var(--color-primary);
   color: #fff;
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  line-height: 1.5;
 }
 
-.ccm__history-sport,
-.ccm__history-price {
-  color: var(--color-text-secondary);
+.ccm__history-sport {
+  font-size: 11.5px;
+  color: var(--color-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.ccm__history-money {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.ccm__history-price {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .ccm__history-status {
-  text-align: right;
+  font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
 

@@ -401,12 +401,28 @@ const ClientCardModal = ({
                 <p className="ccm__history-loading">Других периодов нет</p>
               ) : (
                 <>
+                  {/* Сводка карточками: раньше четыре факта шли одной строкой
+                      подряд и читались как сплошной текст */}
                   <div className="ccm__history-summary">
-                    <span>Периодов: <strong>{history.summary.periods}</strong></span>
-                    <span>С <strong>{history.summary.firstDate ? new Date(history.summary.firstDate).toLocaleDateString('ru-RU') : '—'}</strong></span>
-                    <span>Оплачено всего: <strong>{formatMoney(history.summary.collectedTotal)}</strong></span>
+                    <div className="ccm__history-stat">
+                      <span className="ccm__history-stat-label">Периодов</span>
+                      <span className="ccm__history-stat-value">{history.summary.periods}</span>
+                    </div>
+                    <div className="ccm__history-stat">
+                      <span className="ccm__history-stat-label">Занимается с</span>
+                      <span className="ccm__history-stat-value">
+                        {history.summary.firstDate ? new Date(history.summary.firstDate).toLocaleDateString('ru-RU') : '—'}
+                      </span>
+                    </div>
+                    <div className="ccm__history-stat">
+                      <span className="ccm__history-stat-label">Оплачено</span>
+                      <span className="ccm__history-stat-value">{formatMoney(history.summary.collectedTotal)}</span>
+                    </div>
                     {history.summary.debtTotal > 0 && (
-                      <span className="ccm__history-debt">Долг: <strong>{formatMoney(history.summary.debtTotal)}</strong></span>
+                      <div className="ccm__history-stat ccm__history-stat--debt">
+                        <span className="ccm__history-stat-label">Долг</span>
+                        <span className="ccm__history-stat-value">{formatMoney(history.summary.debtTotal)}</span>
+                      </div>
                     )}
                   </div>
                   <ul className="ccm__history-list">
@@ -414,14 +430,22 @@ const ClientCardModal = ({
                       const isCurrent = String(h.id) === String(client.id);
                       return (
                         <li key={h.id} className={`ccm__history-row${isCurrent ? ' ccm__history-row--current' : ''}`}>
-                          <span className="ccm__history-date">
-                            {h.dateStart ? new Date(h.dateStart).toLocaleDateString('ru-RU') : '—'}
-                            {isCurrent && <span className="ccm__history-now">сейчас</span>}
+                          {/* Дата и вид спорта — левый блок в две строки, деньги
+                              и статус — правый. Раньше четыре колонки одной
+                              линией наезжали друг на друга, а бейдж «сейчас»
+                              перекрывал название секции */}
+                          <span className="ccm__history-main">
+                            <span className="ccm__history-date">
+                              {h.dateStart ? new Date(h.dateStart).toLocaleDateString('ru-RU') : '—'}
+                              {isCurrent && <span className="ccm__history-now">сейчас</span>}
+                            </span>
+                            <span className="ccm__history-sport">{h.sportName ?? h.sport?.name ?? '—'}</span>
                           </span>
-                          <span className="ccm__history-sport">{h.sportName ?? h.sport?.name ?? '—'}</span>
-                          <span className="ccm__history-price">{formatMoney(h.priceDisplay ?? h.price)}</span>
-                          <span className={`ccm__history-status ccm__history-status--${h.fullyPaid ? 'ok' : 'debt'}`}>
-                            {h.fullyPaid ? 'оплачен' : `долг ${Number(h.debt || 0).toLocaleString('ru-RU')}`}
+                          <span className="ccm__history-money">
+                            <span className="ccm__history-price">{formatMoney(h.priceDisplay ?? h.price)}</span>
+                            <span className={`ccm__history-status ccm__history-status--${h.fullyPaid ? 'ok' : 'debt'}`}>
+                              {h.fullyPaid ? 'оплачен' : `долг ${Number(h.debt || 0).toLocaleString('ru-RU')}`}
+                            </span>
                           </span>
                         </li>
                       );

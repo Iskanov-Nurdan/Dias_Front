@@ -187,11 +187,11 @@
             flex-shrink: 0;
           }
 
+          // На телефоне круг крупнее — под палец
           .clients-list__extend-btn {
-            flex: 1;
-            height: 44px;
-            font-size: 13px;
-            justify-content: center;
+            width: 46px;
+            height: 46px;
+            margin-left: auto;
           }
         }
 
@@ -345,10 +345,12 @@
 .clients-list__col-pay { width: 124px; }
 // Три иконки + «Продлить» + поля ячейки. На широком экране кнопки
 // разворачиваются в подписи, поэтому колонке нужно заметно больше.
-.clients-list__col-actions { width: 270px; }
+// Иконки: 3x34 + отступы + круг 38 + поля ячейки
+.clients-list__col-actions { width: 208px; }
 
-@media (min-width: 1560px) {
-  .clients-list__col-actions { width: 560px; }
+// С подписями: «Предупредить» + «WhatsApp» + «Подробнее» + круг
+@media (min-width: 1400px) {
+  .clients-list__col-actions { width: 452px; }
 }
 
 @media (max-width: 1360px) {
@@ -436,7 +438,9 @@
 // строка не вызывала прокрутку вбок.
 .clients-list__btn-label { display: none; }
 
-@media (min-width: 1560px) {
+// Подписи трёх второстепенных кнопок появляются рано: «Продлить» больше
+// не тратит ширину на текст, и места хватает уже на ноутбуке.
+@media (min-width: 1400px) {
   .clients-list__btn-label { display: inline; }
 }
 
@@ -475,7 +479,7 @@
     outline-offset: 2px;
   }
 
-  @media (min-width: 1560px) {
+  @media (min-width: 1400px) {
     min-width: 0;
     padding: 0 12px;
   }
@@ -503,35 +507,43 @@
   }
 }
 
+// Главное действие — крупный круг с узнаваемым значком, без подписи.
+// Освободившаяся ширина ушла под подписи трёх остальных кнопок.
 .clients-list__extend-btn {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  height: 34px;
-  padding: 0 14px;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
   flex-shrink: 0;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-primary);
+  border-radius: 50%;
+  border: none;
   background: var(--color-primary);
   color: #fff;
-  font-size: 12.5px;
-  font-weight: 700;
-  white-space: nowrap;
   cursor: pointer;
-  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-primary) 30%, transparent);
-  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 34%, transparent);
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
 
   &:hover {
     background: color-mix(in srgb, var(--color-primary) 88%, #000);
-    box-shadow: 0 3px 12px color-mix(in srgb, var(--color-primary) 38%, transparent);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--color-primary) 45%, transparent);
+    // Значок проворачивается — подсказывает смысл действия без подписи
+    svg { transform: rotate(-90deg); }
   }
 
-  &:active { transform: scale(0.96); }
+  &:active { transform: scale(0.93); }
 
   &:focus-visible {
     outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
+    outline-offset: 3px;
   }
+
+  svg { transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clients-list__extend-btn svg,
+  .clients-list__extend-btn:hover svg { transition: none; transform: none; }
 }
 
 // Аватар чуть меньше под уплотнённую строку
@@ -541,12 +553,11 @@
   font-size: 11px;
 }
 
-// Имя крупнее бейджей: в строке это главное, за что цепляется глаз
-.clients-list__name-info .ui-list__title {
-  font-size: 14px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-}
+// Типографику имени намеренно НЕ переопределяем: она берётся из общего
+// .ui-list__title, как во всех остальных списках. Раньше здесь стоял
+// font-weight: 650, которого нет в загруженных начертаниях Plus Jakarta Sans
+// (400/500/600/700) — браузер синтезировал вес, и шрифт на этой странице
+// выглядел иначе, чем везде.
 
 .clients-list__badges {
   display: flex;

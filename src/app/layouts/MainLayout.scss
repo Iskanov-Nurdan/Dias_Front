@@ -326,6 +326,10 @@
     padding: 10px var(--space-3) 12px;
     border-top: 1px solid var(--color-sidebar-border);
 
+    .main-layout--sidebar-collapsed & {
+      padding: 10px 8px 12px;
+    }
+
     @include mixins.mobile {
       padding: 10px var(--space-4) 12px;
     }
@@ -346,10 +350,15 @@
       background: rgba(0, 0, 0, 0.35);
     }
 
+    // Свёрнутому сайдбару 80px, а аватар с кнопкой выхода в ряд требуют ~100px:
+    // блок сплющивался и вылезал за край. Ставим их друг под другом —
+    // обе кнопки остаются доступными и помещаются по ширине.
     .main-layout--sidebar-collapsed & {
+      flex-direction: column;
       justify-content: center;
-      gap: 6px;
-      padding: 8px 6px;
+      gap: 8px;
+      padding: 10px 4px;
+      min-height: 0;
     }
 
     @include mixins.mobile {
@@ -418,8 +427,8 @@
     transition: background 0.15s, color 0.15s, transform 0.1s;
 
     .main-layout--sidebar-collapsed & {
-      width: 28px;
-      height: 28px;
+      width: 32px;
+      height: 32px;
       margin-left: 0;
     }
 

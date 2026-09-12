@@ -194,7 +194,7 @@ const ClientsList = ({
                         aria-label="Поставить предупреждение за неоплату"
                       >
                         <AlertTriangle size={15} />
-                        <span className="clients-list__btn-label">Предупреждение</span>
+                        <span className="clients-list__btn-label">Предупредить</span>
                       </button>
                     )}
                     {waPhone.length >= 9 && !paid && (
@@ -221,9 +221,17 @@ const ClientsList = ({
                       <Eye size={15} />
                       <span className="clients-list__btn-label">Подробнее</span>
                     </button>
-                    <button type="button" className="clients-list__extend-btn" onClick={() => onExtend(c)}>
-                      <RefreshCw size={14} />
-                      <span className="clients-list__btn-label">Продлить</span>
+                    {/* Главное действие — крупной круглой иконкой без подписи:
+                        значок продления узнаваем, а освободившаяся ширина ушла
+                        под подписи трёх остальных кнопок */}
+                    <button
+                      type="button"
+                      className="clients-list__extend-btn"
+                      onClick={() => onExtend(c)}
+                      title="Продлить абонемент"
+                      aria-label="Продлить абонемент"
+                    >
+                      <RefreshCw size={17} strokeWidth={2.2} />
                     </button>
                     </div>
                   </td>

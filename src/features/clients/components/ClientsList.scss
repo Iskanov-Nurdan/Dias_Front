@@ -164,25 +164,32 @@
         // Кнопки — полная ширина снизу
         &:nth-child(5) {
           grid-area: acts;
-          display: flex;
-          gap: 8px;
+          display: block;
           padding-top: 10px !important;
           margin-top: 2px;
           border-top: 1px solid var(--color-border) !important;
 
           &::before { display: none; }
 
+          // Flex теперь на внутренней обёртке, а не на ячейке
+          .clients-list__actions {
+            justify-content: stretch;
+            gap: 8px;
+          }
+
           // На узком экране палец должен попадать: иконки крупнее,
           // «Продлить» занимает всю оставшуюся ширину
           .clients-list__icon-btn {
-            width: 42px;
-            height: 42px;
+            min-width: 44px;
+            width: 44px;
+            height: 44px;
+            padding: 0;
             flex-shrink: 0;
           }
 
           .clients-list__extend-btn {
             flex: 1;
-            height: 42px;
+            height: 44px;
             font-size: 13px;
             justify-content: center;
           }
@@ -336,8 +343,13 @@
 .clients-list__col-period { width: 208px; }
 .clients-list__col-sport { width: 136px; }
 .clients-list__col-pay { width: 124px; }
-// Три иконки по 32 + отступы + «Продлить» + внутренние поля ячейки
-.clients-list__col-actions { width: 266px; }
+// Три иконки + «Продлить» + поля ячейки. На широком экране кнопки
+// разворачиваются в подписи, поэтому колонке нужно заметно больше.
+.clients-list__col-actions { width: 270px; }
+
+@media (min-width: 1560px) {
+  .clients-list__col-actions { width: 560px; }
+}
 
 @media (max-width: 1360px) {
   .clients-list__col-period { width: 176px; }
@@ -407,43 +419,96 @@
   text-overflow: ellipsis;
 }
 
-// ── Действия: иконки + одно текстовое главное ──────────────────────────────
+// ── Действия ───────────────────────────────────────────────────────────────
+// Flex живёт здесь, а не на самой ячейке: общий .ui-list__actions вешает
+// display:flex на td, из-за чего ячейка перестаёт быть табличной и колонка
+// больше не задаёт ей ширину — кнопки разъезжались от строки к строке.
+.clients-list__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+// Подписи показываем, когда ширины хватает: на широком мониторе места полно,
+// и прятать всё за иконки незачем. На узких — остаются одни иконки, чтобы
+// строка не вызывала прокрутку вбок.
+.clients-list__btn-label { display: none; }
+
+@media (min-width: 1560px) {
+  .clients-list__btn-label { display: inline; }
+}
+
 .clients-list__icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  gap: 7px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0;
   flex-shrink: 0;
   border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
+  border: 1px solid transparent;
+  // Заметны сами по себе, без наведения: раньше это были бледные серые
+  // контуры, которые читались как отключённые
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
   cursor: pointer;
   text-decoration: none;
-  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease,
+              box-shadow 0.15s ease, transform 0.1s ease;
 
   &:hover {
     border-color: var(--color-border-strong, var(--color-text-muted));
     color: var(--color-text);
+    box-shadow: var(--shadow-xs);
   }
 
   &:active { transform: scale(0.94); }
 
-  &--warn:hover { border-color: var(--color-warning); color: var(--color-warning); background: var(--color-warning-soft); }
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  @media (min-width: 1560px) {
+    min-width: 0;
+    padding: 0 12px;
+  }
+
+  &--warn {
+    background: var(--color-warning-soft);
+    color: var(--color-warning);
+
+    &:hover {
+      border-color: var(--color-warning);
+      color: var(--color-warning);
+      background: color-mix(in srgb, var(--color-warning) 18%, transparent);
+    }
+  }
+
   &--wa {
+    background: color-mix(in srgb, #16A34A 13%, transparent);
     color: #16A34A;
-    border-color: color-mix(in srgb, #16A34A 30%, transparent);
-    &:hover { border-color: #16A34A; background: color-mix(in srgb, #16A34A 10%, transparent); }
+
+    &:hover {
+      border-color: #16A34A;
+      color: #16A34A;
+      background: color-mix(in srgb, #16A34A 20%, transparent);
+    }
   }
 }
 
 .clients-list__extend-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 13px;
+  gap: 7px;
+  height: 34px;
+  padding: 0 14px;
   flex-shrink: 0;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-primary);
@@ -453,14 +518,20 @@
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-primary) 30%, transparent);
   transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
 
   &:hover {
     background: color-mix(in srgb, var(--color-primary) 88%, #000);
-    box-shadow: 0 2px 10px color-mix(in srgb, var(--color-primary) 32%, transparent);
+    box-shadow: 0 3px 12px color-mix(in srgb, var(--color-primary) 38%, transparent);
   }
 
   &:active { transform: scale(0.96); }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
 }
 
 // Аватар чуть меньше под уплотнённую строку

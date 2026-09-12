@@ -177,7 +177,12 @@ const ClientsList = ({
                       {paid ? 'Оплачено' : 'Не оплачено'}
                     </span>
                   </td>
-                  <td className="ui-list__actions clients-list__col-actions" data-label="">
+                  {/* Внутренний контейнер обязателен: общий .ui-list__actions ставит
+                      display:flex прямо на td, и ячейка перестаёт быть табличной —
+                      её ширину перестаёт задавать колонка, из-за чего кнопки
+                      разъезжались от строки к строке. */}
+                  <td className="clients-list__col-actions" data-label="">
+                    <div className="clients-list__actions">
                     {/* Текстом — только главное действие. Остальные иконками:
                         четыре подписи не помещались и вызывали прокрутку вбок */}
                     {canWarn && warningCount < MAX_WARNINGS && (
@@ -189,6 +194,7 @@ const ClientsList = ({
                         aria-label="Поставить предупреждение за неоплату"
                       >
                         <AlertTriangle size={15} />
+                        <span className="clients-list__btn-label">Предупреждение</span>
                       </button>
                     )}
                     {waPhone.length >= 9 && !paid && (
@@ -202,6 +208,7 @@ const ClientsList = ({
                         aria-label="Написать в WhatsApp"
                       >
                         <MessageCircle size={15} />
+                        <span className="clients-list__btn-label">WhatsApp</span>
                       </a>
                     )}
                     <button
@@ -212,10 +219,13 @@ const ClientsList = ({
                       aria-label="Открыть карточку клиента"
                     >
                       <Eye size={15} />
+                      <span className="clients-list__btn-label">Подробнее</span>
                     </button>
                     <button type="button" className="clients-list__extend-btn" onClick={() => onExtend(c)}>
-                      <RefreshCw size={14} /> Продлить
+                      <RefreshCw size={14} />
+                      <span className="clients-list__btn-label">Продлить</span>
                     </button>
+                    </div>
                   </td>
                 </tr>
               );

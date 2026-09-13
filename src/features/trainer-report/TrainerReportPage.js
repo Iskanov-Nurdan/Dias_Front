@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarX2, Download, Phone, UserX } from 'lucide-react';
+import { CalendarX2, Download, Phone, UserX, Users, CalendarRange } from 'lucide-react';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { fetchMyTrainerReport } from './api';
 import { Select, Spinner, ErrorState, EmptyState } from '../../shared/ui';
@@ -21,6 +21,12 @@ const CURRENT_YEAR_STR = String(NOW.getFullYear());
 const DEFAULT_YEAR = STATS_YEARS.includes(CURRENT_YEAR_STR) ? CURRENT_YEAR_STR : STATS_YEARS[STATS_YEARS.length - 1];
 const DEFAULT_MONTH = String(NOW.getMonth() + 1);
 
+const TAB_STUDENTS = 'students';
+const TAB_LOST = 'lost';
+
+const initials = (fio) =>
+  String(fio || '').trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
+
 /**
  * Кабинет тренера — «Мой отчёт».
  *
@@ -28,14 +34,15 @@ const DEFAULT_MONTH = String(NOW.getMonth() + 1);
  * продлил после этого месяца). Тренер не выбирает себя из списка — год и
  * месяц выбираются, а личность определяет сам вход на сайт.
  *
- * Верстка ученической таблицы — тот же блок, что уже показывает отчёт по
- * тренеру администратору в «Отчётах» (TrainerMonthReportBlock): те же цифры
- * должны выглядеть одинаково, кто бы их ни смотрел.
+ * Список учеников и «потерянные» показаны вкладками, а не друг под другом:
+ * при активном списке из 15-20 учеников подряд второй блок раньше уходил
+ * на второй-третий экран, и часть тренеров решала, что раздела вовсе нет.
  */
 const TrainerReportPage = () => {
   const { user } = useAuth();
   const [year, setYear] = useState(DEFAULT_YEAR);
   const [month, setMonth] = useState(DEFAULT_MONTH);
+  const [tab, setTab] = useState(TAB_STUDENTS);
 
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -87,24 +94,27 @@ const TrainerReportPage = () => {
   return (
     <div className="trainer-report-page">
       <header className="trainer-report-page__head">
-        <div>
+        <div className="trainer-report-page__heading">
           <h1 className="trainer-report-page__title">Мой отчёт</h1>
           <p className="trainer-report-page__hint">Ваши ученики за выбранный месяц</p>
         </div>
 
         <div className="trainer-report-page__filters">
-          <Select
-            value={String(year)}
-            onChange={setYear}
-            options={YEAR_OPTIONS}
-            className="trainer-report-page__select"
-          />
-          <Select
-            value={String(month)}
-            onChange={setMonth}
-            options={MONTH_OPTIONS}
-            className="trainer-report-page__select"
-          />
+          <div className="trainer-report-page__period">
+            <CalendarRange size={15} className="trainer-report-page__period-icon" aria-hidden />
+            <Select
+              value={String(year)}
+              onChange={setYear}
+              options={YEAR_OPTIONS}
+              className="trainer-report-page__select"
+            />
+            <Select
+              value={String(month)}
+              onChange={setMonth}
+              options={MONTH_OPTIONS}
+              className="trainer-report-page__select trainer-report-page__select--month"
+            />
+          </div>
           {!loading && !error && rows.length > 0 && (
             <button type="button" className="trainer-report-page__export-btn" onClick={handleExport}>
               <Download size={14} /> Скачать в Excel
@@ -121,44 +131,68 @@ const TrainerReportPage = () => {
         <ErrorState compact message={error} onRetry={load} />
       ) : (
         <>
-          <TrainerMonthReportBlock
-            periods={periods}
-            trainerName={user?.fio}
-          />
+          <div className="trainer-report-page__tabs" role="tablist" aria-label="Раздел отчёта">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === TAB_STUDENTS}
+              className={`trainer-report-page__tab${tab === TAB_STUDENTS ? ' trainer-report-page__tab--active' : ''}`}
+              onClick={() => setTab(TAB_STUDENTS)}
+            >
+              <Users size={15} aria-hidden />
+              Ученики
+              <span className="trainer-report-page__tab-count">{rows.length}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === TAB_LOST}
+              className={`trainer-report-page__tab${tab === TAB_LOST ? ' trainer-report-page__tab--active' : ''}`}
+              onClick={() => setTab(TAB_LOST)}
+            >
+              <UserX size={15} aria-hidden />
+              Не продлили
+              {lostRows.length > 0 && (
+                <span className="trainer-report-page__tab-count trainer-report-page__tab-count--danger">{lostRows.length}</span>
+              )}
+            </button>
+          </div>
 
-          {/* «Ушедшие»: те, кто занимался в выбранном месяце и не продлил
-              подписку после него — тот же критерий, что у отчёта «не
-              продлили» в администраторских «Отчётах». */}
-          <section className="trainer-report-page__lost">
-            <h2 className="trainer-report-page__lost-title">
-              <UserX size={16} /> Не продлили после этого месяца
-              {lostRows.length > 0 && <span className="trainer-report-page__lost-count">{lostRows.length}</span>}
-            </h2>
-
-            {lostRows.length === 0 ? (
-              <EmptyState
-                compact
-                message="Все, кто занимался в этом месяце, пока продолжают — потерянных учеников нет"
-              />
-            ) : (
-              <ul className="trainer-report-page__lost-list">
-                {lostRows.map((row) => (
-                  <li key={row.id} className="trainer-report-page__lost-row">
-                    <span className="trainer-report-page__lost-name">{row.fio}</span>
-                    <span className="trainer-report-page__lost-meta">
-                      {row.phone && (<><Phone size={11} aria-hidden />{row.phone}</>)}
-                      {row.sportName && <span className="trainer-report-page__dot" />}
-                      {row.sportName}
-                    </span>
-                    <span className="trainer-report-page__lost-date">
-                      {/* buildTrainerReportRow уже форматирует dateStart в ДД.ММ.ГГГГ */}
-                      <CalendarX2 size={12} aria-hidden /> занимался с {row.dateStart || '—'}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+          {tab === TAB_STUDENTS ? (
+            <TrainerMonthReportBlock periods={periods} trainerName={user?.fio} />
+          ) : (
+            /* «Ушедшие»: те, кто занимался в выбранном месяце и не продлил
+               подписку после него — тот же критерий, что у отчёта «не
+               продлили» в администраторских «Отчётах». */
+            <section className="trainer-lost">
+              {lostRows.length === 0 ? (
+                <EmptyState
+                  compact
+                  message="Все, кто занимался в этом месяце, пока продолжают — потерянных учеников нет"
+                />
+              ) : (
+                <ul className="trainer-lost__list">
+                  {lostRows.map((row) => (
+                    <li key={row.id} className="trainer-lost__row">
+                      <span className="trainer-lost__avatar" aria-hidden>{initials(row.fio) || '—'}</span>
+                      <span className="trainer-lost__info">
+                        <span className="trainer-lost__name">{row.fio}</span>
+                        <span className="trainer-lost__meta">
+                          {row.phone && (<><Phone size={11} aria-hidden />{row.phone}</>)}
+                          {row.phone && row.sportName && <span className="trainer-lost__dot" />}
+                          {row.sportName}
+                        </span>
+                      </span>
+                      <span className="trainer-lost__date">
+                        {/* buildTrainerReportRow уже форматирует dateStart в ДД.ММ.ГГГГ */}
+                        <CalendarX2 size={12} aria-hidden /> с {row.dateStart || '—'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
         </>
       )}
     </div>

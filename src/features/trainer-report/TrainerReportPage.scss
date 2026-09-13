@@ -1,36 +1,46 @@
+@use '../../shared/styles/mixins';
+
 // Кабинет тренера — «Мой отчёт».
 // Таблица учеников переиспользует .trainer-report__* стили из
 // TrainerMonthReportBlock.scss (тот же компонент, что и в «Отчётах»
-// администратора). Здесь — только шапка страницы и блок «Ушедшие».
+// администратора). Здесь — шапка страницы, переключатель вкладок и список
+// «Не продлили».
 
 .trainer-report-page {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
-  padding: var(--space-5) var(--space-4);
-  max-width: 960px;
+  padding: var(--space-6) var(--space-5) max(var(--space-8), env(safe-area-inset-bottom));
+  max-width: 980px;
   margin: 0 auto;
   width: 100%;
 }
 
+// ── Шапка ────────────────────────────────────────────────────────────────
 .trainer-report-page__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: var(--space-3);
+  gap: var(--space-4);
+}
+
+.trainer-report-page__heading {
+  min-width: 0;
 }
 
 .trainer-report-page__title {
   margin: 0;
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--color-text);
 }
 
 .trainer-report-page__hint {
-  margin: 2px 0 0;
-  font-size: 13px;
+  margin: 3px 0 0;
+  font-size: 13.5px;
+  font-weight: 500;
   color: var(--color-text-muted);
 }
 
@@ -41,55 +51,125 @@
   flex-wrap: wrap;
 }
 
+// Год и месяц — один визуальный узел с иконкой-подсказкой, а не два
+// одиночных селекта, случайно оказавшихся рядом
+.trainer-report-page__period {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px 0 10px;
+  height: 44px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+}
+
+.trainer-report-page__period-icon {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
 .trainer-report-page__select {
-  width: 140px;
-  min-width: 140px;
+  width: 108px;
+  min-width: 108px;
+}
+
+.trainer-report-page__select--month {
+  width: 148px;
+  min-width: 148px;
 }
 
 .trainer-report-page__export-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 38px;
-  padding: 0 14px;
+  justify-content: center;
+  gap: 7px;
+  height: 44px;
+  padding: 0 18px;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
-  background: var(--color-bg-card);
+  background: var(--color-surface);
   color: var(--color-text-secondary);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 13.5px;
+  font-weight: 700;
   cursor: pointer;
-  transition: border-color var(--transition-fast), color var(--transition-fast);
+  transition: border-color var(--transition-fast), color var(--transition-fast),
+    background var(--transition-fast), transform 0.1s;
   white-space: nowrap;
 
-  &:hover { border-color: var(--color-primary); color: var(--color-primary); }
+  &:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: var(--color-primary-soft);
+  }
+
+  &:active { transform: scale(0.97); }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
 }
 
 .trainer-report-page__state {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-6, 32px) 0;
+  padding: var(--space-8) 0;
 }
 
-// ═══ Ушедшие ученики ════════════════════════════════════════════════════════
-.trainer-report-page__lost {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.trainer-report-page__lost-title {
-  display: flex;
-  align-items: center;
+// ── Вкладки: крупные плитки, а не подчёркнутые ссылки ───────────────────────
+// Это единственный переключатель на странице и главный навигационный жест —
+// он должен быть заметнее, чем строка мелких табов, и удобен как тач-цель.
+.trainer-report-page__tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  margin: 0;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--color-text);
+  padding: 5px;
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
 }
 
-.trainer-report-page__lost-count {
+.trainer-report-page__tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
+
+  svg { flex-shrink: 0; opacity: 0.7; }
+
+  &:hover:not(&--active) {
+    color: var(--color-text);
+    background: color-mix(in srgb, var(--color-surface) 60%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  &--active {
+    background: var(--color-surface);
+    color: var(--color-text);
+    box-shadow: var(--shadow-sm);
+
+    svg { opacity: 1; color: var(--color-primary); }
+  }
+}
+
+.trainer-report-page__tab-count {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -97,13 +177,30 @@
   height: 20px;
   padding: 0 6px;
   border-radius: 999px;
-  background: var(--color-danger-soft);
-  color: var(--color-danger);
-  font-size: 11.5px;
-  font-weight: 700;
+  background: var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+
+  &--danger {
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+  }
 }
 
-.trainer-report-page__lost-list {
+.trainer-report-page__tab--active .trainer-report-page__tab-count {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.trainer-report-page__tab--active .trainer-report-page__tab-count--danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+// ═══ «Не продлили» ══════════════════════════════════════════════════════
+.trainer-lost__list {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -112,57 +209,135 @@
   list-style: none;
 }
 
-.trainer-report-page__lost-row {
+.trainer-lost__row {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-  padding: 10px 14px;
-  border-radius: var(--radius-md);
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
-  background: var(--color-bg-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform 0.1s;
+
+  &:hover {
+    border-color: var(--color-border-strong);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
+  }
 }
 
-.trainer-report-page__lost-name {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--color-text);
+.trainer-lost__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
   flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  font-size: 12.5px;
+  font-weight: 800;
+  line-height: 1;
 }
 
-.trainer-report-page__lost-meta {
+.trainer-lost__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.trainer-lost__name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trainer-lost__meta {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   font-size: 12.5px;
-  color: var(--color-text-secondary);
-}
-
-.trainer-report-page__lost-date {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-left: auto;
-  font-size: 12px;
   color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  svg { flex-shrink: 0; opacity: 0.7; }
 }
 
-.trainer-report-page__dot {
+.trainer-lost__dot {
   width: 3px;
   height: 3px;
   border-radius: 50%;
   background: currentColor;
   opacity: 0.5;
+  flex-shrink: 0;
 }
 
-// ── Телефон ──
-@media (max-width: 600px) {
+.trainer-lost__date {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+
+  svg { flex-shrink: 0; opacity: 0.7; }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// Responsive: 1024px+ десктоп (стили выше) · 768–1024 планшет ·
+// 480–768 крупный телефон · ≤480 телефон
+// ══════════════════════════════════════════════════════════════════════════
+
+// ── Планшет ──────────────────────────────────────────────────────────────
+@include mixins.lg {
   .trainer-report-page {
-    padding: var(--space-4) var(--space-3);
+    padding: var(--space-5) var(--space-4) max(var(--space-6), env(safe-area-inset-bottom));
   }
 
   .trainer-report-page__filters {
     width: 100%;
+    justify-content: space-between;
+  }
+}
+
+// ── Крупный телефон и малый планшет ─────────────────────────────────────
+@include mixins.mobile {
+  .trainer-report-page {
+    gap: var(--space-4);
+  }
+
+  .trainer-report-page__head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .trainer-report-page__title {
+    font-size: 21px;
+  }
+
+  .trainer-report-page__filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .trainer-report-page__period {
+    width: 100%;
+    height: 46px;
   }
 
   .trainer-report-page__select {
@@ -171,13 +346,64 @@
     min-width: 0;
   }
 
-  .trainer-report-page__export-btn {
-    width: 100%;
-    justify-content: center;
+  .trainer-report-page__select--month {
+    flex: 1.4;
+    width: auto;
+    min-width: 0;
   }
 
-  .trainer-report-page__lost-date {
-    margin-left: 0;
+  .trainer-report-page__export-btn {
     width: 100%;
+    height: 46px;
+  }
+
+  .trainer-report-page__tab {
+    font-size: 13px;
+    padding: 0 8px;
+    gap: 6px;
+  }
+
+  .trainer-lost__row {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .trainer-lost__date {
+    margin-left: calc(38px + 12px);
+  }
+}
+
+// ── Телефон ──────────────────────────────────────────────────────────────
+@media (max-width: 480px) {
+  .trainer-report-page {
+    padding: var(--space-4) var(--space-3) max(var(--space-6), env(safe-area-inset-bottom));
+  }
+
+  .trainer-report-page__tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .trainer-report-page__tab {
+    justify-content: flex-start;
+    padding: 0 14px;
+  }
+
+  // На узком экране подпись тренера в шапке .trainer-report__header
+  // и сама вкладка «Не продлили» — единственные крупные текстовые блоки,
+  // поэтому имя/дата ученика получают чуть больше воздуха вместо тесноты
+  .trainer-lost__row {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .trainer-lost__avatar {
+    width: 34px;
+    height: 34px;
+    font-size: 11.5px;
+  }
+
+  .trainer-lost__date {
+    margin-left: calc(34px + 10px);
+    font-size: 11px;
   }
 }

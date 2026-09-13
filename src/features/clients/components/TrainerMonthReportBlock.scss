@@ -42,6 +42,11 @@
   font-size: 14px;
   font-weight: 800;
   line-height: 1;
+
+  &--photo {
+    object-fit: cover;
+    background: var(--color-surface-secondary);
+  }
 }
 
 .trainer-report__identity-text {

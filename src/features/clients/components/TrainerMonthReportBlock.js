@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Users, CircleCheck, CircleX, Wallet, Clock, Phone, ChevronRight,
   ArrowRight, CalendarX2, TrendingUp, HandCoins, CircleAlert,
@@ -6,6 +6,7 @@ import {
 import { EmptyState, ErrorState, Spinner } from '../../../shared/ui';
 import { MONTHS, formatMoney } from '../../../shared/constants/common';
 import { summarizeTrainerReport } from '../lib/trainerMonthReport';
+import { useTrainerPhotosByFio } from '../../employees/hooks/useTrainerPhotosByFio';
 import './TrainerMonthReportBlock.scss';
 
 const FILTERS = [
@@ -223,17 +224,47 @@ const ReportHeader = ({ trainerName, periods }) => {
     [periods],
   );
 
+  // Фото — то же самое, что уже загружено в карточке тренера («Спорт и
+  // тренеры») и в списке сотрудников; ищется по совпадению ФИО. Не нашли —
+  // инициалы, как и раньше.
+  const getPhoto = useTrainerPhotosByFio();
+  const [photoBroken, setPhotoBroken] = useState(false);
+  // Смена тренера (админ листает «Отчёты») не должна унаследовать «битую»
+  // отметку от предыдущего — иначе валидное фото следующего тренера не
+  // показалось бы после одной неудачной загрузки чужого.
+  useEffect(() => { setPhotoBroken(false); }, [trainerName]);
+  const photo = photoBroken ? null : getPhoto(trainerName);
+
+  const secondPeriod = periods[1]?.period;
+  // Второй месяц показываем только когда он реально другой: в кабинете
+  // тренера период всегда один, и «Сентябрь 2026 → Сентябрь 2026» выглядело
+  // как опечатка, а не как диапазон.
+  const hasRange = secondPeriod
+    && (secondPeriod.month !== periods[0].period.month || secondPeriod.year !== periods[0].period.year);
+
   return (
     <header className="trainer-report__header">
       <div className="trainer-report__identity">
-        <span className="trainer-report__identity-avatar">{initials(trainerName) || '—'}</span>
+        {photo ? (
+          <img
+            src={photo}
+            alt=""
+            className="trainer-report__identity-avatar trainer-report__identity-avatar--photo"
+            onError={() => setPhotoBroken(true)}
+          />
+        ) : (
+          <span className="trainer-report__identity-avatar">{initials(trainerName) || '—'}</span>
+        )}
         <span className="trainer-report__identity-text">
           <span className="trainer-report__identity-name">{trainerName || 'Тренер'}</span>
           <span className="trainer-report__identity-period">
             {MONTHS[Number(periods[0].period.month)]} {periods[0].period.year}
-            <ArrowRight size={12} aria-hidden />
-            {MONTHS[Number(periods[1]?.period.month ?? periods[0].period.month)]}{' '}
-            {periods[1]?.period.year ?? periods[0].period.year}
+            {hasRange && (
+              <>
+                <ArrowRight size={12} aria-hidden />
+                {MONTHS[Number(secondPeriod.month)]} {secondPeriod.year}
+              </>
+            )}
           </span>
         </span>
       </div>

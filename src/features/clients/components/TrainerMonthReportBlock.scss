@@ -178,6 +178,12 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
   }
+
+  // Один период (кабинет тренера) — панель растягивается на всю ширину,
+  // а не остаётся в узкой левой половине опустевшей двухколоночной сетки
+  &--single {
+    grid-template-columns: 1fr;
+  }
 }
 
 .trainer-report__state {

@@ -332,7 +332,10 @@ const TrainerMonthReportBlock = ({ periods, loading, errorMessage, onRetry, onOp
   return (
     <div className="trainer-report">
       <ReportHeader trainerName={trainerName} periods={periods} />
-      <div className="trainer-report__grid">
+      {/* Две колонки — только когда реально сравниваются два месяца (админский
+          вид «Отчётов»). С одним периодом (кабинет тренера) вторая колонка
+          не занята никем и превращалась в пустую половину экрана. */}
+      <div className={`trainer-report__grid${periods.length < 2 ? ' trainer-report__grid--single' : ''}`}>
         {periods.map((p, i) => (
           <MonthPanel
             key={`${p.period.year}-${p.period.month}`}

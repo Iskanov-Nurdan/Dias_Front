@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Phone, Calendar, User, Clock, CreditCard, MessageSquare, Snowflake, Pencil, Trash2, CircleCheck, CircleAlert, Ticket, History, MessageCircle, ChevronDown } from 'lucide-react';
 import { formatMoney, isClientPaid, formatSubscriptionEnd } from '../../../shared/constants/common';
@@ -82,10 +82,23 @@ const ClientCardModal = ({
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
 
+  /**
+   * История лежит в самом низу карточки, поэтому при раскрытии подводим блок
+   * в зону видимости: иначе панель открывается ниже границы окна и создаёт
+   * впечатление, что ничего не произошло.
+   */
+  const historyRef = useRef(null);
+
   const loadHistory = async () => {
     if (historyOpen) { setHistoryOpen(false); return; }
     setHistoryOpen(true);
-    if (history || !client?.id) return;
+    const reveal = () => {
+      window.setTimeout(
+        () => historyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }),
+        60,
+      );
+    };
+    if (history || !client?.id) { reveal(); return; }
     setHistoryLoading(true);
     try {
       setHistory(await fetchClientHistory(client.id, null));
@@ -93,6 +106,7 @@ const ClientCardModal = ({
       setHistory({ items: [], summary: {} });
     } finally {
       setHistoryLoading(false);
+      reveal();
     }
   };
 
@@ -388,7 +402,7 @@ const ClientCardModal = ({
 
         {/* ── История периодов ── */}
         {client?.id && (
-          <div className="ccm__history">
+          <div className="ccm__history" ref={historyRef}>
             <button
               type="button"
               className="ccm__history-toggle"

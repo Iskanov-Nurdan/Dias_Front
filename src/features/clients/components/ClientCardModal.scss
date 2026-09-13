@@ -148,6 +148,10 @@
 
 // ── Body ─────────────────────────────────────────────────────
 .ccm__body {
+  // min-height: 0 обязателен: у flex-элемента по умолчанию min-height: auto,
+  // он не может стать меньше содержимого — overflow-y: auto тогда не включается,
+  // блок распирает модалку, и остаток просто обрезается её overflow: hidden.
+  min-height: 0;
   flex: 1;
   overflow-y: auto;
   @include mixins.scrollbar;

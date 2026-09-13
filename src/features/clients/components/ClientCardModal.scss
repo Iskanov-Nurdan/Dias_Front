@@ -28,7 +28,9 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   width: 100%;
-  max-width: 480px;
+  // 560, а не 480: сводка истории — четыре плитки, в 480px на каждую
+  // приходилось ~110px и дата «12.05.2026» вставала впритык к краям
+  max-width: 560px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -474,6 +476,7 @@
   gap: 8px;
   padding: 14px 20px;
   border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
   flex-shrink: 0;
 }
 
@@ -481,6 +484,23 @@
 // Кнопка "Закрыть" — последняя в ряду, отделяется вправо от остальных.
 .ccm__actions .ui-modal-btn:last-child {
   margin-left: auto;
+}
+
+// Иерархия действий: «Редактировать» — основное и единственное красное.
+// «Удалить» рядом с ним тоже была красной, и две одинаково громкие кнопки
+// спорили за внимание, хотя удаляют куда реже. Теперь она тихая и краснеет
+// только при наведении — намерение подтверждается до того, как нажали.
+.ccm__actions .ui-modal-btn--danger {
+  border-color: var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+
+  &:hover:not(:disabled) {
+    border-color: var(--color-danger);
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+  }
 }
 
 // ── Контакты в шапке: позвонить и написать ─────────────────────────────────
@@ -523,73 +543,124 @@
 }
 
 // ── История периодов ───────────────────────────────────────────────────────
+// ── История периодов ───────────────────────────────────────────────────────
 .ccm__history {
   margin: 0 0 var(--space-4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
+  background: var(--color-surface);
   overflow: hidden;
 }
 
+// Шапка секции, а не серая полоса: иконка в плашке, название, счётчик,
+// шеврон — по нему сразу понятно, что блок раскрывается
 .ccm__history-toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  padding: 11px 14px;
+  padding: 12px 14px;
   border: none;
   background: var(--color-surface-secondary);
   color: var(--color-text);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background 0.16s ease;
 
-  &:hover { background: var(--color-border); }
+  &:hover { background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface-secondary)); }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+  }
 }
 
+.ccm__history-toggle-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.ccm__history-toggle-text { flex: 1; min-width: 0; text-align: left; }
+
 .ccm__history-count {
-  margin-left: auto;
   padding: 1px 8px;
   border-radius: 999px;
   background: var(--color-primary-soft);
   color: var(--color-primary);
   font-size: 11.5px;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.ccm__history-chevron {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+
+  &--open { transform: rotate(180deg); }
+}
+
+// Плавное раскрытие вместо скачка
+.ccm__history-panel {
+  animation: ccm-history-open 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes ccm-history-open {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ccm__history-panel { animation: none; }
+  .ccm__history-chevron { transition: none; }
 }
 
 .ccm__history-loading {
   margin: 0;
-  padding: 16px;
+  padding: 18px;
   text-align: center;
   font-size: 12.5px;
   color: var(--color-text-muted);
 }
 
+// ── Сводка: слева справочное, справа деньги ────────────────────────────────
+// Раньше четыре одинаковые плитки стояли в ряд и «Периодов: 6» весило столько
+// же, сколько «Долг: 5 000 сом». Деньги — то, ради чего сюда заходят.
 .ccm__history-summary {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1px;
-  padding: 0;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-border);
+
+  @media (min-width: 520px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
-// Каждый факт — отдельная плитка: раньше четыре значения шли одной строкой
-// подряд и сливались в сплошной текст
 .ccm__history-stat {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 9px 12px;
-  background: var(--color-surface-secondary);
+  gap: 3px;
+  padding: 10px 12px;
+  background: var(--color-surface);
 }
 
 .ccm__history-stat-label {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   color: var(--color-text-muted);
+  white-space: nowrap;
 }
 
 .ccm__history-stat-value {
@@ -597,49 +668,59 @@
   font-weight: 700;
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
+
+// Денежные плитки крупнее справочных — разная важность, разный вес
+.ccm__history-stat--money .ccm__history-stat-value {
+  font-size: 15.5px;
+  font-weight: 800;
+}
+
+.ccm__history-stat--paid .ccm__history-stat-value { color: var(--color-success); }
 
 .ccm__history-stat--debt {
   background: var(--color-danger-soft);
 
-  .ccm__history-stat-label,
+  .ccm__history-stat-label { color: color-mix(in srgb, var(--color-danger) 75%, transparent); }
   .ccm__history-stat-value { color: var(--color-danger); }
 }
 
+// ── Список периодов ────────────────────────────────────────────────────────
+// Своей прокрутки нет намеренно: блок лежит внутри уже прокручиваемого тела
+// модалки, и второй скролл превращал список в окно в полторы строки
+// с обрезанным текстом сверху и снизу.
 .ccm__history-list {
   margin: 0;
   padding: 0;
   list-style: none;
-  max-height: 260px;
-  overflow-y: auto;
 }
 
-// Слева период и секция, справа деньги. Ширина отдаётся левому блоку,
-// правый занимает ровно столько, сколько нужно, — колонки больше не наезжают.
 .ccm__history-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 9px 14px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--color-border);
   transition: background 0.15s ease;
 
   &:last-child { border-bottom: none; }
+  &:nth-child(even) { background: color-mix(in srgb, var(--color-surface-secondary) 45%, transparent); }
   &:hover { background: var(--color-surface-secondary); }
 
   &--current {
     background: var(--color-primary-soft);
     box-shadow: inset 3px 0 0 var(--color-primary);
 
-    &:hover { background: color-mix(in srgb, var(--color-primary) 12%, transparent); }
+    &:hover { background: color-mix(in srgb, var(--color-primary) 13%, transparent); }
   }
 }
 
 .ccm__history-main {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
 }
 
@@ -661,9 +742,9 @@
   color: #fff;
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .ccm__history-sport {
@@ -678,7 +759,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 2px;
+  gap: 3px;
   flex-shrink: 0;
 }
 
@@ -690,11 +771,15 @@
   white-space: nowrap;
 }
 
+// Статус пилюлей: «оплачен» тихий, долг — заметный, с суммой
 .ccm__history-status {
-  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
   font-weight: 700;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 
-  &--ok { color: var(--color-success); }
-  &--debt { color: var(--color-danger); }
+  &--ok { background: var(--color-success-soft); color: var(--color-success); }
+  &--debt { background: var(--color-danger-soft); color: var(--color-danger); }
 }

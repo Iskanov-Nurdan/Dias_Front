@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Phone, Calendar, User, Clock, CreditCard, MessageSquare, Snowflake, Pencil, Trash2, CircleCheck, CircleAlert, Ticket, History, MessageCircle } from 'lucide-react';
+import { X, Phone, Calendar, User, Clock, CreditCard, MessageSquare, Snowflake, Pencil, Trash2, CircleCheck, CircleAlert, Ticket, History, MessageCircle, ChevronDown } from 'lucide-react';
 import { formatMoney, isClientPaid, formatSubscriptionEnd } from '../../../shared/constants/common';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { useToast } from '../../../app/providers/ToastProvider';
@@ -389,10 +389,24 @@ const ClientCardModal = ({
         {/* ── История периодов ── */}
         {client?.id && (
           <div className="ccm__history">
-            <button type="button" className="ccm__history-toggle" onClick={loadHistory}>
-              <History size={14} />
-              {historyOpen ? 'Скрыть историю' : 'История посещений и оплат'}
-              {history?.summary?.periods != null && <span className="ccm__history-count">{history.summary.periods}</span>}
+            <button
+              type="button"
+              className="ccm__history-toggle"
+              onClick={loadHistory}
+              aria-expanded={historyOpen}
+            >
+              <span className="ccm__history-toggle-icon"><History size={14} /></span>
+              <span className="ccm__history-toggle-text">История посещений и оплат</span>
+              {history?.summary?.periods != null && (
+                <span className="ccm__history-count">{history.summary.periods}</span>
+              )}
+              {/* Шеврон вместо смены надписи «Скрыть/Показать»: состояние видно
+                  по повороту, а название секции остаётся на месте */}
+              <ChevronDown
+                size={16}
+                className={`ccm__history-chevron${historyOpen ? ' ccm__history-chevron--open' : ''}`}
+                aria-hidden
+              />
             </button>
             {historyOpen && (
               historyLoading ? (
@@ -400,9 +414,9 @@ const ClientCardModal = ({
               ) : !history?.items?.length ? (
                 <p className="ccm__history-loading">Других периодов нет</p>
               ) : (
-                <>
-                  {/* Сводка карточками: раньше четыре факта шли одной строкой
-                      подряд и читались как сплошной текст */}
+                <div className="ccm__history-panel">
+                  {/* Слева справочное, справа деньги: раньше четыре одинаковые
+                      плитки весили поровну, хотя заходят сюда ради сумм */}
                   <div className="ccm__history-summary">
                     <div className="ccm__history-stat">
                       <span className="ccm__history-stat-label">Периодов</span>
@@ -414,12 +428,12 @@ const ClientCardModal = ({
                         {history.summary.firstDate ? new Date(history.summary.firstDate).toLocaleDateString('ru-RU') : '—'}
                       </span>
                     </div>
-                    <div className="ccm__history-stat">
+                    <div className="ccm__history-stat ccm__history-stat--money ccm__history-stat--paid">
                       <span className="ccm__history-stat-label">Оплачено</span>
                       <span className="ccm__history-stat-value">{formatMoney(history.summary.collectedTotal)}</span>
                     </div>
                     {history.summary.debtTotal > 0 && (
-                      <div className="ccm__history-stat ccm__history-stat--debt">
+                      <div className="ccm__history-stat ccm__history-stat--money ccm__history-stat--debt">
                         <span className="ccm__history-stat-label">Долг</span>
                         <span className="ccm__history-stat-value">{formatMoney(history.summary.debtTotal)}</span>
                       </div>
@@ -444,14 +458,14 @@ const ClientCardModal = ({
                           <span className="ccm__history-money">
                             <span className="ccm__history-price">{formatMoney(h.priceDisplay ?? h.price)}</span>
                             <span className={`ccm__history-status ccm__history-status--${h.fullyPaid ? 'ok' : 'debt'}`}>
-                              {h.fullyPaid ? 'оплачен' : `долг ${Number(h.debt || 0).toLocaleString('ru-RU')}`}
+                              {h.fullyPaid ? 'оплачен' : `долг ${Number(h.debt || 0).toLocaleString('ru-RU')} сом`}
                             </span>
                           </span>
                         </li>
                       );
                     })}
                   </ul>
-                </>
+                </div>
               )
             )}
           </div>

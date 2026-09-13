@@ -1,0 +1,183 @@
+// Кабинет тренера — «Мой отчёт».
+// Таблица учеников переиспользует .trainer-report__* стили из
+// TrainerMonthReportBlock.scss (тот же компонент, что и в «Отчётах»
+// администратора). Здесь — только шапка страницы и блок «Ушедшие».
+
+.trainer-report-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-4);
+  max-width: 960px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.trainer-report-page__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.trainer-report-page__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.trainer-report-page__hint {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.trainer-report-page__filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.trainer-report-page__select {
+  width: 140px;
+  min-width: 140px;
+}
+
+.trainer-report-page__export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+  white-space: nowrap;
+
+  &:hover { border-color: var(--color-primary); color: var(--color-primary); }
+}
+
+.trainer-report-page__state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6, 32px) 0;
+}
+
+// ═══ Ушедшие ученики ════════════════════════════════════════════════════════
+.trainer-report-page__lost {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.trainer-report-page__lost-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.trainer-report-page__lost-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.trainer-report-page__lost-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trainer-report-page__lost-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+}
+
+.trainer-report-page__lost-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-text);
+  flex-shrink: 0;
+}
+
+.trainer-report-page__lost-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+}
+
+.trainer-report-page__lost-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.trainer-report-page__dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.5;
+}
+
+// ── Телефон ──
+@media (max-width: 600px) {
+  .trainer-report-page {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .trainer-report-page__filters {
+    width: 100%;
+  }
+
+  .trainer-report-page__select {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+
+  .trainer-report-page__export-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .trainer-report-page__lost-date {
+    margin-left: 0;
+    width: 100%;
+  }
+}

@@ -411,3 +411,121 @@
   text-align: center;
 }
 
+
+// ═══ Доступ на сайт ═════════════════════════════════════════════════════════
+// Тот же визуальный язык, что у блока Taplink (.trainer-form-modal__tl) —
+// оба живут в одной форме и должны читаться как секции одной карточки,
+// а не как два разных интерфейса.
+
+.trainer-form-modal__access {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+  padding: var(--space-4);
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.trainer-form-modal__access-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.trainer-form-modal__access-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  font-size: 11px;
+  font-weight: 700;
+
+  &--off {
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+  }
+}
+
+.trainer-form-modal__access-empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+
+  p {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--color-text-muted);
+  }
+}
+
+.trainer-form-modal__access-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.trainer-form-modal__access-login {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.trainer-form-modal__access-login-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.trainer-form-modal__access-login-value {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.trainer-form-modal__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+
+  &:hover { border-color: var(--color-primary); color: var(--color-primary); }
+}
+
+.trainer-form-modal__access-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.trainer-form-modal__access-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}

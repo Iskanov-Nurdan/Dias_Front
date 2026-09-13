@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, User, Dumbbell, Globe, Video, Plus, Clock, AtSign, MessageSquare, FileText, Trophy, Check } from 'lucide-react';
+import {
+  X, User, Dumbbell, Globe, Video, Plus, Clock, AtSign, MessageSquare, FileText, Trophy, Check,
+  KeyRound, Lock, ShieldCheck, ShieldOff, Copy,
+} from 'lucide-react';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { SubmitButton, PhotoUpload, VideoUpload } from '../../../shared/ui';
 import { useToast } from '../../../app/providers/ToastProvider';
 import { BACKEND_ENABLED, uploadFile } from '../../taplink/api';
 import { loadTaplinkDataAsync, saveTaplinkDataAsync } from '../../taplink/taplinkStore';
+import { createTrainerAccount, updateTrainerAccount } from '../api';
+import { getApiErrorMessage } from '../../../shared/lib/apiError';
 import '../../../shared/ui/EntityNameModal.scss';
 import './TrainerFormModal.scss';
 
@@ -24,11 +29,104 @@ const emptyTaplinkFields = () => ({
   published: true,
 });
 
-const TrainerFormModal = ({ trainer, sports, onSave, onClose, error, saving }) => {
+const TrainerFormModal = ({ trainer, sports, onSave, onClose, error, saving, onAccountChanged }) => {
   const toast = useToast();
   const [fio, setFio] = useState('');
   const [sportIds, setSportIds] = useState([]);
   const isEdit = !!trainer?.id;
+
+  /**
+   * Доступ на сайт (логин/пароль) — независимое от остальной формы действие
+   * со своим запросом: выдаётся не всегда вместе с созданием тренера, а часто
+   * позже, отдельным решением администратора. Поэтому у блока свои кнопки,
+   * а не общий «Сохранить» формы.
+   */
+  const [account, setAccount] = useState({ hasAccount: false, accountLogin: null, accountActive: null });
+  const [accMode, setAccMode] = useState(null); // null | 'create' | 'reset'
+  const [accLogin, setAccLogin] = useState('');
+  const [accPassword, setAccPassword] = useState('');
+  const [accSaving, setAccSaving] = useState(false);
+  const [accError, setAccError] = useState(null);
+
+  useEffect(() => {
+    setAccount({
+      hasAccount: !!trainer?.hasAccount,
+      accountLogin: trainer?.accountLogin ?? null,
+      accountActive: trainer?.accountActive ?? null,
+    });
+    setAccMode(null);
+    setAccLogin('');
+    setAccPassword('');
+    setAccError(null);
+  }, [trainer?.id, trainer?.hasAccount, trainer?.accountLogin, trainer?.accountActive]);
+
+  const applyAccountResponse = (data) => {
+    setAccount({
+      hasAccount: !!data?.hasAccount,
+      accountLogin: data?.accountLogin ?? null,
+      accountActive: data?.accountActive ?? null,
+    });
+    onAccountChanged?.();
+  };
+
+  const handleCreateAccount = async (e) => {
+    e.preventDefault();
+    setAccError(null);
+    setAccSaving(true);
+    try {
+      const res = await createTrainerAccount(trainer.id, { login: accLogin.trim(), password: accPassword });
+      applyAccountResponse(res?.data);
+      setAccMode(null);
+      setAccPassword('');
+      toast.success('Доступ выдан — сообщите тренеру логин и пароль');
+    } catch (err) {
+      setAccError(getApiErrorMessage(err));
+    } finally {
+      setAccSaving(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (!accPassword) return;
+    setAccError(null);
+    setAccSaving(true);
+    try {
+      const res = await updateTrainerAccount(trainer.id, { password: accPassword });
+      applyAccountResponse(res?.data);
+      setAccMode(null);
+      setAccPassword('');
+      toast.success('Пароль обновлён — сообщите его тренеру');
+    } catch (err) {
+      setAccError(getApiErrorMessage(err));
+    } finally {
+      setAccSaving(false);
+    }
+  };
+
+  const handleToggleActive = async () => {
+    setAccError(null);
+    setAccSaving(true);
+    try {
+      const res = await updateTrainerAccount(trainer.id, { isActive: !account.accountActive });
+      applyAccountResponse(res?.data);
+    } catch (err) {
+      setAccError(getApiErrorMessage(err));
+    } finally {
+      setAccSaving(false);
+    }
+  };
+
+  const handleCopyLogin = async () => {
+    if (!account.accountLogin) return;
+    try {
+      await navigator.clipboard.writeText(account.accountLogin);
+      toast.success('Логин скопирован');
+    } catch {
+      // Буфер обмена недоступен (нет разрешения/не https) — не критично,
+      // логин и так виден на экране, просто не скопируется одним кликом
+    }
+  };
 
   // ── Публичная страница (Taplink) — тот же тренер, что и в CRM, второй набор полей
   // для маркетингового контента сайта. Хранится отдельным блобом на бэке Taplink
@@ -374,6 +472,133 @@ const TrainerFormModal = ({ trainer, sports, onSave, onClose, error, saving }) =
                       )}
                     </div>
                   </>
+                )}
+              </div>
+            )}
+
+            {/* Доступ на сайт — отдельный блок с собственными кнопками: выдаётся
+                не всегда вместе с созданием тренера, а часто отдельным решением
+                позже. Кабинет тренера — «Мой отчёт»: свои ученики за месяц,
+                кто оплатил, кто нет, кого потерял. */}
+            {isEdit && (
+              <div className="trainer-form-modal__access">
+                <div className="trainer-form-modal__access-head">
+                  <span className="trainer-form-modal__tl-title">
+                    <KeyRound size={14} strokeWidth={2} /> Доступ на сайт
+                  </span>
+                  {account.hasAccount && (
+                    <span className={`trainer-form-modal__access-badge${account.accountActive ? '' : ' trainer-form-modal__access-badge--off'}`}>
+                      {account.accountActive ? <ShieldCheck size={12} /> : <ShieldOff size={12} />}
+                      {account.accountActive ? 'Включён' : 'Выключен'}
+                    </span>
+                  )}
+                </div>
+
+                {accError && <p className="enm__error" role="alert">{accError}</p>}
+
+                {!account.hasAccount ? (
+                  accMode === 'create' ? (
+                    <div className="trainer-form-modal__access-form">
+                      <div className="enm__field">
+                        <label className="enm__label" htmlFor="trainer-acc-login">Логин</label>
+                        <input
+                          id="trainer-acc-login"
+                          className="enm__input"
+                          value={accLogin}
+                          onChange={(e) => setAccLogin(e.target.value)}
+                          placeholder="Например, фамилия латиницей"
+                          autoFocus
+                        />
+                      </div>
+                      <div className="enm__field">
+                        <label className="enm__label" htmlFor="trainer-acc-password"><Lock size={13} className="enm__label-icon" /> Пароль</label>
+                        <input
+                          id="trainer-acc-password"
+                          type="text"
+                          className="enm__input"
+                          value={accPassword}
+                          onChange={(e) => setAccPassword(e.target.value)}
+                          placeholder="Не короче 4 символов"
+                        />
+                      </div>
+                      <div className="trainer-form-modal__access-actions">
+                        <button type="button" className="ui-modal-btn" onClick={() => { setAccMode(null); setAccError(null); }} disabled={accSaving}>
+                          Отмена
+                        </button>
+                        <button
+                          type="button"
+                          className="ui-modal-btn ui-modal-btn--primary"
+                          onClick={handleCreateAccount}
+                          disabled={accSaving || !accLogin.trim() || accPassword.length < 4}
+                        >
+                          {accSaving ? 'Сохранение…' : 'Выдать доступ'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="trainer-form-modal__access-empty">
+                      <p>У тренера нет входа на сайт — он не увидит «Мой отчёт».</p>
+                      <button type="button" className="trainer-form-modal__add-btn" onClick={() => setAccMode('create')}>
+                        <Plus size={14} strokeWidth={2.5} /> Выдать доступ
+                      </button>
+                    </div>
+                  )
+                ) : (
+                  <div className="trainer-form-modal__access-body">
+                    <div className="trainer-form-modal__access-login">
+                      <span className="trainer-form-modal__access-login-label">Логин</span>
+                      <span className="trainer-form-modal__access-login-value">{account.accountLogin}</span>
+                      <button type="button" className="trainer-form-modal__icon-btn" onClick={handleCopyLogin} title="Скопировать логин" aria-label="Скопировать логин">
+                        <Copy size={13} />
+                      </button>
+                    </div>
+
+                    {accMode === 'reset' ? (
+                      <div className="trainer-form-modal__access-form">
+                        <div className="enm__field">
+                          <label className="enm__label" htmlFor="trainer-acc-new-password"><Lock size={13} className="enm__label-icon" /> Новый пароль</label>
+                          <input
+                            id="trainer-acc-new-password"
+                            type="text"
+                            className="enm__input"
+                            value={accPassword}
+                            onChange={(e) => setAccPassword(e.target.value)}
+                            placeholder="Не короче 4 символов"
+                            autoFocus
+                          />
+                        </div>
+                        <div className="trainer-form-modal__access-actions">
+                          <button type="button" className="ui-modal-btn" onClick={() => { setAccMode(null); setAccError(null); setAccPassword(''); }} disabled={accSaving}>
+                            Отмена
+                          </button>
+                          <button
+                            type="button"
+                            className="ui-modal-btn ui-modal-btn--primary"
+                            onClick={handleResetPassword}
+                            disabled={accSaving || accPassword.length < 4}
+                          >
+                            {accSaving ? 'Сохранение…' : 'Сохранить пароль'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="trainer-form-modal__access-actions">
+                        <button type="button" className="ui-modal-btn" onClick={() => setAccMode('reset')} disabled={accSaving}>
+                          <Lock size={13} /> Сбросить пароль
+                        </button>
+                        <button
+                          type="button"
+                          className={`ui-modal-btn${account.accountActive ? ' ui-modal-btn--danger' : ' ui-modal-btn--primary'}`}
+                          onClick={handleToggleActive}
+                          disabled={accSaving}
+                        >
+                          {account.accountActive
+                            ? <><ShieldOff size={13} /> Выключить доступ</>
+                            : <><ShieldCheck size={13} /> Включить доступ</>}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}

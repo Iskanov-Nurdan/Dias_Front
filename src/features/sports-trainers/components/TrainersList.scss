@@ -88,3 +88,12 @@
   object-fit: cover;
   background: var(--color-surface-secondary);
 }
+
+// Пилюля «есть доступ на сайт» рядом с именем — не должна сжиматься и
+// толкать сам текст имени за пределы ячейки
+.trainers-list__access-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}

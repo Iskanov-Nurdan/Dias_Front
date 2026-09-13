@@ -424,6 +424,7 @@ const SportsTrainersPage = () => {
           onClose={() => { setFormTrainer(null); setTrainerFormError(null); }}
           error={trainerFormError}
           saving={trainerFormSaving}
+          onAccountChanged={fetchTrainersSafe}
         />
       )}
       {scheduleTrainer?.id && (

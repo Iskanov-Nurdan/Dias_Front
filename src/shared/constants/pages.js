@@ -1,5 +1,6 @@
 import {
   BarChart3, Users, Trophy, UsersRound, ClipboardList, Receipt, Wallet, Inbox, Link2, Clock, Table2, History,
+  UserCheck,
 } from 'lucide-react';
 
 export const PAGE_IDS = [
@@ -15,6 +16,9 @@ export const PAGE_IDS = [
   'shifts',
   'taplink',
   'spreadsheet',
+  // Кабинет тренера — отдельная страница, а не часть 'clients': у тренера
+  // нет доступа к чужим клиентам и остальным разделам CRM.
+  'trainer-report',
 ];
 
 export const PAGE_ICONS = {
@@ -30,6 +34,7 @@ export const PAGE_ICONS = {
   shifts: Clock,
   taplink: Link2,
   spreadsheet: Table2,
+  'trainer-report': UserCheck,
 };
 
 export const PAGE_LABELS = {
@@ -45,6 +50,7 @@ export const PAGE_LABELS = {
   shifts: 'Смены',
   taplink: 'Taplink страница',
   spreadsheet: 'Таблицы',
+  'trainer-report': 'Мой отчёт',
 };
 
 export const PAGE_ROUTES = {
@@ -60,6 +66,7 @@ export const PAGE_ROUTES = {
   shifts: '/shifts',
   taplink: '/taplink-editor',
   spreadsheet: '/spreadsheet',
+  'trainer-report': '/my-report',
 };
 
 /** Группы пунктов меню: ключ группы → массив pageId */
@@ -70,4 +77,5 @@ export const PAGE_GROUPS = {
   'Смены': ['shifts'],
   'Сайт': ['taplink'],
   'Таблицы': ['spreadsheet'],
+  'Кабинет': ['trainer-report'],
 };

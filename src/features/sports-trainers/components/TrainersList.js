@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarClock, Pencil, Trash2 } from 'lucide-react';
+import { CalendarClock, Pencil, Trash2, KeyRound } from 'lucide-react';
 import { ErrorState, EmptyState, ConfirmModal, SkeletonTable } from '../../../shared/ui';
 import './TrainersList.scss';
 
@@ -86,6 +86,16 @@ const TrainersList = ({
                           <span className="ui-avatar">{getInitials(t.fio)}</span>
                         )}
                         <span className="ui-list__title">{t.fio || '—'}</span>
+                        {/* Есть вход на сайт — тренер видит «Мой отчёт». Выключенный
+                            доступ подсвечен отдельно: логин остался, но не работает. */}
+                        {t.hasAccount && (
+                          <span
+                            className={`ui-pill${t.accountActive ? ' ui-pill--success' : ''} trainers-list__access-pill`}
+                            title={t.accountActive ? `Есть доступ на сайт: ${t.accountLogin}` : 'Доступ на сайт выключен'}
+                          >
+                            <KeyRound size={11} /> {t.accountActive ? 'Доступ' : 'Выключен'}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td data-label="Виды спорта">

@@ -89,3 +89,26 @@ export const updateTrainer = async (id, body, signal) => {
 export const deleteTrainer = async (id, signal) => {
   await apiClient.delete(`/trainers/${id}/`, withSignal({}, signal));
 };
+
+/**
+ * POST /api/trainers/{id}/account/ — выдать тренеру вход на сайт (логин + пароль).
+ * Возвращает обновлённого тренера (hasAccount/accountLogin/accountActive).
+ */
+export const createTrainerAccount = async (id, { login, password }, signal) => {
+  const { data } = await apiClient.post(
+    `/trainers/${id}/account/`, { login, password }, withSignal({}, signal),
+  );
+  return data;
+};
+
+/**
+ * PATCH /api/trainers/{id}/account/ — сбросить пароль и/или включить/выключить доступ.
+ * body: { password? , isActive? } — хотя бы одно поле обязательно.
+ */
+export const updateTrainerAccount = async (id, { password, isActive }, signal) => {
+  const body = {};
+  if (password) body.password = password;
+  if (isActive !== undefined) body.isActive = isActive;
+  const { data } = await apiClient.patch(`/trainers/${id}/account/`, body, withSignal({}, signal));
+  return data;
+};

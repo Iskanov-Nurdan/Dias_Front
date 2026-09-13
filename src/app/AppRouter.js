@@ -19,6 +19,7 @@ const LeadsPage = React.lazy(() => import('../features/leads/LeadsPage'));
 const AnalyticsPage = React.lazy(() => import('../features/analytics/AnalyticsPage'));
 const ShiftsPage = React.lazy(() => import('../features/shifts/ShiftsPage'));
 const SpreadsheetPage = React.lazy(() => import('../features/spreadsheet/SpreadsheetPage'));
+const TrainerReportPage = React.lazy(() => import('../features/trainer-report/TrainerReportPage'));
 const NotFoundPage = React.lazy(() => import('../features/not-found/NotFoundPage'));
 
 const ProtectedRoute = ({ children, pageId }) => {
@@ -158,6 +159,14 @@ const AppRouter = () => (
           element={
             <ProtectedRoute pageId="spreadsheet">
               <SpreadsheetPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="my-report"
+          element={
+            <ProtectedRoute pageId="trainer-report">
+              <TrainerReportPage />
             </ProtectedRoute>
           }
         />

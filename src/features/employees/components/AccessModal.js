@@ -14,6 +14,10 @@ const ACCESS_MODAL_GROUPS = [
   { label: 'Смены',               ids: ['shifts'] },
   { label: 'Сайт',                ids: ['taplink'] },
   { label: 'Таблицы',             ids: ['spreadsheet'] },
+  // Обычно выдаётся через «выдать доступ» в карточке тренера, но чекбокс
+  // здесь тоже должен быть — например, чтобы включить кабинет тренера
+  // сотруднику, у которого уже есть логин по другой причине.
+  { label: 'Кабинет тренера',     ids: ['trainer-report'] },
 ];
 
 // Consecutive single-item groups → one compact row to save vertical space

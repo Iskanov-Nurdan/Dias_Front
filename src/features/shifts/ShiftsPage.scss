@@ -1081,3 +1081,128 @@
 @keyframes lightbox-spin {
   to { transform: rotate(360deg); }
 }
+
+// ═══ Удаление смены и фотоотчёта ═══════════════════════════════════════════
+// Красная кнопка видна сразу, без наведения: на тач-экране наведения нет,
+// а скрытая кнопка удаления — это кнопка, которой не существует.
+
+.shift-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.photo-card__head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+
+  // Счётчик уже прижат к правому краю самой обёрткой
+  .photo-card__count { margin-left: 0; }
+}
+
+.shifts-del-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  // 34px — палец попадает, но кнопка не спорит по весу с «Изменить»
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  border: 1px solid var(--color-danger-soft);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+    color var(--transition-fast), transform var(--transition-fast);
+
+  &:hover:not(:disabled) {
+    background: var(--color-danger);
+    border-color: var(--color-danger);
+    color: #fff;
+  }
+
+  &:active:not(:disabled) { transform: scale(0.94); }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-danger);
+    outline-offset: 2px;
+  }
+
+  // Запрос ушёл — повторное нажатие не создаёт второй запрос
+  &:disabled {
+    opacity: 0.5;
+    cursor: progress;
+  }
+}
+
+// ── Ошибка удаления ──
+// Плавающая плашка снизу: удаление запускают из любого места длинного списка,
+// и сообщение наверху страницы никто бы не увидел.
+.shifts-page__delete-error {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-danger);
+  background: var(--color-bg-card);
+  box-shadow: var(--shadow-lg);
+  color: var(--color-danger);
+  font-size: 13px;
+  font-weight: 600;
+  animation: shifts-toast-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+
+    &:hover { background: var(--color-danger-soft); }
+  }
+}
+
+@keyframes shifts-toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+// ── Телефон ──
+@media (max-width: 600px) {
+  // Ряд кнопок занимает всю ширину карточки: «Изменить» растягивается,
+  // удаление остаётся квадратом справа — так они не слипаются
+  .shift-card__actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .shift-card__actions .shift-card__edit-btn,
+  .shift-card__actions .shift-card__history-btn {
+    flex: 1;
+    justify-content: center;
+    min-height: 38px;
+  }
+
+  .shifts-page__delete-error {
+    bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}

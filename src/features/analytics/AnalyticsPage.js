@@ -71,6 +71,7 @@ const AnalyticsPage = () => {
   }, []);
 
   const [queryState, setQueryState, resetFilters] = useAnalyticsFilters(defaultQuery);
+  const { year: qYear, month: qMonth, day: qDay } = queryState;
   const {
     summary,
     clientsBySport,
@@ -97,7 +98,7 @@ const AnalyticsPage = () => {
     }
     const seq = ++detailRequestSeq.current;
     setDetailLoading(true);
-    const q = queryState;
+    const q = { year: qYear, month: qMonth, day: qDay };
     // Игнорируем устаревший ответ, если за это время открыли другой период/модалку —
     // иначе более медленный старый запрос может перезаписать свежие данные.
     const finish = (data) => {
@@ -115,7 +116,7 @@ const AnalyticsPage = () => {
     fn(q, null)
       .then((r) => finish(r?.data ?? r))
       .catch(() => finish(null));
-  }, [detailModal, queryState.year, queryState.month, queryState.day]);
+  }, [detailModal, qYear, qMonth, qDay]);
 
   const s = summary ?? {};
   const income = s.income ?? 0;

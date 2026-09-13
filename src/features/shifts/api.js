@@ -67,3 +67,23 @@ export const addPhotoReport = async ({ photos, description }, signal) => {
   });
   return data;
 };
+
+/**
+ * DELETE /api/shifts/:id/ — удалить ошибочно закрытую смену.
+ *
+ * Правка смены разрешена лишь однажды, поэтому ошибку в самом факте закрытия
+ * (закрыли дважды, закрыли не за того) исправить было нечем. Бэкенд пускает
+ * только администратора и только смену текущего дня — вчерашние отчёты
+ * задним числом не переписываются.
+ */
+export const deleteShift = async (id, signal) => {
+  await apiClient.delete(`/shifts/${id}/`, withSignal({}, signal));
+};
+
+/**
+ * DELETE /api/shifts/photo-reports/:id/ — удалить фото-отчёт.
+ * Удаляет и записи, и сами файлы на сервере.
+ */
+export const deletePhotoReport = async (id, signal) => {
+  await apiClient.delete(`/shifts/photo-reports/${id}/`, withSignal({}, signal));
+};

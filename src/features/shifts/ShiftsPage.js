@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Clock, Plus, Banknote, CreditCard, TrendingUp, TrendingDown, Coins, ImagePlus, X as XIcon, Camera, FileText, Filter, Pencil, History, Calendar, CalendarDays, CalendarClock, Maximize2, Images } from 'lucide-react';
+import { Clock, Plus, Banknote, CreditCard, TrendingUp, TrendingDown, Coins, ImagePlus, X as XIcon, Camera, FileText, Filter, Pencil, History, Calendar, CalendarDays, CalendarClock, Maximize2, Images, Trash2 } from 'lucide-react';
 import { useAuth } from '../../app/providers/AuthProvider';
-import { fetchShifts, closeShift, updateShift, fetchPhotoReports, addPhotoReport } from './api';
-import { Select, Spinner, EmptyState, ErrorState } from '../../shared/ui';
+import { fetchShifts, closeShift, updateShift, deleteShift, fetchPhotoReports, addPhotoReport, deletePhotoReport } from './api';
+import { Select, Spinner, EmptyState, ErrorState, ConfirmModal } from '../../shared/ui';
 import { STATS_YEARS, formatMoney } from '../../shared/constants/common';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
 import './ShiftsPage.scss';
@@ -22,6 +22,23 @@ const CURRENT_YEAR_STR = String(NOW.getFullYear());
 const DEFAULT_YEAR = STATS_YEARS.includes(CURRENT_YEAR_STR) ? CURRENT_YEAR_STR : STATS_YEARS[STATS_YEARS.length - 1];
 const DEFAULT_MONTH = String(NOW.getMonth() + 1);
 const DEFAULT_DAY = String(NOW.getDate());
+
+/**
+ * Запись сделана сегодня?
+ *
+ * Сравниваем по местному календарю (клуб в UTC+6): у toISOString() вечерние
+ * смены уезжают на следующую дату, и кнопка удаления пропадала бы раньше,
+ * чем бэкенд перестаёт её принимать.
+ */
+const isCreatedToday = (iso) => {
+  if (!iso) return false;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return false;
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear()
+    && d.getMonth() === now.getMonth()
+    && d.getDate() === now.getDate();
+};
 
 const formatDate = (iso) => {
   const d = new Date(iso);
@@ -406,7 +423,7 @@ const TABS = [
 ];
 
 const ShiftsPage = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState('photos');
 
   const [shifts, setShifts] = useState([]);
@@ -421,6 +438,12 @@ const ShiftsPage = () => {
   const [editingShift, setEditingShift] = useState(null);
   const [openHistoryId, setOpenHistoryId] = useState(null);
   const [lightbox, setLightbox] = useState(null);
+
+  // Что удаляем: { kind: 'shift' | 'photo', id, label }. Удаление финансовой
+  // записи и фотоотчёта необратимо, поэтому всегда через подтверждение.
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
 
   // Фильтры для отчётов
   const [pYear, setPYear] = useState(DEFAULT_YEAR);
@@ -494,6 +517,33 @@ const ShiftsPage = () => {
     await loadPhotos();
   };
 
+  /**
+   * Удаление смены или фотоотчёта после подтверждения.
+   *
+   * Список перезагружаем с сервера, а не вычёркиваем запись локально: смена —
+   * финансовая запись, и лучше увидеть настоящее состояние базы, чем свою
+   * догадку о нём. Ошибку показываем на месте, список при этом не ломается.
+   */
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete) return;
+    const { kind, id } = pendingDelete;
+    setDeletingId(`${kind}-${id}`);
+    setDeleteError(null);
+    try {
+      if (kind === 'shift') {
+        await deleteShift(id);
+        await loadShifts();
+      } else {
+        await deletePhotoReport(id);
+        await loadPhotos();
+      }
+    } catch (err) {
+      setDeleteError(getApiErrorMessage(err));
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="shifts-page">
 
@@ -561,12 +611,28 @@ const ShiftsPage = () => {
                       <span className="photo-card__name">{r.employeeName}</span>
                       <span className="photo-card__date">{formatDate(r.createdAt)}</span>
                     </div>
-                    {(r.photos || []).length > 0 && (
-                      <span className="photo-card__count">
-                        <Images size={12} />
-                        {r.photos.length}
-                      </span>
-                    )}
+                    <div className="photo-card__head-actions">
+                      {(r.photos || []).length > 0 && (
+                        <span className="photo-card__count">
+                          <Images size={12} />
+                          {r.photos.length}
+                        </span>
+                      )}
+                      {/* Ошибочный отчёт раньше висел вечно: добавить фото
+                          можно было, убрать — нет. Удаление снимает и файлы. */}
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          className="shifts-del-btn"
+                          onClick={() => { setDeleteError(null); setPendingDelete({ kind: 'photo', id: r.id, label: r.employeeName }); }}
+                          disabled={deletingId === `photo-${r.id}`}
+                          title="Удалить фото-отчёт"
+                          aria-label="Удалить фото-отчёт"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                   {r.description && <p className="photo-card__desc">{r.description}</p>}
                   <div className="photo-card__photos">
@@ -668,24 +734,41 @@ const ShiftsPage = () => {
                     )}
                   </div>
 
-                  {s.isEdited ? (
-                    <button
-                      type="button"
-                      className="shift-card__history-btn"
-                      onClick={() => setOpenHistoryId((id) => (id === s.id ? null : s.id))}
-                    >
-                      <History size={13} />
-                      {openHistoryId === s.id ? 'Скрыть исходные данные' : 'Изменено'}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="shift-card__edit-btn"
-                      onClick={() => setEditingShift(s)}
-                    >
-                      <Pencil size={13} /> Изменить
-                    </button>
-                  )}
+                  <div className="shift-card__actions">
+                    {s.isEdited ? (
+                      <button
+                        type="button"
+                        className="shift-card__history-btn"
+                        onClick={() => setOpenHistoryId((id) => (id === s.id ? null : s.id))}
+                      >
+                        <History size={13} />
+                        {openHistoryId === s.id ? 'Скрыть исходные данные' : 'Изменено'}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="shift-card__edit-btn"
+                        onClick={() => setEditingShift(s)}
+                      >
+                        <Pencil size={13} /> Изменить
+                      </button>
+                    )}
+                    {/* Только смена за сегодня и только администратору —
+                        то же правило, что и на сервере. Вчерашние отчёты
+                        задним числом не переписываются. */}
+                    {isAdmin && isCreatedToday(s.createdAt) && (
+                      <button
+                        type="button"
+                        className="shifts-del-btn"
+                        onClick={() => { setDeleteError(null); setPendingDelete({ kind: 'shift', id: s.id, label: `${s.employeeName} · ${formatMoney(s.total)}` }); }}
+                        disabled={deletingId === `shift-${s.id}`}
+                        title="Удалить смену"
+                        aria-label="Удалить смену"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
 
                   {s.description && (
                     <p className="shift-card__desc">{s.description}</p>
@@ -732,6 +815,32 @@ const ShiftsPage = () => {
       {/* Лайтбокс */}
       {lightbox && (
         <LightboxViewer lightbox={lightbox} onClose={() => setLightbox(null)} />
+      )}
+
+      {/* Подтверждение удаления */}
+      {pendingDelete && (
+        <ConfirmModal
+          danger
+          title={pendingDelete.kind === 'shift' ? 'Удалить смену?' : 'Удалить фото-отчёт?'}
+          message={
+            pendingDelete.kind === 'shift'
+              ? `${pendingDelete.label}. Запись исчезнет из истории и из отчётов — восстановить её будет нельзя.`
+              : `Отчёт ${pendingDelete.label}. Фотографии будут удалены с сервера безвозвратно.`
+          }
+          confirmText="Удалить"
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
+
+      {/* Не удалось удалить — говорим прямо, а не молча оставляем запись */}
+      {deleteError && (
+        <div className="shifts-page__delete-error" role="alert">
+          <span>{deleteError}</span>
+          <button type="button" onClick={() => setDeleteError(null)} aria-label="Закрыть">
+            <XIcon size={14} />
+          </button>
+        </div>
       )}
     </div>
   );

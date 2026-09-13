@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, X, Trash2, Pencil, ArrowLeft, Sigma, Loader, Calendar, CalendarDays } from 'lucide-react';
+import { Plus, X, Trash2, Pencil, ArrowLeft, Sigma, Loader, Calendar, CalendarDays, Check, CloudOff, RefreshCw } from 'lucide-react';
 import { useToast } from '../../app/providers/ToastProvider';
 import { ConfirmModal, Select, EmptyState, ErrorState, Spinner } from '../../shared/ui';
 import * as api from './api';
@@ -177,6 +177,17 @@ function Grid({ block, onBack, onBlockChange }) {
   const [resizing, setResizing]     = useState(null);
   const [confirmDel, setConfirmDel] = useState(null); // { type: 'col'|'row', id, label }
   const ctxRef = useRef(null);
+
+  // ── Автосохранение ячейки ──
+  // Раньше значение уходило на сервер только по blur/Enter: стоило закрыть
+  // вкладку или обновить страницу с открытой ячейкой — введённое пропадало.
+  // Теперь правка сохраняется сама через паузу в наборе, а состояние видно
+  // в тулбаре: 'idle' | 'saving' | 'saved' | 'error'.
+  const [saveState, setSaveState] = useState('idle');
+  // Что по этой ячейке уже улетело на сервер — чтобы не гонять одинаковые
+  // запросы, когда в ячейку вошли и вышли, ничего не изменив
+  const savedValRef = useRef('');
+  const savedTimerRef = useRef(null);
 
   // Always-fresh refs to avoid stale closures in effects
   const blockRef = useRef(block);
@@ -362,21 +373,82 @@ function Grid({ block, onBack, onBlockChange }) {
   };
 
   // ── Cell editing ──────────────────────────────────────
-  const startEdit = (rowId, colId, val) => { setEditCell({ rowId, colId }); setEditVal(val ?? ''); };
+  const startEdit = (rowId, colId, val) => {
+    setEditCell({ rowId, colId });
+    setEditVal(val ?? '');
+    // Исходное значение считаем уже сохранённым: выход без правок не должен
+    // порождать запрос
+    savedValRef.current = val ?? '';
+    setSaveState('idle');
+  };
+
+  /**
+   * Отправить значение ячейки на сервер.
+   *
+   * Через blockRef, а не через block из замыкания: функция вызывается из
+   * таймера автосохранения, и к моменту срабатывания замыкание уже устарело.
+   */
+  const saveCell = useCallback(async (rowId, colId, val) => {
+    savedValRef.current = val;
+    clearTimeout(savedTimerRef.current);
+    setSaveState('saving');
+    try {
+      const updatedRow = await api.updateRow(blockRef.current.id, rowId, { [colId]: val });
+      const b = blockRef.current;
+      onBlockChangeRef.current({
+        ...b,
+        rows: b.rows.map((r) => r.id === rowId ? updatedRow : r),
+      });
+      setSaveState('saved');
+      // «Сохранено» гаснет само: постоянная плашка перестаёт читаться
+      savedTimerRef.current = setTimeout(() => setSaveState('idle'), 2000);
+    } catch (e) {
+      // Значение не дошло — снимаем отметку, чтобы следующая попытка
+      // (blur, Enter, новая пауза) отправила его снова
+      savedValRef.current = null;
+      setSaveState('error');
+      toast.error(apiErr(e));
+    }
+  }, [toast]);
 
   const commitCell = useCallback(async () => {
     if (!editCell) return;
     const { rowId, colId } = editCell;
     const val = editVal;
     setEditCell(null);
-    try {
-      const updatedRow = await api.updateRow(block.id, rowId, { [colId]: val });
-      onBlockChange({
-        ...block,
-        rows: block.rows.map((r) => r.id === rowId ? updatedRow : r),
-      });
-    } catch (e) { toast.error(apiErr(e)); }
-  }, [editCell, editVal, block, onBlockChange, toast]);
+    if (val === savedValRef.current) return;
+    await saveCell(rowId, colId, val);
+  }, [editCell, editVal, saveCell]);
+
+  /**
+   * Автосохранение: пауза в наборе 1.2 с — и значение уходит, редактор при
+   * этом остаётся открытым. Дебаунс сделан на очистке эффекта: каждый новый
+   * символ отменяет предыдущий таймер.
+   */
+  useEffect(() => {
+    if (!editCell || editVal === savedValRef.current) return undefined;
+    const { rowId, colId } = editCell;
+    const t = setTimeout(() => { saveCell(rowId, colId, editVal); }, 1200);
+    return () => clearTimeout(t);
+  }, [editCell, editVal, saveCell]);
+
+  // Уход со страницы с несохранённым вводом: за 1.2 с окно небольшое, но
+  // закрыть вкладку ровно в него — реально, и тогда цифра терялась молча
+  const hasUnsavedRef = useRef(false);
+  hasUnsavedRef.current = !!editCell && editVal !== savedValRef.current;
+
+  useEffect(() => {
+    const onBeforeUnload = (e) => {
+      if (!hasUnsavedRef.current) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      clearTimeout(savedTimerRef.current);
+    };
+  }, []);
 
   const navigate = (rowId, colId, dir) => {
     commitCell();
@@ -410,11 +482,23 @@ function Grid({ block, onBack, onBlockChange }) {
     <div className={`sp-grid-view${resizing ? ' sp-grid-view--resizing' : ''}`}>
       {/* Toolbar */}
       <div className="sp-grid-view__toolbar">
-        <button className="sp-grid-view__back" onClick={() => { setEditCell(null); onBack(); }}>
+        {/* Раньше здесь стоял setEditCell(null) — открытая ячейка уходила
+            в никуда вместе с набранным. Теперь значение сначала сохраняется. */}
+        <button className="sp-grid-view__back" onClick={() => { commitCell(); onBack(); }}>
           <ArrowLeft size={15} /> Таблицы
         </button>
         <span className="sp-grid-view__name">{block.name}</span>
         <span className="sp-grid-view__meta">{MONTHS_RU[(block.month ?? 1) - 1]} {block.year}</span>
+
+        {/* Состояние сохранения: при автосохранении человек обязан видеть,
+            дошла ли цифра до сервера, иначе он не знает, можно ли закрывать */}
+        {saveState !== 'idle' && (
+          <span className={`sp-grid-view__save sp-grid-view__save--${saveState}`} role="status">
+            {saveState === 'saving' && <><RefreshCw size={12} /> Сохранение…</>}
+            {saveState === 'saved' && <><Check size={12} /> Сохранено</>}
+            {saveState === 'error' && <><CloudOff size={12} /> Не сохранено</>}
+          </span>
+        )}
         <div className="sp-grid-view__actions">
           <button className="sp__btn" onClick={addColumn}><Plus size={12} /><span>Столбец</span></button>
           <button className="sp__btn" onClick={addRow}><Plus size={12} /><span>Строка</span></button>

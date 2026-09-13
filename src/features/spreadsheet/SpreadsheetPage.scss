@@ -653,3 +653,46 @@ tbody tr:hover .sp__cell:not(.sp__cell--date):not(.sp__cell--editing):not(.sp__c
     flex: 1;
   }
 }
+
+// ═══ Индикатор автосохранения ══════════════════════════════════════════════
+.sp-grid-view__save {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  animation: sp-save-in 0.18s ease both;
+
+  svg { flex-shrink: 0; }
+
+  &--saving {
+    background: var(--color-surface-secondary);
+    color: var(--color-text-muted);
+
+    // Крутится, пока запрос в пути
+    svg { animation: sp-save-spin 0.9s linear infinite; }
+  }
+
+  &--saved {
+    background: var(--color-success-soft);
+    color: var(--color-success);
+  }
+
+  &--error {
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+  }
+}
+
+@keyframes sp-save-in {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sp-save-spin {
+  to { transform: rotate(360deg); }
+}

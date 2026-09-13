@@ -81,3 +81,10 @@
     font-size: 14px;
   }
 }
+
+// Фото тренера в списке — тот же круг, что и у инициалов, чтобы строки
+// с фото и без него стояли ровно
+.trainers-list__avatar-img {
+  object-fit: cover;
+  background: var(--color-surface-secondary);
+}

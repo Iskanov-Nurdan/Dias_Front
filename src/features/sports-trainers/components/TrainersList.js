@@ -12,6 +12,7 @@ const getInitials = (fio = '') => {
 const TrainersList = ({
   items,
   sports = [],
+  photos = {},
   loading,
   error,
   onRetry,
@@ -70,7 +71,20 @@ const TrainersList = ({
                   <tr key={t.id}>
                     <td data-label="ФИО">
                       <div className="ui-list__name-cell">
-                        <span className="ui-avatar">{getInitials(t.fio)}</span>
+                        {/* Фото, если оно загружено в карточке тренера; иначе
+                            инициалы. Битую ссылку прячем и откатываемся на них же,
+                            чтобы в списке не осталось «сломанной картинки». */}
+                        {photos[String(t.id)] ? (
+                          <img
+                            src={photos[String(t.id)]}
+                            alt=""
+                            className="ui-avatar trainers-list__avatar-img"
+                            loading="lazy"
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
+                        ) : (
+                          <span className="ui-avatar">{getInitials(t.fio)}</span>
+                        )}
                         <span className="ui-list__title">{t.fio || '—'}</span>
                       </div>
                     </td>

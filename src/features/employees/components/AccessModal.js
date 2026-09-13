@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Check } from 'lucide-react';
+import { X, Check, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { PAGE_IDS, PAGE_LABELS, PAGE_ICONS } from '../../../shared/constants/pages';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { SubmitButton } from '../../../shared/ui';
@@ -20,23 +20,19 @@ const ACCESS_MODAL_GROUPS = [
   { label: 'Кабинет тренера',     ids: ['trainer-report'] },
 ];
 
-// Consecutive single-item groups → one compact row to save vertical space
-const GROUP_ROWS = (() => {
-  const rows = [];
-  let i = 0;
-  while (i < ACCESS_MODAL_GROUPS.length) {
-    if (ACCESS_MODAL_GROUPS[i].ids.length === 1) {
-      const batch = [];
-      while (i < ACCESS_MODAL_GROUPS.length && ACCESS_MODAL_GROUPS[i].ids.length === 1) {
-        batch.push(ACCESS_MODAL_GROUPS[i++]);
-      }
-      rows.push(batch);
-    } else {
-      rows.push([ACCESS_MODAL_GROUPS[i++]]);
-    }
-  }
-  return rows;
-})();
+/**
+ * Разделы с одним пунктом раньше сжимались в один тесный ряд с вертикальными
+ * разделителями — на обычной ширине модалки это переполняло её и появлялся
+ * горизонтальный скролл. Вместо этого приёма все одиночные разделы собраны
+ * в одну общую секцию «Отдельные разделы» с обычной сеткой: и скролла нет,
+ * и кнопки «Все/Нет» у неё снова осмысленны (пунктов пять, а не один).
+ */
+const MULTI_GROUPS = ACCESS_MODAL_GROUPS.filter((g) => g.ids.length > 1);
+const MISC_GROUP = {
+  label: 'Отдельные разделы',
+  ids: ACCESS_MODAL_GROUPS.filter((g) => g.ids.length === 1).flatMap((g) => g.ids),
+};
+const RENDER_GROUPS = [...MULTI_GROUPS, MISC_GROUP];
 
 const normalizeAccess = (raw) => {
   if (!raw || typeof raw !== 'object') return {};
@@ -48,10 +44,22 @@ const normalizeAccess = (raw) => {
   return PAGE_IDS.reduce((o, id) => ({ ...o, [id]: inner[id] === true }), {});
 };
 
+const getInitials = (name = '') => {
+  const parts = name.trim().split(/\s+/);
+  return parts.length >= 2
+    ? (parts[0][0] + parts[1][0]).toUpperCase()
+    : name.slice(0, 2).toUpperCase() || '?';
+};
+
 const AccessModal = ({ employee, currentAccess, onSave, onClose, error, saving }) => {
   const [access, setAccess] = useState({});
 
   useModalEffect(!!employee, onClose);
+
+  // currentAccess остаётся null, пока идёт запрос за реальными правами —
+  // отличаем это от «загружено и там пусто», чтобы шапка не мигнула
+  // недостоверным «0 из N» на долю секунды.
+  const isKnown = currentAccess != null;
 
   useEffect(() => {
     setAccess(normalizeAccess(currentAccess));
@@ -79,88 +87,122 @@ const AccessModal = ({ employee, currentAccess, onSave, onClose, error, saving }
     onSave(payload);
   };
 
+  const totalOn = useMemo(() => PAGE_IDS.filter((id) => access[id] === true).length, [access]);
+  const totalAll = PAGE_IDS.length;
+
   const displayName = employee?.fio || employee?.login || '';
+  const roleName = employee?.roleName ?? employee?.role?.name ?? '';
 
   const content = (
     <div className="access-modal__backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="access-modal-title">
       <div className="access-modal" onClick={(e) => e.stopPropagation()}>
 
         <div className="access-modal__header">
-          <div>
-            <p className="access-modal__header-sub">Управление доступами</p>
+          <span className="ui-avatar ui-avatar--lg access-modal__avatar" aria-hidden>
+            {getInitials(displayName)}
+          </span>
+          <div className="access-modal__header-text">
+            <p className="access-modal__header-sub"><ShieldCheck size={12} /> Управление доступами</p>
             <h2 id="access-modal-title" className="access-modal__title">{displayName}</h2>
+            <div className="access-modal__header-meta">
+              {roleName && <span className="ui-pill ui-pill--info access-modal__role-pill">{roleName}</span>}
+              {employee?.login && <span className="access-modal__login">@{employee.login}</span>}
+            </div>
           </div>
           <button type="button" className="access-modal__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
         </div>
 
-        {error && <p className="access-modal__error" role="alert">{error}</p>}
+        {error && (
+          <p className="access-modal__error" role="alert">
+            <TriangleAlert size={15} aria-hidden />
+            {error}
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} className="access-modal__form">
           <div className="access-modal__toolbar">
-            <button type="button" className="access-modal__bulk-btn" onClick={() => setAll(true)}>
-              <Check size={13} />Выбрать всё
-            </button>
-            <button type="button" className="access-modal__bulk-btn access-modal__bulk-btn--clear" onClick={() => setAll(false)}>
-              <X size={13} />Снять всё
-            </button>
+            <div className="access-modal__toolbar-actions">
+              <button type="button" className="access-modal__bulk-btn" onClick={() => setAll(true)}>
+                <Check size={13} />Выбрать всё
+              </button>
+              <button type="button" className="access-modal__bulk-btn access-modal__bulk-btn--clear" onClick={() => setAll(false)}>
+                <X size={13} />Снять всё
+              </button>
+            </div>
+            <div className={`access-modal__stat${!isKnown ? ' access-modal__stat--loading' : ''}`}>
+              {isKnown ? (
+                <>
+                  <strong>{totalOn}</strong> из {totalAll} включено
+                </>
+              ) : (
+                <span className="access-modal__stat-skeleton" aria-hidden />
+              )}
+            </div>
           </div>
 
           <div className="access-modal__body">
-            {GROUP_ROWS.map((batch, ri) => {
-              const isCompact = batch.length > 1;
-              const renderGroup = ({ label, ids }) => {
-                const checkedCount = ids.filter((id) => access[id] === true).length;
-                return (
-                  <section key={label} className={`access-modal__group${isCompact ? ' access-modal__group--compact' : ''}`}>
-                    <div className="access-modal__group-head">
-                      <div className="access-modal__group-head-left">
-                        <h3 className="access-modal__group-title">{label}</h3>
-                        <span className="access-modal__group-count">{checkedCount}/{ids.length}</span>
-                      </div>
-                      <div className="access-modal__group-bulk">
-                        <button type="button" className="access-modal__mini-btn" onClick={() => setGroup(ids, true)}>Все</button>
-                        <button type="button" className="access-modal__mini-btn access-modal__mini-btn--off" onClick={() => setGroup(ids, false)}>Нет</button>
-                      </div>
+            {RENDER_GROUPS.map(({ label, ids }) => {
+              const checkedCount = ids.filter((id) => access[id] === true).length;
+              return (
+                <section key={label} className="access-modal__group">
+                  <div className="access-modal__group-head">
+                    <div className="access-modal__group-head-left">
+                      <h3 className="access-modal__group-title">{label}</h3>
+                      <span className={`access-modal__group-count${checkedCount === ids.length ? ' access-modal__group-count--full' : ''}`}>
+                        {checkedCount}/{ids.length}
+                      </span>
                     </div>
-                    <div className="access-modal__grid">
-                      {ids.map((pageId) => {
-                        const Icon = PAGE_ICONS[pageId];
-                        const checked = access[pageId] === true;
-                        return (
-                          <label key={pageId} className={`access-modal__item${checked ? ' access-modal__item--on' : ''}`}>
-                            <input type="checkbox" checked={checked} onChange={() => toggle(pageId)} className="access-modal__checkbox-hidden" />
-                            <span className="access-modal__item-left">
-                              <span className={`access-modal__item-icon-wrap${checked ? ' access-modal__item-icon-wrap--on' : ''}`}>
-                                {Icon && <Icon size={16} strokeWidth={1.75} aria-hidden />}
-                              </span>
-                              <span className="access-modal__item-label">{PAGE_LABELS[pageId] || pageId}</span>
-                            </span>
-                            <span className={`access-modal__toggle${checked ? ' access-modal__toggle--on' : ''}`} aria-hidden>
-                              <span className="access-modal__toggle-thumb" />
-                            </span>
-                          </label>
-                        );
-                      })}
+                    <div className="access-modal__group-bulk">
+                      <button type="button" className="access-modal__mini-btn" onClick={() => setGroup(ids, true)} title="Включить все пункты раздела">
+                        Все
+                      </button>
+                      <button type="button" className="access-modal__mini-btn access-modal__mini-btn--off" onClick={() => setGroup(ids, false)} title="Выключить все пункты раздела">
+                        Нет
+                      </button>
                     </div>
-                  </section>
-                );
-              };
-
-              return isCompact ? (
-                <div key={ri} className="access-modal__compact-row">{batch.map(renderGroup)}</div>
-              ) : (
-                <React.Fragment key={ri}>{batch.map(renderGroup)}</React.Fragment>
+                  </div>
+                  <div className="access-modal__grid">
+                    {ids.map((pageId) => {
+                      const Icon = PAGE_ICONS[pageId];
+                      const checked = access[pageId] === true;
+                      return (
+                        <label key={pageId} className={`access-modal__item${checked ? ' access-modal__item--on' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggle(pageId)}
+                            className="access-modal__checkbox-hidden"
+                          />
+                          <span className="access-modal__item-left">
+                            <span className={`access-modal__item-icon-wrap${checked ? ' access-modal__item-icon-wrap--on' : ''}`}>
+                              {Icon && <Icon size={16} strokeWidth={1.75} aria-hidden />}
+                            </span>
+                            <span className="access-modal__item-label">{PAGE_LABELS[pageId] || pageId}</span>
+                          </span>
+                          <span className={`access-modal__toggle${checked ? ' access-modal__toggle--on' : ''}`} aria-hidden>
+                            <span className="access-modal__toggle-thumb" />
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </section>
               );
             })}
           </div>
 
           <div className="access-modal__actions">
-            <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving}>
-              Отмена
-            </button>
-            <SubmitButton loading={saving} className="ui-modal-btn ui-modal-btn--primary">
-              Сохранить
-            </SubmitButton>
+            <span className="access-modal__actions-summary">
+              Выбрано <strong>{totalOn}</strong> из {totalAll}
+            </span>
+            <div className="access-modal__actions-buttons">
+              <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving}>
+                Отмена
+              </button>
+              <SubmitButton loading={saving} className="ui-modal-btn ui-modal-btn--primary">
+                Сохранить
+              </SubmitButton>
+            </div>
           </div>
         </form>
       </div>

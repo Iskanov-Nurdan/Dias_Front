@@ -1,12 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { KeyRound, Pencil, Trash2 } from 'lucide-react';
 import { ErrorState, EmptyState, ConfirmModal, SkeletonTable } from '../../../shared/ui';
+import { useTrainerPhotosByFio } from '../hooks/useTrainerPhotosByFio';
 import './EmployeesList.scss';
 
 const MOBILE_MQ = '(max-width: 768px)';
 
 const getInitials = (fio) =>
   (fio || '').split(' ').slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
+
+/**
+ * Аватар сотрудника: фото тренера, если оно есть (см. useTrainerPhotosByFio),
+ * иначе инициалы — как и раньше. Битую ссылку прячем локальным состоянием,
+ * а не onError-стилем на самой картинке, чтобы вместо неё сразу встали
+ * инициалы, а не пустое место.
+ */
+const EmployeeAvatar = ({ fio, photo, className = 'ui-avatar' }) => {
+  const [broken, setBroken] = useState(false);
+  if (photo && !broken) {
+    return (
+      <img
+        src={photo}
+        alt=""
+        className={`${className} employees-list__avatar-img`}
+        loading="lazy"
+        onError={() => setBroken(true)}
+      />
+    );
+  }
+  return <span className={className} aria-hidden>{getInitials(fio)}</span>;
+};
 
 const EmployeesList = ({
   items,
@@ -34,6 +57,8 @@ const EmployeesList = ({
     return () => mq.removeEventListener('change', sync);
   }, []);
 
+  const getPhoto = useTrainerPhotosByFio();
+
   const list = items?.items ?? items ?? [];
 
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
@@ -41,12 +66,11 @@ const EmployeesList = ({
   const renderMobileCards = () => (
     <div className="employees-list__cards">
       {list.map((emp, idx) => {
-        const initials = getInitials(emp.fio);
         const roleName = emp.roleName ?? emp.role?.name;
         return (
           <article key={emp.id} className="employees-list__card" style={{ '--row-i': idx }}>
             <div className="employees-list__card-head">
-              <span className="ui-avatar ui-avatar--lg">{initials}</span>
+              <EmployeeAvatar fio={emp.fio} photo={getPhoto(emp.fio)} className="ui-avatar ui-avatar--lg" />
               <div>
                 <div className="employees-list__card-name">{emp.fio || '—'}</div>
                 {roleName && <span className="ui-pill ui-pill--info">{roleName}</span>}
@@ -105,13 +129,12 @@ const EmployeesList = ({
               </thead>
               <tbody>
                 {list.map((emp, idx) => {
-                  const initials = getInitials(emp.fio);
                   const roleName = emp.roleName ?? emp.role?.name;
                   return (
                     <tr key={emp.id} style={{ '--row-i': idx }}>
                       <td>
                         <div className="ui-list__name-cell">
-                          <span className="ui-avatar">{initials}</span>
+                          <EmployeeAvatar fio={emp.fio} photo={getPhoto(emp.fio)} />
                           <span className="ui-list__title">{emp.fio || '—'}</span>
                         </div>
                       </td>

@@ -145,3 +145,10 @@
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+// Фото сотрудника вместо инициалов, когда оно есть (см. useTrainerPhotosByFio) —
+// .ui-avatar задаёт форму и размер, здесь только заполнение без искажений
+.employees-list__avatar-img {
+  object-fit: cover;
+  background: var(--color-surface-secondary);
+}

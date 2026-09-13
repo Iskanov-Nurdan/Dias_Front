@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Calendar, CalendarDays, CalendarClock } from 'lucide-react';
+import { Calendar, CalendarDays, CalendarClock, LayoutGrid, BarChart3, Inbox } from 'lucide-react';
 import { fetchIncomeDetail, fetchExpenseDetail, fetchProfitDetail } from './api';
 import { ErrorState, Select, DonutChart, Sparkline, Skeleton, SkeletonTable, FilterBar, EmptyState } from '../../shared/ui';
 import { MONTHS, MONTHS_SHORT, DONUT_COLORS, formatMoney, STATS_YEARS } from '../../shared/constants/common';
@@ -35,12 +35,41 @@ function scrollToAnalyticsSection(id) {
 }
 
 const QUICK_NAV = [
-  { id: 'analytics-kpi', label: 'Сводка' },
-  { id: 'analytics-charts', label: 'Графики' },
-  { id: 'analytics-leads', label: 'Лиды' },
+  { id: 'analytics-kpi', label: 'Сводка', icon: LayoutGrid },
+  { id: 'analytics-charts', label: 'Графики', icon: BarChart3 },
+  { id: 'analytics-leads', label: 'Лиды', icon: Inbox },
 ];
 
 const AnalyticsPage = () => {
+  /**
+   * Какая секция сейчас на экране. Кнопки выглядят как вкладки, но это якоря —
+   * до этого ни одна из них не подсвечивалась никогда, и было непонятно, где
+   * ты находишься. Подсветку ведёт наблюдатель за секциями, а не клик: иначе
+   * она врала бы при обычной прокрутке колесом.
+   */
+  const [activeSection, setActiveSection] = useState(QUICK_NAV[0].id);
+
+  useEffect(() => {
+    const nodes = QUICK_NAV
+      .map(({ id }) => document.getElementById(id))
+      .filter(Boolean);
+    if (!nodes.length || typeof IntersectionObserver === 'undefined') return undefined;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (visible && visible.target && visible.target.id) setActiveSection(visible.target.id);
+      },
+      // Верхняя треть экрана: секция становится текущей, когда до неё дошли,
+      // а не когда она только показалась снизу
+      { rootMargin: '-96px 0px -66% 0px', threshold: 0 },
+    );
+    nodes.forEach((n) => observer.observe(n));
+    return () => observer.disconnect();
+  }, []);
+
   const [queryState, setQueryState, resetFilters] = useAnalyticsFilters(defaultQuery);
   const {
     summary,
@@ -149,8 +178,24 @@ const AnalyticsPage = () => {
   const sparklineExpense = hasDaily ? chartData.map((d) => d.expense) : [];
   const sparklineProfit = hasDaily ? chartData.map((d) => (d.income || 0) - (d.expense || 0)) : [];
 
+  /**
+   * Пара «за какой период» + «на сколько изменилось» как единый блок.
+   * Прежде подписи и значения шли одной плоской строкой, и когда значения
+   * не было, соседние подписи слипались в «к пр. мес. к пр. году», а
+   * оставшийся значок повисал между ними — понять, что к чему, было нельзя.
+   */
+  const TrendPair = ({ label, title, value, type }) => (
+    <span className="analytics-page__trend-pair">
+      <span className="analytics-page__trend-label" title={title}>{label}</span>
+      <TrendBadge value={value} type={type} />
+    </span>
+  );
+
   const TrendBadge = ({ value, type }) => {
-    if (value == null || Number.isNaN(Number(value))) return null;
+    // Не с чем сравнивать — показываем прочерк, а не пустое место
+    if (value == null || Number.isNaN(Number(value))) {
+      return <span className="analytics-page__trend analytics-page__trend--empty">—</span>;
+    }
     const v = Number(value);
     if (v === 0) return <span className="analytics-page__trend analytics-page__trend--neutral">0%</span>;
     const isGood = type === 'expense' ? v < 0 : v > 0;
@@ -229,14 +274,16 @@ const AnalyticsPage = () => {
         </header>
 
         <nav className="analytics-page__quicknav" aria-label="Быстрый переход по разделам">
-          {QUICK_NAV.map(({ id, label }) => (
+          {QUICK_NAV.map(({ id, label, icon: NavIcon }) => (
             <button
               key={id}
               type="button"
-              className="analytics-page__quicknav-btn"
+              className={`analytics-page__quicknav-btn${activeSection === id ? ' analytics-page__quicknav-btn--active' : ''}`}
+              aria-current={activeSection === id ? 'true' : undefined}
               onClick={() => scrollToAnalyticsSection(id)}
             >
-              {label}
+              <NavIcon size={15} aria-hidden />
+              <span>{label}</span>
             </button>
           ))}
         </nav>
@@ -282,10 +329,10 @@ const AnalyticsPage = () => {
                 <span className="analytics-page__card-value">{formatMoney(income)}</span>
                 {showPeriodComparison && (
                   <div className="analytics-page__card-trends">
-                    <span className="analytics-page__trend-label" title="К прошлому месяцу">к пр. мес.</span>
-                    <TrendBadge value={momChange.income} type="income" />
-                    <span className="analytics-page__trend-label" title="К тому же месяцу прошлого года">к пр. году</span>
-                    <TrendBadge value={yoyChange.income} type="income" />
+                    <TrendPair label="к пр. мес." title="К прошлому месяцу"
+                      value={momChange.income} type="income" />
+                    <TrendPair label="к пр. году" title="К тому же месяцу прошлого года"
+                      value={yoyChange.income} type="income" />
                   </div>
                 )}
                 {sparklineIncome.length >= 2 && (
@@ -301,10 +348,10 @@ const AnalyticsPage = () => {
                 <span className="analytics-page__card-value">{formatMoney(expense)}</span>
                 {showPeriodComparison && (
                   <div className="analytics-page__card-trends">
-                    <span className="analytics-page__trend-label" title="К прошлому месяцу">к пр. мес.</span>
-                    <TrendBadge value={momChange.expense} type="expense" />
-                    <span className="analytics-page__trend-label" title="К тому же месяцу прошлого года">к пр. году</span>
-                    <TrendBadge value={yoyChange.expense} type="expense" />
+                    <TrendPair label="к пр. мес." title="К прошлому месяцу"
+                      value={momChange.expense} type="expense" />
+                    <TrendPair label="к пр. году" title="К тому же месяцу прошлого года"
+                      value={yoyChange.expense} type="expense" />
                   </div>
                 )}
                 {sparklineExpense.length >= 2 && (
@@ -320,10 +367,10 @@ const AnalyticsPage = () => {
                 <span className="analytics-page__card-value">{formatMoney(profit)}</span>
                 {showPeriodComparison && (
                   <div className="analytics-page__card-trends">
-                    <span className="analytics-page__trend-label" title="К прошлому месяцу">к пр. мес.</span>
-                    <TrendBadge value={momChange.profit} type="income" />
-                    <span className="analytics-page__trend-label" title="К тому же месяцу прошлого года">к пр. году</span>
-                    <TrendBadge value={yoyChange.profit} type="income" />
+                    <TrendPair label="к пр. мес." title="К прошлому месяцу"
+                      value={momChange.profit} type="income" />
+                    <TrendPair label="к пр. году" title="К тому же месяцу прошлого года"
+                      value={yoyChange.profit} type="income" />
                   </div>
                 )}
                 {sparklineProfit.length >= 2 && (

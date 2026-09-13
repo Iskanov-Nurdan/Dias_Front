@@ -88,8 +88,15 @@
 
 .analytics-page__quicknav {
   display: flex;
-  flex-wrap: wrap;
+  // Не переносим на вторую строку: три вкладки прокручиваются вбок,
+  // так ряд остаётся рядом, а не рассыпается на телефоне
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
   gap: 2px;
+
+  &::-webkit-scrollbar { display: none; }
   margin-top: var(--space-4);
   margin-bottom: 0;
   padding: 0;
@@ -97,6 +104,11 @@
 }
 
 .analytics-page__quicknav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  // 44px по высоте — палец попадает без промаха
+  min-height: 44px;
   padding: 9px 18px;
   border-radius: 0;
   border: none;
@@ -104,10 +116,27 @@
   margin-bottom: -1px;
   background: transparent;
   color: var(--color-text-muted);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 13.5px;
+  font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
   transition: color var(--transition-fast), border-color var(--transition-fast);
+
+  svg { flex-shrink: 0; opacity: 0.7; transition: opacity var(--transition-fast); }
+
+  // Раньше активного состояния не было вовсе: кнопки выглядели вкладками,
+  // но ни одна никогда не подсвечивалась
+  &--active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+
+    svg { opacity: 1; }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+  }
 
   &:hover {
     color: var(--color-text);
@@ -211,8 +240,11 @@
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  width: 90px;
-  min-width: 90px;
+  // 90px не хватало: внутри Select иконка (15) + шеврон (18) + внутренние
+  // поля (~26), на текст оставалось ~30px — «2026» превращалось в «2..»,
+  // «Все дни» в «В...». Ширины подобраны под самое длинное значение каждого.
+  width: 118px;
+  min-width: 118px;
 
   @include mixins.mobile {
     width: 100%;
@@ -240,13 +272,20 @@
 }
 
 .analytics-page__filter--month {
-  width: 140px;
-  min-width: 140px;
+  width: 168px;
+  min-width: 168px;
 
   @include mixins.mobile {
     width: 100%;
     min-width: 0;
   }
+}
+
+
+// «День» шире года: самое длинное значение здесь — «Все дни»
+.analytics-page__filter:last-of-type {
+  width: 132px;
+  min-width: 132px;
 }
 
 .analytics-page__select-wrap {
@@ -1744,5 +1783,184 @@
 
   .analytics-page__hero {
     margin-bottom: 16px;
+  }
+}
+
+// ═══ Пары «период → изменение» ═════════════════════════════════════════════
+// Подпись и значение связаны в один блок и не могут разъехаться. Раньше это
+// была плоская строка: подпись, значок, подпись, значок — и при отсутствии
+// значения соседние подписи слипались.
+.analytics-page__card-trends {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+
+.analytics-page__trend-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+// Прочерк вместо пустоты, когда сравнивать не с чем
+.analytics-page__trend--empty {
+  background: transparent;
+  color: var(--color-text-muted);
+  padding-left: 0;
+  padding-right: 0;
+  font-weight: 600;
+}
+
+// ═══ Пустое состояние блока расходов ═══════════════════════════════════════
+// Крупная иллюстрация в колонке фиксированной высоты занимала пол-экрана
+// ради одной строки текста. Соседний блок «Клиенты по виду спорта» из-за
+// этого выглядел вдвое короче.
+.analytics-page__expenses-wrap .empty-state {
+  padding: var(--space-5) var(--space-4);
+}
+
+.analytics-page__expenses-wrap .empty-state__illustration {
+  max-width: 132px;
+}
+
+// ═══ Адаптивность ══════════════════════════════════════════════════════════
+// Брейкпоинты: 1024+ десктоп · 768–1023 планшет · 481–767 крупный телефон
+// · ≤480 телефон. Ниже — только то, что меняет структуру, а не просто
+// ужимает десктоп.
+
+// ── Планшет: KPI в две колонки, третья карточка на всю ширину ──
+@media (max-width: 1023px) {
+  .analytics-page__kpis-primary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  // Третья карточка занимает оба столбца — ряд не выглядит обрубленным
+  .analytics-page__kpis-primary > *:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .analytics-page__kpis-primary .analytics-page__card {
+    padding: 18px 18px 14px;
+  }
+}
+
+// ── Крупный телефон и меньше ──
+@media (max-width: 767px) {
+  .analytics-page__kpis-primary {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-page__kpis-primary > *:nth-child(3) {
+    grid-column: auto;
+  }
+
+  // Фильтры сеткой 2x2 вместо колонки в четыре этажа: период задают
+  // вместе, и держать его перед глазами целиком удобнее
+  .analytics-page__filters-card .analytics-page__filter-bar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .analytics-page__filter,
+  .analytics-page__filter--month,
+  .analytics-page__filter:last-of-type {
+    width: auto;
+    min-width: 0;
+  }
+
+  // «Сбросить» — во всю ширину под фильтрами, тач-зона 44px
+  .analytics-page__reset {
+    grid-column: 1 / -1;
+    width: 100%;
+    height: 44px;
+  }
+
+  // Столбцы по месяцам. Прокрутка вбок у контейнера уже была, но внутренняя
+  // сетка сжимала 12 колонок до min 28px — подписи «Янв…Дек» и числа под ними
+  // наезжали друг на друга. Задаём столбцу читаемый минимум: ряд честно
+  // прокручивается, вместо того чтобы схлопнуться в нитку.
+  .analytics-page__vbar-chart-inner {
+    grid-template-columns: repeat(12, minmax(44px, 1fr));
+    min-width: 640px;
+  }
+
+  .analytics-page__vbar-chart-scroll {
+    scroll-snap-type: x proximity;
+    padding-bottom: 6px;
+  }
+
+  .analytics-page__vbar-col { scroll-snap-align: center; }
+
+  // Горизонтальные бары: подпись над полосой, а не сбоку — иначе на узком
+  // экране от самой полосы остаётся пара десятков пикселей
+  .analytics-page__hbar-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "label value"
+      "track track";
+    gap: 4px 10px;
+    align-items: center;
+  }
+
+  .analytics-page__hbar-label {
+    grid-area: label;
+    width: auto;
+    max-width: none;
+    font-size: 13px;
+  }
+
+  .analytics-page__hbar-value { grid-area: value; }
+  .analytics-page__hbar-track { grid-area: track; }
+
+  // Карточки KPI кликабельны — на тач-экране нужен отклик нажатия,
+  // потому что наведения не существует
+  .analytics-page__kpis-primary .analytics-page__card:active {
+    transform: scale(0.985);
+  }
+}
+
+// ── Телефон ──
+@media (max-width: 480px) {
+  // Ключевая цифра остаётся крупной: это то, ради чего открывают экран
+  .analytics-page__card-value {
+    font-size: 26px;
+  }
+
+  .analytics-page__kpis-primary .analytics-page__card {
+    padding: 16px 16px 12px;
+  }
+
+  // Спарклайн тянется на всю ширину карточки, а не висит слева
+  .analytics-page__card-chart svg {
+    width: 100%;
+    height: auto;
+  }
+
+  // Подписи не мельче 12px, значения не мельче 14px — иначе не прочитать
+  .analytics-page__trend-label { font-size: 11.5px; }
+  .analytics-page__hbar-value { font-size: 14px; }
+
+  .analytics-page__quicknav-btn {
+    padding: 9px 14px;
+    font-size: 13px;
+  }
+
+  // Нижняя кромка iPhone не должна перекрывать последний блок
+  .analytics-page {
+    padding-bottom: max(var(--space-6), env(safe-area-inset-bottom));
+  }
+}
+
+// ── Тач-устройства: наведение не срабатывает ──
+// Эффекты hover на тач-экране «залипают» после тапа. Оставляем их только
+// там, где указатель действительно есть.
+@media (hover: none) {
+  .analytics-page__kpis-primary .analytics-page__card:hover {
+    transform: none;
   }
 }

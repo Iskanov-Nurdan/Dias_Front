@@ -6,16 +6,23 @@ import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
 import { useDebounce } from '../../shared/hooks/useDebounce';
 import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
-import { SEARCH_DEBOUNCE_MS, formatMoney, MONTHS, STATS_YEARS } from '../../shared/constants/common';
+import { SEARCH_DEBOUNCE_MS, formatMoney, MONTHS, STATS_YEARS, formatSubscriptionEnd } from '../../shared/constants/common';
 import { isPeriodClosedError, getApiErrorMessage } from '../../shared/lib/apiError';
 import { prepareClientSavePayload } from './lib/prepareClientSavePayload';
-import { UsersRound, Copy, Ticket, Wrench, Search, X, Sun, Dumbbell, UserCheck, CreditCard, Tag, Calendar, CalendarDays, CalendarClock, Plus, ScanSearch, SpellCheck2, ChevronDown, Filter, Bookmark } from 'lucide-react';
+import { UsersRound, Copy, Ticket, Wrench, Search, X, Sun, TriangleAlert, Dumbbell, UserCheck, CreditCard, Tag, Calendar, CalendarDays, CalendarClock, Plus, ScanSearch, SpellCheck2, ChevronDown, Filter, Bookmark } from 'lucide-react';
 import { Select, ConfirmModal, Pagination, FiltersModal, FilterBar, EmptyState, Spinner } from '../../shared/ui';
 import { ClientsList, ClientCardModal, ClientFormModal, ClientDraftsModal, ExtendModal, DuplicateGroup, TodayBoard } from './components';
 import './ClientsPage.scss';
 
 const getInitials = (fio) =>
   (fio || '').split(' ').slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
+
+/** Бейджи типа клиента - те же подписи и цвета, что в списке «Клиенты». */
+const FIX_TYPE_LABEL = {
+  individual: { label: 'Индивид.', cls: 'clients-list__type-badge--individual' },
+  regular: { label: 'Регуляр', cls: 'clients-list__type-badge--regular' },
+  'one-time': { label: 'Разовый', cls: 'clients-list__type-badge--onetime' },
+};
 
 const TAB_TODAY = 'today';
 const TAB_LIST = 'list';
@@ -727,10 +734,14 @@ const ClientsPage = () => {
               </div>
             ) : (
               <>
-                <div className="clients-page__dup-stats">
-                  <span><strong>{dupYear}</strong>{dupMonth ? ` · ${MONTHS[Number(dupMonth)]}` : ''}</span>
-                  <span className="clients-page__dup-stats-sep">·</span>
-                  <span>Групп с одинаковым ФИО: <strong>{exactGroups.length}</strong></span>
+                <div className="clients-page__found">
+                  <span className="clients-page__found-main">
+                    Групп с одинаковым ФИО <strong>{exactGroups.length}</strong>
+                  </span>
+                  <span className="clients-page__found-period">
+                    <Calendar size={12} />
+                    {dupYear}{dupMonth ? ` · ${MONTHS[Number(dupMonth)]}` : ''}
+                  </span>
                 </div>
                 {exactGroups.map((group, i) => <DuplicateGroup key={i} index={i} group={group} label={group[0].fio} onDetails={handleOpenCard} />)}
               </>
@@ -742,10 +753,14 @@ const ClientsPage = () => {
               </div>
             ) : (
               <>
-                <div className="clients-page__dup-stats">
-                  <span><strong>{dupYear}</strong>{dupMonth ? ` · ${MONTHS[Number(dupMonth)]}` : ''}</span>
-                  <span className="clients-page__dup-stats-sep">·</span>
-                  <span>Групп с похожими именами: <strong>{similarGroups.length}</strong></span>
+                <div className="clients-page__found">
+                  <span className="clients-page__found-main">
+                    Групп с похожими именами <strong>{similarGroups.length}</strong>
+                  </span>
+                  <span className="clients-page__found-period">
+                    <Calendar size={12} />
+                    {dupYear}{dupMonth ? ` · ${MONTHS[Number(dupMonth)]}` : ''}
+                  </span>
                 </div>
                 {similarGroups.map((group, i) => <DuplicateGroup key={i} index={i} group={group} label={`${group[0].fio} / ${group[1].fio}${group.length > 2 ? ` +${group.length - 2}` : ''}`} onDetails={handleOpenCard} />)}
               </>
@@ -942,22 +957,29 @@ const ClientsPage = () => {
             </div>
           ) : (
             <>
-              <div className="clients-page__dup-stats">
-                <Wrench size={13} />
-                <span><strong>{fixYear || 'Все годы'}</strong>{fixMonth ? ` · ${MONTHS[Number(fixMonth)]}` : ''}{fixDay ? ` · ${fixDay}` : ''}</span>
-                <span className="clients-page__dup-stats-sep">·</span>
-                <span>Требуют исправления: <strong>{fixClients.length}</strong></span>
+              {/* Тот же вид, что «Найдено N» на вкладке «Клиенты»: одинаковые
+                  по смыслу строки должны и выглядеть одинаково */}
+              <div className="clients-page__found">
+                <span className="clients-page__found-main">
+                  Требуют исправления <strong>{fixClients.length}</strong>
+                </span>
+                <span className="clients-page__found-period">
+                  <Calendar size={12} />
+                  {fixYear || 'все годы'}
+                  {fixMonth ? ` · ${MONTHS[Number(fixMonth)]}` : ''}
+                  {fixDay ? ` · ${fixDay}` : ''}
+                </span>
               </div>
               <div className="ui-list__table-wrap clients-page__onetime-block">
                 <table className="ui-list__table clients-page__fix-table">
                   <thead>
                     <tr>
-                      <th>ФИО</th>
-                      <th>Дата начала</th>
-                      <th>Вид спорта</th>
-                      <th>Оплата</th>
-                      <th>Что не заполнено</th>
-                      <th />
+                      <th className="clients-page__fix-col-name">Клиент</th>
+                      <th className="clients-page__fix-col-period">Период</th>
+                      <th className="clients-page__fix-col-sport">Вид спорта</th>
+                      <th className="clients-page__fix-col-pay">Оплата</th>
+                      <th className="clients-page__fix-col-why">Что не заполнено</th>
+                      <th className="clients-page__fix-col-act" />
                     </tr>
                   </thead>
                   <tbody>
@@ -966,28 +988,56 @@ const ClientsPage = () => {
                       const sportName = c.sportName ?? c.sport?.name;
                       const paid = c.paid === true || c.paid === 'true';
                       const reasons = c.correctionReasons ?? [];
+                      const subEnd = formatSubscriptionEnd(c);
+                      const typeInfo = FIX_TYPE_LABEL[c.clientType];
                       return (
-                        <tr key={c.id} style={{ '--row-i': idx }}>
-                          <td className="clients-page__onetime-name">{c.fio || '—'}</td>
-                          <td>{dateStart ? new Date(dateStart).toLocaleDateString('ru-RU') : '—'}</td>
-                          <td>{sportName ?? '—'}</td>
-                          <td>
-                            <span className={`clients-page__fix-paid ${paid ? 'clients-page__fix-paid--yes' : 'clients-page__fix-paid--no'}`}>
+                        <tr key={c.id} className="clients-page__fix-row" style={{ '--row-i': idx }}>
+                          {/* Та же ячейка клиента, что во вкладке «Клиенты»:
+                              аватар с инициалами, имя, бейдж типа */}
+                          <td className="clients-page__fix-col-name" data-label="Клиент">
+                            <div className="ui-list__name-cell clients-page__fix-name-cell">
+                              <span className="ui-avatar">{getInitials(c.fio)}</span>
+                              <div className="ui-list__name-info">
+                                <span className="ui-list__title">{c.fio || '—'}</span>
+                                {typeInfo && (
+                                  <span className={`ui-pill clients-page__fix-type ${typeInfo.cls}`}>{typeInfo.label}</span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="clients-page__fix-col-period" data-label="Период">
+                            <span className="clients-page__fix-period">
+                              {dateStart ? new Date(dateStart).toLocaleDateString('ru-RU') : '—'}
+                              {subEnd && <span className="clients-page__fix-period-arrow">→</span>}
+                              {subEnd && <span className="clients-page__fix-period-end">{subEnd.text}</span>}
+                            </span>
+                          </td>
+                          <td className="clients-page__fix-col-sport" data-label="Вид спорта">
+                            <span className="clients-page__fix-sport">{sportName ?? '—'}</span>
+                          </td>
+                          <td className="clients-page__fix-col-pay" data-label="Оплата">
+                            <span className={`ui-pill ${paid ? 'ui-pill--success' : 'ui-pill--danger'}`}>
                               {paid ? 'Оплачено' : 'Не оплачено'}
                             </span>
                           </td>
-                          <td>
-                            <ul className="clients-page__fix-reasons">
-                              {reasons.map((r) => <li key={r}>{r}</li>)}
-                            </ul>
+                          {/* Причины чипами, а не списком с точками: это метки
+                              состояния, и выглядеть должны как остальные метки */}
+                          <td className="clients-page__fix-col-why" data-label="Что не заполнено">
+                            <span className="clients-page__fix-reasons">
+                              {reasons.map((r) => (
+                                <span key={r} className="clients-page__fix-reason">
+                                  <TriangleAlert size={11} />{r}
+                                </span>
+                              ))}
+                            </span>
                           </td>
-                          <td>
+                          <td className="clients-page__fix-col-act" data-label="">
                             <button
                               type="button"
                               className="clients-page__fix-btn"
                               onClick={() => (isAdmin ? setFormClient(c) : showAccessDenied())}
                             >
-                              <Wrench size={12} /> Исправить
+                              <Wrench size={14} /> Исправить
                             </button>
                           </td>
                         </tr>

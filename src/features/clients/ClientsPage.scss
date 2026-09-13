@@ -38,6 +38,23 @@
     color: var(--color-text-muted);
   }
 
+  // Период рядом со счётчиком: раньше он жил в отдельной серой полосе
+  // со своим стилем
+  &__found-period {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: var(--color-surface-secondary);
+    border: 1px solid var(--color-border);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+
+    svg { flex-shrink: 0; opacity: 0.7; }
+  }
+
   &__found-main {
     strong {
       color: var(--color-text);
@@ -301,26 +318,9 @@
     margin-top: 4px;
   }
 
-  &__dup-stats {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 16px;
-    padding: 9px 14px;
-    background: var(--color-surface-secondary);
-    border-radius: var(--radius-md);
-    font-size: 13px;
-    color: var(--color-text-muted);
-
-    strong {
-      color: var(--color-text);
-      font-weight: 700;
-    }
-
-    &-sep {
-      color: var(--color-border-strong);
-    }
-  }
+  // Инфо-строки вкладки «Дубликаты» переведены на общий .clients-page__found,
+  // который используют «Клиенты» и «Исправление»: три разных оформления
+  // для одной и той же по смыслу строки только сбивали с толку.
 
   &__subtabs {
     display: flex;
@@ -883,83 +883,139 @@
   }
 
   // ── Исправление: клиенты с неполными данными ──
+  // ── Вкладка «Исправление» ────────────────────────────────────────────────
+  // Визуальный язык взят один в один со списка «Клиенты»: аватар с инициалами,
+  // бейдж типа, период со стрелкой, пилюли статуса. Раньше это была таблица
+  // с другой типографикой, другими статусами и другой кнопкой — при переходе
+  // между вкладками казалось, что попал в другое приложение.
   &__fix-table {
+    width: 100%;
     table-layout: fixed;
 
-    th:nth-child(1) { width: 22%; }
-    th:nth-child(2) { width: 13%; }
-    th:nth-child(3) { width: 15%; }
-    th:nth-child(4) { width: 12%; }
-    th:nth-child(5) { width: 26%; }
-    th:nth-child(6) { width: 12%; }
+    td {
+      height: 56px;
+      padding: 6px 14px;
+    }
+
+    th {
+      padding: 8px 14px 10px;
+    }
 
     tbody tr {
       animation: fix-row-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
       animation-delay: calc(min(var(--row-i, 0), 20) * 22ms);
     }
-  }
 
-  &__fix-paid {
-    display: inline-flex;
-    align-items: center;
-    padding: 3px 10px;
-    border-radius: var(--radius-md);
-    font-size: 12px;
-    font-weight: 700;
-
-    &--yes { background: var(--color-success-soft); color: var(--color-success); }
-    &--no  { background: var(--color-surface-secondary); color: var(--color-text-muted); }
-  }
-
-  &__fix-reasons {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    font-size: 12.5px;
-    color: var(--color-text-secondary);
-    line-height: 1.6;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-
-    li {
-      display: flex;
-      align-items: flex-start;
-      gap: 6px;
-
-      &::before {
-        content: '';
-        flex-shrink: 0;
-        width: 5px;
-        height: 5px;
-        margin-top: 6px;
-        border-radius: 50%;
-        background: var(--color-warning);
-      }
+    // Каждая строка здесь — запись с проблемой, поэтому янтарная полоса слева
+    // у всех: она отделяет вкладку от обычного списка и задаёт её смысл
+    tbody tr td:first-child {
+      box-shadow: inset 3px 0 0 var(--color-warning);
     }
   }
 
+  &__fix-col-name { width: auto; min-width: 190px; }
+  &__fix-col-period { width: 200px; }
+  &__fix-col-sport { width: 132px; }
+  &__fix-col-pay { width: 124px; }
+  &__fix-col-why { width: 300px; }
+  &__fix-col-act { width: 150px; }
+
+  @media (max-width: 1360px) {
+    &__fix-col-period { width: 172px; }
+    &__fix-col-sport { width: 112px; }
+    &__fix-col-why { width: 240px; }
+  }
+
+  &__fix-name-cell .ui-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 11px;
+  }
+
+  // Бейдж типа — те же размеры, что в списке клиентов
+  &__fix-type {
+    align-self: flex-start;
+    font-size: 11px;
+  }
+
+  &__fix-period {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    font-size: 13px;
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  &__fix-period-arrow {
+    color: var(--color-text-muted);
+    opacity: 0.6;
+  }
+
+  &__fix-period-end { color: var(--color-text-secondary); }
+
+  &__fix-sport {
+    display: block;
+    font-size: 13.5px;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  // Причины — чипы, а не список с точками: это метки состояния записи,
+  // и выглядеть они должны как остальные метки в интерфейсе
+  &__fix-reasons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  &__fix-reason {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--color-warning-soft);
+    color: var(--color-warning);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.5;
+
+    svg { flex-shrink: 0; }
+  }
+
+  // Кнопка той же высоты и плотности, что действия в списке клиентов
   &__fix-btn {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    padding: 6px 14px;
+    gap: 7px;
+    height: 34px;
+    padding: 0 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-primary);
+    background: var(--color-primary);
+    color: #fff;
     font-size: 12.5px;
     font-weight: 700;
-    color: var(--color-primary);
-    background: var(--color-primary-soft);
-    border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
-    border-radius: var(--radius-md);
-    cursor: pointer;
     white-space: nowrap;
-    transition: background var(--transition-fast), transform 0.1s, box-shadow var(--transition-fast);
+    cursor: pointer;
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--color-primary) 30%, transparent);
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
 
     &:hover {
-      background: color-mix(in srgb, var(--color-primary) 18%, transparent);
-      box-shadow: var(--shadow-xs);
+      background: color-mix(in srgb, var(--color-primary) 88%, #000);
+      box-shadow: 0 3px 12px color-mix(in srgb, var(--color-primary) 38%, transparent);
     }
 
-    &:active { transform: scale(0.95); }
+    &:active { transform: scale(0.96); }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
   }
 
   &__onetime-name {

@@ -149,7 +149,7 @@ const MonthPanel = ({ period, rows, isNext, onOpenClient }) => {
                     }
                   }}
                 >
-                  <td>
+                  <td className="trainer-report__col-client">
                     <div className="trainer-report__client">
                       <span className={`trainer-report__avatar${row.paid && row.debt === 0 ? ' trainer-report__avatar--paid' : ''}`}>
                         {initials(row.fio) || '—'}
@@ -164,17 +164,17 @@ const MonthPanel = ({ period, rows, isNext, onOpenClient }) => {
                       </span>
                     </div>
                   </td>
-                  <td className="trainer-report__col-slot">
+                  <td className="trainer-report__col-slot" data-label="Занятие">
                     {row.slotLabel ? (
                       <span className="trainer-report__slot"><Clock size={12} aria-hidden />{row.slotLabel}</span>
                     ) : (
                       <span className="trainer-report__muted">—</span>
                     )}
                   </td>
-                  <td className="trainer-report__col-num">
+                  <td className="trainer-report__col-num" data-label="Цена">
                     <span className="trainer-report__price">{row.price.toLocaleString('ru-RU')}</span>
                   </td>
-                  <td className="trainer-report__col-num">
+                  <td className="trainer-report__col-num trainer-report__col-status" data-label="Статус">
                     {row.debt > 0 ? (
                       <span className="trainer-report__debt">{row.debt.toLocaleString('ru-RU')}</span>
                     ) : (

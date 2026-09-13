@@ -161,9 +161,38 @@
 }
 
 @include mixins.mobile {
-  .trainer-report__header { align-items: stretch; }
+  .trainer-report__header { align-items: stretch; padding: 14px 16px; }
   .trainer-report__totals { width: 100%; }
   .trainer-report__total { flex: 1 1 140px; min-width: 0; }
+}
+
+// ── Телефон: три денежные цифры — не полоска впритык, а понятный список ────
+@media (max-width: 480px) {
+  .trainer-report__identity-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 12px;
+  }
+
+  .trainer-report__identity-name { font-size: 15.5px; }
+
+  .trainer-report__totals {
+    flex-direction: column;
+    border-radius: var(--radius-md);
+  }
+
+  .trainer-report__total {
+    flex: 1 1 auto;
+    width: 100%;
+    padding: 11px 14px;
+
+    // Раньше границы были только вертикальными (колонки) — в столбик нужна
+    // горизонтальная черта между строками
+    & + & {
+      border-left: none;
+      border-top: 1px solid var(--color-border);
+    }
+  }
 }
 
 // ── Два месяца рядом ────────────────────────────────────────────────────────
@@ -431,6 +460,111 @@
   tbody tr:last-child td { border-bottom: none; }
 }
 
+// ── Телефон и малый планшет: строка таблицы → карточка ──────────────────────
+// Четыре колонки (Ученик/Занятие/Цена/Статус) на узком экране либо ужимались
+// до нечитаемых сокращений, либо требовали горизонтальной прокрутки внутри
+// и без того прокручиваемой панели — двойной скролл на телефоне неюзабелен.
+// Тот же приём, что уже используется в TrainersList/EmployeesList: шапка
+// прячется, td становятся строками карточки с подписью через data-label,
+// а карточка ученика (аватар+имя) остаётся как заголовок без подписи.
+@include mixins.mobile {
+  .trainer-report__table-wrap {
+    max-height: 62vh;
+    overflow-x: hidden;
+  }
+
+  .trainer-report__table {
+    display: block;
+
+    thead { display: none; }
+
+    tbody {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px;
+    }
+
+    tr {
+      display: block;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      overflow: hidden;
+    }
+
+    td {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--color-border);
+      font-size: 14px;
+
+      &::before {
+        content: attr(data-label);
+        flex-shrink: 0;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--color-text-muted);
+      }
+    }
+
+    tbody tr:last-child td { border-bottom: 1px solid var(--color-border); }
+    tbody tr td:last-child { border-bottom: none; }
+  }
+
+  // Карточка-заголовок: аватар + имя, во всю ширину, без подписи и без
+  // right-align (в таблице это была первая колонка, тут — шапка карточки)
+  .trainer-report__col-client {
+    justify-content: flex-start !important;
+    padding: 12px 14px !important;
+    background: var(--color-surface-secondary);
+
+    &::before { display: none; }
+  }
+
+  .trainer-report__client { width: 100%; }
+
+  .trainer-report__col-num,
+  .trainer-report__col-slot { text-align: right; }
+
+  // Полоса-должник переезжает с первой ячейки на весь левый край карточки —
+  // в блочной раскладке box-shadow на td:first-child перестал бы быть виден
+  .trainer-report__row {
+    &--debt {
+      border-left: 3px solid var(--color-danger);
+      td:first-child { box-shadow: none; }
+    }
+
+    &--paid {
+      border-left: 3px solid var(--color-success);
+      td:first-child { box-shadow: none; }
+    }
+  }
+
+  // Тач-экран не подсвечивает :hover — стрелка «открыть» должна быть видна
+  // сразу, иначе на телефоне непонятно, что карточка вообще кликабельна
+  .trainer-report__row-chevron {
+    opacity: 0.45;
+    transform: none;
+  }
+
+  .trainer-report__col-status {
+    .trainer-report__row-chevron { margin-left: 8px; }
+  }
+}
+
+// Нажатие пальцем — как hover на мыши, но по факту тапа, а не наведения
+@media (hover: none) {
+  .trainer-report__row:active td {
+    background: var(--color-surface-secondary);
+  }
+}
+
 .trainer-report__col-num {
   text-align: right;
   white-space: nowrap;
@@ -648,6 +782,31 @@
 }
 
 .trainer-report__foot-debt strong { color: var(--color-danger); }
+
+@include mixins.mobile {
+  // Фильтр «Все/Долг/Оплатили» — тач-цель заметно комфортнее и не впритык
+  .trainer-report__filters {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .trainer-report__filter {
+    height: 36px;
+    padding: 0 13px;
+    font-size: 12.5px;
+  }
+
+  // Три денежные строки итога — раньше на 320-360px переносились как попало
+  // («Получено» отрывалось от суммы на новую строку); в столбик читается
+  // однозначно
+  .trainer-report__panel-foot {
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+
+    span { display: flex; justify-content: space-between; }
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .trainer-report__meter-fill,

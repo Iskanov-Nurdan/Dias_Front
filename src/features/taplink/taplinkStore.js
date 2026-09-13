@@ -261,8 +261,76 @@ export async function loadTaplinkConfigStrict(signal) {
   return merged;
 }
 
+/**
+ * Ссылки на загруженные нами файлы, которые встречаются в конфиге.
+ *
+ * Только media/taplink/ — именно эти файлы умеет удалять сервер; внешние
+ * ссылки, data: и blob: сюда не попадают.
+ */
+/**
+ * Последнее сохранённое состояние конфига.
+ *
+ * Именно из localStorage, а не через loadTaplinkData(): та отдаёт живые данные
+ * редактора (они обновляются на каждое нажатие), и для сравнения «что было до
+ * сохранения» они бесполезны — удалённая ссылка там уже отсутствует.
+ */
+function loadPersistedTaplinkData() {
+  try {
+    const raw = localStorage.getItem('taplink-data');
+    return raw ? mergeWithDefaults(JSON.parse(raw)) : null;
+  } catch {
+    return null;
+  }
+}
+
+function collectTaplinkMedia(config) {
+  const found = new Set();
+  const add = (u) => {
+    if (typeof u === 'string' && u.includes('/media/taplink/')) found.add(u);
+  };
+  add(config?.hero?.bg);
+  for (const sport of config?.sports ?? []) {
+    add(sport?.photo);
+    for (const v of sport?.videos ?? []) add(v);
+  }
+  for (const trainer of config?.trainers ?? []) {
+    add(trainer?.photo);
+    for (const v of trainer?.videos ?? []) add(v);
+  }
+  return found;
+}
+
+/**
+ * Удалить файлы, на которые после сохранения больше никто не ссылается.
+ *
+ * «Заменить» и «Удалить» в загрузчике меняли только ссылку в конфиге — старый
+ * файл оставался на диске навсегда, и медиа-каталог рос без предела. Чистим
+ * именно здесь, после успешного PUT: удалять файл в момент нажатия «Удалить»
+ * нельзя — конфиг могли не сохранить, и ссылка осталась бы битой.
+ *
+ * Что осталось нужным, берём из ответа сервера, а не из локальных данных:
+ * ответ — это то, что реально записано. Ошибки глотаем: не убранный файл
+ * куда безобиднее, чем сорванное сохранение страницы.
+ */
+async function cleanupDroppedMedia(previous, savedConfig) {
+  const kept = collectTaplinkMedia(savedConfig);
+  const dropped = [...collectTaplinkMedia(previous)].filter((u) => !kept.has(u));
+  if (dropped.length === 0) return;
+  const { deleteFile } = await import('./api.js');
+  for (const url of dropped) {
+    try {
+      await deleteFile(url);
+    } catch {
+      // Файл уже удалён или сервер отказал — на работу страницы это не влияет
+    }
+  }
+}
+
 export async function saveTaplinkDataAsync(data) {
   const { BACKEND_ENABLED, saveConfig } = await import('./api.js');
+  // Каким конфиг был до сохранения — читаем до перезаписи локального кэша,
+  // иначе сравнивать будет не с чем
+  const previous = BACKEND_ENABLED ? loadPersistedTaplinkData() : null;
   // Always persist locally first (instant feedback, offline safety)
   saveTaplinkData(data);
   if (!BACKEND_ENABLED) return null;
@@ -276,5 +344,7 @@ export async function saveTaplinkDataAsync(data) {
   const res = await saveConfig(payload);
   // Сервер вернул свежий updatedAt — кэшируем его же, чтобы бейдж «Сохранено: …» не отставал
   if (res?.updatedAt) saveTaplinkData({ ...data, updatedAt: res.updatedAt });
+  // Не ждём: сохранение уже состоялось, чистка идёт своим ходом
+  if (previous) cleanupDroppedMedia(previous, res ?? payload);
   return res;
 }

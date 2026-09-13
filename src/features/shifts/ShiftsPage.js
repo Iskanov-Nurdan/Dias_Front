@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Clock, Plus, Banknote, CreditCard, TrendingUp, TrendingDown, Coins, ImagePlus, X as XIcon, Camera, FileText, Filter, Pencil, History, Calendar, CalendarDays, CalendarClock, Maximize2, Images, Trash2 } from 'lucide-react';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { fetchShifts, closeShift, updateShift, deleteShift, fetchPhotoReports, addPhotoReport, deletePhotoReport } from './api';
-import { Select, Spinner, EmptyState, ErrorState, ConfirmModal } from '../../shared/ui';
+import { Select, Spinner, EmptyState, ErrorState, ConfirmModal, Pagination } from '../../shared/ui';
 import { STATS_YEARS, formatMoney } from '../../shared/constants/common';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
 import './ShiftsPage.scss';
@@ -423,11 +423,17 @@ const TABS = [
 ];
 
 const ShiftsPage = () => {
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState('photos');
 
   const [shifts, setShifts] = useState([]);
+  const [shiftsMeta, setShiftsMeta] = useState(null);
   const [photoReports, setPhotoReports] = useState([]);
+  const [photosMeta, setPhotosMeta] = useState(null);
+  // Сервер отдаёт по 20 записей; без этих номеров страница показывала только
+  // первую двадцатку из сотни, и остальное было не достать
+  const [shiftsPage, setShiftsPage] = useState(1);
+  const [photosPage, setPhotosPage] = useState(1);
   const [shiftsLoading, setShiftsLoading] = useState(true);
   const [photosLoading, setPhotosLoading] = useState(true);
   const [shiftsError, setShiftsError] = useState(null);
@@ -465,9 +471,12 @@ const ShiftsPage = () => {
     setPhotosLoading(true);
     setPhotosError(null);
     try {
-      const data = await fetchPhotoReports({ year: pYear, month: pMonth, day: pDay || undefined }, signal);
+      const { items, meta } = await fetchPhotoReports(
+        { year: pYear, month: pMonth, day: pDay || undefined, page: photosPage }, signal,
+      );
       if (photosRequestSeq.current !== seq) return;
-      setPhotoReports(data);
+      setPhotoReports(items);
+      setPhotosMeta(meta);
     } catch (err) {
       if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
       if (photosRequestSeq.current !== seq) return;
@@ -475,7 +484,7 @@ const ShiftsPage = () => {
     } finally {
       if (photosRequestSeq.current === seq) setPhotosLoading(false);
     }
-  }, [pYear, pMonth, pDay]);
+  }, [pYear, pMonth, pDay, photosPage]);
 
   const shiftsControllerRef = useRef(null);
   const shiftsRequestSeq = useRef(0);
@@ -487,9 +496,12 @@ const ShiftsPage = () => {
     setShiftsLoading(true);
     setShiftsError(null);
     try {
-      const data = await fetchShifts({ year: sYear, month: sMonth, day: sDay || undefined }, signal);
+      const { items, meta } = await fetchShifts(
+        { year: sYear, month: sMonth, day: sDay || undefined, page: shiftsPage }, signal,
+      );
       if (shiftsRequestSeq.current !== seq) return;
-      setShifts(data);
+      setShifts(items);
+      setShiftsMeta(meta);
     } catch (err) {
       if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
       if (shiftsRequestSeq.current !== seq) return;
@@ -497,10 +509,15 @@ const ShiftsPage = () => {
     } finally {
       if (shiftsRequestSeq.current === seq) setShiftsLoading(false);
     }
-  }, [sYear, sMonth, sDay]);
+  }, [sYear, sMonth, sDay, shiftsPage]);
 
   useEffect(() => { loadPhotos(); }, [loadPhotos]);
   useEffect(() => { loadShifts(); }, [loadShifts]);
+
+  // Новый период — снова с первой страницы: иначе после фильтра, где страниц
+  // меньше, остаёшься на несуществующей и видишь пустой список
+  useEffect(() => { setPhotosPage(1); }, [pYear, pMonth, pDay]);
+  useEffect(() => { setShiftsPage(1); }, [sYear, sMonth, sDay]);
 
   const handleCloseShift = async ({ cash, card, expense, advance, total, description }) => {
     await closeShift({ cash, card, expense, advance, total, description });
@@ -532,10 +549,14 @@ const ShiftsPage = () => {
     try {
       if (kind === 'shift') {
         await deleteShift(id);
-        await loadShifts();
+        // Удалили единственную запись на странице — отступаем назад, иначе
+        // останемся на опустевшей последней странице
+        if (shifts.length === 1 && shiftsPage > 1) setShiftsPage((n) => n - 1);
+        else await loadShifts();
       } else {
         await deletePhotoReport(id);
-        await loadPhotos();
+        if (photoReports.length === 1 && photosPage > 1) setPhotosPage((n) => n - 1);
+        else await loadPhotos();
       }
     } catch (err) {
       setDeleteError(getApiErrorMessage(err));
@@ -559,11 +580,13 @@ const ShiftsPage = () => {
             >
               <Icon size={16} />
               {label}
-              {id === 'photos' && photoReports.length > 0 && (
-                <span className="ui-tabs__badge">{photoReports.length}</span>
+              {/* Счётчик — всего записей за период, а не сколько влезло
+                  на текущую страницу */}
+              {id === 'photos' && (photosMeta?.total ?? photoReports.length) > 0 && (
+                <span className="ui-tabs__badge">{photosMeta?.total ?? photoReports.length}</span>
               )}
-              {id === 'shifts' && shifts.length > 0 && (
-                <span className="ui-tabs__badge shifts-tabs__badge--alert">{shifts.length}</span>
+              {id === 'shifts' && (shiftsMeta?.total ?? shifts.length) > 0 && (
+                <span className="ui-tabs__badge shifts-tabs__badge--alert">{shiftsMeta?.total ?? shifts.length}</span>
               )}
             </button>
           ))}
@@ -667,6 +690,14 @@ const ShiftsPage = () => {
               ))}
             </div>
           )}
+
+          <Pagination
+            meta={photosMeta}
+            currentPage={photosPage}
+            onPage={setPhotosPage}
+            loading={photosLoading}
+            entityLabel="отчётов"
+          />
         </div>
       )}
 
@@ -793,6 +824,14 @@ const ShiftsPage = () => {
               ))}
             </div>
           )}
+
+          <Pagination
+            meta={shiftsMeta}
+            currentPage={shiftsPage}
+            onPage={setShiftsPage}
+            loading={shiftsLoading}
+            entityLabel="смен"
+          />
         </div>
       )}
 

@@ -2,14 +2,22 @@ import { apiClient } from '../../shared/api/client';
 
 const withSignal = (config, signal) => (signal ? { ...config, signal } : config);
 
-/** GET /api/shifts/ — история смен. Query: year, month, day */
-export const fetchShifts = async ({ year, month, day } = {}, signal) => {
-  const params = {};
+/**
+ * GET /api/shifts/ — история смен. Query: year, month, day, page, perPage
+ *
+ * Возвращаем { items, meta }: сервер отдаёт по 20 записей, а раньше здесь
+ * оставались только items — страница молча показывала первые двадцать смен
+ * из сотни, и остальные были недоступны.
+ */
+export const fetchShifts = async ({ year, month, day, page = 1, perPage } = {}, signal) => {
+  const params = { page };
   if (year) params.year = year;
   if (month) params.month = month;
   if (day) params.day = day;
+  if (perPage) params.perPage = perPage;
   const { data } = await apiClient.get('/shifts/', { params, ...withSignal({}, signal) });
-  return data?.items ?? data?.results ?? (Array.isArray(data) ? data : []);
+  const items = data?.items ?? data?.results ?? (Array.isArray(data) ? data : []);
+  return { items, meta: data?.meta ?? null };
 };
 
 /** POST /api/shifts/ — завершить смену. Body: { cash, card, expense, advance, total, description } */
@@ -34,14 +42,16 @@ export const updateShift = async (id, { cash, card, expense, advance, total, des
   return data;
 };
 
-/** GET /api/shifts/photo-reports/ — список фото-отчётов. Query: year, month, day */
-export const fetchPhotoReports = async ({ year, month, day } = {}, signal) => {
-  const params = {};
+/** GET /api/shifts/photo-reports/ — фото-отчёты. Query: year, month, day, page, perPage */
+export const fetchPhotoReports = async ({ year, month, day, page = 1, perPage } = {}, signal) => {
+  const params = { page };
   if (year) params.year = year;
   if (month) params.month = month;
   if (day) params.day = day;
+  if (perPage) params.perPage = perPage;
   const { data } = await apiClient.get('/shifts/photo-reports/', { params, ...withSignal({}, signal) });
-  return data?.items ?? data?.results ?? (Array.isArray(data) ? data : []);
+  const items = data?.items ?? data?.results ?? (Array.isArray(data) ? data : []);
+  return { items, meta: data?.meta ?? null };
 };
 
 /** POST /api/shifts/photo-reports/ — добавить фото-отчёт. multipart: photos[], description */

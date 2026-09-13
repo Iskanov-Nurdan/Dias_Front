@@ -29,31 +29,37 @@ const SportsTrainersPage = () => {
   const [activeTab, setActiveTab] = useState(TAB_SPORTS);
 
   /**
-   * Фото тренеров для списка.
+   * Фото тренеров и видов спорта для списков.
    *
-   * Фото — часть карточки публичной страницы (Taplink) и связано с тренером
-   * CRM через crmTrainerId; в самой сущности тренера его нет. Поэтому список
-   * показывал инициалы, хотя фото давно загружено в форме. Конфиг Taplink
-   * кешируется в localStorage, так что запрос дешёвый и делается один раз.
+   * Изображения — часть публичной страницы (Taplink) и связаны с сущностями
+   * CRM через crmTrainerId / crmSportId; в самих тренерах и видах спорта их
+   * нет. Поэтому списки показывали инициалы и одинаковую иконку-гантель, хотя
+   * фото давно загружены в формах. Конфиг Taplink кешируется в localStorage —
+   * запрос дешёвый и делается один раз на обе вкладки.
    */
   const [trainerPhotos, setTrainerPhotos] = useState({});
+  const [sportPhotos, setSportPhotos] = useState({});
 
   useEffect(() => {
-    if (activeTab !== TAB_TRAINERS) return undefined;
     let cancelled = false;
     loadTaplinkDataAsync()
       .then((cfg) => {
         if (cancelled) return;
-        const map = {};
+        const trainers = {};
         for (const t of cfg?.trainers ?? []) {
-          if (t?.crmTrainerId != null && t.photo) map[String(t.crmTrainerId)] = t.photo;
+          if (t?.crmTrainerId != null && t.photo) trainers[String(t.crmTrainerId)] = t.photo;
         }
-        setTrainerPhotos(map);
+        const sports = {};
+        for (const sp of cfg?.sports ?? []) {
+          if (sp?.crmSportId != null && sp.photo) sports[String(sp.crmSportId)] = sp.photo;
+        }
+        setTrainerPhotos(trainers);
+        setSportPhotos(sports);
       })
-      // Нет фото — не повод ронять список: останутся инициалы
+      // Конфиг не загрузился — списки работают как раньше, с заглушками
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [activeTab]);
+  }, []);
   const [queryState, setQueryState] = useState({
     sportId: '',
     search: '',
@@ -237,6 +243,7 @@ const SportsTrainersPage = () => {
           </FilterBar>
           <SportsList
             items={sportsData}
+            photos={sportPhotos}
             loading={sportsLoading}
             error={sportsError}
             onRetry={fetchSportsSafe}

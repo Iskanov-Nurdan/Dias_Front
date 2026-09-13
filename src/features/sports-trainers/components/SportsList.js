@@ -5,6 +5,7 @@ import './SportsList.scss';
 
 const SportsList = ({
   items,
+  photos = {},
   loading,
   error,
   onRetry,
@@ -53,9 +54,23 @@ const SportsList = ({
                 <tr key={s.id}>
                   <td data-label="Название">
                     <div className="ui-list__name-cell">
-                      <span className="ui-avatar ui-avatar--icon">
-                        <Dumbbell size={16} />
-                      </span>
+                      {/* Фото секции с публичной страницы, если оно загружено.
+                          Иначе — гантель: у части секций фото может не быть,
+                          и строка не должна оставаться пустой. Битую ссылку
+                          прячем, чтобы вместо неё не торчал значок «нет картинки». */}
+                      {photos[String(s.id)] ? (
+                        <img
+                          src={photos[String(s.id)]}
+                          alt=""
+                          className="ui-avatar sports-list__avatar-img"
+                          loading="lazy"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <span className="ui-avatar ui-avatar--icon">
+                          <Dumbbell size={16} />
+                        </span>
+                      )}
                       <span className="ui-list__title">{s.name || '—'}</span>
                     </div>
                   </td>

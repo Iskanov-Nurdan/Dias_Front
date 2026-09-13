@@ -43,8 +43,21 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
-    <link rel="icon" href="%PUBLIC_URL%/rahman.png" />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/rahman.png" />
+    <!--
+      Иконка сайта. В выдаче Google рядом со ссылкой стоял глобус: по адресу
+      /favicon.ico лежал стандартный логотип React из шаблона, а rel="icon"
+      указывал на логотип 1280x1280 без объявленных размеров.
+
+      Здесь эмблема клуба (красное кольцо с «R») без подписи «РАХМАН АТА» —
+      в 16 пикселях подпись превращается в пятно. Размеры кратны 48, как
+      рекомендует Google, и объявлены явно, чтобы поисковику не приходилось
+      гадать, какой файл брать.
+    -->
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="48x48" href="%PUBLIC_URL%/favicon-48.png" />
+    <link rel="icon" type="image/png" sizes="96x96" href="%PUBLIC_URL%/favicon-96.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="%PUBLIC_URL%/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/apple-touch-icon.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <title>Рахман Ата — спортивный клуб</title>
 
@@ -58,6 +71,7 @@
         "alternateName": ["Rahman Ata", "rahmanata"],
         "url": "https://rahmanata.kg/",
         "image": "https://rahmanata.kg/rahman.png",
+        "logo": "https://rahmanata.kg/icon-512.png",
         "sport": ["ММА", "Бокс", "Дзюдо", "Вольная борьба", "Грэпплинг", "Бразильское джиу-джитсу", "Кроссфит"]
       }
     </script>

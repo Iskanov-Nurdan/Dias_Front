@@ -70,17 +70,11 @@ export const addClientWarning = async (clientId, signal) => {
   return data;
 };
 
-/** Сбросить предупреждения клиента в 0. */
-export const resetClientWarning = async (clientId, signal) => {
-  const { data } = await apiClient.delete(`/clients/${clientId}/warnings/`, withSignal({}, signal));
-  return data;
-};
-
 /**
  * GET /api/clients/not-renewed/ — только год + месяц (весь месяц) + пагинация.
  * Бэкенд отдаёт items, meta и объект summary со счётчиками.
  */
-export const buildNotRenewedRequestParams = ({ year, month, page = 1, perPage = 20 }) => {
+const buildNotRenewedRequestParams = ({ year, month, page = 1, perPage = 20 }) => {
   const params = { page, perPage };
   if (!year || !month) return params;
   const y = String(year);
@@ -148,7 +142,7 @@ export const deleteClient = async (id, signal) => {
  * @param {*} data
  * @returns {object|null}
  */
-export const unwrapClientPayload = (data) => {
+const unwrapClientPayload = (data) => {
   if (data == null || typeof data !== 'object') return null;
   return data.client ?? data.data ?? data;
 };

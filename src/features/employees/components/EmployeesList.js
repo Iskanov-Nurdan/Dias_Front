@@ -1,13 +1,9 @@
-import React, { useCallback, useState, useEffect } from 'react';
-import { List } from 'react-window';
+import React, { useState, useEffect } from 'react';
 import { KeyRound, Pencil, Trash2 } from 'lucide-react';
 import { ErrorState, EmptyState, ConfirmModal, SkeletonTable } from '../../../shared/ui';
 import './EmployeesList.scss';
 
 const MOBILE_MQ = '(max-width: 768px)';
-const ROW_HEIGHT = 56;
-const VIRTUALIZE_THRESHOLD = 30;
-const LIST_HEIGHT = 448;
 
 const getInitials = (fio) =>
   (fio || '').split(' ').slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
@@ -39,35 +35,6 @@ const EmployeesList = ({
   }, []);
 
   const list = items?.items ?? items ?? [];
-  const useVirtual = !isMobile && list.length > VIRTUALIZE_THRESHOLD;
-
-  const Row = useCallback(
-    ({ index, style }) => {
-      const emp = list[index];
-      const initials = getInitials(emp.fio);
-      return (
-        <div className="employees-list__virtual-row" style={style} role="row">
-          <div className="employees-list__virtual-cell employees-list__cell--name">
-            <span className="ui-avatar">{initials}</span>
-            <span className="ui-list__title">{emp.fio || '—'}</span>
-          </div>
-          <div className="employees-list__virtual-cell">{emp.login || '—'}</div>
-          <div className="employees-list__virtual-cell">{emp.phone || '—'}</div>
-          <div className="employees-list__virtual-cell">
-            {(emp.roleName ?? emp.role?.name) ? (
-              <span className="ui-pill ui-pill--info">{emp.roleName ?? emp.role?.name}</span>
-            ) : '—'}
-          </div>
-          <div className="employees-list__virtual-cell ui-list__actions">
-            <button type="button" className="ui-list-btn" onClick={() => onAccess(emp)}><KeyRound size={13} /> Доступы</button>
-            <button type="button" className="ui-list-btn ui-list-btn--edit" onClick={() => onEdit(emp)}><Pencil size={13} /> Изменить</button>
-            <button type="button" className="ui-list-btn ui-list-btn--danger" onClick={() => onDelete(emp)}><Trash2 size={13} /> Удалить</button>
-          </div>
-        </div>
-      );
-    },
-    [list, onAccess, onEdit, onDelete],
-  );
 
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
 
@@ -125,25 +92,6 @@ const EmployeesList = ({
             </div>
           ) : isMobile ? (
             renderMobileCards()
-          ) : useVirtual ? (
-            <>
-              <div className="employees-list__virtual-header" role="row">
-                <div className="employees-list__virtual-cell">ФИО</div>
-                <div className="employees-list__virtual-cell">Логин</div>
-                <div className="employees-list__virtual-cell">Телефон</div>
-                <div className="employees-list__virtual-cell">Роль</div>
-                <div className="employees-list__virtual-cell" />
-              </div>
-              <List
-                height={Math.min(LIST_HEIGHT, list.length * ROW_HEIGHT)}
-                itemCount={list.length}
-                itemSize={ROW_HEIGHT}
-                width="100%"
-                className="employees-list__virtual-list"
-              >
-                {Row}
-              </List>
-            </>
           ) : (
             <table className="ui-list__table employees-list__table">
               <thead>

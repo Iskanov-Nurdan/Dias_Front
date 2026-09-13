@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Phone, Calendar, User, Clock, CreditCard, MessageSquare, Snowflake, Pencil, Trash2, CircleCheck, CircleAlert, Ticket, History, MessageCircle, ChevronDown } from 'lucide-react';
+import { X, Phone, Calendar, User, Clock, CreditCard, MessageSquare, Snowflake, Pencil, Trash2, CircleCheck, CircleAlert, Ticket, History, MessageCircle, ChevronDown, FileClock } from 'lucide-react';
 import { formatMoney, isClientPaid, formatSubscriptionEnd } from '../../../shared/constants/common';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { useToast } from '../../../app/providers/ToastProvider';
@@ -9,7 +9,8 @@ import { WEEKDAYS } from '../../sports-trainers/scheduleConstants';
 import { getClientPaymentsForCard } from '../lib/clientActualPayments';
 import { createClientFreeze, deleteClientFreeze, fetchClient, updateClientFreeze } from '../api';
 import { getPaymentKindLabel } from '../lib/paymentKinds';
-import { fetchClientHistory } from '../api';
+import { fetchClientChanges, fetchClientHistory } from '../api';
+import { formatFieldLabel, formatFieldValue } from '../../../shared/lib/auditFormat';
 import {
   formatFreezeDateLabel,
   formatFreezeDateTimeLabel,
@@ -88,6 +89,40 @@ const ClientCardModal = ({
    * впечатление, что ничего не произошло.
    */
   const historyRef = useRef(null);
+
+  /**
+   * Последние изменения карточки.
+   *
+   * Кто поменял цену, тренера или статус оплаты, было видно только в журнале
+   * действий — а он закрыт отдельным правом, и найти там правки одного
+   * человека среди тысяч записей практически нельзя. Грузим по требованию.
+   */
+  const [changes, setChanges] = useState(null);
+  const [changesOpen, setChangesOpen] = useState(false);
+  const [changesLoading, setChangesLoading] = useState(false);
+  const changesRef = useRef(null);
+
+  const loadChanges = async () => {
+    if (changesOpen) { setChangesOpen(false); return; }
+    setChangesOpen(true);
+    const reveal = () => {
+      window.setTimeout(
+        () => changesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }),
+        60,
+      );
+    };
+    if (changes || !client?.id) { reveal(); return; }
+    setChangesLoading(true);
+    try {
+      setChanges(await fetchClientChanges(client.id, 15, null));
+    } catch {
+      // Журнал не отвечает — блок просто скажет, что записей нет
+      setChanges({ items: [] });
+    } finally {
+      setChangesLoading(false);
+      reveal();
+    }
+  };
 
   const loadHistory = async () => {
     if (historyOpen) { setHistoryOpen(false); return; }
@@ -480,6 +515,73 @@ const ClientCardModal = ({
                     })}
                   </ul>
                 </div>
+              )
+            )}
+          </div>
+        )}
+
+        {/* ── Последние изменения ── */}
+        {client?.id && (
+          <div className="ccm__history ccm__changes" ref={changesRef}>
+            <button
+              type="button"
+              className="ccm__history-toggle"
+              onClick={loadChanges}
+              aria-expanded={changesOpen}
+            >
+              <span className="ccm__history-toggle-icon"><FileClock size={14} /></span>
+              <span className="ccm__history-toggle-text">Последние изменения</span>
+              {changes?.items?.length > 0 && (
+                <span className="ccm__history-count">{changes.items.length}</span>
+              )}
+              <ChevronDown
+                size={16}
+                className={`ccm__history-chevron${changesOpen ? ' ccm__history-chevron--open' : ''}`}
+                aria-hidden
+              />
+            </button>
+            {changesOpen && (
+              changesLoading ? (
+                <p className="ccm__history-loading">Загрузка…</p>
+              ) : !changes?.items?.length ? (
+                <p className="ccm__history-loading">Изменений не зафиксировано</p>
+              ) : (
+                <ul className="ccm__changes-list">
+                  {changes.items.map((entry) => (
+                    <li key={entry.id} className="ccm__changes-row">
+                      <div className="ccm__changes-head">
+                        <span className="ccm__changes-who">{entry.actorName || 'Неизвестно'}</span>
+                        <span className="ccm__changes-when">
+                          {new Date(entry.createdAt).toLocaleString('ru-RU', {
+                            day: '2-digit', month: '2-digit', year: '2-digit',
+                            hour: '2-digit', minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                      <span className="ccm__changes-what">{entry.description || '—'}</span>
+                      {/* Сами правки: «что было → что стало». Без этого запись
+                          сообщает лишь факт правки, а не её содержание */}
+                      {entry.changes?.length > 0 && (
+                        <ul className="ccm__changes-diff">
+                          {entry.changes.map((ch) => (
+                            <li key={ch.field} className="ccm__changes-diff-row">
+                              <span className="ccm__changes-field">{formatFieldLabel(ch.field)}</span>
+                              {/* Сервер присылает beforeLabel/afterLabel для полей
+                                  со ссылками — без них было бы «Тренер: №6 → №12» */}
+                              <span className="ccm__changes-before">
+                                {ch.beforeLabel ?? formatFieldValue(ch.field, ch.before)}
+                              </span>
+                              <span className="ccm__changes-arrow" aria-hidden>→</span>
+                              <span className="ccm__changes-after">
+                                {ch.afterLabel ?? formatFieldValue(ch.field, ch.after)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               )
             )}
           </div>

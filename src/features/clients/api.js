@@ -285,6 +285,19 @@ export const fetchClientHistory = async (clientId, signal) => {
 };
 
 /**
+ * GET /api/clients/{id}/changes/ — кто и когда правил карточку.
+ *
+ * Срез журнала действий по одному человеку: сам журнал закрыт правом на свою
+ * страницу, а эти записи нужны всем, кто видит клиентов.
+ */
+export const fetchClientChanges = async (clientId, limit, signal) => {
+  const { data } = await apiClient.get(`/clients/${clientId}/changes/`, {
+    params: limit ? { limit } : {}, ...withSignal({}, signal),
+  });
+  return { items: data?.items ?? [] };
+};
+
+/**
  * GET /api/clients/lessons/?date= — занятия на день, целиком и по времени.
  * Обычный список клиентов для этого не подходит: он режется по 100 записей
  * и сортируется по дате записи, из-за чего расписание дня обрывалось.

@@ -787,3 +787,103 @@
   &--ok { background: var(--color-success-soft); color: var(--color-success); }
   &--debt { background: var(--color-danger-soft); color: var(--color-danger); }
 }
+
+// ═══ Последние изменения ═══════════════════════════════════════════════════
+// Оболочка та же, что у истории (.ccm__history) — два блока в подвале карточки
+// должны выглядеть одинаково. Отличается только содержимое.
+
+.ccm__changes {
+  margin-top: 8px;
+}
+
+.ccm__changes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ccm__changes-row {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+
+.ccm__changes-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ccm__changes-who {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ccm__changes-when {
+  flex-shrink: 0;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ccm__changes-what {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+}
+
+.ccm__changes-diff {
+  margin: 8px 0 0;
+  padding: 8px 0 0;
+  border-top: 1px dashed var(--color-border);
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+// Подпись поля, старое значение, стрелка, новое — в одну строку, с переносом
+// на узком экране: «было → стало» читается только рядом
+.ccm__changes-diff-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 7px;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.ccm__changes-field {
+  color: var(--color-text-muted);
+  font-weight: 600;
+
+  &::after { content: ':'; }
+}
+
+.ccm__changes-before {
+  color: var(--color-text-secondary);
+  text-decoration: line-through;
+  text-decoration-color: var(--color-danger);
+  overflow-wrap: anywhere;
+}
+
+.ccm__changes-arrow {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.ccm__changes-after {
+  color: var(--color-text);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}

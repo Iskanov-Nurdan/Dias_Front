@@ -4,6 +4,7 @@ import { X, Check, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { PAGE_IDS, PAGE_LABELS, PAGE_ICONS } from '../../../shared/constants/pages';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { SubmitButton } from '../../../shared/ui';
+import { loadTaplinkDataAsync } from '../../taplink/taplinkStore';
 import './AccessModal.scss';
 
 const ACCESS_MODAL_GROUPS = [
@@ -53,6 +54,7 @@ const getInitials = (name = '') => {
 
 const AccessModal = ({ employee, currentAccess, onSave, onClose, error, saving }) => {
   const [access, setAccess] = useState({});
+  const [avatarPhoto, setAvatarPhoto] = useState(null);
 
   useModalEffect(!!employee, onClose);
 
@@ -64,6 +66,30 @@ const AccessModal = ({ employee, currentAccess, onSave, onClose, error, saving }
   useEffect(() => {
     setAccess(normalizeAccess(currentAccess));
   }, [employee?.id, currentAccess]);
+
+  /**
+   * Фото сотрудника — то же самое, что уже загружено в карточке тренера
+   * («Спорт и тренеры»). Employee и Trainer — разные сущности без общего id,
+   * поэтому ищем по ФИО в конфиге Taplink (оно совпадает: при выдаче доступа
+   * тренеру ФИО сотрудника берётся из карточки тренера). Не нашли — покажем
+   * инициалы, как и раньше.
+   */
+  useEffect(() => {
+    setAvatarPhoto(null);
+    const fio = (employee?.fio || '').trim().toLowerCase();
+    if (!fio) return undefined;
+    let cancelled = false;
+    loadTaplinkDataAsync()
+      .then((cfg) => {
+        if (cancelled) return;
+        const found = (cfg?.trainers || []).find(
+          (t) => (t?.name || '').trim().toLowerCase() === fio,
+        );
+        if (found?.photo) setAvatarPhoto(found.photo);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [employee?.fio]);
 
   const toggle = (pageId) => {
     setAccess((prev) => ({ ...prev, [pageId]: !(prev[pageId] === true) }));
@@ -98,9 +124,18 @@ const AccessModal = ({ employee, currentAccess, onSave, onClose, error, saving }
       <div className="access-modal" onClick={(e) => e.stopPropagation()}>
 
         <div className="access-modal__header">
-          <span className="ui-avatar ui-avatar--lg access-modal__avatar" aria-hidden>
-            {getInitials(displayName)}
-          </span>
+          {avatarPhoto ? (
+            <img
+              src={avatarPhoto}
+              alt=""
+              className="ui-avatar ui-avatar--lg access-modal__avatar access-modal__avatar-img"
+              onError={() => setAvatarPhoto(null)}
+            />
+          ) : (
+            <span className="ui-avatar ui-avatar--lg access-modal__avatar" aria-hidden>
+              {getInitials(displayName)}
+            </span>
+          )}
           <div className="access-modal__header-text">
             <p className="access-modal__header-sub"><ShieldCheck size={12} /> Управление доступами</p>
             <h2 id="access-modal-title" className="access-modal__title">{displayName}</h2>

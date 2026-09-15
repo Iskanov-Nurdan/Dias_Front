@@ -81,28 +81,27 @@ const MonthPanel = ({ period, rows, isNext, showTag = true, onOpenClient }) => {
         </div>
       </div>
 
+      {/* Сегментированный переключатель без счётчиков.
+          Цифры отсюда убраны не ради экономии места: все три уже стоят
+          на этом же экране прямо над фильтром — «Оплатили 31» повторяло
+          KPI «31 ОПЛАТИЛИ», «Долг 3» — «3 НЕ ОПЛАТИЛИ», «Все 34» — счётчик
+          учеников в шапке панели. Из-за них третий сегмент не помещался
+          по ширине и вылезал за край. Теперь KPI отвечает за цифры,
+          переключатель — за выбор, и каждый занят своим делом. */}
       {rows.length > 0 && (
         <div className="trainer-report__filters" role="tablist" aria-label="Фильтр списка">
-          {FILTERS.map((f) => {
-            const count = f.value === 'all'
-              ? summary.total
-              : f.value === 'debt'
-                ? rows.filter((r) => !r.paid || r.debt > 0).length
-                : rows.filter((r) => r.paid && r.debt === 0).length;
-            return (
-              <button
-                key={f.value}
-                type="button"
-                role="tab"
-                aria-selected={filter === f.value}
-                className={`trainer-report__filter${filter === f.value ? ' trainer-report__filter--active' : ''}`}
-                onClick={() => setFilter(f.value)}
-              >
-                {f.label}
-                <span className="trainer-report__filter-count">{count}</span>
-              </button>
-            );
-          })}
+          {FILTERS.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              role="tab"
+              aria-selected={filter === f.value}
+              className={`trainer-report__filter${filter === f.value ? ' trainer-report__filter--active' : ''}`}
+              onClick={() => setFilter(f.value)}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
       )}
 

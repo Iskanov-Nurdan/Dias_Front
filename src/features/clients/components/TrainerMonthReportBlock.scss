@@ -369,65 +369,59 @@
 }
 
 // ── Фильтр внутри панели ────────────────────────────────────────────────────
-// Сегментированный переключатель: три равные доли строки вместо ряда
-// «плавающих» пилюль. Раньше это был flex без переноса внутри панели со
-// скрытым переполнением — третий фильтр («Оплатили») просто срезался по краю,
-// а прокрутка внутри и так прокручиваемой панели читалась как поломка.
+// ── Переключатель списка ────────────────────────────────────────────────
+// Сегментированный контрол в утопленной дорожке: активный сегмент —
+// приподнятая «таблетка», как в iOS и в Linear. Раньше это был ряд пилюль
+// со счётчиками, который не помещался по ширине и срезался краем панели.
 .trainer-report__filters {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
-  gap: 4px;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--color-border);
+  gap: 3px;
+  margin: 10px 12px;
+  padding: 3px;
+  border-radius: 999px;
   background: var(--color-surface-secondary);
-}
-
-.trainer-report__filter {
-  min-width: 0;
-  justify-content: center;
+  border: 1px solid var(--color-border);
 }
 
 .trainer-report__filter {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 28px;
+  justify-content: center;
+  min-width: 0;
+  height: 32px;
   padding: 0 10px;
+  border: none;
   border-radius: 999px;
-  border: 1px solid transparent;
   background: transparent;
   color: var(--color-text-muted);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background var(--transition-fast), color var(--transition-fast),
+    box-shadow var(--transition-fast);
 
-  &:hover:not(&--active) {
-    color: var(--color-text);
-    background: var(--color-surface);
+  &:active { transform: scale(0.97); }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+  }
+
+  // Наведение — только там, где есть курсор: на тач-экране оно залипает
+  // после тапа и сегмент остаётся подсвеченным
+  @media (hover: hover) {
+    &:hover:not(&--active) { color: var(--color-text); }
   }
 
   &--active {
     background: var(--color-surface);
-    border-color: var(--color-border-strong, var(--color-border));
     color: var(--color-text);
     box-shadow: var(--shadow-xs);
   }
-}
-
-.trainer-report__filter-count {
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--color-surface-secondary);
-  font-size: 10.5px;
-  font-weight: 800;
-  color: var(--color-text-muted);
-}
-
-.trainer-report__filter--active .trainer-report__filter-count {
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
 }
 
 // ── Таблица: плотная, со «липкой» шапкой и внутренним скроллом ──────────────
@@ -795,17 +789,15 @@
 .trainer-report__foot-debt strong { color: var(--color-danger); }
 
 @include mixins.mobile {
-  // Фильтр «Все/Долг/Оплатили» — тач-цель заметно комфортнее и не впритык
+  // На телефоне тач-цель сегмента выше, дорожка — во всю ширину карточки
   .trainer-report__filters {
-    gap: 4px;
-    padding: 8px;
+    margin: 10px;
+    gap: 2px;
   }
 
   .trainer-report__filter {
-    height: 40px;
+    height: 38px;
     padding: 0 6px;
-    font-size: 12.5px;
-    gap: 5px;
   }
 
   // Три денежные строки итога — раньше на 320-360px переносились как попало

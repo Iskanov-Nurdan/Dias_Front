@@ -334,14 +334,19 @@ $bottom-nav-h: 62px;
     gap: var(--space-3);
   }
 
+  // Сетка, а не flex: у кнопки выгрузки стояла ширина 100%, и в ряду без
+  // переноса она забирала всю строку — период схлопывался в пустой
+  // прямоугольник. Здесь период занимает остаток, кнопка — ровно свой размер,
+  // и отнять место друг у друга они не могут в принципе.
   .trainer-report-page__filters {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
     width: 100%;
-    flex-wrap: nowrap;
+    gap: 10px;
   }
 
-  // Год и месяц в один ряд, кнопка выгрузки — отдельной строкой во всю ширину
   .trainer-report-page__period {
-    flex: 1;
     height: 46px;
     min-width: 0;
   }
@@ -361,8 +366,9 @@ $bottom-nav-h: 62px;
   .trainer-report-page__period-icon { display: none; }
 
   .trainer-report-page__export-btn {
-    width: 100%;
+    width: auto;
     height: 46px;
+    padding: 0 16px;
   }
 
   // ── Нижняя панель навигации ──
@@ -508,6 +514,21 @@ $bottom-nav-h: 62px;
     padding-left: var(--space-3);
     padding-right: var(--space-3);
   }
+
+  // Рядом с выбором периода подпись «Скачать в Excel» уже не помещается,
+  // а переносить кнопку на отдельную строку — значит отодвинуть сам отчёт
+  // ниже сгиба. Оставляем квадратную кнопку-иконку 46x46: подпись остаётся
+  // в title и aria-label, поэтому смысл не теряется ни для мыши, ни для
+  // скринридера.
+  .trainer-report-page__export-btn {
+    width: 46px;
+    padding: 0;
+    gap: 0;
+
+    svg { width: 18px; height: 18px; }
+  }
+
+  .trainer-report-page__export-label { display: none; }
 
   .trainer-report-page__period {
     padding-left: 8px;

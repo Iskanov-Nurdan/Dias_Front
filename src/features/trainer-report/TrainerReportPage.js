@@ -115,8 +115,15 @@ const TrainerReportPage = () => {
             />
           </div>
           {!loading && !error && rows.length > 0 && (
-            <button type="button" className="trainer-report-page__export-btn" onClick={handleExport}>
-              <Download size={14} /> Скачать в Excel
+            <button
+              type="button"
+              className="trainer-report-page__export-btn"
+              onClick={handleExport}
+              title="Скачать в Excel"
+              aria-label="Скачать в Excel"
+            >
+              <Download size={14} />
+              <span className="trainer-report-page__export-label">Скачать в Excel</span>
             </button>
           )}
         </div>

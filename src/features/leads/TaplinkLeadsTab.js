@@ -6,6 +6,7 @@ import { ErrorState, EmptyState, Pagination, SkeletonTable } from '../../shared/
 import Select from '../../shared/ui/Select';
 import { Calendar, CalendarDays, CalendarClock, Check, X, AlertTriangle, Undo2, MessageCircle, ChevronDown, Dumbbell, UserCheck, Clock, MessageSquare } from 'lucide-react';
 import { STATS_YEARS } from '../../shared/constants/common';
+import { formatPhoneDisplay } from '../../shared/lib/phone';
 
 // ─── Константы ────────────────────────────────────────────────────────────────
 
@@ -325,7 +326,9 @@ const TaplinkLeadsTab = () => {
                         title="Написать в WhatsApp"
                       >
                         <MessageCircle size={12} strokeWidth={2} />
-                        {lead.phone}
+                        {/* Ссылка на WhatsApp собирается из цифр исходного
+                            значения — форматирование только для глаз */}
+                        {formatPhoneDisplay(lead.phone)}
                       </a>
                     ) : '—'}
                   </td>

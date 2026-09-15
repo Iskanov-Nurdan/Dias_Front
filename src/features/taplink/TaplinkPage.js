@@ -720,7 +720,24 @@ const TrainerSheet = ({ trainer, onClose, onBook }) => {
 
 // ─── Booking Modal (full screen) ──────────────────────────────────────────────
 
-const EMPTY_BOOKING = { name: '', phone: '+996 ', sport: '', trainer: '', preferredTime: '', comment: '' };
+// phone хранит только местную часть номера — «+996» показан отдельной
+// несъёмной подписью в самом поле и в значение не входит
+const EMPTY_BOOKING = { name: '', phone: '', sport: '', trainer: '', preferredTime: '', comment: '' };
+
+/**
+ * Местная часть номера: максимум 9 цифр, разбитых по три — «700 123 456».
+ *
+ * Отдельно разбирается вставка из буфера: люди копируют номер целиком,
+ * с кодом страны или с ведущим нулём. Без этого вставленный «+996 700 123 456»
+ * превратился бы в «996 700 123», то есть в чужой неправильный номер.
+ */
+const formatLocalPhone = (raw) => {
+  let digits = String(raw || '').replace(/\D/g, '');
+  if (digits.startsWith('996')) digits = digits.slice(3);
+  if (digits.startsWith('0')) digits = digits.slice(1);
+  digits = digits.slice(0, 9);
+  return digits.replace(/(\d{3})(?=\d)/g, '$1 ');
+};
 
 const BookingModal = ({ onClose, initial = {}, dark, sports = [], trainers = [] }) => {
   const [form, setForm] = useState({ ...EMPTY_BOOKING, ...initial });
@@ -736,6 +753,11 @@ const BookingModal = ({ onClose, initial = {}, dark, sports = [], trainers = [] 
   const set = f => e => {
     setForm(p => ({ ...p, [f]: e.target.value }));
     setErrors(p => ({ ...p, [f]: '' }));
+  };
+
+  const setPhone = e => {
+    setForm(p => ({ ...p, phone: formatLocalPhone(e.target.value) }));
+    setErrors(p => ({ ...p, phone: '' }));
   };
 
   // Для Select-компонента (приходит value напрямую, не event)
@@ -896,13 +918,18 @@ const BookingModal = ({ onClose, initial = {}, dark, sports = [], trainers = [] 
 
                 <div className="tp-field">
                   <label className="tp-field__label">Телефон *</label>
+                  {/* «+996» — подпись, а не часть значения: стереть её нельзя,
+                      и человеку сразу видно, что ввести нужно ровно 9 цифр */}
                   <div className="tp-field__control">
                     <span className="tp-field__ic"><PhoneFieldIcon /></span>
+                    <span className="tp-field__prefix" aria-hidden>+996</span>
                     <input
-                      className={`tp-field__input tp-field__input--ic${errors.phone ? ' tp-field__input--err' : ''}`}
-                      type="tel" placeholder="+996 555 123 456"
-                      value={form.phone} onChange={set('phone')}
-                      autoComplete="tel"
+                      className={`tp-field__input tp-field__input--phone${errors.phone ? ' tp-field__input--err' : ''}`}
+                      type="tel" inputMode="numeric" placeholder="700 123 456"
+                      value={form.phone} onChange={setPhone}
+                      maxLength={11}
+                      aria-label="Телефон, 9 цифр после +996"
+                      autoComplete="tel-national"
                     />
                   </div>
                   {errors.phone && <span className="tp-field__err"><AlertIcon />{errors.phone}</span>}

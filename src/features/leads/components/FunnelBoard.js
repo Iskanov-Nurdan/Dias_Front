@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowRightLeft, Check } from 'lucide-react';
 import { EmptyState, Spinner } from '../../../shared/ui';
+import { formatPhoneDisplay } from '../../../shared/lib/phone';
 import './FunnelBoard.scss';
 
 const CHANNEL_LABELS = { instagram: 'Instagram', whatsapp: 'WhatsApp', tiktok: 'TikTok', other: 'Другое' };
@@ -131,7 +132,7 @@ const LeadMiniCard = ({ lead, stageId, stages, onClick, onDragStart, onDragEnd, 
         document.body,
       )}
     </div>
-    <div className="funnel-board__card-phone">{lead.phone ?? ''}</div>
+    <div className="funnel-board__card-phone">{formatPhoneDisplay(lead.phone)}</div>
       {lead.channel && (
       <span className="funnel-board__card-tag">{CHANNEL_LABELS[(lead.channel ?? '').toLowerCase()] ?? lead.channel}</span>
     )}

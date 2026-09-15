@@ -10,6 +10,7 @@ import { getApiErrorMessage } from '../../shared/lib/apiError';
 import { LeadFormModal, LeadCardModal, FunnelBoard } from './components';
 import { Inbox, Link2, Filter, Check, X as XIcon, Pencil, Trash2, Search, Plus } from 'lucide-react';
 import { ErrorState, EmptyState, ConfirmModal, Pagination, FilterBar, SkeletonTable, Spinner } from '../../shared/ui';
+import { formatPhoneDisplay } from '../../shared/lib/phone';
 import TaplinkLeadsTab from './TaplinkLeadsTab';
 import './LeadsPage.scss';
 import './TaplinkLeadsTab.scss';
@@ -339,7 +340,7 @@ const LeadsPage = () => {
                           <span className="ui-list__title">{lead.name ?? '—'}</span>
                         </div>
                       </td>
-                      <td role="cell" data-label="Телефон"><span className="ui-list__muted">{lead.phone ?? '—'}</span></td>
+                      <td role="cell" data-label="Телефон"><span className="ui-list__muted">{formatPhoneDisplay(lead.phone) || '—'}</span></td>
                       <td role="cell" data-label="Канал"><span className="ui-list__muted">{CHANNEL_LABELS[(lead.channel ?? '').toLowerCase()] ?? lead.channel ?? '—'}</span></td>
                       <td role="cell" data-label="Статус">
                         <span className="ui-list__muted">

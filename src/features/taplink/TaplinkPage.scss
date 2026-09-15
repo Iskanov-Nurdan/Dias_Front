@@ -958,7 +958,23 @@ $r-lg:   22px;
 
     &::placeholder { color: var(--text3); }
 
-    &:hover:not(:focus) { border-color: var(--bd2); }
+    // Глобальный сброс полей в shared/styles/index.scss заливает input на
+    // hover цветом --color-surface-secondary. Это переменная светлой темы
+    // CRM, а публичная страница живёт на своих переменных и своём
+    // переключателе темы — в тёмном оформлении поле заливалось почти белым.
+    // Снаружи этот фон не отключить (селектор сброса специфичнее), поэтому
+    // !important — как и у padding ниже, по той же причине.
+    //
+    // Правило намеренно НЕ внутри @media (hover: hover): на тач-экранах
+    // hover «залипает» после тапа, и без этой строки поле осталось бы белым.
+    &:hover:not(:focus):not(:disabled) {
+      background: var(--input-bg) !important;
+    }
+
+    // Подсветка рамки — только там, где курсор действительно есть
+    @media (hover: hover) {
+      &:hover:not(:focus) { border-color: var(--bd2); }
+    }
 
     &:focus {
       border-color: $red;
@@ -978,6 +994,25 @@ $r-lg:   22px;
   }
 
   &__control:focus-within &__ic { color: $red; }
+
+  // Несъёмный код страны: подпись поверх поля, а не часть вводимого значения
+  &__prefix {
+    position: absolute;
+    left: 40px;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text2);
+    letter-spacing: 0.2px;
+  }
+
+  // Место слева под иконку и код страны
+  &__input--phone {
+    padding-left: 86px !important;
+    letter-spacing: 0.4px;
+  }
 
   &__ta {
     resize: vertical;

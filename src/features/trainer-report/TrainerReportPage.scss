@@ -346,17 +346,25 @@ $bottom-nav-h: 62px;
     gap: 10px;
   }
 
+  // Общая рамка вокруг обоих селектов на телефоне убрана целиком: у каждого
+  // Select уже есть своя рамка и фон (.select__trigger), и общий контейнер
+  // с этой же рамкой создавал двойную обводку и отъедал ~28px ширины на
+  // свой padding и gap — те самые пиксели, которых не хватало «Сентябрю».
+  // Сама раскладка стала сеткой с неравными колонками: году «2026» хватает
+  // узкой, месяцу с «Сентябрь»/«Февраль» отдана большая доля строки.
   .trainer-report-page__period {
-    height: 46px;
-    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(72px, 0.8fr) minmax(0, 1.25fr);
+    gap: 8px;
+    height: auto;
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
   }
 
-  // Год и месяц делят строку поровну. Фиксированные 92px не спасали:
-  // внутри селекта ещё внутренние поля, отступ и шеврон, на текст
-  // оставалось меньше ширины самого «2026» — отсюда «20…».
   .trainer-report-page__select,
   .trainer-report-page__select--month {
-    flex: 1 1 0;
     width: auto;
     min-width: 0;
   }
@@ -530,10 +538,9 @@ $bottom-nav-h: 62px;
 
   .trainer-report-page__export-label { display: none; }
 
-  .trainer-report-page__period {
-    padding-left: 8px;
-    gap: 6px;
-  }
+  // Уже без контейнера — на самых узких экранах только чуть сужаем зазор
+  // между годом и месяцем, чтобы освободить месяцу ещё немного места
+  .trainer-report-page__period { gap: 6px; }
 
   .trainer-lost__avatar {
     width: 34px;

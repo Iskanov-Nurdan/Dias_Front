@@ -371,8 +371,11 @@
 // ── Фильтр внутри панели ────────────────────────────────────────────────────
 // ── Переключатель списка ────────────────────────────────────────────────
 // Сегментированный контрол в утопленной дорожке: активный сегмент —
-// приподнятая «таблетка», как в iOS и в Linear. Раньше это был ряд пилюль
-// со счётчиками, который не помещался по ширине и срезался краем панели.
+// приподнятая «таблетка», как в iOS и в Linear. Счётчик — часть сегмента,
+// не отдельная деталь для экономии места: на десктопе он стоит рядом
+// с подписью в одну строку, на телефоне (см. миксин mobile ниже) —
+// строкой под ней, чтобы «Оплатили 31» не требовало ширины больше своей
+// трети дорожки ни при какой ширине экрана.
 .trainer-report__filters {
   display: grid;
   grid-auto-flow: column;
@@ -389,9 +392,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   min-width: 0;
   height: 32px;
-  padding: 0 10px;
+  padding: 0 8px;
   border: none;
   border-radius: 999px;
   background: transparent;
@@ -399,7 +403,6 @@
   font-size: 12.5px;
   font-weight: 700;
   letter-spacing: -0.01em;
-  white-space: nowrap;
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast),
     box-shadow var(--transition-fast);
@@ -422,6 +425,34 @@
     color: var(--color-text);
     box-shadow: var(--shadow-xs);
   }
+}
+
+.trainer-report__filter-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.trainer-report__filter-count {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 10.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.trainer-report__filter--active .trainer-report__filter-count {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
 }
 
 // ── Таблица: плотная, со «липкой» шапкой и внутренним скроллом ──────────────
@@ -789,15 +820,36 @@
 .trainer-report__foot-debt strong { color: var(--color-danger); }
 
 @include mixins.mobile {
-  // На телефоне тач-цель сегмента выше, дорожка — во всю ширину карточки
+  // На телефоне тач-цель сегмента выше, дорожка — во всю ширину карточки.
+  // Подпись и счётчик стоят друг под другом, а не в одну строку: «Оплатили»
+  // и так самое длинное слово из трёх, а рядом с ним ещё двузначное число —
+  // в свою треть дорожки на 320-360px это не влезало и обрезалось краем
+  // панели. Столбиком каждая часть занимает всю ширину сегмента сама по
+  // себе, и упереться в чужую границу им уже нечем.
   .trainer-report__filters {
     margin: 10px;
     gap: 2px;
   }
 
   .trainer-report__filter {
-    height: 38px;
-    padding: 0 6px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1px;
+    height: auto;
+    min-height: 40px;
+    padding: 5px 4px;
+  }
+
+  .trainer-report__filter-label {
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .trainer-report__filter-count {
+    min-width: 16px;
+    height: 15px;
+    padding: 0 4px;
+    font-size: 10px;
   }
 
   // Три денежные строки итога — раньше на 320-360px переносились как попало

@@ -136,12 +136,9 @@
       height: 36px;
     }
 
-    &--desktop {
-      @include mixins.mobile {
-        display: none;
-      }
-    }
-
+    // Кнопка открытия сайдбара на десктопе убрана: сайдбар раскрывается
+    // только наведением/фокусом. Остался только мобильный гамбургер —
+    // выезжающее меню на телефоне без наведения не открыть ничем другим.
     &--mobile {
       display: none;
 
@@ -149,16 +146,6 @@
         display: flex;
       }
     }
-  }
-
-  // Шеврон вращается вместо того, чтобы подменяться другой иконкой —
-  // раньше это было мгновенное «моргание» иконки, теперь плавный поворот
-  &__sidebar-toggle-icon {
-    transition: transform var(--transition-smooth);
-  }
-
-  &--sidebar-open &__sidebar-toggle-icon {
-    transform: rotate(180deg);
   }
 
   &__header-right {
@@ -233,6 +220,9 @@
     flex-direction: column;
     overflow-x: hidden;
     overflow-y: hidden;
+    // Левый край всегда прижат к экрану — скруглять нечего; правый висит
+    // поверх страницы, лёгкое скругление отличает его от простого прямоугольника
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
     @include mixins.scrollbar-sidebar;
 
     @include mixins.desktop-only {
@@ -690,7 +680,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .main-layout__sidebar,
-  .main-layout__sidebar-toggle-icon,
   .main-layout__nav-item,
   .main-layout__nav-label {
     transition: none !important;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Menu, ChevronRight, X,
+  Menu, X,
   User, LogOut, Moon, Sun,
 } from 'lucide-react';
 import { useAuth } from '../providers/AuthProvider';
@@ -51,18 +51,14 @@ const MainLayout = () => {
 
   /**
    * Сайдбар на десктопе — ровно одно состояние: открыт/закрыт, всегда
-   * стартует закрытым (узкая полоса с иконками). Раньше было два параллельных
-   * механизма — «закреплено кнопкой» (сохранялось в localStorage, никогда не
-   * закрывалось само) и «подглядывание» наведением (временное) — из-за этого
-   * сайдбар вёл себя по-разному в зависимости от того, чем его открыли, и не
-   * закрывался там, где пользователь этого ожидал. Теперь кнопка и наведение
-   * управляют ОДНИМ и тем же состоянием и закрывается оно одинаково всегда:
-   * по клику на пункт меню — сразу, по уходу курсора/фокуса — с небольшой
-   * задержкой, по клику вне сайдбара и по Esc — сразу.
+   * стартует закрытым (узкая полоса с иконками). Открывать кнопкой не нужно —
+   * раскрывается наведением курсора или фокусом с клавиатуры (Tab), и
+   * закрывается одинаково всегда: по клику на пункт меню — сразу, по уходу
+   * курсора/фокуса — с небольшой задержкой, по клику вне сайдбара и по
+   * Esc — сразу.
    */
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebarRef = useRef(null);
-  const toggleBtnRef = useRef(null);
   const closeTimerRef = useRef(null);
 
   const clearCloseTimer = () => {
@@ -93,11 +89,6 @@ const MainLayout = () => {
     closeTimerRef.current = setTimeout(() => setSidebarOpen(false), CLOSE_DELAY_MS);
   };
 
-  const toggleSidebar = () => {
-    clearCloseTimer();
-    setSidebarOpen((prev) => !prev);
-  };
-
   // Клавиатурная навигация (Tab) раскрывает сайдбар так же, как наведение —
   // иначе без мыши подписи пунктов меню не увидеть. relatedTarget проверяем,
   // чтобы не закрывать сайдбар при переходе фокуса между кнопками внутри него.
@@ -106,15 +97,13 @@ const MainLayout = () => {
     scheduleCloseSidebar();
   };
 
-  // Клик вне сайдбара и вне кнопки-переключателя закрывает его сразу — это
-  // покрывает случай «открыл кнопкой, мышь по сайдбару не водил, кликнул
-  // в другое место»: mouseleave тут не сработает, потому что курсор в сайдбар
-  // вообще не заходил.
+  // Клик вне сайдбара закрывает его сразу — это покрывает случай «открыл
+  // фокусом с клавиатуры, потом кликнул мышью в другое место»: mouseleave
+  // тут не сработает, потому что курсор в сайдбар вообще не заходил.
   useEffect(() => {
     if (!sidebarOpen || isMobile) return undefined;
     const onPointerDown = (e) => {
       if (sidebarRef.current?.contains(e.target)) return;
-      if (toggleBtnRef.current?.contains(e.target)) return;
       closeSidebarNow();
     };
     const onEscape = (e) => {
@@ -202,17 +191,6 @@ const MainLayout = () => {
       )}
       <header className="main-layout__header">
         <div className="main-layout__header-left">
-          <button
-            ref={toggleBtnRef}
-            type="button"
-            className="main-layout__sidebar-toggle main-layout__sidebar-toggle--desktop"
-            onClick={toggleSidebar}
-            title={sidebarOpen ? 'Свернуть меню' : 'Открыть меню'}
-            aria-label={sidebarOpen ? 'Свернуть меню' : 'Открыть меню'}
-            aria-expanded={sidebarOpen}
-          >
-            <ChevronRight size={ICON_SIZE_SM} className="main-layout__sidebar-toggle-icon" />
-          </button>
           <button
             type="button"
             className="main-layout__sidebar-toggle main-layout__sidebar-toggle--mobile"

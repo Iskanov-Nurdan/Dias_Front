@@ -17,6 +17,26 @@ const LATIN_NAME = 'Rahman Ata';
 const LATIN_TAGLINE = 'Rahman Ata Sport Club';
 
 /**
+ * Телефон к тому виду, который принимает бэкенд: +996XXXXXXXXX.
+ *
+ * Человек вводит номер так, как показано в подсказке поля («+996 555 123 456»)
+ * или как привык — с пробелами, дефисами, скобками, в местном формате с нуля.
+ * Раньше это уходило на сервер как есть и отбивалось проверкой формата: заявка
+ * с телефона не отправлялась вообще, а пользователь видел только «Ошибка
+ * отправки», без намёка на причину.
+ *
+ * Возвращает null, если из введённого не складывается кыргызский номер.
+ */
+const normalizePhone = (raw) => {
+  const digits = String(raw || '').replace(/\D/g, '');
+  // 996700123456 → +996700123456 · 0700123456 → +996700123456 · 700123456 → +996700123456
+  if (digits.length === 12 && digits.startsWith('996')) return `+${digits}`;
+  if (digits.length === 10 && digits.startsWith('0')) return `+996${digits.slice(1)}`;
+  if (digits.length === 9) return `+996${digits}`;
+  return null;
+};
+
+/**
  * Живой график набора тренеров (CRM) — общая логика для формы записи и карточек секции/тренера.
  * Возрастная категория приходит прямо из графика тренера (задаётся в CRM «Настройка графика»),
  * а не отдельной картой на стороне Taplink — один источник истины, разъехаться не может.
@@ -791,8 +811,10 @@ const BookingModal = ({ onClose, initial = {}, dark, sports = [], trainers = [] 
     e.preventDefault();
     const errs = {};
     if (!form.name.trim()) errs.name = 'Введите ФИО';
-    const phoneDigits = form.phone.replace(/\D/g, '');
-    if (phoneDigits.length < 12) errs.phone = 'Введите корректный номер телефона';
+    // Проверяем не длину строки, а то, складывается ли из введённого номер:
+    // местный формат «0776223223» тоже валиден, хотя цифр в нём меньше 12
+    const phone = normalizePhone(form.phone);
+    if (!phone) errs.phone = 'Введите корректный номер телефона';
     if (!form.sport) errs.sport = 'Выберите секцию';
     if (Object.keys(errs).length) { setErrors(errs); return; }
 
@@ -801,15 +823,18 @@ const BookingModal = ({ onClose, initial = {}, dark, sports = [], trainers = [] 
       try {
         await submitBooking({
           name:          form.name.trim(),
-          phone:         form.phone.trim(),
+          phone,
           sport:         form.sport,
           trainer:       form.trainer || undefined,
           preferredTime: form.preferredTime.trim() || undefined,
           comment:       form.comment.trim() || undefined,
         });
         setDone(true);
-      } catch {
-        setErrors(p => ({ ...p, _submit: 'Ошибка отправки. Попробуйте ещё раз.' }));
+      } catch (err) {
+        // Причину показываем настоящую, а не общую: именно из-за проглоченного
+        // текста ошибки было не видно, что сервер отбивал формат телефона
+        const msg = err?.response?.data?.error?.message;
+        setErrors(p => ({ ...p, _submit: msg || 'Ошибка отправки. Попробуйте ещё раз.' }));
       } finally {
         setSending(false);
       }
@@ -1207,7 +1232,6 @@ const TaplinkPage = () => {
       <section className="tp-section tp-section--alt" id="tp-trainers">
         <div className="tp-section__hd">
           <h2 className="tp-section__title">Наши тренеры</h2>
-          <p className="tp-section__hint">Листайте влево и вправо</p>
         </div>
         <TrainersSlider
           trainers={trainers}

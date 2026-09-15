@@ -3,13 +3,15 @@
 // Кабинет тренера — «Мой отчёт».
 // Таблица учеников переиспользует .trainer-report__* стили из
 // TrainerMonthReportBlock.scss (тот же компонент, что и в «Отчётах»
-// администратора). Здесь — шапка страницы, переключатель вкладок и список
-// «Не продлили».
+// администратора). Здесь — шапка страницы, переключатель разделов
+// и список «Не продлили».
+//
+// Заголовка страницы нет: «Мой отчёт» выводит шапка приложения.
 
-// Свой max-width здесь был лишним: остальные страницы (Смены, Отчёты и т.д.)
-// не ограничивают себя отдельно и используют всю ширину, которую уже задаёт
-// --content-max-width в MainLayout. Из-за него таблица учеников с 30+ строками
-// упиралась в узкую колонку, а справа пустовала половина экрана.
+// Высота нижней панели навигации на телефоне — контент получает такой же
+// нижний отступ, иначе конец списка уезжает под панель
+$bottom-nav-h: 62px;
+
 .trainer-report-page {
   display: flex;
   flex-direction: column;
@@ -18,32 +20,13 @@
   width: 100%;
 }
 
-// ── Шапка ────────────────────────────────────────────────────────────────
+// ── Шапка: только период и выгрузка ─────────────────────────────────────
 .trainer-report-page__head {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: flex-end;
   flex-wrap: wrap;
   gap: var(--space-4);
-}
-
-.trainer-report-page__heading {
-  min-width: 0;
-}
-
-.trainer-report-page__title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--color-text);
-}
-
-.trainer-report-page__hint {
-  margin: 3px 0 0;
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--color-text-muted);
 }
 
 .trainer-report-page__filters {
@@ -100,17 +83,19 @@
     background var(--transition-fast), transform 0.1s;
   white-space: nowrap;
 
-  &:hover {
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-    background: var(--color-primary-soft);
-  }
-
   &:active { transform: scale(0.97); }
 
   &:focus-visible {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
+  }
+
+  @media (hover: hover) {
+    &:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+      background: var(--color-primary-soft);
+    }
   }
 }
 
@@ -121,9 +106,9 @@
   padding: var(--space-8) 0;
 }
 
-// ── Вкладки: крупные плитки, а не подчёркнутые ссылки ───────────────────────
-// Это единственный переключатель на странице и главный навигационный жест —
-// он должен быть заметнее, чем строка мелких табов, и удобен как тач-цель.
+// ── Переключатель разделов ──────────────────────────────────────────────
+// Десктоп и планшет: две крупные плитки в общей подложке.
+// Телефон (ниже по файлу): закреплённая нижняя панель навигации.
 .trainer-report-page__tabs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -150,13 +135,6 @@
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
 
-  svg { flex-shrink: 0; opacity: 0.7; }
-
-  &:hover:not(&--active) {
-    color: var(--color-text);
-    background: color-mix(in srgb, var(--color-surface) 60%, transparent);
-  }
-
   &:active { transform: scale(0.98); }
 
   &:focus-visible {
@@ -164,14 +142,33 @@
     outline-offset: 2px;
   }
 
+  @media (hover: hover) {
+    &:hover:not(&--active) {
+      color: var(--color-text);
+      background: color-mix(in srgb, var(--color-surface) 60%, transparent);
+    }
+  }
+
   &--active {
     background: var(--color-surface);
     color: var(--color-text);
     box-shadow: var(--shadow-sm);
 
-    svg { opacity: 1; color: var(--color-primary); }
+    svg { color: var(--color-primary); }
   }
 }
+
+.trainer-report-page__tab-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  svg { flex-shrink: 0; opacity: 0.75; }
+}
+
+.trainer-report-page__tab--active .trainer-report-page__tab-icon svg { opacity: 1; }
+
+.trainer-report-page__tab-label { white-space: nowrap; }
 
 .trainer-report-page__tab-count {
   display: inline-flex;
@@ -224,10 +221,12 @@
   box-shadow: var(--shadow-xs);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform 0.1s;
 
-  &:hover {
-    border-color: var(--color-border-strong);
-    box-shadow: var(--shadow-sm);
-    transform: translateY(-1px);
+  @media (hover: hover) {
+    &:hover {
+      border-color: var(--color-border-strong);
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
+    }
   }
 }
 
@@ -302,11 +301,11 @@
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// Responsive: 1024px+ десктоп (стили выше) · 768–1024 планшет ·
-// 480–768 крупный телефон · ≤480 телефон
+// Responsive: 1024+ десктоп · 768–1024 планшет · 480–768 крупный телефон ·
+// ≤480 телефон
 // ══════════════════════════════════════════════════════════════════════════
 
-// ── Планшет ──────────────────────────────────────────────────────────────
+// ── Планшет: верхние вкладки остаются, панель внизу — телефонный паттерн ──
 @include mixins.lg {
   .trainer-report-page {
     padding: var(--space-5) var(--space-4) max(var(--space-6), env(safe-area-inset-bottom));
@@ -318,42 +317,45 @@
   }
 }
 
-// ── Крупный телефон и малый планшет ─────────────────────────────────────
+// ── Телефон и малый планшет: вкладки → нижняя панель навигации ───────────
 @include mixins.mobile {
   .trainer-report-page {
     gap: var(--space-4);
+    // Место под закреплённую панель, иначе конец списка уходит под неё
+    padding: var(--space-4) var(--space-4)
+      calc(#{$bottom-nav-h} + var(--space-4) + env(safe-area-inset-bottom));
   }
 
   .trainer-report-page__head {
-    flex-direction: column;
-    align-items: stretch;
+    justify-content: stretch;
     gap: var(--space-3);
   }
 
-  .trainer-report-page__title {
-    font-size: 21px;
-  }
-
   .trainer-report-page__filters {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .trainer-report-page__period {
     width: 100%;
-    height: 46px;
+    flex-wrap: nowrap;
   }
 
-  .trainer-report-page__select {
+  // Год и месяц в один ряд, кнопка выгрузки — отдельной строкой во всю ширину
+  .trainer-report-page__period {
     flex: 1;
-    width: auto;
+    height: 46px;
     min-width: 0;
+  }
+
+  // Ключевое: у года есть нижний предел ширины. Раньше стоял min-width: 0,
+  // и «2026» сжималось до «20…» — флексбокс честно ужимал текст вместо того,
+  // чтобы перенести соседа
+  .trainer-report-page__select {
+    flex: 0 0 auto;
+    width: 92px;
+    min-width: 92px;
   }
 
   .trainer-report-page__select--month {
-    flex: 1.4;
+    flex: 1;
     width: auto;
-    min-width: 0;
+    min-width: 116px;
   }
 
   .trainer-report-page__export-btn {
@@ -361,53 +363,164 @@
     height: 46px;
   }
 
-  .trainer-report-page__tab {
-    font-size: 13px;
-    padding: 0 8px;
-    gap: 6px;
+  // ── Нижняя панель навигации ──
+  .trainer-report-page__tabs {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 150;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    padding: 0 0 env(safe-area-inset-bottom);
+    border: none;
+    border-top: 1px solid var(--color-border);
+    border-radius: 0;
+    background: var(--color-surface);
+    box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.06);
   }
 
+  .trainer-report-page__tab {
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    height: #{$bottom-nav-h};
+    min-height: #{$bottom-nav-h};
+    padding: 6px 4px;
+    border-radius: 0;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    position: relative;
+
+    svg { width: 22px; height: 22px; }
+
+    // Активный раздел отмечается чертой сверху и цветом, а не заливкой:
+    // залитый прямоугольник во всю высоту панели выглядит тяжело
+    &--active {
+      background: transparent;
+      box-shadow: none;
+      color: var(--color-primary);
+
+      svg { color: var(--color-primary); opacity: 1; }
+
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 34px;
+        height: 3px;
+        border-radius: 0 0 3px 3px;
+        background: var(--color-primary);
+      }
+    }
+
+    &:active { transform: none; background: var(--color-surface-secondary); }
+  }
+
+  // Счётчик — компактным значком у иконки, подпись остаётся целой
+  .trainer-report-page__tab-icon {
+    position: relative;
+    gap: 0;
+  }
+
+  .trainer-report-page__tab-count {
+    position: absolute;
+    top: -5px;
+    left: 14px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    font-size: 10px;
+    background: var(--color-text-muted);
+    color: var(--color-surface);
+    border: 2px solid var(--color-surface);
+    box-sizing: content-box;
+  }
+
+  .trainer-report-page__tab--active .trainer-report-page__tab-count {
+    background: var(--color-primary);
+    color: #fff;
+  }
+
+  .trainer-report-page__tab-count--danger,
+  .trainer-report-page__tab--active .trainer-report-page__tab-count--danger {
+    background: var(--color-danger);
+    color: #fff;
+  }
+
+  // ── «Не продлили»: строка → сетка, текст не обрезается ──
+  // Одной строкой аватар, имя, телефон и дата на 360px не помещаются:
+  // флексбокс сжимал имя до «А…», а телефон до одной цифры. Раскладываем
+  // в две колонки и три строки — всё читается целиком.
   .trainer-lost__row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'avatar name'
+      'avatar meta'
+      'date   date';
+    align-items: center;
+    row-gap: 4px;
+    column-gap: 12px;
+    padding: 12px 14px;
+  }
+
+  .trainer-lost__avatar { grid-area: avatar; align-self: start; }
+
+  .trainer-lost__info {
+    display: contents;
+  }
+
+  .trainer-lost__name {
+    grid-area: name;
+    white-space: normal;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    font-size: 15px;
+    line-height: 1.25;
+  }
+
+  .trainer-lost__meta {
+    grid-area: meta;
+    white-space: normal;
+    overflow: visible;
     flex-wrap: wrap;
-    row-gap: 8px;
+    font-size: 13px;
   }
 
   .trainer-lost__date {
-    margin-left: calc(38px + 12px);
+    grid-area: date;
+    justify-self: start;
+    margin-top: 6px;
+    font-size: 12px;
   }
 }
 
-// ── Телефон ──────────────────────────────────────────────────────────────
+// ── Узкий телефон ────────────────────────────────────────────────────────
 @media (max-width: 480px) {
   .trainer-report-page {
-    padding: var(--space-4) var(--space-3) max(var(--space-6), env(safe-area-inset-bottom));
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
   }
 
-  .trainer-report-page__tabs {
-    grid-template-columns: 1fr;
+  .trainer-report-page__period {
+    padding-left: 8px;
+    gap: 6px;
   }
 
-  .trainer-report-page__tab {
-    justify-content: flex-start;
-    padding: 0 14px;
+  .trainer-report-page__select {
+    width: 86px;
+    min-width: 86px;
   }
 
-  // На узком экране подпись тренера в шапке .trainer-report__header
-  // и сама вкладка «Не продлили» — единственные крупные текстовые блоки,
-  // поэтому имя/дата ученика получают чуть больше воздуха вместо тесноты
-  .trainer-lost__row {
-    padding: 12px;
-    gap: 10px;
-  }
+  .trainer-report-page__select--month { min-width: 104px; }
 
   .trainer-lost__avatar {
     width: 34px;
     height: 34px;
     font-size: 11.5px;
-  }
-
-  .trainer-lost__date {
-    margin-left: calc(34px + 10px);
-    font-size: 11px;
   }
 }

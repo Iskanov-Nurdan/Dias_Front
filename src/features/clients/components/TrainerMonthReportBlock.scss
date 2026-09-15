@@ -375,7 +375,17 @@
   padding: 10px 12px;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface-secondary);
+  // У панели скрыто переполнение, поэтому на узком экране третий фильтр
+  // («Оплатили») просто срезался по краю. Даём ряду собственную прокрутку
+  // и запрещаем кнопкам сжиматься — подписи остаются целыми.
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar { display: none; }
 }
+
+.trainer-report__filter { flex-shrink: 0; }
 
 .trainer-report__filter {
   display: inline-flex;

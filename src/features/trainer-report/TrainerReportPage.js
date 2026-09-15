@@ -93,12 +93,10 @@ const TrainerReportPage = () => {
 
   return (
     <div className="trainer-report-page">
+      {/* Заголовка страницы здесь нет намеренно: «Мой отчёт» уже выводит
+          шапка приложения из общего реестра страниц — второй такой же
+          заголовок был дублем и на телефоне съедал целый экран высоты. */}
       <header className="trainer-report-page__head">
-        <div className="trainer-report-page__heading">
-          <h1 className="trainer-report-page__title">Мой отчёт</h1>
-          <p className="trainer-report-page__hint">Ваши ученики за выбранный месяц</p>
-        </div>
-
         <div className="trainer-report-page__filters">
           <div className="trainer-report-page__period">
             <CalendarRange size={15} className="trainer-report-page__period-icon" aria-hidden />
@@ -131,6 +129,9 @@ const TrainerReportPage = () => {
         <ErrorState compact message={error} onRetry={load} />
       ) : (
         <>
+          {/* На телефоне этот же переключатель превращается в закреплённую
+              нижнюю панель навигации (см. SCSS): разметка одна, меняется
+              только раскладка — иконка со счётчиком над подписью. */}
           <div className="trainer-report-page__tabs" role="tablist" aria-label="Раздел отчёта">
             <button
               type="button"
@@ -139,9 +140,11 @@ const TrainerReportPage = () => {
               className={`trainer-report-page__tab${tab === TAB_STUDENTS ? ' trainer-report-page__tab--active' : ''}`}
               onClick={() => setTab(TAB_STUDENTS)}
             >
-              <Users size={15} aria-hidden />
-              Ученики
-              <span className="trainer-report-page__tab-count">{rows.length}</span>
+              <span className="trainer-report-page__tab-icon">
+                <Users size={18} aria-hidden />
+                <span className="trainer-report-page__tab-count">{rows.length}</span>
+              </span>
+              <span className="trainer-report-page__tab-label">Ученики</span>
             </button>
             <button
               type="button"
@@ -150,11 +153,13 @@ const TrainerReportPage = () => {
               className={`trainer-report-page__tab${tab === TAB_LOST ? ' trainer-report-page__tab--active' : ''}`}
               onClick={() => setTab(TAB_LOST)}
             >
-              <UserX size={15} aria-hidden />
-              Не продлили
-              {lostRows.length > 0 && (
-                <span className="trainer-report-page__tab-count trainer-report-page__tab-count--danger">{lostRows.length}</span>
-              )}
+              <span className="trainer-report-page__tab-icon">
+                <UserX size={18} aria-hidden />
+                {lostRows.length > 0 && (
+                  <span className="trainer-report-page__tab-count trainer-report-page__tab-count--danger">{lostRows.length}</span>
+                )}
+              </span>
+              <span className="trainer-report-page__tab-label">Не продлили</span>
             </button>
           </div>
 

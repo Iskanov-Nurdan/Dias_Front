@@ -1,14 +1,25 @@
 @use '../../shared/styles/mixins';
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Сайдбар — по умолчанию узкая полоса с иконками (var(--sidebar-width-
+// collapsed)); открывается наведением/фокусом/кнопкой поверх страницы, не
+// раздвигая её. На десктопе сайдбар ВСЕГДА position: fixed (никогда не
+// переключается со sticky на fixed и обратно) — это единственный способ
+// гарантированно плавно анимировать его ширину: смена самого свойства
+// position ни в одном браузере плавно не анимируется, а если её вообще нет,
+// анимируется только width, и всегда одинаково гладко.
+// ═══════════════════════════════════════════════════════════════════════════
+
 .main-layout {
   height: 100vh;
   display: grid;
-  grid-template-columns: var(--sidebar-width) 1fr;
+  // Колонка сетки всегда одной ширины — узкой. Сайдбар при открытии не
+  // раздвигает её, а всплывает поверх содержимого отдельным слоем.
+  grid-template-columns: var(--sidebar-width-collapsed) 1fr;
   grid-template-rows: var(--header-height) 1fr;
   grid-template-areas:
     'sidebar header'
     'sidebar content';
-  transition: grid-template-columns var(--transition-smooth);
   background: var(--color-bg);
 
   @include mixins.mobile {
@@ -17,14 +28,6 @@
     grid-template-areas:
       'header'
       'content';
-  }
-
-  &--sidebar-collapsed {
-    grid-template-columns: var(--sidebar-width-collapsed) 1fr;
-
-    @include mixins.mobile {
-      grid-template-columns: 1fr;
-    }
   }
 
   // —— Header (64px; фон из темы) ——
@@ -123,6 +126,11 @@
       transform: scale(0.92);
     }
 
+    &:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+
     @include mixins.xs {
       width: 36px;
       height: 36px;
@@ -141,6 +149,16 @@
         display: flex;
       }
     }
+  }
+
+  // Шеврон вращается вместо того, чтобы подменяться другой иконкой —
+  // раньше это было мгновенное «моргание» иконки, теперь плавный поворот
+  &__sidebar-toggle-icon {
+    transition: transform var(--transition-smooth);
+  }
+
+  &--sidebar-open &__sidebar-toggle-icon {
+    transform: rotate(180deg);
   }
 
   &__header-right {
@@ -177,6 +195,11 @@
     &:active {
       transform: scale(0.9);
     }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
   }
 
   &__brand {
@@ -201,20 +224,28 @@
     animation: main-layout-fade-in 0.2s ease;
   }
 
-  // —— Sidebar (менее тяжёлый, аккуратный) ——
+  // ═══ Сайдбар ═══════════════════════════════════════════════════════════
   &__sidebar {
     grid-area: sidebar;
     background: var(--color-sidebar-bg);
     border-right: 1px solid var(--color-sidebar-border);
-    position: sticky;
-    top: 0;
-    height: 100vh;
     display: flex;
     flex-direction: column;
     overflow-x: hidden;
     overflow-y: hidden;
     @include mixins.scrollbar-sidebar;
-    transition: transform var(--transition-smooth), width var(--transition-smooth), box-shadow var(--transition-smooth);
+
+    @include mixins.desktop-only {
+      // Всегда fixed — грид-колонка выше только резервирует место под узкую
+      // полосу, а сам элемент рисуется поверх страницы независимо от нeё
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: var(--sidebar-width-collapsed);
+      height: 100vh;
+      z-index: 210; // выше липких шапок страниц (--z-sticky), ниже модалок/тостов
+      transition: width var(--transition-smooth), box-shadow var(--transition-smooth);
+    }
 
     @include mixins.mobile {
       position: fixed;
@@ -230,78 +261,15 @@
       overflow-y: auto;
       overflow-x: hidden;
       box-shadow: var(--shadow-xl);
+      transition: transform var(--transition-smooth);
     }
   }
 
-  // —— Подглядывание: свёрнутый сайдбар при наведении/фокусе временно ——
-  // раскрывается поверх страницы, а не раздвигает её. position: fixed —
-  // единственный способ визуально выйти за пределы узкой колонки грида,
-  // не трогая ширину самой колонки: контент справа не двигается ни на
-  // пиксель, пока курсор гуляет по сайдбару.
-  &--sidebar-peek.main-layout--sidebar-collapsed &__sidebar {
+  &--sidebar-open &__sidebar {
     @include mixins.desktop-only {
-      position: fixed;
-      top: 0;
-      left: 0;
       width: var(--sidebar-width);
-      height: 100vh;
-      z-index: 210; // выше липких шапок страниц (--z-sticky), ниже модалок/тостов
       box-shadow: var(--shadow-xl);
       overflow-y: auto;
-    }
-  }
-
-  // Внутри подглядывающего сайдбара всё должно выглядеть как в обычном
-  // развёрнутом виде — те же самые правила, что отменяют компактную
-  // раскладку свёрнутого состояния (см. ниже по файлу), но с более
-  // специфичным селектором из двух классов, поэтому побеждают их.
-  @include mixins.desktop-only {
-    &--sidebar-peek.main-layout--sidebar-collapsed &__nav-label {
-      width: auto;
-      overflow: visible;
-      opacity: 1;
-      padding: 0;
-      margin: 0;
-      position: static;
-      pointer-events: auto;
-    }
-
-    &--sidebar-peek.main-layout--sidebar-collapsed &__nav-item {
-      padding: 0 12px;
-      justify-content: flex-start;
-      height: auto;
-      min-height: 42px;
-    }
-
-    &--sidebar-peek.main-layout--sidebar-collapsed &__nav-item--active::before {
-      height: 24px;
-    }
-
-    &--sidebar-peek.main-layout--sidebar-collapsed &__sidebar-logo {
-      padding: 16px var(--space-3) 12px;
-
-      img { height: 80px; }
-    }
-
-    &--sidebar-peek.main-layout--sidebar-collapsed &__sidebar-footer {
-      padding: 10px var(--space-3) 12px;
-    }
-
-    &--sidebar-peek.main-layout--sidebar-collapsed &__sidebar-user-card {
-      flex-direction: row;
-      justify-content: flex-start;
-      gap: 10px;
-      padding: 8px 10px;
-      min-height: 52px;
-    }
-
-    &--sidebar-peek.main-layout--sidebar-collapsed &__sidebar-user-avatar {
-      width: 36px;
-      height: 36px;
-    }
-
-    &--sidebar-peek.main-layout--sidebar-collapsed &__sidebar-logout {
-      margin-left: auto;
     }
   }
 
@@ -311,24 +279,9 @@
     }
   }
 
-  &--mobile-menu-open.main-layout--sidebar-collapsed &__nav-label {
-    @include mixins.mobile {
-      width: auto;
-      overflow: visible;
-      opacity: 1;
-      position: static;
-    }
-  }
-
-  &--mobile-menu-open.main-layout--sidebar-collapsed &__nav-item {
-    @include mixins.mobile {
-      justify-content: flex-start;
-    }
-  }
-
   &__sidebar-logo {
     flex-shrink: 0;
-    padding: 16px var(--space-3) 12px;
+    padding: 12px var(--space-2);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -336,20 +289,12 @@
     margin-bottom: 4px;
 
     img {
-      height: 80px;
+      height: 44px;
       width: auto;
       max-width: 100%;
       object-fit: contain;
       mix-blend-mode: lighten;
-      transition: height 0.2s ease;
-    }
-
-    .main-layout--sidebar-collapsed & img {
-      height: 44px;
-    }
-
-    .main-layout--sidebar-collapsed & {
-      padding: 12px var(--space-2);
+      transition: height var(--transition-smooth);
     }
 
     @include mixins.mobile {
@@ -368,6 +313,14 @@
       img {
         height: 64px;
       }
+    }
+  }
+
+  &--sidebar-open &__sidebar-logo {
+    @include mixins.desktop-only {
+      padding: 16px var(--space-3) 12px;
+
+      img { height: 80px; }
     }
   }
 
@@ -395,15 +348,17 @@
 
   &__sidebar-footer {
     flex-shrink: 0;
-    padding: 10px var(--space-3) 12px;
+    padding: 10px 8px 12px;
     border-top: 1px solid var(--color-sidebar-border);
-
-    .main-layout--sidebar-collapsed & {
-      padding: 10px 8px 12px;
-    }
 
     @include mixins.mobile {
       padding: 10px var(--space-4) 12px;
+    }
+  }
+
+  &--sidebar-open &__sidebar-footer {
+    @include mixins.desktop-only {
+      padding: 10px var(--space-3) 12px;
     }
   }
 
@@ -414,7 +369,7 @@
     padding: 8px 10px;
     background: rgba(0, 0, 0, 0.25);
     border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.06);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     min-height: 52px;
     transition: background 0.15s;
 
@@ -422,19 +377,28 @@
       background: rgba(0, 0, 0, 0.35);
     }
 
-    // Свёрнутому сайдбару 80px, а аватар с кнопкой выхода в ряд требуют ~100px:
-    // блок сплющивался и вылезал за край. Ставим их друг под другом —
-    // обе кнопки остаются доступными и помещаются по ширине.
-    .main-layout--sidebar-collapsed & {
-      flex-direction: column;
-      justify-content: center;
-      gap: 8px;
-      padding: 10px 4px;
-      min-height: 0;
-    }
+    // Узкой полосе 80px аватар с кнопкой выхода в ряд не поместились бы —
+    // ставим их друг под другом, обе кнопки остаются доступными
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 4px;
+    min-height: 0;
 
     @include mixins.mobile {
+      flex-direction: row;
       padding: 10px 12px;
+      min-height: 52px;
+    }
+  }
+
+  &--sidebar-open &__sidebar-user-card {
+    @include mixins.desktop-only {
+      flex-direction: row;
+      justify-content: flex-start;
+      gap: 10px;
+      padding: 8px 10px;
+      min-height: 52px;
     }
   }
 
@@ -442,29 +406,43 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     background: rgba(197, 48, 48, 0.25);
     color: #ff8080;
     flex-shrink: 0;
     border: 1px solid rgba(197, 48, 48, 0.3);
+    transition: width var(--transition-fast), height var(--transition-fast);
 
-    .main-layout--sidebar-collapsed & {
-      width: 30px;
-      height: 30px;
+    @include mixins.mobile {
+      width: 36px;
+      height: 36px;
+    }
+  }
+
+  &--sidebar-open &__sidebar-user-avatar {
+    @include mixins.desktop-only {
+      width: 36px;
+      height: 36px;
     }
   }
 
   &__sidebar-user-info {
     flex: 1;
     min-width: 0;
-    display: flex;
+    display: none;
     flex-direction: column;
     gap: 2px;
 
-    .main-layout--sidebar-collapsed & {
-      display: none;
+    @include mixins.mobile {
+      display: flex;
+    }
+  }
+
+  &--sidebar-open &__sidebar-user-info {
+    @include mixins.desktop-only {
+      display: flex;
     }
   }
 
@@ -495,13 +473,11 @@
     border-radius: 8px;
     color: var(--color-sidebar-muted);
     flex-shrink: 0;
-    margin-left: auto;
-    transition: background 0.15s, color 0.15s, transform 0.1s;
+    margin-left: 0;
+    transition: background 0.15s, color 0.15s, transform 0.1s, margin-left var(--transition-fast);
 
-    .main-layout--sidebar-collapsed & {
-      width: 32px;
-      height: 32px;
-      margin-left: 0;
+    @include mixins.mobile {
+      margin-left: auto;
     }
 
     &:hover {
@@ -511,6 +487,17 @@
 
     &:active {
       transform: scale(0.9);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+  }
+
+  &--sidebar-open &__sidebar-logout {
+    @include mixins.desktop-only {
+      margin-left: auto;
     }
   }
 
@@ -529,10 +516,12 @@
   &__nav-item {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 0;
     text-align: left;
-    min-height: 42px;
-    padding: 0 12px;
+    padding: 0;
+    justify-content: center;
+    min-height: 44px;
+    height: 44px;
     font-size: 14px;
     font-weight: 500;
     line-height: 1.3;
@@ -540,18 +529,20 @@
     border: none;
     color: var(--color-sidebar-muted);
     border-radius: 10px;
-    transition: background 0.15s, color 0.15s;
+    transition: background var(--transition-fast), color var(--transition-fast), padding var(--transition-smooth),
+      justify-content var(--transition-smooth);
     min-width: 0;
     white-space: nowrap;
     position: relative;
     cursor: pointer;
 
     @include mixins.mobile {
-      border-radius: 10px;
+      gap: 12px;
       padding: 0 var(--space-4);
-      width: 100%;
       justify-content: flex-start;
+      width: 100%;
       min-height: 46px;
+      height: auto;
     }
 
     @include mixins.xs {
@@ -568,8 +559,13 @@
       transform: scale(0.98);
     }
 
+    &:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+
     &--active {
-      background: rgba(197, 48, 48, 0.18);
+      background: rgba(197, 48, 48, 0.22);
       color: #fff;
       font-weight: 600;
 
@@ -580,15 +576,30 @@
         top: 50%;
         transform: translateY(-50%);
         width: 3px;
-        height: 24px;
+        height: 22px;
         background: var(--color-primary);
         border-radius: 0 3px 3px 0;
+        box-shadow: 0 0 8px rgba(197, 48, 48, 0.6);
         animation: main-layout-active-bar-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
       .main-layout__nav-icon {
-        color: #ff6b6b;
+        color: #ff8080;
       }
+    }
+  }
+
+  &--sidebar-open &__nav-item {
+    @include mixins.desktop-only {
+      gap: 12px;
+      padding: 0 12px;
+      justify-content: flex-start;
+    }
+  }
+
+  &--sidebar-open &__nav-item--active::before {
+    @include mixins.desktop-only {
+      height: 24px;
     }
   }
 
@@ -612,44 +623,29 @@
     text-overflow: ellipsis;
     min-width: 0;
     letter-spacing: -0.01em;
-  }
 
-  &--sidebar-collapsed &__nav-item {
-    padding: 0;
-    justify-content: center;
-    min-height: 44px;
-    height: 44px;
-    border-radius: 10px;
-
-    @include mixins.mobile {
-      padding: 0 var(--space-3);
-      justify-content: center;
-      height: auto;
-      min-height: 44px;
-    }
-  }
-
-  &--sidebar-collapsed &__nav-item--active {
-    background: rgba(197, 48, 48, 0.22);
-
-    &::before {
-      height: 22px;
-    }
-
-    .main-layout__nav-icon {
-      color: #ff8080;
-    }
-  }
-
-  &--sidebar-collapsed &__nav-label {
     @include mixins.desktop-only {
       width: 0;
-      overflow: hidden;
       opacity: 0;
       padding: 0;
       margin: 0;
       position: absolute;
       pointer-events: none;
+    }
+  }
+
+  &--sidebar-open &__nav-label {
+    @include mixins.desktop-only {
+      width: auto;
+      overflow: hidden;
+      opacity: 1;
+      padding: 0;
+      margin: 0;
+      position: static;
+      pointer-events: auto;
+      // Подпись проявляется чуть позже самого сайдбара — иначе текст
+      // «выскакивает» раньше, чем для него появилось место
+      transition: opacity var(--transition-smooth) 0.06s;
     }
   }
 
@@ -682,15 +678,6 @@
   }
 }
 
-@include mixins.mobile {
-  .main-layout--sidebar-collapsed .main-layout__nav-label {
-    width: auto;
-    overflow: visible;
-    opacity: 1;
-    position: static;
-  }
-}
-
 @keyframes main-layout-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -699,4 +686,13 @@
 @keyframes main-layout-active-bar-in {
   from { transform: translateY(-50%) scaleY(0.3); opacity: 0; }
   to { transform: translateY(-50%) scaleY(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .main-layout__sidebar,
+  .main-layout__sidebar-toggle-icon,
+  .main-layout__nav-item,
+  .main-layout__nav-label {
+    transition: none !important;
+  }
 }

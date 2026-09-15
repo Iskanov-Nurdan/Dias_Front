@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Menu, ChevronLeft, ChevronRight, X,
+  Menu, ChevronRight, X,
   User, LogOut, Moon, Sun,
 } from 'lucide-react';
 import { useAuth } from '../providers/AuthProvider';
@@ -11,13 +11,16 @@ import {
 } from '../../shared/constants/pages';
 import './MainLayout.scss';
 
-const SIDEBAR_STORAGE_KEY = 'mainLayout_sidebarCollapsed';
 const THEME_STORAGE_KEY = 'rahman-theme';
 
 const ICON_SIZE = 20;
 const ICON_SIZE_SM = 18;
 /** Иконки в списке навигации сайдбара (см. .main-layout__nav-icon) */
 const NAV_ICON_SIZE = 20;
+
+// Задержка перед авто-закрытием: короткое касание края мышью мимоходом
+// не должно раскрывать/закрывать сайдбар с миганием
+const CLOSE_DELAY_MS = 220;
 
 const getSectionTitleForPath = (pathname) => {
   const pageId = Object.keys(PAGE_ROUTES).find((id) => PAGE_ROUTES[id] === pathname);
@@ -36,73 +39,95 @@ const getInitialTheme = () => {
   return 'light';
 };
 
-const getStoredSidebarCollapsed = () => {
-  try {
-    const v = localStorage.getItem(SIDEBAR_STORAGE_KEY);
-    return v === '1';
-  } catch {
-    return false;
-  }
-};
-
 const MOBILE_BREAKPOINT = 768;
 
 const MainLayout = () => {
   const { user, logout, hasAccess } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(getStoredSidebarCollapsed);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [theme, setTheme] = useState(getInitialTheme);
 
   /**
-   * «Подглядывание»: свёрнутый сайдбар при наведении/фокусе временно
-   * раскрывается поверх страницы (не раздвигая её — сайдбар уходит в
-   * position: fixed, сетка контента остаётся узкой), а при уходе курсора —
-   * сворачивается обратно. Это отдельное, не сохраняемое состояние поверх
-   * закреплённого выбора пользователя (sidebarCollapsed из localStorage):
-   * если сайдбар закреплён открытым кнопкой-шевроном, подглядывание не
-   * участвует вовсе — сайдбар и так уже полностью развёрнут в сетке.
+   * Сайдбар на десктопе — ровно одно состояние: открыт/закрыт, всегда
+   * стартует закрытым (узкая полоса с иконками). Раньше было два параллельных
+   * механизма — «закреплено кнопкой» (сохранялось в localStorage, никогда не
+   * закрывалось само) и «подглядывание» наведением (временное) — из-за этого
+   * сайдбар вёл себя по-разному в зависимости от того, чем его открыли, и не
+   * закрывался там, где пользователь этого ожидал. Теперь кнопка и наведение
+   * управляют ОДНИМ и тем же состоянием и закрывается оно одинаково всегда:
+   * по клику на пункт меню — сразу, по уходу курсора/фокуса — с небольшой
+   * задержкой, по клику вне сайдбара и по Esc — сразу.
    */
-  const [sidebarPeek, setSidebarPeek] = useState(false);
-  const peekCloseTimerRef = useRef(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const sidebarRef = useRef(null);
+  const toggleBtnRef = useRef(null);
+  const closeTimerRef = useRef(null);
 
-  const clearPeekCloseTimer = () => {
-    if (peekCloseTimerRef.current) {
-      clearTimeout(peekCloseTimerRef.current);
-      peekCloseTimerRef.current = null;
+  const clearCloseTimer = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
     }
   };
 
-  useEffect(() => () => clearPeekCloseTimer(), []);
+  useEffect(() => () => clearCloseTimer(), []);
 
   // На мобильном курсора нет — там своё выезжающее меню (mobileMenuOpen),
-  // подглядывание туда не подключается вовсе
-  const openSidebarPeek = () => {
+  // эта логика туда не подключается вовсе
+  const openSidebar = () => {
     if (isMobile) return;
-    clearPeekCloseTimer();
-    setSidebarPeek(true);
+    clearCloseTimer();
+    setSidebarOpen(true);
   };
 
-  // Небольшая задержка на закрытие: иначе сайдбар мигает, если курсор
-  // на мгновение задел край при движении мимо, а не зашёл специально
-  const scheduleSidebarPeekClose = () => {
-    if (isMobile) return;
-    clearPeekCloseTimer();
-    peekCloseTimerRef.current = setTimeout(() => setSidebarPeek(false), 220);
+  const closeSidebarNow = () => {
+    clearCloseTimer();
+    setSidebarOpen(false);
   };
 
-  // Клавиатурная навигация (Tab) должна раскрывать сайдбар так же, как
-  // наведение мышью — иначе без мыши подписи пунктов меню не увидеть.
-  // relatedTarget проверяем, чтобы не закрывать сайдбар при переходе фокуса
-  // с одной кнопки на другую внутри него самого.
+  const scheduleCloseSidebar = () => {
+    if (isMobile) return;
+    clearCloseTimer();
+    closeTimerRef.current = setTimeout(() => setSidebarOpen(false), CLOSE_DELAY_MS);
+  };
+
+  const toggleSidebar = () => {
+    clearCloseTimer();
+    setSidebarOpen((prev) => !prev);
+  };
+
+  // Клавиатурная навигация (Tab) раскрывает сайдбар так же, как наведение —
+  // иначе без мыши подписи пунктов меню не увидеть. relatedTarget проверяем,
+  // чтобы не закрывать сайдбар при переходе фокуса между кнопками внутри него.
   const handleSidebarBlur = (e) => {
     if (e.currentTarget.contains(e.relatedTarget)) return;
-    scheduleSidebarPeekClose();
+    scheduleCloseSidebar();
   };
 
-  const sidebarVisuallyExpanded = !sidebarCollapsed || (sidebarPeek && !isMobile);
+  // Клик вне сайдбара и вне кнопки-переключателя закрывает его сразу — это
+  // покрывает случай «открыл кнопкой, мышь по сайдбару не водил, кликнул
+  // в другое место»: mouseleave тут не сработает, потому что курсор в сайдбар
+  // вообще не заходил.
+  useEffect(() => {
+    if (!sidebarOpen || isMobile) return undefined;
+    const onPointerDown = (e) => {
+      if (sidebarRef.current?.contains(e.target)) return;
+      if (toggleBtnRef.current?.contains(e.target)) return;
+      closeSidebarNow();
+    };
+    const onEscape = (e) => {
+      if (e.key === 'Escape') closeSidebarNow();
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onEscape);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onEscape);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sidebarOpen, isMobile]);
 
   useEffect(() => {
     const mq = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`);
@@ -114,10 +139,8 @@ const MainLayout = () => {
 
   useEffect(() => {
     if (isMobile) setMobileMenuOpen(false);
-  }, [location.pathname, isMobile]);
-
-  useEffect(() => {
-    if (!isMobile) setMobileMenuOpen(false);
+    else closeSidebarNow();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMobile]);
 
   useEffect(() => {
@@ -132,10 +155,6 @@ const MainLayout = () => {
       document.body.style.overflow = '';
     };
   }, [mobileMenuOpen, isMobile]);
-
-  useEffect(() => {
-    localStorage.setItem(SIDEBAR_STORAGE_KEY, sidebarCollapsed ? '1' : '0');
-  }, [sidebarCollapsed]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -153,21 +172,21 @@ const MainLayout = () => {
     navigate('/login');
   };
 
-  const toggleSidebar = () => setSidebarCollapsed((prev) => !prev);
   const toggleMobileMenu = () => setMobileMenuOpen((prev) => !prev);
 
   /**
-   * Переход по пункту меню сворачивает сайдбар: на мобильном закрывает
-   * выезжающее меню, на десктопе — схлопывает в узкую полосу с иконками,
-   * освобождая ширину под саму страницу. Открыть обратно — кнопкой-стрелкой.
+   * Переход по пункту меню закрывает сайдбар сразу — на мобильном прячет
+   * выезжающее меню, на десктопе схлопывает узкую полосу обратно, не
+   * дожидаясь, пока курсор физически покинет область сайдбара.
    */
   const handleNavigate = (path) => {
     navigate(path);
     if (isMobile) setMobileMenuOpen(false);
-    else setSidebarCollapsed(true);
+    else closeSidebarNow();
   };
 
   const sectionTitle = getSectionTitleForPath(location.pathname);
+  const isSidebarExpandedView = (isMobile && mobileMenuOpen) || (!isMobile && sidebarOpen);
 
   const visiblePages = PAGE_IDS.filter((id) => hasAccess(id));
   const visibleSet = new Set(visiblePages);
@@ -177,20 +196,22 @@ const MainLayout = () => {
   })).filter((g) => g.pages.length > 0);
 
   return (
-    <div className={`main-layout ${sidebarCollapsed ? 'main-layout--sidebar-collapsed' : ''} ${mobileMenuOpen ? 'main-layout--mobile-menu-open' : ''} ${sidebarPeek && !isMobile ? 'main-layout--sidebar-peek' : ''}`}>
+    <div className={`main-layout ${sidebarOpen && !isMobile ? 'main-layout--sidebar-open' : ''} ${mobileMenuOpen ? 'main-layout--mobile-menu-open' : ''}`}>
       {isMobile && mobileMenuOpen && (
         <div className="main-layout__mobile-overlay" onClick={toggleMobileMenu} aria-hidden="false" />
       )}
       <header className="main-layout__header">
         <div className="main-layout__header-left">
           <button
+            ref={toggleBtnRef}
             type="button"
             className="main-layout__sidebar-toggle main-layout__sidebar-toggle--desktop"
             onClick={toggleSidebar}
-            title={sidebarCollapsed ? 'Открыть меню' : 'Свернуть меню'}
-            aria-label={sidebarCollapsed ? 'Открыть меню' : 'Свернуть меню'}
+            title={sidebarOpen ? 'Свернуть меню' : 'Открыть меню'}
+            aria-label={sidebarOpen ? 'Свернуть меню' : 'Открыть меню'}
+            aria-expanded={sidebarOpen}
           >
-            {sidebarCollapsed ? <ChevronRight size={ICON_SIZE_SM} /> : <ChevronLeft size={ICON_SIZE_SM} />}
+            <ChevronRight size={ICON_SIZE_SM} className="main-layout__sidebar-toggle-icon" />
           </button>
           <button
             type="button"
@@ -218,10 +239,11 @@ const MainLayout = () => {
         </div>
       </header>
       <aside
+        ref={sidebarRef}
         className="main-layout__sidebar"
-        onMouseEnter={openSidebarPeek}
-        onMouseLeave={scheduleSidebarPeekClose}
-        onFocus={openSidebarPeek}
+        onMouseEnter={openSidebar}
+        onMouseLeave={scheduleCloseSidebar}
+        onFocus={openSidebar}
         onBlur={handleSidebarBlur}
       >
         <div className="main-layout__sidebar-logo">
@@ -258,7 +280,7 @@ const MainLayout = () => {
             <span className="main-layout__sidebar-user-avatar" aria-hidden>
               <User size={ICON_SIZE_SM} />
             </span>
-            {sidebarVisuallyExpanded && (
+            {isSidebarExpandedView && (
               <div className="main-layout__sidebar-user-info">
                 <span className="main-layout__sidebar-user-name">{user?.fio || user?.login || ''}</span>
                 <span className="main-layout__sidebar-user-role">{user?.roleName || ''}</span>

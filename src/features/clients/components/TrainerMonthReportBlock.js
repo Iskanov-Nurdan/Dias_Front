@@ -7,6 +7,7 @@ import { EmptyState, ErrorState, Spinner } from '../../../shared/ui';
 import { MONTHS, formatMoney } from '../../../shared/constants/common';
 import { summarizeTrainerReport } from '../lib/trainerMonthReport';
 import { useTrainerPhotosByFio } from '../../employees/hooks/useTrainerPhotosByFio';
+import { formatPhoneDisplay } from '../../../shared/lib/phone';
 import './TrainerMonthReportBlock.scss';
 
 const FILTERS = [
@@ -28,7 +29,7 @@ const initials = (fio) =>
  * Месяцы намеренно равноправны — выбранный и следующий показываются одинаково
  * полно, чтобы «кто уже продлил» читалось сравнением двух колонок, а не переключением.
  */
-const MonthPanel = ({ period, rows, isNext, onOpenClient }) => {
+const MonthPanel = ({ period, rows, isNext, showTag = true, onOpenClient }) => {
   const [filter, setFilter] = useState('all');
   const summary = useMemo(() => summarizeTrainerReport(rows), [rows]);
 
@@ -46,9 +47,11 @@ const MonthPanel = ({ period, rows, isNext, onOpenClient }) => {
         <div className="trainer-report__panel-title">
           <span className="trainer-report__panel-month">{MONTHS[Number(period.month)]}</span>
           <span className="trainer-report__panel-year">{period.year}</span>
-          <span className={`trainer-report__panel-tag${isNext ? ' trainer-report__panel-tag--next' : ''}`}>
-            {isNext ? 'следующий' : 'выбранный'}
-          </span>
+          {showTag && (
+            <span className={`trainer-report__panel-tag${isNext ? ' trainer-report__panel-tag--next' : ''}`}>
+              {isNext ? 'следующий' : 'выбранный'}
+            </span>
+          )}
         </div>
         <span className="trainer-report__panel-count">
           <Users size={14} aria-hidden /> {summary.total}
@@ -157,7 +160,7 @@ const MonthPanel = ({ period, rows, isNext, onOpenClient }) => {
                       <span className="trainer-report__client-info">
                         <span className="trainer-report__client-name">{row.fio}</span>
                         <span className="trainer-report__client-meta">
-                          {row.phone && (<><Phone size={11} aria-hidden />{row.phone}</>)}
+                          {row.phone && (<><Phone size={11} aria-hidden />{formatPhoneDisplay(row.phone)}</>)}
                           {row.phone && row.typeLabel && <span className="trainer-report__dot" />}
                           {row.typeLabel}
                         </span>
@@ -305,7 +308,17 @@ const ReportHeader = ({ trainerName, periods }) => {
  * @param {object} props
  * @param {Array<{ period: {year:number, month:number}, rows: Array<object> }>} props.periods
  */
-const TrainerMonthReportBlock = ({ periods, loading, errorMessage, onRetry, onOpenClient, trainerName }) => {
+/**
+ * Шапка с итогами (кто, период, начислено/получено/долг) — отдельным
+ * экспортом: в кабинете тренера она живёт на своей вкладке «Итоги», а не
+ * над списком учеников. В админских «Отчётах» ничего не меняется — там она
+ * по-прежнему рисуется внутри блока (showHeader по умолчанию включён).
+ */
+export const TrainerReportTotals = ReportHeader;
+
+const TrainerMonthReportBlock = ({
+  periods, loading, errorMessage, onRetry, onOpenClient, trainerName, showHeader = true,
+}) => {
   if (loading) {
     return (
       <div className="trainer-report__state">
@@ -331,7 +344,7 @@ const TrainerMonthReportBlock = ({ periods, loading, errorMessage, onRetry, onOp
 
   return (
     <div className="trainer-report">
-      <ReportHeader trainerName={trainerName} periods={periods} />
+      {showHeader && <ReportHeader trainerName={trainerName} periods={periods} />}
       {/* Две колонки — только когда реально сравниваются два месяца (админский
           вид «Отчётов»). С одним периодом (кабинет тренера) вторая колонка
           не занята никем и превращалась в пустую половину экрана. */}
@@ -342,6 +355,10 @@ const TrainerMonthReportBlock = ({ periods, loading, errorMessage, onRetry, onOp
             period={p.period}
             rows={p.rows}
             isNext={i > 0}
+            // Подпись «выбранный» нужна только когда месяцев два и их надо
+            // различать. С одним периодом она ничего не сообщала, но занимала
+            // место и наезжала на счётчик учеников на узком экране.
+            showTag={periods.length > 1}
             onOpenClient={onOpenClient}
           />
         ))}

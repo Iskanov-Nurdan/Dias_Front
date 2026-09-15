@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarX2, Download, Phone, UserX, Users, CalendarRange } from 'lucide-react';
+import { CalendarX2, Download, Phone, UserX, Users, CalendarRange, Wallet } from 'lucide-react';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { fetchMyTrainerReport } from './api';
 import { Select, Spinner, ErrorState, EmptyState } from '../../shared/ui';
 import { STATS_YEARS } from '../../shared/constants/common';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
-import TrainerMonthReportBlock from '../clients/components/TrainerMonthReportBlock';
+import TrainerMonthReportBlock, { TrainerReportTotals } from '../clients/components/TrainerMonthReportBlock';
 import { buildTrainerReportRow, sortTrainerReportRows } from '../clients/lib/trainerMonthReport';
 import { exportTrainerMonthReport } from '../clients/lib/trainerMonthReportExport';
 import './TrainerReportPage.scss';
@@ -22,6 +22,7 @@ const DEFAULT_YEAR = STATS_YEARS.includes(CURRENT_YEAR_STR) ? CURRENT_YEAR_STR :
 const DEFAULT_MONTH = String(NOW.getMonth() + 1);
 
 const TAB_STUDENTS = 'students';
+const TAB_TOTALS = 'totals';
 const TAB_LOST = 'lost';
 
 const initials = (fio) =>
@@ -149,6 +150,18 @@ const TrainerReportPage = () => {
             <button
               type="button"
               role="tab"
+              aria-selected={tab === TAB_TOTALS}
+              className={`trainer-report-page__tab${tab === TAB_TOTALS ? ' trainer-report-page__tab--active' : ''}`}
+              onClick={() => setTab(TAB_TOTALS)}
+            >
+              <span className="trainer-report-page__tab-icon">
+                <Wallet size={18} aria-hidden />
+              </span>
+              <span className="trainer-report-page__tab-label">Итоги</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
               aria-selected={tab === TAB_LOST}
               className={`trainer-report-page__tab${tab === TAB_LOST ? ' trainer-report-page__tab--active' : ''}`}
               onClick={() => setTab(TAB_LOST)}
@@ -164,7 +177,12 @@ const TrainerReportPage = () => {
           </div>
 
           {tab === TAB_STUDENTS ? (
-            <TrainerMonthReportBlock periods={periods} trainerName={user?.fio} />
+            /* Итоги (кто, период, начислено/получено/долг) переехали на свою
+               вкладку — над списком учеников они занимали экран высоты,
+               из-за чего сам список на телефоне начинался ниже сгиба */
+            <TrainerMonthReportBlock periods={periods} trainerName={user?.fio} showHeader={false} />
+          ) : tab === TAB_TOTALS ? (
+            <TrainerReportTotals periods={periods} trainerName={user?.fio} />
           ) : (
             /* «Ушедшие»: те, кто занимался в выбранном месяце и не продлил
                подписку после него — тот же критерий, что у отчёта «не

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../providers/AuthProvider';
 import { prefetchRoutePage } from '../prefetchRoutes';
+import { useTrainerPhotosByFio } from '../../features/employees/hooks/useTrainerPhotosByFio';
 import {
   PAGE_IDS, PAGE_LABELS, PAGE_ROUTES, PAGE_GROUPS, PAGE_ICONS,
 } from '../../shared/constants/pages';
@@ -58,6 +59,11 @@ const MainLayout = () => {
    * Esc — сразу.
    */
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Фото сотрудника — то же, что в карточке тренера и в списке сотрудников:
+  // у тренера оно давно загружено, а в сайдбаре висела безликая иконка
+  const getPhoto = useTrainerPhotosByFio();
+  const [avatarBroken, setAvatarBroken] = useState(false);
+  const userPhoto = avatarBroken ? null : getPhoto(user?.fio);
   const sidebarRef = useRef(null);
   const closeTimerRef = useRef(null);
 
@@ -255,9 +261,18 @@ const MainLayout = () => {
         </nav>
         <div className="main-layout__sidebar-footer">
           <div className="main-layout__sidebar-user-card">
-            <span className="main-layout__sidebar-user-avatar" aria-hidden>
-              <User size={ICON_SIZE_SM} />
-            </span>
+            {userPhoto ? (
+              <img
+                src={userPhoto}
+                alt=""
+                className="main-layout__sidebar-user-avatar main-layout__sidebar-user-avatar--photo"
+                onError={() => setAvatarBroken(true)}
+              />
+            ) : (
+              <span className="main-layout__sidebar-user-avatar" aria-hidden>
+                <User size={ICON_SIZE_SM} />
+              </span>
+            )}
             {isSidebarExpandedView && (
               <div className="main-layout__sidebar-user-info">
                 <span className="main-layout__sidebar-user-name">{user?.fio || user?.login || ''}</span>

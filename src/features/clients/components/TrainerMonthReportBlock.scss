@@ -369,23 +369,24 @@
 }
 
 // ── Фильтр внутри панели ────────────────────────────────────────────────────
+// Сегментированный переключатель: три равные доли строки вместо ряда
+// «плавающих» пилюль. Раньше это был flex без переноса внутри панели со
+// скрытым переполнением — третий фильтр («Оплатили») просто срезался по краю,
+// а прокрутка внутри и так прокручиваемой панели читалась как поломка.
 .trainer-report__filters {
-  display: flex;
-  gap: 6px;
-  padding: 10px 12px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 8px 10px;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface-secondary);
-  // У панели скрыто переполнение, поэтому на узком экране третий фильтр
-  // («Оплатили») просто срезался по краю. Даём ряду собственную прокрутку
-  // и запрещаем кнопкам сжиматься — подписи остаются целыми.
-  overflow-x: auto;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-
-  &::-webkit-scrollbar { display: none; }
 }
 
-.trainer-report__filter { flex-shrink: 0; }
+.trainer-report__filter {
+  min-width: 0;
+  justify-content: center;
+}
 
 .trainer-report__filter {
   display: inline-flex;
@@ -796,14 +797,15 @@
 @include mixins.mobile {
   // Фильтр «Все/Долг/Оплатили» — тач-цель заметно комфортнее и не впритык
   .trainer-report__filters {
-    gap: 8px;
-    padding: 10px;
+    gap: 4px;
+    padding: 8px;
   }
 
   .trainer-report__filter {
-    height: 36px;
-    padding: 0 13px;
+    height: 40px;
+    padding: 0 6px;
     font-size: 12.5px;
+    gap: 5px;
   }
 
   // Три денежные строки итога — раньше на 320-360px переносились как попало

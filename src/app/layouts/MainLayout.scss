@@ -404,6 +404,14 @@
     flex-shrink: 0;
     border: 1px solid rgba(197, 48, 48, 0.3);
     transition: width var(--transition-fast), height var(--transition-fast);
+    overflow: hidden;
+
+    // Фото сотрудника вместо безликой иконки — форму и размер задаёт
+    // правило выше, здесь только заполнение без искажений
+    &--photo {
+      object-fit: cover;
+      background: var(--color-surface-secondary);
+    }
 
     @include mixins.mobile {
       width: 36px;

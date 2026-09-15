@@ -247,6 +247,19 @@ $r-lg:   22px;
     margin-right: auto;
     text-align: center;
   }
+
+  // Название латиницей: тише основного заголовка, но настоящим видимым
+  // текстом — прятать его ради поиска нельзя, это спам-сигнал
+  &__latin {
+    margin: 12px 0 0;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--text2);
+    opacity: 0.75;
+    text-align: center;
+  }
 }
 
 // When bg photo is set — force white text in any theme (overlay is always dark)
@@ -254,6 +267,7 @@ $r-lg:   22px;
   .tp-hero__title    { color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,0.5); }
   .tp-hero__sub-title { color: #FF9A9A; }
   .tp-hero__desc     { color: rgba(255,255,255,0.82); }
+  .tp-hero__latin    { color: rgba(255,255,255,0.72); opacity: 1; }
 }
 
 // ─── Stats ────────────────────────────────────────────────────────────────────

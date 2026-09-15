@@ -15,8 +15,14 @@
       CRM-страницы не индексируются (см. robots.txt) и на подпись вкладки браузера
       это не влияет — сотрудникам достаточно логотипа во вкладке.
     -->
-    <meta name="description" content="Рахман Ата — спортивный клуб: ММА, бокс, дзюдо, вольная борьба, грэпплинг, бразильское джиу-джитсу, кроссфит. Профессиональные тренеры, группы для всех возрастов. Запись на пробную тренировку." />
-    <meta name="keywords" content="Рахман Ата, Rahman Ata, rahmanata, спортивный клуб, единоборства, ММА, бокс, дзюдо, вольная борьба, грэпплинг, бразильское джиу-джитсу, кроссфит" />
+    <!--
+      Название клуба в описании стоит в обоих написаниях намеренно: по «рахман ата»
+      сайт находился, а по «rahman ata» — нет, потому что латиницы в видимом тексте
+      не было нигде. Meta keywords на это не влияет вовсе (Google не учитывает этот
+      тег с 2009 года) — работает описание, заголовок и текст на самой странице.
+    -->
+    <meta name="description" content="Рахман Ата (Rahman Ata) — спортивный клуб в Оше: ММА, бокс, дзюдо, вольная борьба, грэпплинг, бразильское джиу-джитсу, кроссфит. Профессиональные тренеры, группы для всех возрастов. Запись на пробную тренировку." />
+    <meta name="keywords" content="Рахман Ата, Rahman Ata, rahmanata, Rahman Ata Sport Club, спортивный клуб Ош, единоборства, ММА, бокс, дзюдо, вольная борьба, грэпплинг, бразильское джиу-джитсу, кроссфит" />
     <meta name="robots" content="index, follow" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -28,7 +34,7 @@
     <!-- Open Graph / превью в WhatsApp, Telegram, Instagram, Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Рахман Ата" />
-    <meta property="og:title" content="Рахман Ата — спортивный клуб" />
+    <meta property="og:title" content="Рахман Ата — Спорт Клуб | Rahman Ata, Ош" />
     <meta property="og:description" content="ММА, бокс, дзюдо, вольная борьба, грэпплинг, БЖЖ, кроссфит. Профессиональные тренеры, группы для всех возрастов." />
     <meta property="og:image" content="https://rahmanata.kg/rahman.png" />
     <meta property="og:url" content="https://rahmanata.kg/" />
@@ -36,7 +42,7 @@
 
     <!-- Twitter/X card — тот же принцип, что и Open Graph выше -->
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="Рахман Ата — спортивный клуб" />
+    <meta name="twitter:title" content="Рахман Ата — Спорт Клуб | Rahman Ata, Ош" />
     <meta name="twitter:description" content="ММА, бокс, дзюдо, вольная борьба, грэпплинг, БЖЖ, кроссфит." />
     <meta name="twitter:image" content="https://rahmanata.kg/rahman.png" />
 
@@ -44,14 +50,17 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
     <!--
-      Иконка сайта. В выдаче Google рядом со ссылкой стоял глобус: по адресу
-      /favicon.ico лежал стандартный логотип React из шаблона, а rel="icon"
-      указывал на логотип 1280x1280 без объявленных размеров.
+      Иконка сайта: крупная белая «R» из фирменного логотипа на сплошном
+      фирменном красном.
 
-      Здесь эмблема клуба (красное кольцо с «R») без подписи «РАХМАН АТА» —
-      в 16 пикселях подпись превращается в пятно. Размеры кратны 48, как
-      рекомендует Google, и объявлены явно, чтобы поисковику не приходилось
-      гадать, какой файл брать.
+      Почему именно так, а не обрезок логотипа: раньше иконкой было красное
+      кольцо с белой «R» внутри и прозрачным фоном. На тёмной вкладке браузера
+      она читалась, а в выдаче Google, где иконку рисуют на светлом кружке,
+      белая буква на белом просто исчезала — оставался «красный бублик».
+      Собственный непрозрачный фон делает иконку одинаково читаемой на любой
+      подложке, а кольцо превратилось в сам фон — так «R» занимает всю иконку
+      и различима даже в 16 пикселях. Поля 15% оставлены под круглую обрезку,
+      которую Google применяет к иконкам в выдаче.
     -->
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="48x48" href="%PUBLIC_URL%/favicon-48.png" />
@@ -59,16 +68,30 @@
     <link rel="icon" type="image/png" sizes="192x192" href="%PUBLIC_URL%/icon-192.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/apple-touch-icon.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <title>Рахман Ата — спортивный клуб</title>
+    <title>Рахман Ата — Спорт Клуб | Rahman Ata, Ош</title>
 
-    <!-- Structured data: помогает Google понять, что это спортивный клуб,
-         и показать расширенный сниппет (адрес, соцсети) в выдаче. -->
+    <!--
+      Structured data: помогает Google понять, что это спортивный клуб, и
+      собрать карточку организации — а в карточке бренд находится по любому
+      написанию названия, включая латиницу и опечатки.
+
+      Здесь только то, что не меняется (название, написания, адрес страницы,
+      виды спорта). Телефон, адрес и соцсети редактируются в админке Taplink,
+      поэтому дублировать их сюда нельзя — разъедутся. Их дописывает в этот же
+      блок TaplinkPage из живого конфига (см. useEffect с ld+json там).
+    -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "SportsActivityLocation",
+        "@id": "https://rahmanata.kg/#organization",
         "name": "Рахман Ата",
-        "alternateName": ["Rahman Ata", "rahmanata"],
+        "alternateName": [
+          "Rahman Ata",
+          "Rahman Ata Sport Club",
+          "Рахман Ата Спорт Клуб",
+          "rahmanata"
+        ],
         "url": "https://rahmanata.kg/",
         "image": "https://rahmanata.kg/rahman.png",
         "logo": "https://rahmanata.kg/icon-512.png",

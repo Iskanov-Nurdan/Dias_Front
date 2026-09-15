@@ -6,6 +6,17 @@ import { scheduleFromApiResponse, groupScheduleRows, WEEKDAYS } from '../sports-
 import Select from '../../shared/ui/Select';
 
 /**
+ * Название клуба латиницей.
+ *
+ * Не берётся из редактируемого конфига намеренно: это транслитерация имени
+ * бренда, а не редактируемый контент. Нужна, чтобы сайт находился по запросу
+ * «rahman ata» — раньше латиницы не было ни в заголовке, ни в видимом тексте,
+ * и по латинскому написанию поиск сайт не показывал.
+ */
+const LATIN_NAME = 'Rahman Ata';
+const LATIN_TAGLINE = 'Rahman Ata Sport Club';
+
+/**
  * Живой график набора тренеров (CRM) — общая логика для формы записи и карточек секции/тренера.
  * Возрастная категория приходит прямо из графика тренера (задаётся в CRM «Настройка графика»),
  * а не отдельной картой на стороне Taplink — один источник истины, разъехаться не может.
@@ -972,21 +983,76 @@ const TaplinkPage = () => {
    * в мессенджерах) и для самого первого кадра до гидратации; здесь же —
    * уточнение для тех, кто JS выполняет (Google, сам браузер), и восстановление
    * прежнего заголовка при уходе в CRM, чтобы вкладка не осталась "залипшей".
+   *
+   * Латинское написание названия добавлено намеренно: Google берёт заголовок
+   * именно отсюда (он выполняет JS), и раньше в нём не было ни одного
+   * латинского символа — поэтому по запросу «rahman ata» сайт не находился,
+   * хотя по «рахман ата» находился.
    */
   useEffect(() => {
     const prevTitle = document.title;
     const descTag = document.querySelector('meta[name="description"]');
     const prevDesc = descTag?.getAttribute('content') ?? null;
 
-    const title = hero?.title ? `${hero.title} — ${hero.subtitle || 'спортивный клуб'}` : prevTitle;
-    document.title = title;
-    if (descTag && hero?.desc) descTag.setAttribute('content', hero.desc);
+    const city = (footer?.address || '').replace(/^г\.\s*/i, '').trim();
+    const subtitle = hero?.subtitle || 'спортивный клуб';
+    const place = city ? `, ${city}` : '';
+
+    if (hero?.title) {
+      document.title = `${hero.title} — ${subtitle} | ${LATIN_NAME}${place}`;
+      if (descTag && hero.desc) {
+        descTag.setAttribute(
+          'content',
+          `${hero.title} (${LATIN_NAME}) — ${subtitle}${place}. ${hero.desc}`,
+        );
+      }
+    }
 
     return () => {
       document.title = prevTitle;
       if (descTag && prevDesc != null) descTag.setAttribute('content', prevDesc);
     };
-  }, [hero?.title, hero?.subtitle, hero?.desc]);
+  }, [hero?.title, hero?.subtitle, hero?.desc, footer?.address]);
+
+  /**
+   * Микроразметка организации: контакты дописываются в тот же блок ld+json из
+   * index.html, а не дублируются в нём руками. Телефон, адрес и соцсети
+   * редактируются в админке, и вторая их копия в статическом HTML рано или
+   * поздно разошлась бы с настоящей. Google выполняет JS, так что дописанное
+   * здесь он видит.
+   */
+  useEffect(() => {
+    const tag = document.querySelector('script[type="application/ld+json"]');
+    if (!tag) return undefined;
+    const prev = tag.textContent;
+
+    try {
+      const base = JSON.parse(prev);
+      const social = [
+        footer?.instagram && `https://instagram.com/${String(footer.instagram).replace(/^@/, '')}`,
+        footer?.tiktok && `https://tiktok.com/@${String(footer.tiktok).replace(/^@/, '')}`,
+      ].filter(Boolean);
+
+      const enriched = { ...base };
+      if (footer?.phone) enriched.telephone = footer.phone;
+      if (footer?.address) {
+        enriched.address = {
+          '@type': 'PostalAddress',
+          addressLocality: footer.address.replace(/^г\.\s*/i, '').trim(),
+          addressCountry: 'KG',
+        };
+      }
+      if (social.length) enriched.sameAs = social;
+      if (footer?.mapUrl) enriched.hasMap = footer.mapUrl;
+
+      tag.textContent = JSON.stringify(enriched, null, 2);
+    } catch {
+      // Разметку не удалось разобрать — оставляем статическую как есть,
+      // это не повод ронять страницу
+    }
+
+    return () => { tag.textContent = prev; };
+  }, [footer?.phone, footer?.address, footer?.instagram, footer?.tiktok, footer?.mapUrl]);
 
   const [activeSport,   setActiveSport]   = useState(null);
   const [activeTrainer, setActiveTrainer] = useState(null);
@@ -1074,11 +1140,19 @@ const TaplinkPage = () => {
         <div className="tp-hero__glow"  aria-hidden="true" />
         <div className="tp-hero__glow2" aria-hidden="true" />
         <div className="tp-hero__body">
+          {/* Пробел после названия обязателен: без него поисковик склеивает
+              текстовые узлы и в выдаче получалось «Рахман АтаСпорт Клуб».
+              На вёрстку не влияет — заголовок выложен колонкой через flex. */}
           <h1 className="tp-hero__title">
-            {hero.title}
+            {hero.title}{' '}
             <span className="tp-hero__sub-title">{hero.subtitle}</span>
           </h1>
           <p className="tp-hero__desc">{hero.desc}</p>
+          {/* Латинское написание названия — видимым текстом, а не скрытым:
+              спрятанные ради поиска ключевики Google считает спамом. Это
+              единственное место на странице, где бренд написан латиницей,
+              и оно же делает сайт находимым по запросу «rahman ata». */}
+          <p className="tp-hero__latin">{LATIN_TAGLINE}</p>
         </div>
       </section>
 

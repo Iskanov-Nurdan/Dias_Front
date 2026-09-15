@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Menu, ChevronLeft, ChevronRight, X,
@@ -55,6 +55,54 @@ const MainLayout = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [theme, setTheme] = useState(getInitialTheme);
+
+  /**
+   * «Подглядывание»: свёрнутый сайдбар при наведении/фокусе временно
+   * раскрывается поверх страницы (не раздвигая её — сайдбар уходит в
+   * position: fixed, сетка контента остаётся узкой), а при уходе курсора —
+   * сворачивается обратно. Это отдельное, не сохраняемое состояние поверх
+   * закреплённого выбора пользователя (sidebarCollapsed из localStorage):
+   * если сайдбар закреплён открытым кнопкой-шевроном, подглядывание не
+   * участвует вовсе — сайдбар и так уже полностью развёрнут в сетке.
+   */
+  const [sidebarPeek, setSidebarPeek] = useState(false);
+  const peekCloseTimerRef = useRef(null);
+
+  const clearPeekCloseTimer = () => {
+    if (peekCloseTimerRef.current) {
+      clearTimeout(peekCloseTimerRef.current);
+      peekCloseTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => () => clearPeekCloseTimer(), []);
+
+  // На мобильном курсора нет — там своё выезжающее меню (mobileMenuOpen),
+  // подглядывание туда не подключается вовсе
+  const openSidebarPeek = () => {
+    if (isMobile) return;
+    clearPeekCloseTimer();
+    setSidebarPeek(true);
+  };
+
+  // Небольшая задержка на закрытие: иначе сайдбар мигает, если курсор
+  // на мгновение задел край при движении мимо, а не зашёл специально
+  const scheduleSidebarPeekClose = () => {
+    if (isMobile) return;
+    clearPeekCloseTimer();
+    peekCloseTimerRef.current = setTimeout(() => setSidebarPeek(false), 220);
+  };
+
+  // Клавиатурная навигация (Tab) должна раскрывать сайдбар так же, как
+  // наведение мышью — иначе без мыши подписи пунктов меню не увидеть.
+  // relatedTarget проверяем, чтобы не закрывать сайдбар при переходе фокуса
+  // с одной кнопки на другую внутри него самого.
+  const handleSidebarBlur = (e) => {
+    if (e.currentTarget.contains(e.relatedTarget)) return;
+    scheduleSidebarPeekClose();
+  };
+
+  const sidebarVisuallyExpanded = !sidebarCollapsed || (sidebarPeek && !isMobile);
 
   useEffect(() => {
     const mq = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`);
@@ -129,7 +177,7 @@ const MainLayout = () => {
   })).filter((g) => g.pages.length > 0);
 
   return (
-    <div className={`main-layout ${sidebarCollapsed ? 'main-layout--sidebar-collapsed' : ''} ${mobileMenuOpen ? 'main-layout--mobile-menu-open' : ''}`}>
+    <div className={`main-layout ${sidebarCollapsed ? 'main-layout--sidebar-collapsed' : ''} ${mobileMenuOpen ? 'main-layout--mobile-menu-open' : ''} ${sidebarPeek && !isMobile ? 'main-layout--sidebar-peek' : ''}`}>
       {isMobile && mobileMenuOpen && (
         <div className="main-layout__mobile-overlay" onClick={toggleMobileMenu} aria-hidden="false" />
       )}
@@ -169,7 +217,13 @@ const MainLayout = () => {
           </button>
         </div>
       </header>
-      <aside className="main-layout__sidebar">
+      <aside
+        className="main-layout__sidebar"
+        onMouseEnter={openSidebarPeek}
+        onMouseLeave={scheduleSidebarPeekClose}
+        onFocus={openSidebarPeek}
+        onBlur={handleSidebarBlur}
+      >
         <div className="main-layout__sidebar-logo">
           <img src={`${process.env.PUBLIC_URL || ''}/rahman.png`} alt="Рахман Ата" />
         </div>
@@ -204,7 +258,7 @@ const MainLayout = () => {
             <span className="main-layout__sidebar-user-avatar" aria-hidden>
               <User size={ICON_SIZE_SM} />
             </span>
-            {!sidebarCollapsed && (
+            {sidebarVisuallyExpanded && (
               <div className="main-layout__sidebar-user-info">
                 <span className="main-layout__sidebar-user-name">{user?.fio || user?.login || ''}</span>
                 <span className="main-layout__sidebar-user-role">{user?.roleName || ''}</span>

@@ -214,7 +214,7 @@
     overflow-x: hidden;
     overflow-y: hidden;
     @include mixins.scrollbar-sidebar;
-    transition: transform var(--transition-smooth);
+    transition: transform var(--transition-smooth), width var(--transition-smooth), box-shadow var(--transition-smooth);
 
     @include mixins.mobile {
       position: fixed;
@@ -230,6 +230,78 @@
       overflow-y: auto;
       overflow-x: hidden;
       box-shadow: var(--shadow-xl);
+    }
+  }
+
+  // —— Подглядывание: свёрнутый сайдбар при наведении/фокусе временно ——
+  // раскрывается поверх страницы, а не раздвигает её. position: fixed —
+  // единственный способ визуально выйти за пределы узкой колонки грида,
+  // не трогая ширину самой колонки: контент справа не двигается ни на
+  // пиксель, пока курсор гуляет по сайдбару.
+  &--sidebar-peek.main-layout--sidebar-collapsed &__sidebar {
+    @include mixins.desktop-only {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: var(--sidebar-width);
+      height: 100vh;
+      z-index: 210; // выше липких шапок страниц (--z-sticky), ниже модалок/тостов
+      box-shadow: var(--shadow-xl);
+      overflow-y: auto;
+    }
+  }
+
+  // Внутри подглядывающего сайдбара всё должно выглядеть как в обычном
+  // развёрнутом виде — те же самые правила, что отменяют компактную
+  // раскладку свёрнутого состояния (см. ниже по файлу), но с более
+  // специфичным селектором из двух классов, поэтому побеждают их.
+  @include mixins.desktop-only {
+    &--sidebar-peek.main-layout--sidebar-collapsed &__nav-label {
+      width: auto;
+      overflow: visible;
+      opacity: 1;
+      padding: 0;
+      margin: 0;
+      position: static;
+      pointer-events: auto;
+    }
+
+    &--sidebar-peek.main-layout--sidebar-collapsed &__nav-item {
+      padding: 0 12px;
+      justify-content: flex-start;
+      height: auto;
+      min-height: 42px;
+    }
+
+    &--sidebar-peek.main-layout--sidebar-collapsed &__nav-item--active::before {
+      height: 24px;
+    }
+
+    &--sidebar-peek.main-layout--sidebar-collapsed &__sidebar-logo {
+      padding: 16px var(--space-3) 12px;
+
+      img { height: 80px; }
+    }
+
+    &--sidebar-peek.main-layout--sidebar-collapsed &__sidebar-footer {
+      padding: 10px var(--space-3) 12px;
+    }
+
+    &--sidebar-peek.main-layout--sidebar-collapsed &__sidebar-user-card {
+      flex-direction: row;
+      justify-content: flex-start;
+      gap: 10px;
+      padding: 8px 10px;
+      min-height: 52px;
+    }
+
+    &--sidebar-peek.main-layout--sidebar-collapsed &__sidebar-user-avatar {
+      width: 36px;
+      height: 36px;
+    }
+
+    &--sidebar-peek.main-layout--sidebar-collapsed &__sidebar-logout {
+      margin-left: auto;
     }
   }
 

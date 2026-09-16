@@ -123,6 +123,35 @@ const AnalyticsPage = () => {
   const expense = s.expense ?? 0;
   const profit = s.profit;
   const paidCount = s.paidCount ?? null;
+
+  // ── Разбивка «Приход» по суммам ──────────────────────────────────────────
+  // Карточка «Приход» — одно число, посчитать в уме нельзя, сходится оно
+  // с ожиданием (кол-во клиентов × типичный чек) или нет. Income-detail
+  // уже присылает построчно оплативших с их суммой — этого достаточно,
+  // чтобы сгруппировать по сумме без похода на бэкенд: сколько заплатили
+  // ровно 2800, сколько 3500 и т.д. «Не оплатили» — просто разница между
+  // clientsCount и числом строк оплативших (обе цифры уже есть в сводке);
+  // «0 сом» — оплативший со скидкой 100%, отдельно от обычных сумм, чтобы
+  // не выглядел как ещё один тариф.
+  const incomeDetailItems = detailModal === 'income' ? (detailData?.items ?? detailData?.records ?? detailData?.incomeItems ?? []) : [];
+  const incomeBreakdown = useMemo(() => {
+    const byAmount = new Map();
+    let zeroCount = 0;
+    incomeDetailItems.forEach((row) => {
+      const amt = Math.round((Number(row.amount) || 0) * 100) / 100;
+      if (amt <= 0) { zeroCount += 1; return; }
+      byAmount.set(amt, (byAmount.get(amt) || 0) + 1);
+    });
+    const rows = Array.from(byAmount.entries())
+      .map(([amount, count]) => ({ amount, count }))
+      .sort((a, b) => b.count - a.count || b.amount - a.amount);
+    const paidRows = incomeDetailItems.length;
+    const clientsTotal = Number(s.clientsCount) || 0;
+    const notPaidCount = Math.max(0, clientsTotal - paidRows);
+    const maxCount = Math.max(1, ...rows.map((r) => r.count), zeroCount, notPaidCount);
+    return { rows, zeroCount, notPaidCount, paidRows, clientsTotal, maxCount };
+  }, [incomeDetailItems, s.clientsCount]);
+
   const sportItems = clientsBySport?.items ?? [];
   const dailyItems = incomeExpenseDaily?.items ?? [];
 
@@ -816,6 +845,44 @@ const AnalyticsPage = () => {
                         </tbody>
                       </table>
                     </div>
+                    {(incomeBreakdown.rows.length > 0 || incomeBreakdown.zeroCount > 0 || incomeBreakdown.notPaidCount > 0) && (
+                      <div className="analytics-page__income-breakdown">
+                        <h4 className="analytics-page__leads-subtitle">Разбивка по суммам — кто сколько заплатил</h4>
+                        <div className="analytics-page__bars">
+                          {incomeBreakdown.rows.map((r) => (
+                            <div key={r.amount} className="analytics-page__bar-row analytics-page__bar-row--readonly">
+                              <span className="analytics-page__bar-label">{formatMoney(r.amount)}</span>
+                              <div className="analytics-page__bar-wrap">
+                                <div className="analytics-page__bar" style={{ width: `${(r.count / incomeBreakdown.maxCount) * 100}%` }} />
+                              </div>
+                              <span className="analytics-page__bar-value">{r.count} {r.count === 1 ? 'клиент' : 'клиентов'}</span>
+                            </div>
+                          ))}
+                          {incomeBreakdown.zeroCount > 0 && (
+                            <div className="analytics-page__bar-row analytics-page__bar-row--readonly">
+                              <span className="analytics-page__bar-label">0 сом (скидка 100%)</span>
+                              <div className="analytics-page__bar-wrap">
+                                <div className="analytics-page__bar analytics-page__bar--gray" style={{ width: `${(incomeBreakdown.zeroCount / incomeBreakdown.maxCount) * 100}%` }} />
+                              </div>
+                              <span className="analytics-page__bar-value">{incomeBreakdown.zeroCount}</span>
+                            </div>
+                          )}
+                          {incomeBreakdown.notPaidCount > 0 && (
+                            <div className="analytics-page__bar-row analytics-page__bar-row--readonly">
+                              <span className="analytics-page__bar-label">Не оплатили</span>
+                              <div className="analytics-page__bar-wrap">
+                                <div className="analytics-page__bar analytics-page__bar--red" style={{ width: `${(incomeBreakdown.notPaidCount / incomeBreakdown.maxCount) * 100}%` }} />
+                              </div>
+                              <span className="analytics-page__bar-value">{incomeBreakdown.notPaidCount}</span>
+                            </div>
+                          )}
+                        </div>
+                        <p className="analytics-page__income-breakdown-hint">
+                          {incomeBreakdown.paidRows} оплативших из {incomeBreakdown.clientsTotal} записей за месяц.
+                          Сумма всех строк выше даёт ровно {formatMoney(totalFromApi)} — то же число, что в карточке «Приход».
+                        </p>
+                      </div>
+                    )}
                     <div className="analytics-page__modal-footer">
                       <div className="analytics-page__modal-total-info">
                         <span className="analytics-page__modal-total-label">Итого приход</span>

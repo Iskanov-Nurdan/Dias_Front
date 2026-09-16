@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Calendar, CalendarDays, CalendarClock, LayoutGrid, BarChart3, Inbox } from 'lucide-react';
+import {
+  Calendar, CalendarDays, CalendarClock, LayoutGrid, BarChart3, Inbox,
+  TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight,
+  Users, ShoppingBag, Layers, UserX, X,
+} from 'lucide-react';
 import { fetchIncomeDetail, fetchExpenseDetail, fetchProfitDetail } from './api';
 import { ErrorState, Select, DonutChart, Sparkline, Skeleton, SkeletonTable, FilterBar, EmptyState } from '../../shared/ui';
 import { MONTHS, MONTHS_SHORT, DONUT_COLORS, formatMoney, STATS_YEARS } from '../../shared/constants/common';
@@ -126,31 +130,22 @@ const AnalyticsPage = () => {
 
   // ── Разбивка «Приход» по суммам ──────────────────────────────────────────
   // Карточка «Приход» — одно число, посчитать в уме нельзя, сходится оно
-  // с ожиданием (кол-во клиентов × типичный чек) или нет. Income-detail
-  // уже присылает построчно оплативших с их суммой — этого достаточно,
-  // чтобы сгруппировать по сумме без похода на бэкенд: сколько заплатили
-  // ровно 2800, сколько 3500 и т.д. «Не оплатили» — просто разница между
-  // clientsCount и числом строк оплативших (обе цифры уже есть в сводке);
-  // «0 сом» — оплативший со скидкой 100%, отдельно от обычных сумм, чтобы
-  // не выглядел как ещё один тариф.
-  const incomeDetailItems = detailModal === 'income' ? (detailData?.items ?? detailData?.records ?? detailData?.incomeItems ?? []) : [];
+  // с ожиданием (кол-во клиентов × типичный чек) или нет. Группировка по
+  // сумме, подытоги и сумма долга неоплативших считаются на бэкенде за один
+  // проход по тому же queryset, что и income-detail (см. AnalyticsIncomeDetailView) —
+  // фронт только раскладывает уже готовые числа по вёрстке, ничего не суммирует сам.
   const incomeBreakdown = useMemo(() => {
-    const byAmount = new Map();
-    let zeroCount = 0;
-    incomeDetailItems.forEach((row) => {
-      const amt = Math.round((Number(row.amount) || 0) * 100) / 100;
-      if (amt <= 0) { zeroCount += 1; return; }
-      byAmount.set(amt, (byAmount.get(amt) || 0) + 1);
-    });
-    const rows = Array.from(byAmount.entries())
-      .map(([amount, count]) => ({ amount, count }))
-      .sort((a, b) => b.count - a.count || b.amount - a.amount);
-    const paidRows = incomeDetailItems.length;
-    const clientsTotal = Number(s.clientsCount) || 0;
-    const notPaidCount = Math.max(0, clientsTotal - paidRows);
-    const maxCount = Math.max(1, ...rows.map((r) => r.count), zeroCount, notPaidCount);
-    return { rows, zeroCount, notPaidCount, paidRows, clientsTotal, maxCount };
-  }, [incomeDetailItems, s.clientsCount]);
+    const b = detailModal === 'income' ? detailData?.breakdown : null;
+    const rows = Array.isArray(b?.byAmount) ? b.byAmount : [];
+    const unpaidCount = Number(b?.unpaidCount) || 0;
+    const unpaidDebtTotal = Number(b?.unpaidDebtTotal) || 0;
+    const paidRows = rows.reduce((sum, r) => sum + (Number(r.count) || 0), 0);
+    // Ширина полоски пропорциональна деньгам, а не количеству людей: строка
+    // «1 клиент × 4000» и «233 клиента × 2500» иначе выглядели бы как равно
+    // значимые события, хотя вторая формирует почти всю сумму «Приход».
+    const maxSubtotal = Math.max(1, unpaidDebtTotal, ...rows.map((r) => Number(r.subtotal) || 0));
+    return { rows, unpaidCount, unpaidDebtTotal, paidRows, maxSubtotal };
+  }, [detailModal, detailData]);
 
   const sportItems = clientsBySport?.items ?? [];
   const dailyItems = incomeExpenseDaily?.items ?? [];
@@ -257,6 +252,19 @@ const AnalyticsPage = () => {
       <path d="M22 12A10 10 0 0 0 12 2v10z" />
     </svg>
   );
+
+  // ── Модалка детализации: заголовок и цвет зависят от типа ────────────────
+  // Раньше три модалки различались только текстом заголовка — по одной иконке
+  // и оттенку сразу видно, что открыто, ещё до чтения текста.
+  const MODAL_META = {
+    income: { title: 'Детализация приходов', Icon: TrendingUp, tint: 'income' },
+    expense: { title: 'Детализация расходов', Icon: TrendingDown, tint: 'expense' },
+    profit: { title: 'Детализация прибыли', Icon: Wallet, tint: 'profit' },
+  };
+  const modalMeta = detailModal ? MODAL_META[detailModal] : null;
+  const modalPeriodLabel = queryState.month
+    ? `${MONTHS[Number(queryState.month)]}${queryState.day ? ` ${queryState.day}` : ''}, ${queryState.year}`
+    : `${queryState.year} год`;
 
   return (
     <div className="analytics-page">
@@ -816,70 +824,93 @@ const AnalyticsPage = () => {
         <div className="analytics-page__modal" onClick={() => setDetailModal(null)}>
           <div className="analytics-page__modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="analytics-page__modal-header">
-              <h3 className="analytics-page__modal-title">
-                {detailModal === 'income' ? 'Детализация приходов' : detailModal === 'expense' ? 'Детализация расходов' : 'Детализация прибыли'}
-              </h3>
+              <span className={`analytics-page__modal-icon analytics-page__modal-icon--${modalMeta.tint}`} aria-hidden>
+                <modalMeta.Icon size={19} strokeWidth={2.25} />
+              </span>
+              <div className="analytics-page__modal-heading">
+                <h3 className="analytics-page__modal-title">{modalMeta.title}</h3>
+                <span className="analytics-page__modal-subtitle">{modalPeriodLabel}</span>
+              </div>
               <button type="button" className="analytics-page__modal-x" onClick={() => setDetailModal(null)} aria-label="Закрыть">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                <X size={18} strokeWidth={2.25} />
               </button>
             </div>
-            {detailLoading && <div className="analytics-page__modal-loading">Загрузка детализации…</div>}
+            {detailLoading && (
+              <div className="analytics-page__modal-table-wrap analytics-page__modal-loading-wrap">
+                <SkeletonTable rows={5} cols={3} />
+              </div>
+            )}
             {!detailLoading && detailModal === 'income' && (() => {
               const incomeItems = detailData?.items ?? detailData?.records ?? detailData?.incomeItems ?? [];
               const hasItems = Array.isArray(incomeItems) && incomeItems.length > 0;
               const totalFromApi = detailData?.total ?? detailData?.incomeTotal;
               if (hasItems) {
+                const totalRecords = incomeBreakdown.paidRows + incomeBreakdown.unpaidCount;
                 return (
                   <>
                     <div className="ui-list__table-wrap analytics-page__table-wrap analytics-page__modal-table-wrap">
                       <table className="ui-list__table analytics-page__table">
-                        <thead><tr><th>Источник</th><th>Описание</th><th>Сумма</th></tr></thead>
+                        <thead><tr><th>Источник</th><th>Описание</th><th className="analytics-page__col-amount">Сумма</th></tr></thead>
                         <tbody>
-                          {incomeItems.map((row, i) => (
-                            <tr key={i}>
-                              <td>{row.sourceLabel ?? (row.source === 'clients' ? 'Клиенты' : row.source === 'sales' ? 'Продажи' : row.source) ?? '—'}</td>
-                              <td>{row.description ?? '—'}</td>
-                              <td className="analytics-page__table-td--positive">{formatMoney(row.amount)}</td>
-                            </tr>
-                          ))}
+                          {incomeItems.map((row, i) => {
+                            const isSales = row.source === 'sales';
+                            return (
+                              <tr key={i}>
+                                <td>
+                                  <span className={`ui-pill ${isSales ? 'ui-pill--info' : 'ui-pill--primary'}`}>
+                                    {isSales ? <ShoppingBag size={12} aria-hidden /> : <Users size={12} aria-hidden />}
+                                    {row.sourceLabel ?? (isSales ? 'Продажи' : 'Клиенты')}
+                                  </span>
+                                </td>
+                                <td>{row.description ?? '—'}</td>
+                                <td className="analytics-page__col-amount analytics-page__table-td--positive">
+                                  <ArrowUpRight size={13} aria-hidden />{formatMoney(row.amount)}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
-                    {(incomeBreakdown.rows.length > 0 || incomeBreakdown.zeroCount > 0 || incomeBreakdown.notPaidCount > 0) && (
+                    {(incomeBreakdown.rows.length > 0 || incomeBreakdown.unpaidCount > 0) && (
                       <div className="analytics-page__income-breakdown">
-                        <h4 className="analytics-page__leads-subtitle">Разбивка по суммам — кто сколько заплатил</h4>
-                        <div className="analytics-page__bars">
-                          {incomeBreakdown.rows.map((r) => (
-                            <div key={r.amount} className="analytics-page__bar-row analytics-page__bar-row--readonly">
-                              <span className="analytics-page__bar-label">{formatMoney(r.amount)}</span>
-                              <div className="analytics-page__bar-wrap">
-                                <div className="analytics-page__bar" style={{ width: `${(r.count / incomeBreakdown.maxCount) * 100}%` }} />
+                        <h4 className="analytics-page__income-breakdown-title">
+                          <Layers size={14} aria-hidden /> Разбивка по суммам
+                          <span className="analytics-page__income-breakdown-count">{incomeBreakdown.rows.length} {incomeBreakdown.rows.length === 1 ? 'сумма' : 'сумм'}</span>
+                        </h4>
+                        <div className="analytics-page__stat-rows">
+                          {incomeBreakdown.rows.map((r) => {
+                            const isZero = Number(r.amount) === 0;
+                            return (
+                              <div key={r.amount} className={`analytics-page__stat-row${isZero ? ' analytics-page__stat-row--muted' : ''}`}>
+                                <span className="analytics-page__stat-row-fill" style={{ width: `${(r.subtotal / incomeBreakdown.maxSubtotal) * 100}%` }} aria-hidden />
+                                <span className="analytics-page__stat-row-amount">
+                                  {isZero ? '0 сом · скидка 100%' : formatMoney(r.amount)}
+                                </span>
+                                <span className="analytics-page__stat-row-count">× {r.count}</span>
+                                <span className="analytics-page__stat-row-subtotal">{formatMoney(r.subtotal)}</span>
                               </div>
-                              <span className="analytics-page__bar-value">{r.count} {r.count === 1 ? 'клиент' : 'клиентов'}</span>
-                            </div>
-                          ))}
-                          {incomeBreakdown.zeroCount > 0 && (
-                            <div className="analytics-page__bar-row analytics-page__bar-row--readonly">
-                              <span className="analytics-page__bar-label">0 сом (скидка 100%)</span>
-                              <div className="analytics-page__bar-wrap">
-                                <div className="analytics-page__bar analytics-page__bar--gray" style={{ width: `${(incomeBreakdown.zeroCount / incomeBreakdown.maxCount) * 100}%` }} />
-                              </div>
-                              <span className="analytics-page__bar-value">{incomeBreakdown.zeroCount}</span>
-                            </div>
-                          )}
-                          {incomeBreakdown.notPaidCount > 0 && (
-                            <div className="analytics-page__bar-row analytics-page__bar-row--readonly">
-                              <span className="analytics-page__bar-label">Не оплатили</span>
-                              <div className="analytics-page__bar-wrap">
-                                <div className="analytics-page__bar analytics-page__bar--red" style={{ width: `${(incomeBreakdown.notPaidCount / incomeBreakdown.maxCount) * 100}%` }} />
-                              </div>
-                              <span className="analytics-page__bar-value">{incomeBreakdown.notPaidCount}</span>
+                            );
+                          })}
+                          {incomeBreakdown.unpaidCount > 0 && (
+                            <div className="analytics-page__stat-row analytics-page__stat-row--unpaid">
+                              <span className="analytics-page__stat-row-fill analytics-page__stat-row-fill--danger" style={{ width: `${(incomeBreakdown.unpaidDebtTotal / incomeBreakdown.maxSubtotal) * 100}%` }} aria-hidden />
+                              <span className="analytics-page__stat-row-amount">
+                                <UserX size={13} aria-hidden /> Не оплатили
+                              </span>
+                              <span className="analytics-page__stat-row-count">× {incomeBreakdown.unpaidCount}</span>
+                              <span className="analytics-page__stat-row-subtotal analytics-page__stat-row-subtotal--danger">
+                                {incomeBreakdown.unpaidDebtTotal > 0 ? `−${formatMoney(incomeBreakdown.unpaidDebtTotal)}` : '—'}
+                              </span>
                             </div>
                           )}
                         </div>
                         <p className="analytics-page__income-breakdown-hint">
-                          {incomeBreakdown.paidRows} оплативших из {incomeBreakdown.clientsTotal} записей за месяц.
-                          Сумма всех строк выше даёт ровно {formatMoney(totalFromApi)} — то же число, что в карточке «Приход».
+                          <strong>{incomeBreakdown.paidRows}</strong> оплатили из <strong>{totalRecords}</strong> записей за период — сумма строк выше даёт ровно {formatMoney(totalFromApi)},
+                          то же число, что в карточке «Приход».
+                          {incomeBreakdown.unpaidDebtTotal > 0 && (
+                            <> Если бы все закрыли долг, приход был бы на {formatMoney(incomeBreakdown.unpaidDebtTotal)} больше.</>
+                          )}
                         </p>
                       </div>
                     )}
@@ -927,14 +958,16 @@ const AnalyticsPage = () => {
                 <>
                   <div className="ui-list__table-wrap analytics-page__table-wrap analytics-page__modal-table-wrap">
                     <table className="ui-list__table analytics-page__table">
-                      <thead><tr><th>Категория</th><th>Название</th><th>Дата</th><th>Сумма</th></tr></thead>
+                      <thead><tr><th>Категория</th><th>Название</th><th>Дата</th><th className="analytics-page__col-amount">Сумма</th></tr></thead>
                       <tbody>
                         {expenseItems.map((row, i) => (
                           <tr key={i}>
-                            <td>{row.categoryName ?? '—'}</td>
+                            <td><span className="ui-pill ui-pill--danger">{row.categoryName ?? '—'}</span></td>
                             <td>{getExpenseName(row)}</td>
-                            <td>{row.date ?? '—'}</td>
-                            <td className="analytics-page__table-td--negative">{formatMoney(row.amount)}</td>
+                            <td className="analytics-page__col-date">{row.date ?? '—'}</td>
+                            <td className="analytics-page__col-amount analytics-page__table-td--negative">
+                              <ArrowDownRight size={13} aria-hidden />{formatMoney(row.amount)}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -954,15 +987,20 @@ const AnalyticsPage = () => {
               <>
                 <div className="ui-list__table-wrap analytics-page__table-wrap analytics-page__modal-table-wrap">
                   <table className="ui-list__table analytics-page__table">
-                    <thead><tr><th>Тип</th><th>Описание</th><th>Сумма</th></tr></thead>
+                    <thead><tr><th>Тип</th><th>Описание</th><th className="analytics-page__col-amount">Сумма</th></tr></thead>
                     <tbody>
-                      {detailData.items.map((row, i) => (
-                        <tr key={i}>
-                          <td>{row.typeLabel ?? row.type ?? '—'}</td>
-                          <td>{row.description ?? '—'}</td>
-                          <td className={(row.type ?? '').toLowerCase() === 'expense' ? 'analytics-page__table-td--negative' : 'analytics-page__table-td--positive'}>{formatMoney(row.amount)}</td>
-                        </tr>
-                      ))}
+                      {detailData.items.map((row, i) => {
+                        const isExpense = (row.type ?? '').toLowerCase() === 'expense';
+                        return (
+                          <tr key={i}>
+                            <td><span className={`ui-pill ${isExpense ? 'ui-pill--danger' : 'ui-pill--primary'}`}>{row.typeLabel ?? row.type ?? '—'}</span></td>
+                            <td>{row.description ?? '—'}</td>
+                            <td className={`analytics-page__col-amount ${isExpense ? 'analytics-page__table-td--negative' : 'analytics-page__table-td--positive'}`}>
+                              {isExpense ? <ArrowDownRight size={13} aria-hidden /> : <ArrowUpRight size={13} aria-hidden />}{formatMoney(row.amount)}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

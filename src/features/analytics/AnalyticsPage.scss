@@ -1464,62 +1464,111 @@
 .analytics-page__modal {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(8, 10, 16, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(8px);
   padding: 20px;
+  animation: analytics-modal-backdrop-in 0.18s ease;
 }
 
 .analytics-page__modal-content {
   background: var(--color-surface);
-  border-radius: 20px;
-  max-width: 660px;
+  border-radius: var(--radius-2xl);
+  max-width: 680px;
   width: 100%;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.22), 0 0 0 1px var(--color-border);
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.28), 0 0 0 1px var(--color-border);
   overflow: hidden;
+  animation: analytics-modal-panel-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes analytics-modal-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes analytics-modal-panel-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .analytics-page__modal-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 22px 24px 18px;
+  gap: 14px;
+  padding: 20px 24px;
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
+  background: linear-gradient(180deg, var(--color-surface-secondary), var(--color-surface) 90%);
+}
+
+// Цветная иконка-чип слева от заголовка — сразу маркирует тип модалки
+// (приход/расход/прибыль), без чтения текста
+.analytics-page__modal-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+
+  &--income { background: var(--color-success-soft); color: var(--color-success); }
+  &--expense { background: var(--color-danger-soft); color: var(--color-danger); }
+  &--profit { background: var(--color-primary-soft); color: var(--color-primary); }
+}
+
+.analytics-page__modal-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
 }
 
 .analytics-page__modal-title {
   margin: 0;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--color-text);
   letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.analytics-page__modal-subtitle {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--color-text-muted);
 }
 
 .analytics-page__modal-x {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.15s, color 0.15s;
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
 
   &:hover {
-    background: var(--color-bg);
-    color: var(--color-text);
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+    transform: rotate(90deg);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
   }
 }
 
@@ -1533,51 +1582,177 @@
   border-radius: 0;
   border: none;
   border-bottom: 1px solid var(--color-border);
+  padding: 10px 14px;
   @include mixins.scrollbar;
+}
+
+.analytics-page__modal-loading-wrap {
+  flex: 0 1 auto;
+  padding: 14px 24px;
+}
+
+.analytics-page__col-amount {
+  text-align: right;
+  white-space: nowrap;
+}
+
+td.analytics-page__col-amount {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  height: 100%;
+  font-variant-numeric: tabular-nums;
+
+  svg { flex-shrink: 0; opacity: 0.7; }
+}
+
+.analytics-page__col-date {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.analytics-page__table .ui-pill {
+  gap: 5px;
+
+  svg { flex-shrink: 0; }
 }
 
 // ── Разбивка прихода по суммам (в модалке «Приход») ──────────────────────
-// Стоит между списком строк и итогом. flex-shrink: 0 — эта часть не сжимается
-// ни при каких условиях, скроллится только список строк выше (у него уже
-// flex: 1 + overflow-y: auto); сама разбивка ограничена своей высотой и,
-// если сумм много, скроллится отдельно — иначе на коротком модальном окне
-// она вытолкнула бы кнопку «Закрыть» за пределы экрана.
+// Отдельная карточка между списком строк и итогом. flex-shrink: 0 — не
+// сжимается ни при каких условиях, скроллится только список строк выше
+// (у него уже flex: 1 + overflow-y: auto); сама разбивка ограничена своей
+// высотой и, если сумм много, скроллится отдельно — иначе на коротком
+// модальном окне она вытолкнула бы кнопку «Закрыть» за пределы экрана.
 .analytics-page__income-breakdown {
   flex-shrink: 0;
-  max-height: 220px;
+  max-height: 260px;
   overflow-y: auto;
   padding: 16px 24px;
   border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
   @include mixins.scrollbar;
 }
 
-.analytics-page__income-breakdown .analytics-page__leads-subtitle {
-  margin-bottom: 10px;
-}
-
-.analytics-page__income-breakdown .analytics-page__bars {
-  gap: 6px;
-}
-
-.analytics-page__income-breakdown .analytics-page__bar-row {
-  padding: 4px 0;
-  gap: 12px;
-}
-
-.analytics-page__income-breakdown .analytics-page__bar-wrap {
-  height: 22px;
-}
-
-.analytics-page__income-breakdown .analytics-page__bar-label {
-  min-width: 96px;
+.analytics-page__income-breakdown-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 10px;
   font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+
+  svg { color: var(--color-primary); opacity: 0.85; }
+}
+
+.analytics-page__income-breakdown-count {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--color-text-muted);
+}
+
+// Каждая сумма — карточка-строка с денежной полоской-подложкой позади текста
+// (не отдельный тонкий бар): при 1 клиенте из 233 полоска сжимается почти
+// до нуля, но цифры остаются полноразмерным текстом и не исчезают вместе
+// с ней — раньше именно это было причиной «невидимых» строк.
+.analytics-page__stat-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.analytics-page__stat-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+  transition: border-color var(--transition-fast), transform 0.1s ease;
+
+  @media (hover: hover) {
+    &:hover { border-color: var(--color-border-strong); }
+  }
+}
+
+.analytics-page__stat-row-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  min-width: 3px;
+  background: var(--color-success-soft);
+  z-index: 0;
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+
+  &--danger { background: var(--color-danger-soft); }
+}
+
+.analytics-page__stat-row-amount {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-text);
+  white-space: nowrap;
+
+  svg { flex-shrink: 0; opacity: 0.75; }
+}
+
+.analytics-page__stat-row-count {
+  position: relative;
+  z-index: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.analytics-page__stat-row-subtotal {
+  position: relative;
+  z-index: 1;
+  margin-left: auto;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-success);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+
+  &--danger { color: var(--color-danger); }
+}
+
+.analytics-page__stat-row--muted {
+  .analytics-page__stat-row-amount,
+  .analytics-page__stat-row-subtotal { color: var(--color-text-muted); }
+}
+
+.analytics-page__stat-row--unpaid {
+  background: var(--color-danger-soft);
+  border-color: color-mix(in srgb, var(--color-danger) 30%, var(--color-border));
+
+  .analytics-page__stat-row-amount { color: var(--color-danger); }
 }
 
 .analytics-page__income-breakdown-hint {
   margin: 12px 0 0;
   font-size: 12.5px;
-  line-height: 1.5;
+  line-height: 1.55;
   color: var(--color-text-muted);
+
+  strong { color: var(--color-text); font-weight: 700; }
 }
 
 .analytics-page__modal-footer {
@@ -1585,30 +1760,33 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px 24px;
+  padding: 18px 24px;
   flex-shrink: 0;
   flex-wrap: wrap;
+  background: var(--color-surface-secondary);
+  border-top: 1px solid var(--color-border);
 }
 
 .analytics-page__modal-total-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .analytics-page__modal-total-label {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   color: var(--color-text-muted);
 }
 
 .analytics-page__modal-total-value {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 27px;
+  font-weight: 800;
   letter-spacing: -0.02em;
-  line-height: 1.2;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
 
   &--income { color: var(--color-success); }
   &--expense { color: var(--color-danger); }
@@ -1654,21 +1832,34 @@
 }
 
 .analytics-page__modal-close {
-  padding: 10px 22px;
-  background: transparent;
-  color: var(--color-text-muted);
-  border: 1.5px solid var(--color-border);
-  border-radius: 10px;
+  padding: 11px 24px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  box-shadow: var(--shadow-xs);
+  transition: background var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast), transform 0.1s ease, box-shadow var(--transition-fast);
 
-  &:hover {
-    background: var(--color-bg);
-    color: var(--color-text);
-    border-color: var(--color-text-muted);
+  @media (hover: hover) {
+    &:hover {
+      background: var(--color-text);
+      color: var(--color-surface);
+      border-color: var(--color-text);
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
+    }
+  }
+
+  &:active { transform: translateY(0); }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
   }
 }
 
@@ -1717,31 +1908,6 @@
       justify-content: center;
       padding: 13px;
     }
-  }
-}
-
-.analytics-page__modal-loading {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: var(--space-4) 0;
-  font-size: 14px;
-  color: var(--color-text-muted);
-}
-
-.analytics-page__modal-loading::before {
-  content: '';
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--color-border);
-  border-top-color: var(--color-primary);
-  border-radius: 50%;
-  animation: analytics-modal-spin 0.7s linear infinite;
-}
-
-@keyframes analytics-modal-spin {
-  to {
-    transform: rotate(360deg);
   }
 }
 

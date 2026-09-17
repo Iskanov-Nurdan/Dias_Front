@@ -130,15 +130,21 @@
   padding: 24px 32px;
 
   @media (max-width: 960px) {
+    // flex-direction: column — иначе flex: 1 у карточки ниже растягивал бы
+    // её по горизонтали (главная ось row), а не по вертикали, и карточка
+    // оставалась высотой ровно в свой контент — под ней оставалась полоса
+    // тёмного фона .login-page, которую было не с чем спутать, кроме как
+    // с «зачем-то ещё один фон после нашего пейзажа».
+    flex-direction: column;
     flex: 1;
     min-height: 0;
     // Отрицательный отступ — карточка чуть заходит на нижний край шапки
     // (тот самый приём «цветная подложка + бумажный лист внахлёст»,
     // которым сейчас пользуются почти все мобильные экраны входа)
     margin-top: -28px;
-    padding: 0 20px max(20px, env(safe-area-inset-bottom, 0px));
-    align-items: flex-start;
-    justify-content: center;
+    padding: 0 20px;
+    align-items: center;
+    justify-content: flex-start;
   }
 }
 
@@ -191,8 +197,12 @@
 .login-page__form-header {
   margin-bottom: var(--space-8);
 
+  // На планшете/телефоне заголовок «Вход» и подпись под ним повторяют то,
+  // что уже сказано в шапке-герое сверху («Рахман Ата · вход для
+  // сотрудников») — на десктопе, где у левой панели нет текста вообще,
+  // это единственная подпись, и её не трогаем.
   @media (max-width: 960px) {
-    margin-bottom: var(--space-6);
+    display: none;
   }
 }
 
@@ -265,6 +275,13 @@
 .login-page__input-icon {
   position: absolute;
   left: 14px;
+  // top: 50% + translateY — без этого абсолютно спозиционированная иконка
+  // не участвует в align-items родителя и прижимается к верхнему краю,
+  // из-за чего съезжала на текст плейсхолдера, а не стояла на одной
+  // высоте с ним. Именно это и выглядело как «всё сливается».
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
   color: var(--color-text-muted);
   pointer-events: none;
   transition: color var(--transition-fast);
@@ -306,12 +323,16 @@
     font-weight: 400;
   }
 
+  // !important — иначе глобальный сброс input:not([type=checkbox])... в
+  // shared/styles/index.scss (специфичность выше одного класса-модификатора)
+  // перебивает padding и снова прижимает текст поверх иконки. Та же
+  // причина, по которой раньше «съезжал» PhoneInput.
   &--icon {
-    padding-left: 42px;
+    padding-left: 42px !important;
   }
 
   &--password {
-    padding-right: 44px;
+    padding-right: 44px !important;
   }
 }
 

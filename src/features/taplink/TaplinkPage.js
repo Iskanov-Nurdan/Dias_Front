@@ -1168,10 +1168,16 @@ const TaplinkPage = () => {
 
       {/* ── Header ───────────────────────────────── */}
       <header className="tp-header">
+        {/* Иконка клуба — та же, что в favicon и на вкладке браузера: красный
+            круг, белая R, тёмно-синий фон. Раньше здесь стоял большой
+            прямоугольный логотип rahman.png, сплющенный до 38px и прогнанный
+            через brightness(0)/invert(1) «в один цвет» — вместо чёткого герба
+            получался размытый бесцветный контур. Эта иконка изначально
+            квадратная и цветная, фильтр ей не нужен. */}
         <img
-          src="/rahman.png"
+          src="/icon-192.png"
           alt="Рахман Ата"
-          className={`tp-header__logo${!dark ? ' tp-header__logo--day' : ''}`}
+          className="tp-header__logo"
         />
         <div className="tp-header__right">
           <button className="tp-theme-btn" onClick={toggleTheme} aria-label="Сменить тему">

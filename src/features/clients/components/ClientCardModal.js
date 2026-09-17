@@ -37,14 +37,32 @@ const formatDaysRu = (n) => {
 };
 
 const formatTrainingScheduleLabel = (client) => {
+  // Полный список дней (напр. Пн/Ср/Пт) — trainingWeekday сам по себе
+  // помнит только первый день группы (см. ClientTrainingDay на бэкенде),
+  // раньше карточка честно показывала именно эту неполную правду.
+  const rawDays = client?.trainingWeekdays ?? client?.training_weekdays;
   const tw = client?.trainingWeekday ?? client?.training_weekday;
+  const days = Array.isArray(rawDays) && rawDays.length > 0
+    ? rawDays
+    : (tw != null && tw !== '' ? [tw] : []);
   const tf = formatHm(client?.trainingTimeFrom ?? client?.training_time_from);
   const tt = formatHm(client?.trainingTimeTo ?? client?.training_time_to);
-  const hasDay = tw != null && tw !== '';
+  const hasDay = days.length > 0;
   const hasTime = Boolean(tf || tt);
   if (!hasDay && !hasTime) return null;
-  const dayMeta = hasDay ? WEEKDAYS.find((w) => w.weekday === Number(tw)) : null;
-  const dayPart = dayMeta ? dayMeta.label : hasDay ? `День ${tw}` : '';
+  // Один день — полное название («Понедельник»), как и раньше. Несколько —
+  // короткими сокращениями через запятую («Пн, Ср, Пт»): «Понедельник,
+  // Среда, Пятница, 18:00–19:00» не влезало бы в строку карточки.
+  let dayPart = '';
+  if (hasDay) {
+    const metas = days
+      .map((d) => WEEKDAYS.find((w) => w.weekday === Number(d)))
+      .filter(Boolean)
+      .sort((a, b) => a.weekday - b.weekday);
+    if (metas.length === 1) dayPart = metas[0].label;
+    else if (metas.length > 1) dayPart = metas.map((m) => m.short).join(', ');
+    else dayPart = `День ${days[0]}`;
+  }
   let timePart = '';
   if (tf && tt) timePart = `${tf}–${tt}`;
   else if (tf) timePart = `с ${tf}`;

@@ -9,10 +9,17 @@ export function filterClientsByTrainingSlot(clients, weekday, timeFrom, timeTo) 
   if (!Number.isFinite(wd) || wd < 1 || wd > 7 || !tf || !tt) return clients;
 
   return clients.filter((c) => {
-    const cWd = Number(c.trainingWeekday ?? c.training_weekday);
+    // trainingWeekdays — полный список дней клиента (Пн/Ср/Пт и т.п.);
+    // trainingWeekday сам по себе помнит только первый день группы, и
+    // сверка только по нему теряла клиента при клике на «Ср» или «Пт»
+    // в статистике по графику тренеров.
+    const rawDays = c.trainingWeekdays ?? c.training_weekdays;
+    const days = Array.isArray(rawDays) && rawDays.length > 0
+      ? rawDays.map(Number)
+      : [Number(c.trainingWeekday ?? c.training_weekday)];
     const cTf = String(c.trainingTimeFrom ?? c.training_time_from ?? '').slice(0, 5);
     const cTt = String(c.trainingTimeTo ?? c.training_time_to ?? '').slice(0, 5);
-    return cWd === wd && cTf === tf && cTt === tt;
+    return days.includes(wd) && cTf === tf && cTt === tt;
   });
 }
 

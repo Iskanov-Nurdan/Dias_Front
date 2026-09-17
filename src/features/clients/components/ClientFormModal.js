@@ -1014,15 +1014,26 @@ const ClientFormModal = ({
     // При очистке комментария явно отправляем "" — иначе PATCH без поля не обновляет его на бэкенде
     const commentValue = finalComment ?? (client?.id ? '' : undefined);
     const slot = parseTrainingSlotKey(trainingSlotKey);
+    // Выбранный слот может покрывать несколько дней недели (обычная группа
+    // Пн/Ср/Пт с одним и тем же временем) — trainingWeekday сам по себе
+    // помнит только первый день группы (parseTrainingSlotKey не может
+    // восстановить остальные из одного value), поэтому полный список берём
+    // из самой опции, а не из разобранного ключа.
+    const selectedSlotOption = scheduleSlots.find((o) => o.value === trainingSlotKey);
+    const trainingWeekdaysList = selectedSlotOption?.days?.map((d) => d.weekday) ?? (
+      slot.trainingWeekday != null ? [slot.trainingWeekday] : []
+    );
     /** null — бэкенд обнуляет training_* при PATCH (пустой слот). */
     const trainingPayload = trainingSlotKey
       ? {
           trainingWeekday: slot.trainingWeekday,
+          trainingWeekdays: trainingWeekdaysList,
           trainingTimeFrom: slot.trainingTimeFrom,
           trainingTimeTo: slot.trainingTimeTo,
         }
       : {
           trainingWeekday: null,
+          trainingWeekdays: [],
           trainingTimeFrom: null,
           trainingTimeTo: null,
         };

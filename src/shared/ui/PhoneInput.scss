@@ -1,10 +1,13 @@
-// Обёртка сама несёт рамку/фон поля — внутренний <input> прозрачный.
-// Иначе получилось бы два поля рядом («+996» отдельным блоком, цифры —
-// отдельным), а не одно цельное поле, как в остальном приложении.
+// Обёртка сама несёт рамку/фон поля — внутренний <input> должен быть
+// полностью «голым». Без !important тут не обойтись: у глобального
+// input:not([type=checkbox]):not([type=radio]) в shared/styles/index.scss
+// специфичность выше, чем у одного класса .phone-input__field, и он
+// перебивал border/radius/padding/height — обёртка рисовала свою рамку,
+// а <input> внутри рисовал вторую, поверх неё, отсюда «два блока рядом»
+// и потерянное на второй рамке место для цифр.
 .phone-input {
   display: flex;
   align-items: center;
-  gap: 8px;
   width: 100%;
   height: 40px;
   min-height: 40px;
@@ -42,33 +45,40 @@
   font-weight: 600;
   color: var(--color-text-secondary);
   user-select: none;
-
-  // Тонкий разделитель между кодом страны и цифрами — тот же приём,
-  // что уже используется у Select с иконкой слева
-  padding-right: 8px;
-  border-right: 1px solid var(--input-border);
+  // Без рамки/фона и почти без отступа — это подпись перед цифрами,
+  // а не второе поле рядом с первым
+  margin-right: 4px;
 }
 
 .phone-input__field {
   flex: 1;
   min-width: 0;
-  height: 100%;
-  padding: 0;
-  border: none;
-  background: transparent;
+  width: 100%;
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
   color: var(--color-text);
   font-family: inherit;
   font-size: var(--font-text);
   font-weight: 400;
   font-variant-numeric: tabular-nums;
+  box-shadow: none !important;
 
   &::placeholder {
     color: var(--input-placeholder);
     font-weight: 400;
   }
 
+  &:hover,
   &:focus {
     outline: none;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
   }
 
   &:disabled {
@@ -77,5 +87,7 @@
 
   @media (max-width: 768px) {
     font-size: 16px !important;
+    padding: 0 !important;
+    min-height: 0 !important;
   }
 }

@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Clock, Plus, Banknote, CreditCard, TrendingUp, TrendingDown, Coins, ImagePlus, X as XIcon, Camera, FileText, Filter, Pencil, History, Calendar, CalendarDays, CalendarClock, Maximize2, Images, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Clock, Plus, Banknote, CreditCard, TrendingUp, TrendingDown, Coins, ImagePlus, X as XIcon, Camera, FileText, Filter, Pencil, History, Calendar, CalendarDays, CalendarClock, Maximize2, Images, Trash2, PieChart, Users, CalendarX2, CircleCheck, TriangleAlert } from 'lucide-react';
 import { useAuth } from '../../app/providers/AuthProvider';
-import { fetchShifts, closeShift, updateShift, deleteShift, fetchPhotoReports, addPhotoReport, deletePhotoReport } from './api';
+import { fetchShifts, closeShift, updateShift, deleteShift, fetchShiftSummary, fetchPhotoReports, addPhotoReport, deletePhotoReport } from './api';
 import { Select, Spinner, EmptyState, ErrorState, ConfirmModal, Pagination } from '../../shared/ui';
-import { STATS_YEARS, formatMoney } from '../../shared/constants/common';
+import { STATS_YEARS, MONTHS, formatMoney } from '../../shared/constants/common';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
 import './ShiftsPage.scss';
 
@@ -62,8 +62,16 @@ const getAvatarColor = (name) => {
 };
 
 // ── Фильтры ───────────────────────────────────────────────────
-const FiltersBar = ({ year, month, day, onYear, onMonth, onDay, onReset, defaultDay = '' }) => {
-  const isDefault = year === DEFAULT_YEAR && month === DEFAULT_MONTH && day === defaultDay;
+// employeeOptions/employeeValue/onEmployee — опциональная четвёртая колонка
+// (вкладка «Итоги»): фильтр по сотруднику сужает только заголовочные цифры,
+// поэтому живёт в том же ряду, а не как отдельный блок.
+const FiltersBar = ({
+  year, month, day, onYear, onMonth, onDay, onReset, defaultDay = '',
+  employeeOptions, employeeValue, onEmployee,
+}) => {
+  const hasEmployeeFilter = Array.isArray(employeeOptions);
+  const isDefault = year === DEFAULT_YEAR && month === DEFAULT_MONTH && day === defaultDay
+    && (!hasEmployeeFilter || !employeeValue);
 
   return (
     <div className="shifts-filters">
@@ -96,6 +104,20 @@ const FiltersBar = ({ year, month, day, onYear, onMonth, onDay, onReset, default
         className="shifts-filters__select-wrap"
         icon={<CalendarClock size={15} />}
       />
+
+      {hasEmployeeFilter && (
+        <>
+          <span className="shifts-filters__divider" aria-hidden />
+          <Select
+            value={String(employeeValue ?? '')}
+            onChange={onEmployee}
+            options={employeeOptions}
+            placeholder="Сотрудник"
+            className="shifts-filters__select-wrap shifts-filters__select-wrap--employee"
+            icon={<Users size={15} />}
+          />
+        </>
+      )}
 
       {!isDefault && (
         <button type="button" className="shifts-filters__reset" onClick={onReset}>
@@ -417,13 +439,22 @@ const LightboxViewer = ({ lightbox, onClose }) => {
 };
 
 // ── Главная страница ──────────────────────────────────────────
-const TABS = [
+const BASE_TABS = [
   { id: 'photos', label: 'Отчёты', icon: Camera },
   { id: 'shifts', label: 'Завершение смены', icon: Clock },
 ];
 
 const ShiftsPage = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, hasAccess } = useAuth();
+  // Вкладка «Итоги» — не всем: доступ к ней выдаётся отдельным правом
+  // shifts-summary в карточке сотрудника, а не общим 'shifts' (см. pages.js).
+  const canSeeSummary = hasAccess('shifts-summary');
+  const TABS = useMemo(
+    () => (canSeeSummary
+      ? [...BASE_TABS, { id: 'summary', label: 'Итоги', icon: PieChart }]
+      : BASE_TABS),
+    [canSeeSummary],
+  );
   const [activeTab, setActiveTab] = useState('photos');
 
   const [shifts, setShifts] = useState([]);
@@ -460,6 +491,17 @@ const ShiftsPage = () => {
   const [sYear, setSYear] = useState(DEFAULT_YEAR);
   const [sMonth, setSMonth] = useState(DEFAULT_MONTH);
   const [sDay, setSDay] = useState('');
+
+  // Фильтры и данные для «Итогов». День по умолчанию пуст (не как у смен) —
+  // это по сути месячная сводка, и «пропущенные дни» вообще не считаются,
+  // если день зафиксирован (см. бэкенд).
+  const [gYear, setGYear] = useState(DEFAULT_YEAR);
+  const [gMonth, setGMonth] = useState(DEFAULT_MONTH);
+  const [gDay, setGDay] = useState('');
+  const [gEmployeeId, setGEmployeeId] = useState('');
+  const [summary, setSummary] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState(null);
 
   const photosControllerRef = useRef(null);
   const photosRequestSeq = useRef(0);
@@ -511,8 +553,36 @@ const ShiftsPage = () => {
     }
   }, [sYear, sMonth, sDay, shiftsPage]);
 
+  const summaryControllerRef = useRef(null);
+  const summaryRequestSeq = useRef(0);
+  const loadSummary = useCallback(async () => {
+    summaryControllerRef.current?.abort();
+    summaryControllerRef.current = new AbortController();
+    const { signal } = summaryControllerRef.current;
+    const seq = ++summaryRequestSeq.current;
+    setSummaryLoading(true);
+    setSummaryError(null);
+    try {
+      const data = await fetchShiftSummary(
+        { year: gYear, month: gMonth, day: gDay || undefined, employeeId: gEmployeeId || undefined }, signal,
+      );
+      if (summaryRequestSeq.current !== seq) return;
+      setSummary(data);
+    } catch (err) {
+      if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
+      if (summaryRequestSeq.current !== seq) return;
+      setSummaryError(getApiErrorMessage(err));
+    } finally {
+      if (summaryRequestSeq.current === seq) setSummaryLoading(false);
+    }
+  }, [gYear, gMonth, gDay, gEmployeeId]);
+
   useEffect(() => { loadPhotos(); }, [loadPhotos]);
   useEffect(() => { loadShifts(); }, [loadShifts]);
+  // Загружаем «Итоги» только когда вкладку реально открыли: у большинства
+  // пользователей нет к ней доступа, а у тех, кто есть — незачем тратить
+  // запрос, пока они смотрят «Отчёты» или «Завершение смены».
+  useEffect(() => { if (activeTab === 'summary') loadSummary(); }, [activeTab, loadSummary]);
 
   // Новый период — снова с первой страницы: иначе после фильтра, где страниц
   // меньше, остаёшься на несуществующей и видишь пустой список
@@ -587,6 +657,11 @@ const ShiftsPage = () => {
               )}
               {id === 'shifts' && (shiftsMeta?.total ?? shifts.length) > 0 && (
                 <span className="ui-tabs__badge shifts-tabs__badge--alert">{shiftsMeta?.total ?? shifts.length}</span>
+              )}
+              {/* Пропущенные дни видны прямо на табе — не нужно открывать
+                  «Итоги», чтобы узнать, что там есть на что посмотреть */}
+              {id === 'summary' && (summary?.coverage?.missingDays?.length ?? 0) > 0 && (
+                <span className="ui-tabs__badge shifts-tabs__badge--alert">{summary.coverage.missingDays.length}</span>
               )}
             </button>
           ))}
@@ -832,6 +907,143 @@ const ShiftsPage = () => {
             loading={shiftsLoading}
             entityLabel="смен"
           />
+        </div>
+      )}
+
+      {/* ── Таб: Итоги ───────────────────────────────────────── */}
+      {activeTab === 'summary' && canSeeSummary && (
+        <div className="shifts-tab-content">
+          <FiltersBar
+            year={gYear} month={gMonth} day={gDay}
+            onYear={setGYear} onMonth={setGMonth} onDay={setGDay}
+            onReset={() => { setGYear(DEFAULT_YEAR); setGMonth(DEFAULT_MONTH); setGDay(''); setGEmployeeId(''); }}
+            employeeOptions={[
+              { value: '', label: 'Все сотрудники' },
+              ...(summary?.byEmployee ?? [])
+                .filter((e) => e.employeeId != null)
+                .map((e) => ({ value: String(e.employeeId), label: e.employeeName })),
+            ]}
+            employeeValue={gEmployeeId}
+            onEmployee={setGEmployeeId}
+          />
+
+          {summaryLoading ? (
+            <div className="shifts-page__loading"><Spinner /></div>
+          ) : summaryError ? (
+            <ErrorState compact message={summaryError} onRetry={loadSummary} />
+          ) : !summary || summary.totals.count === 0 ? (
+            <EmptyState compact message="За этот период смен ещё не закрывали — итогам пока неоткуда взяться" />
+          ) : (
+            <>
+              {/* Заголовочные цифры — единственное, что меняется от фильтра
+                  по сотруднику. count — не денежная цифра, поэтому со своим,
+                  нейтральным акцентом, а не одним из пяти денежных цветов. */}
+              <div className="shifts-kpis">
+                <div className="shifts-kpi shifts-kpi--total">
+                  <span className="shifts-kpi__icon"><TrendingUp size={16} /></span>
+                  <span className="shifts-kpi__label">Общий итог</span>
+                  <span className="shifts-kpi__value">{formatMoney(summary.totals.total)}</span>
+                </div>
+                <div className="shifts-kpi shifts-kpi--cash">
+                  <span className="shifts-kpi__icon"><Banknote size={16} /></span>
+                  <span className="shifts-kpi__label">Наличка</span>
+                  <span className="shifts-kpi__value">{formatMoney(summary.totals.cash)}</span>
+                </div>
+                <div className="shifts-kpi shifts-kpi--card">
+                  <span className="shifts-kpi__icon"><CreditCard size={16} /></span>
+                  <span className="shifts-kpi__label">Карта</span>
+                  <span className="shifts-kpi__value">{formatMoney(summary.totals.card)}</span>
+                </div>
+                <div className="shifts-kpi shifts-kpi--advance">
+                  <span className="shifts-kpi__icon"><Coins size={16} /></span>
+                  <span className="shifts-kpi__label">Аванс</span>
+                  <span className="shifts-kpi__value">{formatMoney(summary.totals.advance)}</span>
+                </div>
+                <div className="shifts-kpi shifts-kpi--expense">
+                  <span className="shifts-kpi__icon"><TrendingDown size={16} /></span>
+                  <span className="shifts-kpi__label">Расход</span>
+                  <span className="shifts-kpi__value">{formatMoney(summary.totals.expense)}</span>
+                </div>
+                <div className="shifts-kpi shifts-kpi--count">
+                  <span className="shifts-kpi__icon"><Clock size={16} /></span>
+                  <span className="shifts-kpi__label">Смен закрыто</span>
+                  <span className="shifts-kpi__value">{summary.totals.count}</span>
+                </div>
+              </div>
+
+              {/* По сотрудникам — всегда все, независимо от фильтра сверху:
+                  это сравнение, а не второй фильтр той же цифры. */}
+              {summary.byEmployee.length > 0 && (
+                <section className="shifts-section">
+                  <div className="shifts-section__head">
+                    <h3 className="shifts-section__title"><Users size={16} /> По сотрудникам</h3>
+                    <p className="shifts-section__sub">Доля в общем итоге за период</p>
+                  </div>
+                  <div className="shifts-by-employee">
+                    {summary.byEmployee.map((e) => {
+                      const share = summary.totals.total > 0 ? (e.total / summary.totals.total) * 100 : 0;
+                      const isFiltered = gEmployeeId && String(e.employeeId) === String(gEmployeeId);
+                      return (
+                        <div
+                          key={e.employeeId ?? 'none'}
+                          className={`shifts-by-employee__row${isFiltered ? ' shifts-by-employee__row--active' : ''}`}
+                        >
+                          <span className="shifts-by-employee__fill" style={{ width: `${share}%` }} aria-hidden />
+                          <span className="shift-card__avatar shifts-by-employee__avatar" style={{ background: getAvatarColor(e.employeeName) }}>
+                            {getInitials(e.employeeName)}
+                          </span>
+                          <span className="shifts-by-employee__name">
+                            {e.employeeName}
+                            <span className="shifts-by-employee__count">{e.count} {e.count === 1 ? 'смена' : 'смен'}</span>
+                          </span>
+                          <span className="shifts-by-employee__breakdown">
+                            <span className="shifts-by-employee__stat shifts-by-employee__stat--cash"><Banknote size={11} />{formatMoney(e.cash)}</span>
+                            <span className="shifts-by-employee__stat shifts-by-employee__stat--card"><CreditCard size={11} />{formatMoney(e.card)}</span>
+                            {e.advance > 0 && <span className="shifts-by-employee__stat shifts-by-employee__stat--advance"><Coins size={11} />{formatMoney(e.advance)}</span>}
+                            {e.expense > 0 && <span className="shifts-by-employee__stat shifts-by-employee__stat--expense"><TrendingDown size={11} />{formatMoney(e.expense)}</span>}
+                          </span>
+                          <span className="shifts-by-employee__total">{formatMoney(e.total)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {/* Пропущенные дни — только когда выбраны конкретные год и месяц
+                  без фиксированного дня (см. бэкенд: иначе coverage === null) */}
+              {summary.coverage && (
+                <section className={`shifts-coverage${summary.coverage.missingDays.length > 0 ? ' shifts-coverage--warn' : ' shifts-coverage--ok'}`}>
+                  <div className="shifts-coverage__head">
+                    <span className="shifts-coverage__icon">
+                      {summary.coverage.missingDays.length > 0 ? <TriangleAlert size={16} /> : <CircleCheck size={16} />}
+                    </span>
+                    <div>
+                      <h3 className="shifts-coverage__title">
+                        {summary.coverage.missingDays.length > 0
+                          ? `Пропущено дней: ${summary.coverage.missingDays.length}`
+                          : 'Пропусков нет'}
+                      </h3>
+                      <p className="shifts-coverage__sub">
+                        {MONTHS[Number(gMonth)]} {gYear} · проверено по {summary.coverage.checkedThrough} число
+                        {summary.coverage.checkedThrough < summary.coverage.daysInMonth && ' (месяц ещё не закончился)'}
+                        {' '}· воскресенья не считаются
+                      </p>
+                    </div>
+                  </div>
+                  {summary.coverage.missingDays.length > 0 && (
+                    <div className="shifts-coverage__chips">
+                      {summary.coverage.missingDays.map((d) => (
+                        <span key={d} className="shifts-coverage__chip">
+                          <CalendarX2 size={12} /> {d} {MONTHS[Number(gMonth)]?.toLowerCase()}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
+            </>
+          )}
         </div>
       )}
 

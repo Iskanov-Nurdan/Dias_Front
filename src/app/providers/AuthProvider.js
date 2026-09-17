@@ -103,8 +103,12 @@ export const AuthProvider = ({ children }) => {
   );
 
   const getFirstAvailableRoute = useCallback(() => {
+    // PAGE_ROUTES[id] может не существовать — не у каждого pageId есть свой
+    // маршрут (например 'shifts-summary' — это право на вкладку внутри
+    // «Смен», а не отдельная страница). Без проверки первый же такой id
+    // отправил бы пользователя на /undefined.
     for (const id of PAGE_IDS) {
-      if (hasAccess(id)) return PAGE_ROUTES[id];
+      if (hasAccess(id) && PAGE_ROUTES[id]) return PAGE_ROUTES[id];
     }
     return '/employees';
   }, [hasAccess]);

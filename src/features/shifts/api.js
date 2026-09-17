@@ -42,6 +42,23 @@ export const updateShift = async (id, { cash, card, expense, advance, total, des
   return data;
 };
 
+/**
+ * GET /api/shifts/summary/ — итоги по сменам за период.
+ * Query: year, month, day, employeeId (сужает только totals — общие
+ * заголовочные цифры, byEmployee и coverage считаются по всем сотрудникам).
+ * Возвращает { totals, byEmployee, coverage }, coverage — только когда
+ * заданы year и month, а day не задан (иначе null).
+ */
+export const fetchShiftSummary = async ({ year, month, day, employeeId } = {}, signal) => {
+  const params = {};
+  if (year) params.year = year;
+  if (month) params.month = month;
+  if (day) params.day = day;
+  if (employeeId) params.employeeId = employeeId;
+  const { data } = await apiClient.get('/shifts/summary/', { params, ...withSignal({}, signal) });
+  return data?.data ?? data;
+};
+
 /** GET /api/shifts/photo-reports/ — фото-отчёты. Query: year, month, day, page, perPage */
 export const fetchPhotoReports = async ({ year, month, day, page = 1, perPage } = {}, signal) => {
   const params = { page };

@@ -12,7 +12,7 @@ const ACCESS_MODAL_GROUPS = [
   { label: 'Персонал',            ids: ['employees'] },
   { label: 'Спорт, клиенты и лиды', ids: ['clients', 'sports-trainers', 'leads'] },
   { label: 'Финансы',             ids: ['expenses', 'salary'] },
-  { label: 'Смены',               ids: ['shifts'] },
+  { label: 'Смены',               ids: ['shifts', 'shifts-summary'] },
   { label: 'Сайт',                ids: ['taplink'] },
   { label: 'Таблицы',             ids: ['spreadsheet'] },
   // Обычно выдаётся через «выдать доступ» в карточке тренера, но чекбокс

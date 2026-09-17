@@ -896,6 +896,259 @@
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 
+// ── Таб «Итоги» ───────────────────────────────────────────────
+.shifts-filters__divider {
+  width: 1px;
+  height: 24px;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+.shifts-filters__select-wrap--employee {
+  min-width: 160px;
+}
+
+// Шесть плиток заголовочных цифр. Не карточки-с-тенью, как остальной сайт
+// в светлой теме, а тонкая обводка с цветным акцентом сверху — на тёмной
+// теме, в которой сейчас живёт вся страница «Смены», лишняя тень не видна,
+// а верхняя полоса читается как метка «эта цифра — про наличку» с первого
+// взгляда, без чтения подписи.
+.shifts-kpis {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.shifts-kpi {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 14px 12px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+
+  &:hover { border-color: var(--color-border-strong, var(--color-text-muted)); transform: translateY(-1px); }
+}
+
+.shifts-kpi__icon {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--color-bg);
+}
+
+.shifts-kpi__label {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.shifts-kpi__value {
+  font-size: 18px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+// Один и тот же язык цвета, что уже используется в карточке смены
+// (shift-card__amount-value--*) — плитки итогов не изобретают новую палитру
+.shifts-kpi--total   { &::before { background: #4ade80; } .shifts-kpi__icon, .shifts-kpi__value { color: #4ade80; } [data-theme='light'] & .shifts-kpi__icon, [data-theme='light'] & .shifts-kpi__value { color: #16a34a; } [data-theme='light'] &::before { background: #16a34a; } }
+.shifts-kpi--cash     { &::before { background: #f59e0b; } .shifts-kpi__icon, .shifts-kpi__value { color: #f59e0b; } [data-theme='light'] & .shifts-kpi__icon, [data-theme='light'] & .shifts-kpi__value { color: #d97706; } [data-theme='light'] &::before { background: #d97706; } }
+.shifts-kpi--card     { &::before { background: #60a5fa; } .shifts-kpi__icon, .shifts-kpi__value { color: #60a5fa; } [data-theme='light'] & .shifts-kpi__icon, [data-theme='light'] & .shifts-kpi__value { color: #2563eb; } [data-theme='light'] &::before { background: #2563eb; } }
+.shifts-kpi--advance  { &::before { background: #a78bfa; } .shifts-kpi__icon, .shifts-kpi__value { color: #a78bfa; } [data-theme='light'] & .shifts-kpi__icon, [data-theme='light'] & .shifts-kpi__value { color: #7c3aed; } [data-theme='light'] &::before { background: #7c3aed; } }
+.shifts-kpi--expense  { &::before { background: #f87171; } .shifts-kpi__icon, .shifts-kpi__value { color: #f87171; } [data-theme='light'] & .shifts-kpi__icon, [data-theme='light'] & .shifts-kpi__value { color: #dc2626; } [data-theme='light'] &::before { background: #dc2626; } }
+.shifts-kpi--count    { &::before { background: var(--color-text-muted); } .shifts-kpi__icon, .shifts-kpi__value { color: var(--color-text); } }
+
+// По сотрудникам: одна строка = один сотрудник, денежная подложка позади
+// текста показывает долю в общем итоге. Тот же приём, которым уже решена
+// точно такая же задача в «Аналитике» (разбивка прихода по суммам) —
+// подложка может сжаться почти до нуля, но сами цифры остаются
+// полноразмерным текстом и никогда не пропадают из виду.
+.shifts-by-employee {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shifts-by-employee__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+
+  &--active { border-color: var(--color-primary, #ef4444); }
+}
+
+.shifts-by-employee__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  min-width: 3px;
+  background: rgba(74, 222, 128, 0.08);
+  z-index: 0;
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  [data-theme='light'] & { background: rgba(22, 163, 74, 0.06); }
+}
+
+.shifts-by-employee__avatar {
+  position: relative;
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.shifts-by-employee__name {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 13.5px;
+  font-weight: 700;
+  min-width: 110px;
+}
+
+.shifts-by-employee__count {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.shifts-by-employee__breakdown {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  flex-wrap: wrap;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.shifts-by-employee__stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+
+  &--cash { color: #f59e0b; [data-theme='light'] & { color: #d97706; } }
+  &--card { color: #60a5fa; [data-theme='light'] & { color: #2563eb; } }
+  &--advance { color: #a78bfa; [data-theme='light'] & { color: #7c3aed; } }
+  &--expense { color: #f87171; [data-theme='light'] & { color: #dc2626; } }
+}
+
+.shifts-by-employee__total {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #4ade80;
+  [data-theme='light'] & { color: #16a34a; }
+}
+
+// Пропущенные дни: спокойная зелёная плашка, если всё закрывали вовремя,
+// и явное предупреждение с перечнем дат, если нет.
+.shifts-coverage {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+
+  &--ok {
+    background: rgba(74, 222, 128, 0.06);
+    border-color: rgba(74, 222, 128, 0.25);
+    [data-theme='light'] & { background: rgba(22, 163, 74, 0.05); border-color: rgba(22, 163, 74, 0.2); }
+  }
+
+  &--warn {
+    background: rgba(248, 113, 113, 0.06);
+    border-color: rgba(248, 113, 113, 0.25);
+    [data-theme='light'] & { background: rgba(220, 38, 38, 0.05); border-color: rgba(220, 38, 38, 0.2); }
+  }
+}
+
+.shifts-coverage__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.shifts-coverage__icon {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+
+  .shifts-coverage--ok & { background: rgba(74, 222, 128, 0.15); color: #4ade80; [data-theme='light'] & { color: #16a34a; } }
+  .shifts-coverage--warn & { background: rgba(248, 113, 113, 0.15); color: #f87171; [data-theme='light'] & { color: #dc2626; } }
+}
+
+.shifts-coverage__title {
+  margin: 0 0 2px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.shifts-coverage__sub {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.shifts-coverage__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-left: 40px;
+}
+
+.shifts-coverage__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--color-bg-card);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  color: #f87171;
+  font-size: 11.5px;
+  font-weight: 600;
+  [data-theme='light'] & { color: #dc2626; border-color: rgba(220, 38, 38, 0.25); }
+}
+
 // ── Mobile ────────────────────────────────────────────────────
 @media (max-width: 600px) {
   .shifts-page {
@@ -954,6 +1207,43 @@
   .shifts-filters__select-wrap {
     flex: 1;
     min-width: 0;
+  }
+
+  .shifts-filters__divider {
+    display: none;
+  }
+
+  .shifts-filters__select-wrap--employee {
+    min-width: 0;
+    // Свой перенос строкой ниже, во всю ширину: у года/месяца/дня уже
+    // не остаётся места на телефоне, а «Сотрудник» вместе с ними в одну
+    // строку не помещается ни при каком сжатии
+    flex-basis: 100%;
+  }
+
+  // Итоги: шесть плиток в две колонки — в одну не помещается ни одна цифра
+  // без обрезки, а сама раскладка «6 в ряд» рассчитана на широкий экран
+  .shifts-kpis {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .shifts-by-employee__row {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .shifts-by-employee__breakdown {
+    order: 3;
+    flex-basis: 100%;
+    padding-left: 44px;
+  }
+
+  .shifts-by-employee__total {
+    margin-left: auto;
+  }
+
+  .shifts-coverage__chips {
+    padding-left: 0;
   }
 
   // Shift card: vertical stack

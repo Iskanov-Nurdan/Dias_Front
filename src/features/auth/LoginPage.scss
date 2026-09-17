@@ -68,7 +68,7 @@
     justify-content: center;
     gap: 10px;
     flex-shrink: 0;
-    padding: max(36px, calc(env(safe-area-inset-top, 0px) + 22px)) 24px 56px;
+    padding: max(36px, calc(env(safe-area-inset-top, 0px) + 22px)) 24px 32px;
     background-color: #0d0f1a;
     background-image: linear-gradient(
         165deg,
@@ -84,7 +84,7 @@
   }
 
   @media (max-width: 600px) {
-    padding: max(28px, calc(env(safe-area-inset-top, 0px) + 18px)) 20px 44px;
+    padding: max(28px, calc(env(safe-area-inset-top, 0px) + 18px)) 20px 26px;
   }
 }
 
@@ -130,21 +130,22 @@
   padding: 24px 32px;
 
   @media (max-width: 960px) {
-    // flex-direction: column — иначе flex: 1 у карточки ниже растягивал бы
-    // её по горизонтали (главная ось row), а не по вертикали, и карточка
-    // оставалась высотой ровно в свой контент — под ней оставалась полоса
-    // тёмного фона .login-page, которую было не с чем спутать, кроме как
-    // с «зачем-то ещё один фон после нашего пейзажа».
+    // Карточка ниже — компактная, по размеру своего контента, а не во
+    // весь остаток экрана: раньше flex: 1 у неё же растягивал её на всю
+    // высоту панели, и форма из трёх полей терялась где-то посередине
+    // огромного белого поля. Тёмный фон .login-page вокруг нёе — не
+    // случайная полоса, а часть композиции: карточка-остров на цветном
+    // фоне, тот же приём, что уже работает на десктопе.
     flex-direction: column;
     flex: 1;
     min-height: 0;
-    // Отрицательный отступ — карточка чуть заходит на нижний край шапки
-    // (тот самый приём «цветная подложка + бумажный лист внахлёст»,
-    // которым сейчас пользуются почти все мобильные экраны входа)
-    margin-top: -28px;
-    padding: 0 20px;
+    padding: 28px 20px max(28px, env(safe-area-inset-bottom, 0px));
     align-items: center;
-    justify-content: flex-start;
+    // overflow-y: auto — подстраховка на альбомных телефонах с низким
+    // экраном: если контенту не хватит места, он проскроллится внутри
+    // панели, а не обрежется по краю
+    overflow-y: auto;
+    justify-content: center;
   }
 }
 
@@ -167,20 +168,9 @@
 
   @media (max-width: 960px) {
     max-width: 440px;
-    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
-    box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.3);
-    padding: 32px 28px max(28px, env(safe-area-inset-bottom, 0px));
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-
-  @media (max-width: 480px) {
-    // Совсем узкий телефон — карточка растягивается на всю ширину,
-    // без боковых скруглений: так она читается как продолжение экрана,
-    // а не как случайно приземлившаяся плитка
-    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+    flex-shrink: 0;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    padding: 30px 26px;
   }
 
   &--success {
@@ -188,7 +178,7 @@
     padding: 28px 32px;
 
     @media (max-width: 960px) {
-      padding: 40px 28px max(28px, env(safe-area-inset-bottom, 0px));
+      padding: 40px 28px;
       align-items: center;
     }
   }

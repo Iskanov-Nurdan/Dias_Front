@@ -1703,6 +1703,27 @@ select.tp-field__input:disabled {
     font-size: 11px;
     color: var(--text3);
   }
+
+  // Служебная ссылка на /login — за тонким разделителем и мельче всего
+  // остального в футере: её должен находить тот, кто её ищет (сотрудник),
+  // а не случайный посетитель, который сюда записываться пришёл
+  &__staff-login {
+    margin-top: 4px;
+    padding-top: 16px;
+    width: 100%;
+    max-width: 240px;
+    border-top: 1px solid var(--bd);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text3);
+    opacity: 0.7;
+    transition: opacity 0.18s ease, color 0.18s ease;
+
+    &:hover {
+      opacity: 1;
+      color: var(--text2);
+    }
+  }
 }
 
 // Logo filters adapt to theme

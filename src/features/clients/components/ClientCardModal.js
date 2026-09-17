@@ -5,6 +5,7 @@ import { formatMoney, isClientPaid, formatSubscriptionEnd } from '../../../share
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import { useToast } from '../../../app/providers/ToastProvider';
 import { getApiErrorMessage, isPeriodClosedError } from '../../../shared/lib/apiError';
+import { formatPhoneDisplay } from '../../../shared/lib/phone';
 import { WEEKDAYS } from '../../sports-trainers/scheduleConstants';
 import { getClientPaymentsForCard } from '../lib/clientActualPayments';
 import { createClientFreeze, deleteClientFreeze, fetchClient, updateClientFreeze } from '../api';
@@ -241,7 +242,7 @@ const ClientCardModal = ({
               {client.phone ? (
                 <span className="ccm__contacts">
                   <a href={`tel:${client.phone}`} className="ccm__phone">
-                    <Phone size={12} />{client.phone}
+                    <Phone size={12} />{formatPhoneDisplay(client.phone)}
                   </a>
                   {/* Написать прямо отсюда: номер уже есть, раньше его копировали руками */}
                   {String(client.phone).replace(/\D/g, '').length >= 9 && (

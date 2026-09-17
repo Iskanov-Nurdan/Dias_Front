@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { KeyRound, Pencil, Trash2 } from 'lucide-react';
 import { ErrorState, EmptyState, ConfirmModal, SkeletonTable } from '../../../shared/ui';
 import { useTrainerPhotosByFio } from '../hooks/useTrainerPhotosByFio';
+import { formatPhoneDisplay } from '../../../shared/lib/phone';
 import './EmployeesList.scss';
 
 const MOBILE_MQ = '(max-width: 768px)';
@@ -84,7 +85,7 @@ const EmployeesList = ({
               {emp.phone && (
                 <div className="employees-list__card-row">
                   <dt>Телефон</dt>
-                  <dd>{emp.phone}</dd>
+                  <dd>{formatPhoneDisplay(emp.phone)}</dd>
                 </div>
               )}
             </dl>
@@ -139,7 +140,7 @@ const EmployeesList = ({
                         </div>
                       </td>
                       <td className="ui-list__muted">{emp.login || '—'}</td>
-                      <td className="ui-list__muted">{emp.phone || '—'}</td>
+                      <td className="ui-list__muted">{emp.phone ? formatPhoneDisplay(emp.phone) : '—'}</td>
                       <td>
                         {roleName ? (
                           <span className="ui-pill ui-pill--info">{roleName}</span>

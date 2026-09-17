@@ -197,7 +197,6 @@ const LeadCardModal = ({ lead, stages = [], sports = [], trainers = [], onSave, 
                   value={phone}
                   onChange={setPhone}
                   className="lead-card-modal__input"
-                  placeholder="+996 ..."
                 />
               </label>
               <label className="lead-card-modal__label">

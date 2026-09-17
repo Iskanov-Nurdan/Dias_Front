@@ -5,6 +5,7 @@ import { fetchMyTrainerReport } from './api';
 import { Select, Spinner, ErrorState, EmptyState } from '../../shared/ui';
 import { STATS_YEARS } from '../../shared/constants/common';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
+import { formatPhoneDisplay } from '../../shared/lib/phone';
 import TrainerMonthReportBlock, { TrainerReportTotals } from '../clients/components/TrainerMonthReportBlock';
 import { buildTrainerReportRow, sortTrainerReportRows } from '../clients/lib/trainerMonthReport';
 import { exportTrainerMonthReport } from '../clients/lib/trainerMonthReportExport';
@@ -208,7 +209,7 @@ const TrainerReportPage = () => {
                       <span className="trainer-lost__info">
                         <span className="trainer-lost__name">{row.fio}</span>
                         <span className="trainer-lost__meta">
-                          {row.phone && (<><Phone size={11} aria-hidden />{row.phone}</>)}
+                          {row.phone && (<><Phone size={11} aria-hidden />{formatPhoneDisplay(row.phone)}</>)}
                           {row.phone && row.sportName && <span className="trainer-lost__dot" />}
                           {row.sportName}
                         </span>

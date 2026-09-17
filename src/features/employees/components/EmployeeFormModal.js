@@ -108,7 +108,6 @@ const EmployeeFormModal = ({ employee, roles, onSave, onClose, error, saving }) 
                 value={phone}
                 onChange={setPhone}
                 className="efm__input"
-                placeholder="+996 700 000 000"
               />
             </div>
 

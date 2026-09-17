@@ -1,38 +1,62 @@
 import React from 'react';
+import './PhoneInput.scss';
 
 /**
- * Форматирует телефон по мере ввода: +996 XXX XXX XXX или 0XXX XXX XXX,
- * иначе просто группирует цифры по три. Хранимое значение — обычная строка,
- * формат отправки на бэкенд не меняется (как и раньше).
+ * «+996» — несъёмный префикс, а не часть значения: человеку сразу видно,
+ * что вводить нужно ровно 9 цифр местного номера, и он физически не может
+ * стереть или испортить код страны. Тот же приём, что уже стоит в форме
+ * записи на сайте (см. TaplinkPage.js, BookingModal) — здесь он же, но
+ * оформлен под тёмную тему CRM.
+ *
+ * Наружу (value/onChange) уходит уже собранный канонический номер
+ * «+996XXXXXXXXX» без пробелов — тот же формат, в котором сохраняются
+ * новые заявки с сайта (см. shared/lib/phone.js). Существующий «сломанный»
+ * номер при открытии формы не переписывается сам по себе — перезапись
+ * происходит только когда человек реально трогает поле.
  */
-export const formatPhone = (raw) => {
-  if (!raw) return '';
-  const plus = raw.trim().startsWith('+') ? '+' : '';
-  const digits = raw.replace(/\D/g, '');
 
-  if (plus && digits.startsWith('996')) {
-    const rest = digits.slice(3, 12);
-    const parts = [rest.slice(0, 3), rest.slice(3, 6), rest.slice(6, 9)].filter(Boolean);
-    return parts.length ? `+996 ${parts.join(' ')}` : '+996';
-  }
-  if (digits.startsWith('0')) {
-    const rest = digits.slice(0, 10);
-    const parts = [rest.slice(0, 4), rest.slice(4, 7), rest.slice(7, 10)].filter(Boolean);
-    return parts.join(' ');
-  }
-  return digits.replace(/(\d{3})(?=\d)/g, '$1 ');
+const LOCAL_DIGITS = 9;
+
+/** Любой ввод/готовое значение → местные цифры без кода страны и ведущего нуля. */
+const toLocalDigits = (raw) => {
+  let d = String(raw || '').replace(/\D/g, '');
+  if (d.startsWith('996')) d = d.slice(3);
+  else if (d.startsWith('0')) d = d.slice(1);
+  return d.slice(0, LOCAL_DIGITS);
 };
 
-const PhoneInput = ({ value, onChange, className, placeholder = '+996 700 000 000', ...rest }) => (
-  <input
-    type="tel"
-    inputMode="tel"
-    value={value}
-    onChange={(e) => onChange(formatPhone(e.target.value))}
-    className={className}
-    placeholder={placeholder}
-    {...rest}
-  />
-);
+const groupLocal = (digits) => digits.replace(/(\d{3})(?=\d)/g, '$1 ');
+
+/** «+996» + местные цифры, без пробелов — формат для отправки на бэкенд. */
+export const toCanonicalPhone = (localDigits) => (localDigits ? `+996${localDigits}` : '');
+
+const PhoneInput = ({
+  value, onChange, className = '', placeholder = '700 123 456', disabled, ...rest
+}) => {
+  const localDigits = toLocalDigits(value);
+  const display = groupLocal(localDigits);
+
+  const handleChange = (e) => {
+    onChange(toCanonicalPhone(toLocalDigits(e.target.value)));
+  };
+
+  return (
+    <div className={`phone-input${disabled ? ' phone-input--disabled' : ''}${className ? ` ${className}` : ''}`}>
+      <span className="phone-input__prefix" aria-hidden>+996</span>
+      <input
+        type="tel"
+        inputMode="numeric"
+        autoComplete="tel-national"
+        className="phone-input__field"
+        value={display}
+        onChange={handleChange}
+        placeholder={placeholder}
+        disabled={disabled}
+        aria-label="Телефон, 9 цифр после +996"
+        {...rest}
+      />
+    </div>
+  );
+};
 
 export default PhoneInput;

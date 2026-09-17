@@ -54,7 +54,7 @@ const LeadFormModal = ({ lead, onSave, onClose, error, saving }) => {
           </label>
           <label className="lead-form-modal__label">
             <span className="lead-form-modal__label-text">Телефон</span>
-            <PhoneInput value={phone} onChange={setPhone} className="lead-form-modal__input" placeholder="+996 ..." />
+            <PhoneInput value={phone} onChange={setPhone} className="lead-form-modal__input" />
           </label>
           <label className="lead-form-modal__label">
             <span className="lead-form-modal__label-text">Канал</span>

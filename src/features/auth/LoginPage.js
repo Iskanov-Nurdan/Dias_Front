@@ -68,23 +68,13 @@ const LoginPage = () => {
     </aside>
   );
 
-  // Планшет и телефон: тот же фон, что у десктопной левой панели, но
-  // сжатый в невысокую шапку с компактным гербом — раньше при ≤960px
-  // левая панель просто пропадала (display: none), и с ней пропадал весь
-  // бренд: экран оставался голым белым листом с формой посередине.
-  const mobileHero = (
-    <div className="login-page__mobile-hero" style={visualStyle}>
-      <img src={`${publicUrl}/logo-mark.png`} alt="" className="login-page__mobile-logo" />
-      <span className="login-page__mobile-title">Рахман Ата</span>
-      <span className="login-page__mobile-subtitle">Спорт клуб · вход для сотрудников</span>
-    </div>
-  );
-
+  // Планшет и телефон: пока без фото-шапки и герба — просто тёмный фон
+  // и карточка входа по центру. Десктопную левую панель (brandAside) это
+  // не касается, она видна только ≥961px и здесь не участвует.
   if (success) {
     return (
       <div className="login-page">
         {brandAside}
-        {mobileHero}
         <main className="login-page__form-panel">
           <div className="login-page__card login-page__card--success">
             <div className="login-page__success-icon" aria-hidden>
@@ -104,7 +94,6 @@ const LoginPage = () => {
   return (
     <div className="login-page">
       {brandAside}
-      {mobileHero}
       <main className="login-page__form-panel">
         <div className="login-page__card">
           <div className="login-page__form-header">

@@ -1,10 +1,7 @@
 // ── Каркас ────────────────────────────────────────────────────────────────
-// Десктоп: сплит-панель (тёмный визуал слева, форма справа) — уже хорошо
-// работает, структуру не трогаем. Планшет и телефон ниже получают свой
-// собственный, а не урезанный десктопный, каркас: колонка «шапка-бренд →
-// карточка формы» — раньше при ≤960px левая панель просто скрывалась
-// (display: none), и с ней исчезал весь бренд и весь цвет, оставался
-// голый белый лист с формой посередине пустого экрана.
+// Десктоп: сплит-панель (тёмный визуал слева, форма справа) — не трогаем.
+// Планшет и телефон: пока сознательно упрощённый вариант — без фото и
+// герба, один сплошной тёмный фон и карточка входа по центру.
 .login-page {
   min-height: 100dvh;
   display: grid;
@@ -52,71 +49,6 @@
   height: auto;
   margin: 0;
   filter: drop-shadow(0 12px 32px rgba(0, 0, 0, 0.35));
-}
-
-// ── Планшет/телефон: компактная шапка-бренд ──────────────────────────────
-// Тот же фон и то же затемнение, что у десктопной левой панели (один и тот
-// же --login-page-bg) — только сжатые в невысокую полосу с компактным
-// гербом вместо полноростового изображения на весь экран.
-.login-page__mobile-hero {
-  display: none;
-
-  @media (max-width: 960px) {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    flex-shrink: 0;
-    padding: max(36px, calc(env(safe-area-inset-top, 0px) + 22px)) 24px 32px;
-    background-color: #0d0f1a;
-    background-image: linear-gradient(
-        165deg,
-        rgba(13, 15, 26, 0.6) 0%,
-        rgba(25, 36, 71, 0.66) 55%,
-        rgba(13, 15, 26, 0.78) 100%
-      ),
-      var(--login-page-bg);
-    background-size: cover, cover;
-    background-position: center 30%, center 30%;
-    background-repeat: no-repeat, no-repeat;
-    text-align: center;
-  }
-
-  @media (max-width: 600px) {
-    padding: max(28px, calc(env(safe-area-inset-top, 0px) + 18px)) 20px 26px;
-  }
-}
-
-.login-page__mobile-logo {
-  width: 64px;
-  height: 64px;
-  object-fit: contain;
-  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.4));
-  animation: login-mobile-logo-in 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-
-  @media (max-width: 600px) {
-    width: 56px;
-    height: 56px;
-  }
-}
-
-.login-page__mobile-title {
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: #fff;
-}
-
-.login-page__mobile-subtitle {
-  font-size: 12.5px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-@keyframes login-mobile-logo-in {
-  from { opacity: 0; transform: translateY(-8px) scale(0.9); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 // ── Панель формы ──────────────────────────────────────────────────────────
@@ -187,12 +119,8 @@
 .login-page__form-header {
   margin-bottom: var(--space-8);
 
-  // На планшете/телефоне заголовок «Вход» и подпись под ним повторяют то,
-  // что уже сказано в шапке-герое сверху («Рахман Ата · вход для
-  // сотрудников») — на десктопе, где у левой панели нет текста вообще,
-  // это единственная подпись, и её не трогаем.
   @media (max-width: 960px) {
-    display: none;
+    margin-bottom: var(--space-6);
   }
 }
 
@@ -457,7 +385,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .login-page__mobile-logo,
   .login-page__error,
   .login-page__success-icon { animation: none; }
 }

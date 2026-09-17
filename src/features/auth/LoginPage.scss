@@ -298,8 +298,12 @@
     min-height: 48px;
   }
 
-  &:hover:not(:focus):not(:disabled) {
-    border-color: var(--input-border-hover);
+  // hover — только там, где есть настоящий курсор: на тач-экране после тапа
+  // состояние :hover «залипает» до следующего касания другого элемента
+  @media (hover: hover) {
+    &:hover:not(:focus):not(:disabled) {
+      border-color: var(--input-border-hover);
+    }
   }
 
   &:focus {
@@ -328,10 +332,14 @@
 
 .login-page__password-toggle {
   position: absolute;
-  right: 6px;
+  // 44×44 — тач-зона по гайдлайну, а не размер иконки (18px): раньше
+  // padding: 8px вокруг неё давал только 34×34, слишком мало для пальца
+  right: 0;
   top: 50%;
+  width: 44px;
+  height: 44px;
   transform: translateY(-50%);
-  padding: 8px;
+  padding: 0;
   background: none;
   border: none;
   color: var(--color-text-muted);
@@ -342,7 +350,14 @@
   border-radius: var(--radius-sm);
   transition: color var(--transition-fast), background var(--transition-fast);
 
-  &:hover {
+  @media (hover: hover) {
+    &:hover {
+      color: var(--color-text);
+      background: var(--color-surface-secondary);
+    }
+  }
+
+  &:active {
     color: var(--color-text);
     background: var(--color-surface-secondary);
   }
@@ -369,11 +384,14 @@
   box-shadow: 0 4px 16px rgba(197, 48, 48, 0.28);
   transition: background var(--transition-fast), transform 0.1s ease, box-shadow var(--transition-fast);
 
-  &:hover:not(:disabled) {
-    background: var(--color-primary-hover);
-    box-shadow: 0 6px 20px rgba(197, 48, 48, 0.34);
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      background: var(--color-primary-hover);
+      box-shadow: 0 6px 20px rgba(197, 48, 48, 0.34);
+    }
   }
   &:active:not(:disabled) {
+    background: var(--color-primary-hover);
     transform: scale(0.98);
   }
   &:focus-visible {
@@ -387,7 +405,9 @@
   }
 
   svg { transition: transform 0.15s ease; }
-  &:hover:not(:disabled) svg { transform: translateX(2px); }
+  @media (hover: hover) {
+    &:hover:not(:disabled) svg { transform: translateX(2px); }
+  }
 }
 
 .login-page__submit-text {

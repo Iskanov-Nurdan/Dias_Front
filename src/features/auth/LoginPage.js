@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, User, Lock, TriangleAlert, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { login } from './api';
 import { getApiErrorMessage, isTooManyRequestsError } from '../../shared/lib/apiError';
@@ -68,10 +68,23 @@ const LoginPage = () => {
     </aside>
   );
 
+  // Планшет и телефон: тот же фон, что у десктопной левой панели, но
+  // сжатый в невысокую шапку с компактным гербом — раньше при ≤960px
+  // левая панель просто пропадала (display: none), и с ней пропадал весь
+  // бренд: экран оставался голым белым листом с формой посередине.
+  const mobileHero = (
+    <div className="login-page__mobile-hero" style={visualStyle}>
+      <img src={`${publicUrl}/logo-mark.png`} alt="" className="login-page__mobile-logo" />
+      <span className="login-page__mobile-title">Рахман Ата</span>
+      <span className="login-page__mobile-subtitle">Спорт клуб · вход для сотрудников</span>
+    </div>
+  );
+
   if (success) {
     return (
       <div className="login-page">
         {brandAside}
+        {mobileHero}
         <main className="login-page__form-panel">
           <div className="login-page__card login-page__card--success">
             <div className="login-page__success-icon" aria-hidden>
@@ -91,37 +104,49 @@ const LoginPage = () => {
   return (
     <div className="login-page">
       {brandAside}
+      {mobileHero}
       <main className="login-page__form-panel">
         <div className="login-page__card">
           <div className="login-page__form-header">
             <h2 className="login-page__form-title">Вход</h2>
-            <p className="login-page__form-subtitle">Введите логин и пароль</p>
+            <p className="login-page__form-subtitle">Введите логин и пароль от рабочего аккаунта</p>
           </div>
-          <form className="login-page__form" onSubmit={handleSubmit}>
+          <form className="login-page__form" onSubmit={handleSubmit} noValidate>
             {error && (
-              <div className="login-page__error">{error}</div>
+              <div className="login-page__error" role="alert">
+                <TriangleAlert size={16} aria-hidden />
+                <span>{error}</span>
+              </div>
             )}
-            <label className="login-page__label">
+            <label className="login-page__label" htmlFor="login-page-login">
               Логин
-              <input
-                type="text"
-                className="login-page__input"
-                value={loginValue}
-                onChange={(e) => setLoginValue(e.target.value)}
-                placeholder="Логин"
-                required
-                autoComplete="username"
-              />
-            </label>
-            <label className="login-page__label">
-              Пароль
-              <div className="login-page__password-wrap">
+              <div className="login-page__input-wrap">
+                <User size={17} className="login-page__input-icon" aria-hidden />
                 <input
+                  id="login-page-login"
+                  type="text"
+                  className="login-page__input login-page__input--icon"
+                  value={loginValue}
+                  onChange={(e) => setLoginValue(e.target.value)}
+                  placeholder="Введите логин"
+                  required
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                />
+              </div>
+            </label>
+            <label className="login-page__label" htmlFor="login-page-password">
+              Пароль
+              <div className="login-page__input-wrap">
+                <Lock size={17} className="login-page__input-icon" aria-hidden />
+                <input
+                  id="login-page-password"
                   type={showPassword ? 'text' : 'password'}
-                  className="login-page__input login-page__input--password"
+                  className="login-page__input login-page__input--icon login-page__input--password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Пароль"
+                  placeholder="Введите пароль"
                   required
                   autoComplete="current-password"
                 />
@@ -144,7 +169,10 @@ const LoginPage = () => {
                   Вход…
                 </span>
               ) : (
-                'Войти'
+                <span className="login-page__submit-text">
+                  Войти
+                  <ArrowRight size={17} aria-hidden />
+                </span>
               )}
             </button>
           </form>

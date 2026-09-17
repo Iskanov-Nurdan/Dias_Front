@@ -1,3 +1,10 @@
+// ── Каркас ────────────────────────────────────────────────────────────────
+// Десктоп: сплит-панель (тёмный визуал слева, форма справа) — уже хорошо
+// работает, структуру не трогаем. Планшет и телефон ниже получают свой
+// собственный, а не урезанный десктопный, каркас: колонка «шапка-бренд →
+// карточка формы» — раньше при ≤960px левая панель просто скрывалась
+// (display: none), и с ней исчезал весь бренд и весь цвет, оставался
+// голый белый лист с формой посередине пустого экрана.
 .login-page {
   min-height: 100dvh;
   display: grid;
@@ -6,8 +13,11 @@
   overflow: hidden;
 
   @media (max-width: 960px) {
-    grid-template-columns: 1fr;
-    background-color: var(--color-surface);
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    min-height: 100svh;
+    background-color: #0d0f1a;
   }
 }
 
@@ -44,6 +54,72 @@
   filter: drop-shadow(0 12px 32px rgba(0, 0, 0, 0.35));
 }
 
+// ── Планшет/телефон: компактная шапка-бренд ──────────────────────────────
+// Тот же фон и то же затемнение, что у десктопной левой панели (один и тот
+// же --login-page-bg) — только сжатые в невысокую полосу с компактным
+// гербом вместо полноростового изображения на весь экран.
+.login-page__mobile-hero {
+  display: none;
+
+  @media (max-width: 960px) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-shrink: 0;
+    padding: max(36px, calc(env(safe-area-inset-top, 0px) + 22px)) 24px 56px;
+    background-color: #0d0f1a;
+    background-image: linear-gradient(
+        165deg,
+        rgba(13, 15, 26, 0.6) 0%,
+        rgba(25, 36, 71, 0.66) 55%,
+        rgba(13, 15, 26, 0.78) 100%
+      ),
+      var(--login-page-bg);
+    background-size: cover, cover;
+    background-position: center 30%, center 30%;
+    background-repeat: no-repeat, no-repeat;
+    text-align: center;
+  }
+
+  @media (max-width: 600px) {
+    padding: max(28px, calc(env(safe-area-inset-top, 0px) + 18px)) 20px 44px;
+  }
+}
+
+.login-page__mobile-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.4));
+  animation: login-mobile-logo-in 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+
+  @media (max-width: 600px) {
+    width: 56px;
+    height: 56px;
+  }
+}
+
+.login-page__mobile-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+
+.login-page__mobile-subtitle {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+@keyframes login-mobile-logo-in {
+  from { opacity: 0; transform: translateY(-8px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+// ── Панель формы ──────────────────────────────────────────────────────────
 .login-page__form-panel {
   display: flex;
   align-items: center;
@@ -54,11 +130,15 @@
   padding: 24px 32px;
 
   @media (max-width: 960px) {
-    min-height: 100dvh;
-    min-height: 100svh;
-    padding: 0;
-    align-items: stretch;
-    justify-content: stretch;
+    flex: 1;
+    min-height: 0;
+    // Отрицательный отступ — карточка чуть заходит на нижний край шапки
+    // (тот самый приём «цветная подложка + бумажный лист внахлёст»,
+    // которым сейчас пользуются почти все мобильные экраны входа)
+    margin-top: -28px;
+    padding: 0 20px max(20px, env(safe-area-inset-bottom, 0px));
+    align-items: flex-start;
+    justify-content: center;
   }
 }
 
@@ -80,18 +160,21 @@
   }
 
   @media (max-width: 960px) {
-    max-width: none;
-    align-self: stretch;
-    min-height: 100dvh;
-    min-height: 100svh;
-    border-radius: 0;
-    box-shadow: none;
-    border: none;
+    max-width: 440px;
+    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+    box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.3);
+    padding: 32px 28px max(28px, env(safe-area-inset-bottom, 0px));
+    flex: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: max(24px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px))
-      max(24px, env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px));
+  }
+
+  @media (max-width: 480px) {
+    // Совсем узкий телефон — карточка растягивается на всю ширину,
+    // без боковых скруглений: так она читается как продолжение экрана,
+    // а не как случайно приземлившаяся плитка
+    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
   }
 
   &--success {
@@ -99,14 +182,18 @@
     padding: 28px 32px;
 
     @media (max-width: 960px) {
-      padding: max(24px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px))
-        max(24px, env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px));
+      padding: 40px 28px max(28px, env(safe-area-inset-bottom, 0px));
+      align-items: center;
     }
   }
 }
 
 .login-page__form-header {
   margin-bottom: var(--space-8);
+
+  @media (max-width: 960px) {
+    margin-bottom: var(--space-6);
+  }
 }
 
 .login-page__form-title {
@@ -115,6 +202,10 @@
   font-weight: var(--font-weight-page-title);
   color: var(--color-text);
   letter-spacing: -0.02em;
+
+  @media (max-width: 600px) {
+    font-size: 22px;
+  }
 }
 
 .login-page__form-subtitle {
@@ -122,23 +213,36 @@
   font-size: 14px;
   color: var(--color-text-muted);
   font-weight: 400;
+  line-height: 1.4;
 }
 
 .login-page__form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-5);
   width: 100%;
 }
 
 .login-page__error {
-  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px var(--space-4);
   background: var(--color-danger-soft);
   color: var(--color-danger);
   border-radius: var(--radius-md);
-  font-size: 14px;
-  font-weight: 400;
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.4;
   border: 1px solid rgba(220, 38, 38, 0.2);
+  animation: login-error-in 0.2s ease;
+
+  svg { flex-shrink: 0; margin-top: 1px; }
+}
+
+@keyframes login-error-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .login-page__label {
@@ -150,21 +254,45 @@
   color: var(--input-label-color);
 }
 
+// ── Поля ввода: с иконкой слева, крупнее и заметнее в фокусе ─────────────
+.login-page__input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.login-page__input-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--color-text-muted);
+  pointer-events: none;
+  transition: color var(--transition-fast);
+}
+
+.login-page__input-wrap:focus-within .login-page__input-icon {
+  color: var(--color-primary);
+}
+
 .login-page__input {
   width: 100%;
-  min-height: 42px;
+  min-height: 46px;
   padding: 0 14px;
   box-sizing: border-box;
-  border: 1px solid var(--input-border);
+  border: 1.5px solid var(--input-border);
   border-radius: var(--input-radius);
   background: var(--input-bg);
   font-size: 16px;
   color: var(--color-text);
-  font-weight: 400;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  font-weight: 500;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
 
   @media (max-width: 768px) {
-    padding: 12px 14px;
+    min-height: 48px;
+  }
+
+  &:hover:not(:focus):not(:disabled) {
+    border-color: var(--input-border-hover);
   }
 
   &:focus {
@@ -175,6 +303,11 @@
 
   &::placeholder {
     color: var(--input-placeholder);
+    font-weight: 400;
+  }
+
+  &--icon {
+    padding-left: 42px;
   }
 
   &--password {
@@ -182,24 +315,12 @@
   }
 }
 
-.login-page__password-wrap {
-  display: grid;
-  width: 100%;
-  grid-template-columns: 1fr;
-}
-
-.login-page__password-wrap .login-page__input--password {
-  grid-row: 1;
-  grid-column: 1;
-}
-
 .login-page__password-toggle {
-  grid-row: 1;
-  grid-column: 1;
-  justify-self: end;
-  align-self: center;
-  margin-right: 10px;
-  padding: 4px;
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 8px;
   background: none;
   border: none;
   color: var(--color-text-muted);
@@ -208,38 +329,54 @@
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-sm);
-  transition: color var(--transition-fast);
-  z-index: 1;
+  transition: color var(--transition-fast), background var(--transition-fast);
 
   &:hover {
     color: var(--color-text);
+    background: var(--color-surface-secondary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
   }
 }
 
+// ── Кнопка входа ──────────────────────────────────────────────────────────
 .login-page__submit {
   width: 100%;
   box-sizing: border-box;
-  height: 44px;
+  height: 48px;
   padding: 0 var(--space-4);
   background: var(--color-primary);
   color: #fff;
   border: none;
   border-radius: var(--radius-md);
-  font-size: 15px;
-  font-weight: 600;
-  margin-top: var(--space-1);
-  transition: background var(--transition-fast), transform 0.1s ease;
+  font-size: 15.5px;
+  font-weight: 700;
+  margin-top: var(--space-2);
+  box-shadow: 0 4px 16px rgba(197, 48, 48, 0.28);
+  transition: background var(--transition-fast), transform 0.1s ease, box-shadow var(--transition-fast);
 
   &:hover:not(:disabled) {
     background: var(--color-primary-hover);
+    box-shadow: 0 6px 20px rgba(197, 48, 48, 0.34);
   }
   &:active:not(:disabled) {
-    transform: scale(0.99);
+    transform: scale(0.98);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
   }
   &:disabled {
-    opacity: 0.9;
+    opacity: 0.75;
     cursor: not-allowed;
+    box-shadow: none;
   }
+
+  svg { transition: transform 0.15s ease; }
+  &:hover:not(:disabled) svg { transform: translateX(2px); }
 }
 
 .login-page__submit-text {
@@ -286,4 +423,10 @@
   font-size: 14px;
   font-weight: 400;
   color: var(--color-text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-page__mobile-logo,
+  .login-page__error,
+  .login-page__success-icon { animation: none; }
 }

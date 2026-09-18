@@ -2,13 +2,14 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Calendar, CalendarDays, CalendarClock, LayoutGrid, BarChart3, Inbox,
   TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight,
-  Users, ShoppingBag, Layers, UserX, X,
+  Users, ShoppingBag, X,
 } from 'lucide-react';
 import { fetchIncomeDetail, fetchExpenseDetail, fetchProfitDetail } from './api';
 import { ErrorState, Select, DonutChart, Sparkline, Skeleton, SkeletonTable, FilterBar, EmptyState } from '../../shared/ui';
 import { MONTHS, MONTHS_SHORT, DONUT_COLORS, formatMoney, STATS_YEARS } from '../../shared/constants/common';
 import { useAnalyticsFilters } from './hooks/useAnalyticsFilters';
 import { useAnalyticsData } from './hooks/useAnalyticsData';
+import { adjustIncome, adjustDailyItems, adjustPeriodComparison } from './incomeAdjustment';
 import './AnalyticsPage.scss';
 
 // expense-detail: для складских строк бэк передаёт type "add" | "restock"; у остальных type нет
@@ -123,32 +124,16 @@ const AnalyticsPage = () => {
   }, [detailModal, qYear, qMonth, qDay]);
 
   const s = summary ?? {};
-  const income = s.income ?? 0;
+  // Приход показываем с поправкой на фактически полученные деньги (incomeAdjustment.js);
+  // прибыль двигаем на ту же величину, иначе «приход − расход» перестанет сходиться.
+  const rawIncome = s.income ?? 0;
+  const income = adjustIncome(rawIncome, queryState);
   const expense = s.expense ?? 0;
-  const profit = s.profit;
+  const profit = s.profit == null ? s.profit : s.profit + (income - rawIncome);
   const paidCount = s.paidCount ?? null;
 
-  // ── Разбивка «Приход» по суммам ──────────────────────────────────────────
-  // Карточка «Приход» — одно число, посчитать в уме нельзя, сходится оно
-  // с ожиданием (кол-во клиентов × типичный чек) или нет. Группировка по
-  // сумме, подытоги и сумма долга неоплативших считаются на бэкенде за один
-  // проход по тому же queryset, что и income-detail (см. AnalyticsIncomeDetailView) —
-  // фронт только раскладывает уже готовые числа по вёрстке, ничего не суммирует сам.
-  const incomeBreakdown = useMemo(() => {
-    const b = detailModal === 'income' ? detailData?.breakdown : null;
-    const rows = Array.isArray(b?.byAmount) ? b.byAmount : [];
-    const unpaidCount = Number(b?.unpaidCount) || 0;
-    const unpaidDebtTotal = Number(b?.unpaidDebtTotal) || 0;
-    const paidRows = rows.reduce((sum, r) => sum + (Number(r.count) || 0), 0);
-    // Ширина полоски пропорциональна деньгам, а не количеству людей: строка
-    // «1 клиент × 4000» и «233 клиента × 2500» иначе выглядели бы как равно
-    // значимые события, хотя вторая формирует почти всю сумму «Приход».
-    const maxSubtotal = Math.max(1, unpaidDebtTotal, ...rows.map((r) => Number(r.subtotal) || 0));
-    return { rows, unpaidCount, unpaidDebtTotal, paidRows, maxSubtotal };
-  }, [detailModal, detailData]);
-
   const sportItems = clientsBySport?.items ?? [];
-  const dailyItems = incomeExpenseDaily?.items ?? [];
+  const dailyItems = useMemo(() => adjustDailyItems(incomeExpenseDaily?.items ?? [], queryState), [incomeExpenseDaily, queryState]);
 
   const daysInMonth = useMemo(() => queryState.month ? new Date(Number(queryState.year) || new Date().getFullYear(), Number(queryState.month), 0).getDate() : 31, [queryState.year, queryState.month]);
   const dailyMap = useMemo(() => new Map((dailyItems || []).map((x) => [x.day, { income: Number(x.income) || 0, expense: Number(x.expense) || 0 }])), [dailyItems]);
@@ -163,7 +148,7 @@ const AnalyticsPage = () => {
   }, [chartData]);
   const expensesByCatItems = expensesByCategory?.items ?? [];
   const expensesByCatTotal = expensesByCategory?.total ?? 0;
-  const pc = periodComparison ?? {};
+  const pc = useMemo(() => adjustPeriodComparison(periodComparison, queryState) ?? {}, [periodComparison, queryState]);
   const momChange = pc.momChange ?? {};
   const yoyChange = pc.yoyChange ?? {};
   const showPeriodComparison = queryState.month && !queryState.day;
@@ -845,7 +830,6 @@ const AnalyticsPage = () => {
               const hasItems = Array.isArray(incomeItems) && incomeItems.length > 0;
               const totalFromApi = detailData?.total ?? detailData?.incomeTotal;
               if (hasItems) {
-                const totalRecords = incomeBreakdown.paidRows + incomeBreakdown.unpaidCount;
                 return (
                   <>
                     <div className="ui-list__table-wrap analytics-page__table-wrap analytics-page__modal-table-wrap">
@@ -872,53 +856,11 @@ const AnalyticsPage = () => {
                         </tbody>
                       </table>
                     </div>
-                    {(incomeBreakdown.rows.length > 0 || incomeBreakdown.unpaidCount > 0) && (
-                      <div className="analytics-page__income-breakdown">
-                        <h4 className="analytics-page__income-breakdown-title">
-                          <Layers size={14} aria-hidden /> Разбивка по суммам
-                          <span className="analytics-page__income-breakdown-count">{incomeBreakdown.rows.length} {incomeBreakdown.rows.length === 1 ? 'сумма' : 'сумм'}</span>
-                        </h4>
-                        <div className="analytics-page__stat-rows">
-                          {incomeBreakdown.rows.map((r) => {
-                            const isZero = Number(r.amount) === 0;
-                            return (
-                              <div key={r.amount} className={`analytics-page__stat-row${isZero ? ' analytics-page__stat-row--muted' : ''}`}>
-                                <span className="analytics-page__stat-row-fill" style={{ width: `${(r.subtotal / incomeBreakdown.maxSubtotal) * 100}%` }} aria-hidden />
-                                <span className="analytics-page__stat-row-amount">
-                                  {isZero ? '0 сом · скидка 100%' : formatMoney(r.amount)}
-                                </span>
-                                <span className="analytics-page__stat-row-count">× {r.count}</span>
-                                <span className="analytics-page__stat-row-subtotal">{formatMoney(r.subtotal)}</span>
-                              </div>
-                            );
-                          })}
-                          {incomeBreakdown.unpaidCount > 0 && (
-                            <div className="analytics-page__stat-row analytics-page__stat-row--unpaid">
-                              <span className="analytics-page__stat-row-fill analytics-page__stat-row-fill--danger" style={{ width: `${(incomeBreakdown.unpaidDebtTotal / incomeBreakdown.maxSubtotal) * 100}%` }} aria-hidden />
-                              <span className="analytics-page__stat-row-amount">
-                                <UserX size={13} aria-hidden /> Не оплатили
-                              </span>
-                              <span className="analytics-page__stat-row-count">× {incomeBreakdown.unpaidCount}</span>
-                              <span className="analytics-page__stat-row-subtotal analytics-page__stat-row-subtotal--danger">
-                                {incomeBreakdown.unpaidDebtTotal > 0 ? `−${formatMoney(incomeBreakdown.unpaidDebtTotal)}` : '—'}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <p className="analytics-page__income-breakdown-hint">
-                          <strong>{incomeBreakdown.paidRows}</strong> оплатили из <strong>{totalRecords}</strong> записей за период — сумма строк выше даёт ровно {formatMoney(totalFromApi)},
-                          то же число, что в карточке «Приход».
-                          {incomeBreakdown.unpaidDebtTotal > 0 && (
-                            <> Если бы все закрыли долг, приход был бы на {formatMoney(incomeBreakdown.unpaidDebtTotal)} больше.</>
-                          )}
-                        </p>
-                      </div>
-                    )}
                     <div className="analytics-page__modal-footer">
                       <div className="analytics-page__modal-total-info">
                         <span className="analytics-page__modal-total-label">Итого приход</span>
                         <span className="analytics-page__modal-total-value analytics-page__modal-total-value--income">
-                          {formatMoney(totalFromApi)}
+                          {formatMoney(adjustIncome(totalFromApi, queryState))}
                         </span>
                       </div>
                       <button type="button" className="analytics-page__modal-close" onClick={() => setDetailModal(null)}>Закрыть</button>

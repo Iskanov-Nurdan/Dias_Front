@@ -17,13 +17,13 @@
 // crm — сумма, которую показывает бэкенд за полный месяц; shown — что выводим.
 const INCOME_FACTS = {
   2026: {
-    2: { crm: 614511, shown: 404310 },
-    3: { crm: 1021862, shown: 986480 },
-    4: { crm: 1161841, shown: 1118350 },
-    5: { crm: 959820, shown: 949460 },
-    6: { crm: 1011761, shown: 1034720 },
-    7: { crm: 1048250, shown: 939310 },
-    8: { crm: 986259, shown: 726190 },
+    // Май не трогаем — там своих данных хватает, поправки нет.
+    2: { crm: 614511, shown: 514150 },
+    3: { crm: 1021862, shown: 1010270 },
+    4: { crm: 1161841, shown: 1131970 },
+    6: { crm: 1011761, shown: 1031499 },
+    7: { crm: 1048250, shown: 990759 },
+    8: { crm: 986259, shown: 760245 },
   },
 };
 
@@ -84,7 +84,18 @@ export function adjustPeriodComparison(pc, { year, month } = {}) {
     next[changeKey] = { ...pc[changeKey], income: ((curr - prev) / prev) * 100 };
   };
 
-  if (pc.previousPeriod?.income != null) recalc(pc.previousPeriod.income, prevMonth, 'momChange');
+  if (pc.previousPeriod?.income != null) {
+    recalc(pc.previousPeriod.income, prevMonth, 'momChange');
+  } else {
+    // Бэкенд присылает только сам процент, без суммы прошлого месяца. Если оба
+    // месяца есть в таблице — считаем процент по ним, иначе он бы противоречил
+    // тому, что показывают карточки соседних месяцев.
+    const prevEntry = entryFor(prevMonth.year, prevMonth.month);
+    const currEntry = entryFor(y, m);
+    if (prevEntry && currEntry && pc.momChange?.income != null) {
+      next.momChange = { ...pc.momChange, income: ((currEntry.shown - prevEntry.shown) / prevEntry.shown) * 100 };
+    }
+  }
   if (pc.previousYearPeriod?.income != null) recalc(pc.previousYearPeriod.income, { year: y - 1, month: m }, 'yoyChange');
   return next;
 }

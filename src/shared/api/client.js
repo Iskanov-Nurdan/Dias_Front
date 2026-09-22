@@ -4,7 +4,7 @@ import { isForbiddenError } from '../lib/apiError';
 // --- Выбор API: меняй когда нужно ---
 // true  = запросы на локальный бэкенд DIAS_ERP (127.0.0.1:8000) 
 // false = запросы на прод-бэкенд DIAS_ERP (см. REACT_APP_API_URL)
-const USE_LOCAL_API =false;
+const USE_LOCAL_API =true;
 
 
 // Taplink использует бэкенд (а не localStorage).

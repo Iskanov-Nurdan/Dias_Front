@@ -17,9 +17,14 @@ export const TAPLINK_BACKEND_ENABLED = true;
 // должен разрешать Origin фронта (CORS_ALLOWED_ORIGINS) — и localhost:3000
 // для dev, и прод-домен фронта.
 const PROD_API_URL = 'https://diass.tw1.ru/api';
-const API_BASE = USE_LOCAL_API
-  ? 'http://127.0.0.1:8000/api'
-  : (process.env.REACT_APP_API_URL || PROD_API_URL);
+// npm run build (NODE_ENV=production) всегда ходит в прод: фронт отдаётся тем же
+// nginx, что и API, поэтому относительный /api — без CORS. USE_LOCAL_API влияет
+// только на npm start.
+const API_BASE = process.env.NODE_ENV === 'production'
+  ? (process.env.REACT_APP_API_URL || '/api')
+  : USE_LOCAL_API
+    ? 'http://127.0.0.1:8000/api'
+    : PROD_API_URL;
 
 // withCredentials не нужен: авторизация у DIAS_ERP через JWT в заголовке
 // Authorization, не через cookie. С withCredentials:true браузер требует от

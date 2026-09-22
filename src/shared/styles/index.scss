@@ -181,7 +181,7 @@ textarea {
       padding: 8px 16px 10px;
       text-align: left;
       vertical-align: middle;
-      font-weight: 700;
+      font-weight: 500;
       font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.06em;
@@ -235,7 +235,7 @@ textarea {
 
   &__title {
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--color-text);
     white-space: nowrap;
     overflow: hidden;
@@ -273,7 +273,7 @@ textarea {
   background: var(--color-primary-soft);
   color: var(--color-primary);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   flex-shrink: 0;
   line-height: 1;
 
@@ -295,7 +295,7 @@ textarea {
   padding: 3px 10px;
   border-radius: 20px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
   background: var(--color-surface-secondary);
   color: var(--color-text-secondary);
@@ -408,7 +408,7 @@ textarea {
 
     &--active {
       color: var(--color-primary);
-      font-weight: 600;
+      font-weight: 500;
       border-bottom-color: var(--color-primary);
     }
   }
@@ -424,7 +424,7 @@ textarea {
     background: var(--color-surface-secondary);
     color: var(--color-text-secondary);
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 600;
   }
 
   &__tab--active &__badge,
@@ -471,7 +471,7 @@ textarea {
   background: transparent;
   color: var(--color-text);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
   transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);

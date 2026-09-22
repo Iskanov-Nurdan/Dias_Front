@@ -1,0 +1,73 @@
+// Каркас модалки (backdrop/шапка/шторка на мобиле/sticky-кнопки) — общий
+// .form-modal, см. shared/ui/FormModal.scss. Тут только стили полей формы.
+.prm__field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.prm__label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.prm__required {
+  color: var(--color-primary);
+  font-weight: 700;
+  margin-left: 1px;
+}
+
+.prm__select {
+  width: 100%;
+}
+
+.prm__hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 11px 13px;
+  background: var(--color-warning-soft);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 30%, transparent);
+  border-radius: var(--radius-md);
+  color: var(--color-warning);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.5;
+  margin: 0;
+
+  svg { flex-shrink: 0; margin-top: 1px; }
+}
+
+.prm__summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--color-text-muted);
+
+  strong {
+    color: var(--color-text);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.prm__field-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 11px 13px;
+  background: var(--color-danger-soft);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.5;
+}

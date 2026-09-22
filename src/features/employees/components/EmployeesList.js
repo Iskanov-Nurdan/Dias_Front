@@ -1,39 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { KeyRound, Pencil, Trash2 } from 'lucide-react';
-import { ErrorState, EmptyState, ConfirmModal, SkeletonTable } from '../../../shared/ui';
-import { useTrainerPhotosByFio } from '../hooks/useTrainerPhotosByFio';
-import { formatPhoneDisplay } from '../../../shared/lib/phone';
+import { KeyRound, Pencil, Trash2, MoreVertical } from 'lucide-react';
+import { ErrorState, EmptyState, ConfirmModal, SkeletonTable, ActionSheet } from '../../../shared/ui';
 import './EmployeesList.scss';
 
 const MOBILE_MQ = '(max-width: 768px)';
 
-const getInitials = (fio) =>
-  (fio || '').split(' ').slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
+const getInitials = (name) =>
+  (name || '').split(' ').slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
 
-/**
- * Аватар сотрудника: фото тренера, если оно есть (см. useTrainerPhotosByFio),
- * иначе инициалы — как и раньше. Битую ссылку прячем локальным состоянием,
- * а не onError-стилем на самой картинке, чтобы вместо неё сразу встали
- * инициалы, а не пустое место.
- */
-const EmployeeAvatar = ({ fio, photo, className = 'ui-avatar' }) => {
-  const [broken, setBroken] = useState(false);
-  if (photo && !broken) {
-    return (
-      <img
-        src={photo}
-        alt=""
-        className={`${className} employees-list__avatar-img`}
-        loading="lazy"
-        onError={() => setBroken(true)}
-      />
-    );
-  }
-  return <span className={className} aria-hidden>{getInitials(fio)}</span>;
-};
+const EmployeeAvatar = ({ name, className = 'ui-avatar' }) => (
+  <span className={className} aria-hidden>{getInitials(name)}</span>
+);
 
 const EmployeesList = ({
   items,
+  roles,
   loading,
   error,
   onRetry,
@@ -49,6 +30,7 @@ const EmployeesList = ({
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.matchMedia(MOBILE_MQ).matches,
   );
+  const [menuEmployee, setMenuEmployee] = useState(null);
 
   useEffect(() => {
     const mq = window.matchMedia(MOBILE_MQ);
@@ -58,47 +40,44 @@ const EmployeesList = ({
     return () => mq.removeEventListener('change', sync);
   }, []);
 
-  const getPhoto = useTrainerPhotosByFio();
-
   const list = items?.items ?? items ?? [];
+  const roleNameById = (roles || []).reduce((o, r) => ({ ...o, [r.id]: r.name }), {});
+  const getRoleName = (emp) => roleNameById[emp.role] ?? null;
 
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
+
+  const closeMenu = () => setMenuEmployee(null);
+  const handleMenuAction = (action) => {
+    if (!menuEmployee) return;
+    const emp = menuEmployee;
+    closeMenu();
+    action(emp);
+  };
 
   const renderMobileCards = () => (
     <div className="employees-list__cards">
       {list.map((emp, idx) => {
-        const roleName = emp.roleName ?? emp.role?.name;
+        const roleName = getRoleName(emp);
         return (
-          <article key={emp.id} className="employees-list__card" style={{ '--row-i': idx }}>
-            <div className="employees-list__card-head">
-              <EmployeeAvatar fio={emp.fio} photo={getPhoto(emp.fio)} className="ui-avatar ui-avatar--lg" />
-              <div>
-                <div className="employees-list__card-name">{emp.fio || '—'}</div>
-                {roleName && <span className="ui-pill ui-pill--info">{roleName}</span>}
-              </div>
+          <article
+            key={emp.id}
+            className="employees-list__card"
+            style={{ '--row-i': idx }}
+            onClick={() => onEdit(emp)}
+          >
+            <EmployeeAvatar name={emp.name} className="ui-avatar ui-avatar--lg" />
+            <div className="employees-list__card-info">
+              <div className="employees-list__card-name">{emp.name || '—'}</div>
+              {roleName && <span className="ui-pill ui-pill--info">{roleName}</span>}
             </div>
-            <dl className="employees-list__card-dl">
-              <div className="employees-list__card-row">
-                <dt>Логин</dt>
-                <dd>{emp.login || '—'}</dd>
-              </div>
-              {emp.phone && (
-                <div className="employees-list__card-row">
-                  <dt>Телефон</dt>
-                  <dd>{formatPhoneDisplay(emp.phone)}</dd>
-                </div>
-              )}
-            </dl>
-            <div className="employees-list__card-actions">
-              <button type="button" className="ui-list-btn ui-list-btn--edit employees-list__card-btn" onClick={() => onEdit(emp)}><Pencil size={13} /> Изменить</button>
-              <details className="employees-list__card-more">
-                <summary className="employees-list__card-more-summary">Ещё</summary>
-                <div className="employees-list__card-more-body">
-                  <button type="button" className="ui-list-btn employees-list__card-btn" onClick={() => onAccess(emp)}><KeyRound size={13} /> Доступы</button>
-                  <button type="button" className="ui-list-btn ui-list-btn--danger employees-list__card-btn" onClick={() => onDelete(emp)}><Trash2 size={13} /> Удалить</button>
-                </div>
-              </details>
-            </div>
+            <button
+              type="button"
+              className="employees-list__card-menu-btn"
+              aria-label="Действия"
+              onClick={(e) => { e.stopPropagation(); setMenuEmployee(emp); }}
+            >
+              <MoreVertical size={17} />
+            </button>
           </article>
         );
       })}
@@ -110,7 +89,7 @@ const EmployeesList = ({
       <div className="employees-list">
         <div className="ui-list__table-wrap employees-list__table-wrap">
           {loading ? (
-            <SkeletonTable rows={8} cols={5} />
+            <SkeletonTable rows={8} cols={3} />
           ) : !list.length ? (
             <div className="employees-list__empty-wrap">
               <EmptyState message="Нет сотрудников" actionLabel={emptyStateActionLabel} onAction={emptyStateOnAction} />
@@ -121,26 +100,22 @@ const EmployeesList = ({
             <table className="ui-list__table employees-list__table">
               <thead>
                 <tr>
-                  <th>ФИО</th>
-                  <th>Логин</th>
-                  <th>Телефон</th>
+                  <th>Имя</th>
                   <th>Роль</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 {list.map((emp, idx) => {
-                  const roleName = emp.roleName ?? emp.role?.name;
+                  const roleName = getRoleName(emp);
                   return (
                     <tr key={emp.id} style={{ '--row-i': idx }}>
                       <td>
                         <div className="ui-list__name-cell">
-                          <EmployeeAvatar fio={emp.fio} photo={getPhoto(emp.fio)} />
-                          <span className="ui-list__title">{emp.fio || '—'}</span>
+                          <EmployeeAvatar name={emp.name} />
+                          <span className="ui-list__title">{emp.name || '—'}</span>
                         </div>
                       </td>
-                      <td className="ui-list__muted">{emp.login || '—'}</td>
-                      <td className="ui-list__muted">{emp.phone ? formatPhoneDisplay(emp.phone) : '—'}</td>
                       <td>
                         {roleName ? (
                           <span className="ui-pill ui-pill--info">{roleName}</span>
@@ -159,10 +134,21 @@ const EmployeesList = ({
           )}
         </div>
       </div>
+      <ActionSheet open={!!menuEmployee} onClose={closeMenu} title={menuEmployee?.name}>
+        <button type="button" className="action-sheet__item" onClick={() => handleMenuAction(onEdit)}>
+          <Pencil size={17} /> Изменить
+        </button>
+        <button type="button" className="action-sheet__item" onClick={() => handleMenuAction(onAccess)}>
+          <KeyRound size={17} /> Доступы
+        </button>
+        <button type="button" className="action-sheet__item action-sheet__item--danger action-sheet__item--divider" onClick={() => handleMenuAction(onDelete)}>
+          <Trash2 size={17} /> Удалить
+        </button>
+      </ActionSheet>
       {confirmDelete && (
         <ConfirmModal
           title="Удалить сотрудника?"
-          message={confirmDelete.fio ? `Сотрудник: ${confirmDelete.fio}` : undefined}
+          message={confirmDelete.name ? `Сотрудник: ${confirmDelete.name}` : undefined}
           confirmText="Удалить"
           onConfirm={onConfirmDelete}
           onCancel={onCancelDelete}

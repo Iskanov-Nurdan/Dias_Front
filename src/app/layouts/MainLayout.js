@@ -1,23 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Menu, X,
+  MoreHorizontal,
   User, LogOut, Moon, Sun,
 } from 'lucide-react';
 import { useAuth } from '../providers/AuthProvider';
+import { ActionSheet } from '../../shared/ui';
+import ShiftClockWidget from '../../features/shifts/components/ShiftClockWidget';
 import { prefetchRoutePage } from '../prefetchRoutes';
-import { useTrainerPhotosByFio } from '../../features/employees/hooks/useTrainerPhotosByFio';
 import {
-  PAGE_IDS, PAGE_LABELS, PAGE_ROUTES, PAGE_GROUPS, PAGE_ICONS,
+  PAGE_IDS, PAGE_LABELS, PAGE_ROUTES, PAGE_GROUPS, PAGE_ICONS, MOBILE_NAV_PRIMARY_IDS,
 } from '../../shared/constants/pages';
 import './MainLayout.scss';
 
-const THEME_STORAGE_KEY = 'rahman-theme';
+const THEME_STORAGE_KEY = 'dias_theme';
 
-const ICON_SIZE = 20;
 const ICON_SIZE_SM = 18;
 /** Иконки в списке навигации сайдбара (см. .main-layout__nav-icon) */
 const NAV_ICON_SIZE = 20;
+/** Иконки в нижней таб-навигации на мобиле (см. .main-layout__bottom-nav-icon) */
+const BOTTOM_NAV_ICON_SIZE = 21;
 
 // Задержка перед авто-закрытием: короткое касание края мышью мимоходом
 // не должно раскрывать/закрывать сайдбар с миганием
@@ -25,8 +27,8 @@ const CLOSE_DELAY_MS = 220;
 
 const getSectionTitleForPath = (pathname) => {
   const pageId = Object.keys(PAGE_ROUTES).find((id) => PAGE_ROUTES[id] === pathname);
-  if (pageId) return PAGE_LABELS[pageId] || 'Рахман Ата';
-  return 'Рахман Ата';
+  if (pageId) return PAGE_LABELS[pageId] || 'DIAS LINE';
+  return 'DIAS LINE';
 };
 
 const getInitialTheme = () => {
@@ -46,8 +48,8 @@ const MainLayout = () => {
   const { user, logout, hasAccess } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const [theme, setTheme] = useState(getInitialTheme);
 
   /**
@@ -59,11 +61,6 @@ const MainLayout = () => {
    * Esc — сразу.
    */
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  // Фото сотрудника — то же, что в карточке тренера и в списке сотрудников:
-  // у тренера оно давно загружено, а в сайдбаре висела безликая иконка
-  const getPhoto = useTrainerPhotosByFio();
-  const [avatarBroken, setAvatarBroken] = useState(false);
-  const userPhoto = avatarBroken ? null : getPhoto(user?.fio);
   const sidebarRef = useRef(null);
   const closeTimerRef = useRef(null);
 
@@ -76,7 +73,7 @@ const MainLayout = () => {
 
   useEffect(() => () => clearCloseTimer(), []);
 
-  // На мобильном курсора нет — там своё выезжающее меню (mobileMenuOpen),
+  // На мобильном курсора нет — там нижняя таб-навигация вместо сайдбара,
   // эта логика туда не подключается вовсе
   const openSidebar = () => {
     if (isMobile) return;
@@ -133,23 +130,10 @@ const MainLayout = () => {
   }, []);
 
   useEffect(() => {
-    if (isMobile) setMobileMenuOpen(false);
+    if (isMobile) setMoreSheetOpen(false);
     else closeSidebarNow();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMobile]);
-
-  useEffect(() => {
-    if (!mobileMenuOpen || !isMobile) return;
-    const onEscape = (e) => {
-      if (e.key === 'Escape') setMobileMenuOpen(false);
-    };
-    document.addEventListener('keydown', onEscape);
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onEscape);
-      document.body.style.overflow = '';
-    };
-  }, [mobileMenuOpen, isMobile]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -167,21 +151,19 @@ const MainLayout = () => {
     navigate('/login');
   };
 
-  const toggleMobileMenu = () => setMobileMenuOpen((prev) => !prev);
-
   /**
-   * Переход по пункту меню закрывает сайдбар сразу — на мобильном прячет
-   * выезжающее меню, на десктопе схлопывает узкую полосу обратно, не
-   * дожидаясь, пока курсор физически покинет область сайдбара.
+   * Переход по пункту меню закрывает сайдбар сразу — на десктопе схлопывает
+   * узкую полосу обратно, не дожидаясь, пока курсор физически покинет
+   * область сайдбара; на мобиле — закрывает шторку «Ещё», если она открыта.
    */
   const handleNavigate = (path) => {
     navigate(path);
-    if (isMobile) setMobileMenuOpen(false);
+    if (isMobile) setMoreSheetOpen(false);
     else closeSidebarNow();
   };
 
   const sectionTitle = getSectionTitleForPath(location.pathname);
-  const isSidebarExpandedView = (isMobile && mobileMenuOpen) || (!isMobile && sidebarOpen);
+  const isSidebarExpandedView = !isMobile && sidebarOpen;
 
   const visiblePages = PAGE_IDS.filter((id) => hasAccess(id));
   const visibleSet = new Set(visiblePages);
@@ -190,27 +172,28 @@ const MainLayout = () => {
     pages: pageIds.filter((id) => visibleSet.has(id)),
   })).filter((g) => g.pages.length > 0);
 
+  // ── Нижняя таб-навигация на мобиле: 4 главных раздела + «Ещё» для
+  // остального, если у пользователя доступно больше 4 разделов. Если
+  // доступно ≤4 — «Ещё» не нужна, показываем их все как отдельные вкладки.
+  let mobileTabPages = visiblePages;
+  let moreMenuPages = [];
+  if (visiblePages.length > 4) {
+    const primary = MOBILE_NAV_PRIMARY_IDS.filter((id) => visibleSet.has(id));
+    const rest = visiblePages.filter((id) => !primary.includes(id));
+    mobileTabPages = primary.length >= 4 ? primary.slice(0, 4) : primary.concat(rest.slice(0, 4 - primary.length));
+    const tabSet = new Set(mobileTabPages);
+    moreMenuPages = visiblePages.filter((id) => !tabSet.has(id));
+  }
+  const moreActive = moreMenuPages.some((id) => location.pathname === PAGE_ROUTES[id]);
+
   return (
-    <div className={`main-layout ${sidebarOpen && !isMobile ? 'main-layout--sidebar-open' : ''} ${mobileMenuOpen ? 'main-layout--mobile-menu-open' : ''}`}>
-      {isMobile && mobileMenuOpen && (
-        <div className="main-layout__mobile-overlay" onClick={toggleMobileMenu} aria-hidden="false" />
-      )}
+    <div className={`main-layout ${sidebarOpen && !isMobile ? 'main-layout--sidebar-open' : ''}`}>
       <header className="main-layout__header">
         <div className="main-layout__header-left">
-          <button
-            type="button"
-            className="main-layout__sidebar-toggle main-layout__sidebar-toggle--mobile"
-            onClick={toggleMobileMenu}
-            title={mobileMenuOpen ? 'Закрыть меню' : 'Меню'}
-            aria-label={mobileMenuOpen ? 'Закрыть меню' : 'Открыть меню'}
-            aria-expanded={mobileMenuOpen}
-          >
-            {mobileMenuOpen ? <X size={ICON_SIZE} /> : <Menu size={ICON_SIZE} />}
-          </button>
           <span className="main-layout__header-page-title">{sectionTitle}</span>
         </div>
-        <div className="main-layout__header-center" />
         <div className="main-layout__header-right">
+          <ShiftClockWidget />
           <button
             type="button"
             className="main-layout__theme-toggle"
@@ -231,7 +214,7 @@ const MainLayout = () => {
         onBlur={handleSidebarBlur}
       >
         <div className="main-layout__sidebar-logo">
-          <img src={`${process.env.PUBLIC_URL || ''}/rahman.png`} alt="Рахман Ата" />
+          <img src={`${process.env.PUBLIC_URL || ''}/dias-line-logo.png`} alt="DIAS LINE" />
         </div>
         <nav className="main-layout__nav">
           {navGroups.map((group) => (
@@ -261,22 +244,13 @@ const MainLayout = () => {
         </nav>
         <div className="main-layout__sidebar-footer">
           <div className="main-layout__sidebar-user-card">
-            {userPhoto ? (
-              <img
-                src={userPhoto}
-                alt=""
-                className="main-layout__sidebar-user-avatar main-layout__sidebar-user-avatar--photo"
-                onError={() => setAvatarBroken(true)}
-              />
-            ) : (
-              <span className="main-layout__sidebar-user-avatar" aria-hidden>
-                <User size={ICON_SIZE_SM} />
-              </span>
-            )}
+            <span className="main-layout__sidebar-user-avatar" aria-hidden>
+              <User size={ICON_SIZE_SM} />
+            </span>
             {isSidebarExpandedView && (
               <div className="main-layout__sidebar-user-info">
-                <span className="main-layout__sidebar-user-name">{user?.fio || user?.login || ''}</span>
-                <span className="main-layout__sidebar-user-role">{user?.roleName || ''}</span>
+                <span className="main-layout__sidebar-user-name">{user?.name || ''}</span>
+                <span className="main-layout__sidebar-user-role">{user?.role_name || ''}</span>
               </div>
             )}
             <button
@@ -296,6 +270,73 @@ const MainLayout = () => {
           <Outlet />
         </div>
       </main>
+      {isMobile && (
+        <nav className="main-layout__bottom-nav" aria-label="Навигация">
+          {mobileTabPages.map((pageId) => {
+            const path = PAGE_ROUTES[pageId];
+            const isActive = location.pathname === path;
+            const Label = PAGE_LABELS[pageId] || pageId;
+            const Icon = PAGE_ICONS[pageId];
+            return (
+              <button
+                key={pageId}
+                type="button"
+                className={`main-layout__bottom-nav-item ${isActive ? 'main-layout__bottom-nav-item--active' : ''}`}
+                onClick={() => handleNavigate(path)}
+              >
+                {Icon && <span className="main-layout__bottom-nav-icon" aria-hidden><Icon size={BOTTOM_NAV_ICON_SIZE} strokeWidth={1.75} /></span>}
+                <span className="main-layout__bottom-nav-label">{Label}</span>
+              </button>
+            );
+          })}
+          {moreMenuPages.length > 0 && (
+            <button
+              type="button"
+              className={`main-layout__bottom-nav-item ${moreActive ? 'main-layout__bottom-nav-item--active' : ''}`}
+              onClick={() => setMoreSheetOpen(true)}
+              aria-haspopup="true"
+              aria-expanded={moreSheetOpen}
+            >
+              <span className="main-layout__bottom-nav-icon" aria-hidden><MoreHorizontal size={BOTTOM_NAV_ICON_SIZE} strokeWidth={1.75} /></span>
+              <span className="main-layout__bottom-nav-label">Ещё</span>
+            </button>
+          )}
+        </nav>
+      )}
+      {isMobile && (
+        <ActionSheet open={moreSheetOpen} onClose={() => setMoreSheetOpen(false)} title="Ещё разделы">
+          {moreMenuPages.map((pageId) => {
+            const path = PAGE_ROUTES[pageId];
+            const isActive = location.pathname === path;
+            const Label = PAGE_LABELS[pageId] || pageId;
+            const Icon = PAGE_ICONS[pageId];
+            return (
+              <button
+                key={pageId}
+                type="button"
+                className={`action-sheet__item ${isActive ? 'action-sheet__item--active' : ''}`}
+                onClick={() => handleNavigate(path)}
+              >
+                {Icon && <Icon size={18} strokeWidth={1.75} aria-hidden />}
+                {Label}
+              </button>
+            );
+          })}
+          <div className="main-layout__more-user">
+            <span className="main-layout__sidebar-user-avatar" aria-hidden>
+              <User size={ICON_SIZE_SM} />
+            </span>
+            <div className="main-layout__sidebar-user-info">
+              <span className="main-layout__sidebar-user-name">{user?.name || ''}</span>
+              <span className="main-layout__sidebar-user-role">{user?.role_name || ''}</span>
+            </div>
+          </div>
+          <button type="button" className="action-sheet__item action-sheet__item--danger action-sheet__item--divider" onClick={handleLogout}>
+            <LogOut size={18} strokeWidth={1.75} aria-hidden />
+            Выйти
+          </button>
+        </ActionSheet>
+      )}
     </div>
   );
 };

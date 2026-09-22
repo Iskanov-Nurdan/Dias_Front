@@ -1,0 +1,88 @@
+@use '../../../shared/styles/mixins';
+
+// Составной селектор — та же причина, что и у .oam-modal (см. OtkAccountModal.scss).
+.form-modal.ohdm {
+  max-width: 560px;
+}
+
+.ohdm__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0;
+  min-width: 0;
+
+  @include mixins.mobile {
+    grid-template-columns: 1fr;
+  }
+
+  div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    background: var(--color-surface-secondary);
+    border-radius: var(--radius-md);
+    min-width: 0;
+  }
+
+  dt {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+  }
+
+  dd {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: break-word;
+  }
+}
+
+// Список профилей сессии — строки вместо таблицы (на мобиле таблиц не
+// бывает нигде в приложении, а тут обычно всего пара строк на сессию).
+.ohdm__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ohdm__line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--color-surface-secondary);
+  border-radius: var(--radius-md);
+}
+
+.ohdm__line-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ohdm__line-pieces {
+  flex-shrink: 0;
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ohdm__line-kg {
+  flex-shrink: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}

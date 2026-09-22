@@ -1,0 +1,136 @@
+@use '../../../shared/styles/mixins';
+
+// Каркас модалки (backdrop/шапка/fullscreen на мобиле/sticky-кнопки) —
+// общий .form-modal, см. shared/ui/FormModal.scss. Тут только поля формы.
+.rpm {
+  &__row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+
+    @include mixins.mobile {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    min-width: 0;
+  }
+
+  &__label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+
+  &__required {
+    color: var(--color-primary);
+    font-weight: 700;
+    margin-left: 1px;
+  }
+
+  &__field-error {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-danger);
+  }
+
+  &__input,
+  &__textarea,
+  &__select {
+    width: 100%;
+  }
+
+  &__input,
+  &__textarea {
+    padding: 0 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--input-radius);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 14px;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &::placeholder { color: var(--color-text-muted); }
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: var(--input-shadow-focus);
+    }
+
+    &--invalid {
+      border-color: var(--color-danger) !important;
+      box-shadow: 0 0 0 3px var(--color-danger-soft) !important;
+    }
+  }
+
+  @media (hover: hover) {
+    &__input:hover:not(:focus):not(:disabled),
+    &__textarea:hover:not(:focus):not(:disabled) {
+      border-color: var(--color-border-strong);
+    }
+  }
+
+  &__input {
+    height: 42px;
+
+    &[type='datetime-local'] {
+      color-scheme: light;
+      cursor: pointer;
+    }
+
+    &[type='datetime-local']::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+      opacity: 0.55;
+    }
+  }
+
+  @media (hover: hover) {
+    &__input[type='datetime-local']:hover::-webkit-calendar-picker-indicator {
+      opacity: 1;
+    }
+  }
+
+  &__textarea {
+    padding: 10px 14px;
+    resize: vertical;
+    min-height: 56px;
+  }
+
+  // «Итого к оплате» — акцентная карточка с крупной суммой, не просто
+  // подсвеченная строка текста.
+  &__total {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 15px;
+    background: var(--color-success-soft);
+    border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent);
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    animation: rpm-fade-in 0.2s ease;
+
+    strong {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--color-success);
+    }
+  }
+}
+
+@keyframes rpm-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rpm__total { animation: none !important; }
+}

@@ -1,43 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, User, AtSign, Phone, Shield, Lock } from 'lucide-react';
-import { Select, SubmitButton, PhoneInput } from '../../../shared/ui';
+import { X, User, Shield, Lock } from 'lucide-react';
+import { Select, SubmitButton } from '../../../shared/ui';
 import { useModalEffect } from '../../../shared/hooks/useModalEffect';
 import './EmployeeFormModal.scss';
 
+/**
+ * У DIAS_ERP одно поле name — это одновременно и логин, и отображаемое имя
+ * (отдельного поля "логин" в бэкенде нет, см. apps/accounts/models.py User).
+ * Раньше здесь были два поля (ФИО + Логин) под старый бэкенд Rahman Ata —
+ * схлопнуты в одно, потому что хранить их раздельно всё равно негде.
+ */
 const EmployeeFormModal = ({ employee, roles, onSave, onClose, error, saving }) => {
-  const [fio, setFio] = useState('');
-  const [login, setLogin] = useState('');
-  const [phone, setPhone] = useState('');
+  const [name, setName] = useState('');
   const [roleId, setRoleId] = useState('');
   const [password, setPassword] = useState('');
   const [touched, setTouched] = useState({});
   const markTouched = (field) => setTouched((t) => (t[field] ? t : { ...t, [field]: true }));
   const isEdit = !!employee?.id;
 
-  const fioError = touched.fio && !fio.trim() ? 'Укажите ФИО' : null;
-  const loginError = touched.login && !login.trim() ? 'Укажите логин' : null;
+  const nameError = touched.name && !name.trim() ? 'Укажите имя' : null;
   const passwordError = touched.password && !isEdit && !password ? 'Укажите пароль' : null;
 
   useModalEffect(true, onClose);
 
   useEffect(() => {
     if (employee) {
-      setFio(employee.fio || '');
-      setLogin(employee.login || '');
-      setPhone(employee.phone || '');
-      if (employee.id) {
-        setRoleId(String(employee.roleId ?? employee.role_id ?? employee.role?.id ?? ''));
-      } else {
-        const defaultRole = (roles || []).find((r) => r.isDefault === true || r.is_default === true);
-        setRoleId(defaultRole ? String(defaultRole.id) : '');
-      }
+      setName(employee.name || '');
+      setRoleId(employee.id ? String(employee.role ?? '') : '');
     }
-  }, [employee, roles]);
+  }, [employee]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const payload = { fio, login, phone, roleId: roleId || undefined };
+    const payload = { name, roleId: roleId || undefined };
     if (password) payload.password = password;
     onSave(payload);
   };
@@ -49,7 +45,7 @@ const EmployeeFormModal = ({ employee, roles, onSave, onClose, error, saving }) 
         <div className="efm__header">
           <div>
             <p className="efm__header-sub">{isEdit ? 'Редактирование' : 'Новый сотрудник'}</p>
-            <h2 id="efm-title" className="efm__title">{isEdit ? employee?.fio || 'Сотрудник' : 'Добавить сотрудника'}</h2>
+            <h2 id="efm-title" className="efm__title">{isEdit ? employee?.name || 'Сотрудник' : 'Добавить сотрудника'}</h2>
           </div>
           <button type="button" className="efm__close" onClick={onClose} aria-label="Закрыть"><X size={18} /></button>
         </div>
@@ -60,55 +56,22 @@ const EmployeeFormModal = ({ employee, roles, onSave, onClose, error, saving }) 
           <div className="efm__body">
 
             <div className="efm__field">
-              <label className="efm__label" htmlFor="efm-fio">
+              <label className="efm__label" htmlFor="efm-name">
                 <User size={14} className="efm__label-icon" />
-                ФИО <span className="efm__required">*</span>
+                Имя (логин) <span className="efm__required">*</span>
               </label>
               <input
-                id="efm-fio"
+                id="efm-name"
                 type="text"
-                value={fio}
-                onChange={(e) => setFio(e.target.value)}
-                onBlur={() => markTouched('fio')}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onBlur={() => markTouched('name')}
                 required
-                className={`efm__input${fioError ? ' efm__input--invalid' : ''}`}
+                className={`efm__input${nameError ? ' efm__input--invalid' : ''}`}
                 autoFocus
-                placeholder="Иванов Иван Иванович"
+                placeholder="ivanov"
               />
-              {fioError && <span className="efm__field-error">{fioError}</span>}
-            </div>
-
-            <div className="efm__field">
-              <label className="efm__label" htmlFor="efm-login">
-                <AtSign size={14} className="efm__label-icon" />
-                Логин <span className="efm__required">*</span>
-                {isEdit && <span className="efm__hint">· нельзя изменить</span>}
-              </label>
-              <input
-                id="efm-login"
-                type="text"
-                value={login}
-                onChange={(e) => setLogin(e.target.value)}
-                onBlur={() => markTouched('login')}
-                required
-                className={`efm__input${isEdit ? ' efm__input--disabled' : ''}${loginError ? ' efm__input--invalid' : ''}`}
-                disabled={isEdit}
-                placeholder="login"
-              />
-              {loginError && <span className="efm__field-error">{loginError}</span>}
-            </div>
-
-            <div className="efm__field">
-              <label className="efm__label" htmlFor="efm-phone">
-                <Phone size={14} className="efm__label-icon" />
-                Телефон
-              </label>
-              <PhoneInput
-                id="efm-phone"
-                value={phone}
-                onChange={setPhone}
-                className="efm__input"
-              />
+              {nameError && <span className="efm__field-error">{nameError}</span>}
             </div>
 
             <div className="efm__field">

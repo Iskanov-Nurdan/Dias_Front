@@ -1,0 +1,47 @@
+@use '../styles/mixins';
+
+// Общий FAB для всех разделов — единая позиция/размер/анимация, чтобы
+// страницы визуально не расходились. Фичи не переопределяют этот класс,
+// только передают onClick/icon/label через компонент Fab.
+.ui-fab {
+  display: none;
+
+  @include mixins.mobile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    right: var(--space-4);
+    bottom: calc(var(--bottom-nav-h, 60px) + env(safe-area-inset-bottom, 0px) + var(--space-3));
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: #fff;
+    box-shadow: var(--shadow-lg);
+    z-index: 205;
+    transition: background var(--transition-fast), transform 0.15s ease;
+
+    &:active:not(:disabled) {
+      transform: scale(0.92);
+    }
+
+    &:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+  }
+
+  @media (hover: hover) {
+    @include mixins.mobile {
+      &:hover:not(:disabled) { background: var(--color-primary-hover); }
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-fab { transition: none; }
+}

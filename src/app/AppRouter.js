@@ -1,25 +1,22 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './providers/AuthProvider';
 import MainLayout from './layouts/MainLayout';
 import NoAccessPage from './components/NoAccessPage';
 import { PAGE_IDS } from '../shared/constants/pages';
 
 const LoginPage = React.lazy(() => import('../features/auth/LoginPage'));
-const TaplinkPage = React.lazy(() => import('../features/taplink/TaplinkPage'));
-const TaplinkEditorPage = React.lazy(() => import('../features/taplink/TaplinkEditor'));
 const EmployeesPage = React.lazy(() => import('../features/employees/EmployeesPage'));
-const SportsTrainersPage = React.lazy(() => import('../features/sports-trainers/SportsTrainersPage'));
+const MaterialsPage = React.lazy(() => import('../features/materials/MaterialsPage'));
+const WorkshopPage = React.lazy(() => import('../features/workshop/WorkshopPage'));
+const WorkshopFloorPage = React.lazy(() => import('../features/workshop/WorkshopFloorPage'));
+const ProductionPage = React.lazy(() => import('../features/production/ProductionPage'));
+const OTKPage = React.lazy(() => import('../features/otk/OTKPage'));
+const WarehousePage = React.lazy(() => import('../features/warehouse/WarehousePage'));
 const ClientsPage = React.lazy(() => import('../features/clients/ClientsPage'));
-const ClientsReportsPage = React.lazy(() => import('../features/clients/ClientsReportsPage'));
+const SalesPage = React.lazy(() => import('../features/sales/SalesPage'));
 const ActivityLogPage = React.lazy(() => import('../features/activity/ActivityLogPage'));
-const ExpensesPage = React.lazy(() => import('../features/expenses/ExpensesPage'));
-const SalaryPage = React.lazy(() => import('../features/salary/SalaryPage'));
-const LeadsPage = React.lazy(() => import('../features/leads/LeadsPage'));
-const AnalyticsPage = React.lazy(() => import('../features/analytics/AnalyticsPage'));
 const ShiftsPage = React.lazy(() => import('../features/shifts/ShiftsPage'));
-const SpreadsheetPage = React.lazy(() => import('../features/spreadsheet/SpreadsheetPage'));
-const TrainerReportPage = React.lazy(() => import('../features/trainer-report/TrainerReportPage'));
 const NotFoundPage = React.lazy(() => import('../features/not-found/NotFoundPage'));
 
 const ProtectedRoute = ({ children, pageId }) => {
@@ -38,31 +35,16 @@ const IndexRedirect = () => {
   return <Navigate to={getFirstAvailableRoute()} replace />;
 };
 
-/**
- * Корень домена (rahmanata.kg) — это визитка клуба, а не вход в CRM.
- * Раньше "/" без сессии сразу редиректил на /login: посетитель из поиска
- * или из ссылки в соцсетях упирался в форму входа сотрудника вместо страницы клуба.
- *
- * Особый случай — ровно "/" и только он: анонимный посетитель видит публичную
- * страницу (ту же, что и по /taplink). Любой другой путь внутри CRM ведёт себя
- * как раньше — истекшая сессия на /clients уводит на /login, а не молча
- * подменяется маркетинговой страницей, иначе сотрудник не поймёт, куда логиниться.
- */
+/** Публичной витрины у DIAS_ERP нет — "/" без сессии всегда ведёт на вход. */
 const RootGate = ({ children }) => {
   const { user } = useAuth();
-  const location = useLocation();
-  if (!user) {
-    if (location.pathname === '/') return <TaplinkPage />;
-    return <Navigate to="/login" replace />;
-  }
+  if (!user) return <Navigate to="/login" replace />;
   return children;
 };
 
 const AppRouter = () => (
   <BrowserRouter>
     <Routes>
-      {/* /taplink оставлен как алиас — старые ссылки и QR-коды на него не сломаются */}
-      <Route path="/taplink" element={<TaplinkPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/" element={<RootGate><MainLayout /></RootGate>}>
         <Route index element={<IndexRedirect />} />
@@ -75,10 +57,50 @@ const AppRouter = () => (
           }
         />
         <Route
-          path="sports-trainers"
+          path="materials"
           element={
-            <ProtectedRoute pageId="sports-trainers">
-              <SportsTrainersPage />
+            <ProtectedRoute pageId="materials">
+              <MaterialsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="workshop"
+          element={
+            <ProtectedRoute pageId="workshop">
+              <WorkshopPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="workshop-floor"
+          element={
+            <ProtectedRoute pageId="workshop-floor">
+              <WorkshopFloorPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="production"
+          element={
+            <ProtectedRoute pageId="production">
+              <ProductionPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="otk"
+          element={
+            <ProtectedRoute pageId="otk">
+              <OTKPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="warehouse"
+          element={
+            <ProtectedRoute pageId="warehouse">
+              <WarehousePage />
             </ProtectedRoute>
           }
         />
@@ -91,10 +113,10 @@ const AppRouter = () => (
           }
         />
         <Route
-          path="reports"
+          path="sales"
           element={
-            <ProtectedRoute pageId="reports">
-              <ClientsReportsPage />
+            <ProtectedRoute pageId="sales">
+              <SalesPage />
             </ProtectedRoute>
           }
         />
@@ -107,66 +129,10 @@ const AppRouter = () => (
           }
         />
         <Route
-          path="expenses"
-          element={
-            <ProtectedRoute pageId="expenses">
-              <ExpensesPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="salary"
-          element={
-            <ProtectedRoute pageId="salary">
-              <SalaryPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="leads"
-          element={
-            <ProtectedRoute pageId="leads">
-              <LeadsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="analytics"
-          element={
-            <ProtectedRoute pageId="analytics">
-              <AnalyticsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="shifts"
           element={
             <ProtectedRoute pageId="shifts">
               <ShiftsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="taplink-editor"
-          element={
-            <ProtectedRoute pageId="taplink">
-              <TaplinkEditorPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="spreadsheet"
-          element={
-            <ProtectedRoute pageId="spreadsheet">
-              <SpreadsheetPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="my-report"
-          element={
-            <ProtectedRoute pageId="trainer-report">
-              <TrainerReportPage />
             </ProtectedRoute>
           }
         />

@@ -39,7 +39,7 @@ const LoginPage = () => {
       }, 1800);
     } catch (err) {
       if (isTooManyRequestsError(err)) {
-        const msg = err?.response?.data?.error?.message ?? '';
+        const msg = err?.response?.data?.detail ?? err?.response?.data?.error ?? '';
         const match = msg.match(/(\d+)\s*seconds?/i) || msg.match(/(\d+)/);
         const sec = Math.min(parseInt(match?.[1] || '60', 10) || 60, 120);
         setError(`Слишком много попыток. Попробуйте через ${sec} секунд.`);
@@ -64,7 +64,7 @@ const LoginPage = () => {
 
   const brandAside = (
     <aside className="login-page__visual" style={visualStyle}>
-      <img src={`${publicUrl}/rahman.png`} alt="Рахман Ата" className="login-page__brand-logo" />
+      <img src={`${publicUrl}/dias-line-logo.png`} alt="DIAS LINE" className="login-page__brand-logo" />
     </aside>
   );
 

@@ -3,9 +3,11 @@ export const isCanceledError = (err) =>
   !err ? false : err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED';
 
 /**
- * Код ошибки API: { error: { code, message } }
+ * Код ошибки API. DIAS_ERP отдаёт { code, error, detail, errors? } (code — на верхнем
+ * уровне, error/detail — просто строки); старый формат { error: { code, message } }
+ * оставлен вторым вариантом на случай не до конца мигрированных бэкендов.
  */
-export const getApiErrorCode = (err) => err?.response?.data?.error?.code ?? null;
+export const getApiErrorCode = (err) => err?.response?.data?.code ?? err?.response?.data?.error?.code ?? null;
 
 /** Проверка: нет доступа (403 forbidden/permission_denied) */
 export const isForbiddenError = (err) => err?.response?.status === 403;
@@ -33,5 +35,13 @@ export const getApiErrorMessage = (err) => {
   if (typeof msg === 'string') return msg;
   if (Array.isArray(msg)) return msg[0]?.message ?? msg[0] ?? 'Ошибка';
   if (d.errors?.length) return d.errors.map((e) => e.message || e.msg).filter(Boolean).join('; ') || 'Ошибка валидации';
+  // DRF иногда отдаёт "плоскую" ошибку поля без code/error/detail/errors —
+  // { field: "сообщение" } или { field: ["сообщение"] }, например
+  // { quantity: "Количество должно быть > 0" } из apps/chemistry/produce.py.
+  if (d && typeof d === 'object' && !Array.isArray(d)) {
+    const firstValue = Object.values(d)[0];
+    if (typeof firstValue === 'string') return firstValue;
+    if (Array.isArray(firstValue) && typeof firstValue[0] === 'string') return firstValue[0];
+  }
   return 'Ошибка запроса';
 };

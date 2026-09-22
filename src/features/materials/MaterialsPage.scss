@@ -1,0 +1,214 @@
+@use '../../shared/styles/mixins';
+
+.materials-page {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+
+  // ── Тулбар ──────────────────────────────────────────────────────────────
+  &__toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+
+    @include mixins.mobile {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+
+  // Ширина поля поиска — само поле (иконка/паддинги/фокус) уже даёт общий
+  // .ui-search/.ui-search__input, см. shared/styles/index.scss (там же
+  // правильный padding-left под иконку — свой набор классов дублировал его
+  // с багом: проигрывал по специфичности глобальному правилу для <input>).
+  &__search {
+    min-width: 240px;
+    flex: 1 1 240px;
+
+    @include mixins.mobile {
+      min-width: 0;
+      flex: 1 1 100%;
+    }
+  }
+
+  &__low-stock-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: var(--color-warning-soft);
+    color: var(--color-warning);
+    font-size: 12.5px;
+    font-weight: 700;
+    flex-shrink: 0;
+
+    @include mixins.mobile {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
+  &__low-stock-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+
+  // Десктоп/планшет: «Приход» + «Добавить сырьё» текстом. На мобиле обе
+  // ушли — создание в общий Fab, «Приход» точечно — через «⋯» карточки
+  // (см. MaterialsCatalogList) — эта пара на мобиле была бы дублем.
+  &__toolbar-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+    flex-shrink: 0;
+
+    @include mixins.mobile {
+      display: none;
+    }
+  }
+
+  &__replenish-btn,
+  &__add {
+    height: 40px;
+    padding: 0 16px;
+    border-radius: var(--radius-md);
+    font-size: 13.5px;
+    font-weight: 600;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+
+    &:active { transform: translateY(0) scale(0.98); }
+  }
+
+  &__replenish-btn {
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border-strong);
+  }
+
+  &__add {
+    background: var(--color-primary);
+    color: #fff;
+    border: none;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  }
+
+  @media (hover: hover) {
+    &__replenish-btn:hover,
+    &__add:hover { transform: translateY(-1px); }
+    &__replenish-btn:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+      background: var(--color-primary-soft);
+    }
+    &__add:hover {
+      background: var(--color-primary-hover);
+      box-shadow: var(--shadow-sm);
+    }
+  }
+
+  &__toolbar--movements {
+    @include mixins.mobile {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+
+  // Инлайн-фильтры истории движения — только десктоп/планшет; на мобиле их
+  // заменяет &__movements-filter-btn + FiltersModal (bottom sheet).
+  &__movements-filters-desktop {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    min-width: 0;
+    flex: 1;
+
+    @include mixins.mobile {
+      display: none;
+    }
+  }
+
+  &__movements-filter-btn {
+    display: none;
+    position: relative;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text);
+    cursor: pointer;
+    transition: border-color var(--transition-fast), background var(--transition-fast);
+
+    @include mixins.mobile {
+      display: flex;
+    }
+  }
+
+  &__filter-dot {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    border: 2px solid var(--color-surface);
+  }
+
+  @media (hover: hover) {
+    &__movements-filter-btn:hover {
+      border-color: var(--color-primary);
+      background: var(--color-primary-soft);
+      color: var(--color-primary);
+    }
+  }
+
+  &__filters-modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  &__filter-label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    font-size: var(--font-label);
+    font-weight: var(--font-weight-label);
+    color: var(--color-text-muted);
+
+    span {
+      color: var(--color-text);
+      font-weight: 500;
+    }
+  }
+
+  &__filter-select {
+    min-width: 200px;
+
+    @include mixins.mobile {
+      min-width: 0;
+      width: 100%;
+    }
+  }
+}

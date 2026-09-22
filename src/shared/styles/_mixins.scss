@@ -42,6 +42,17 @@
   white-space: nowrap;
 }
 
+/** Скрывает нативный скроллбар (кроссбраузерно), скролл остаётся рабочим —
+ * для горизонтальных рядов вкладок/чипов, где полоса прокрутки визуально
+ * лишняя (край размывается градиентом в самом компоненте вместо неё). */
+@mixin hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @mixin scrollbar {
   &::-webkit-scrollbar {
     width: 8px;

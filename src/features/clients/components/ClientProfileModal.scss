@@ -1,0 +1,108 @@
+// Каркас модалки (backdrop/шапка/fullscreen на мобиле/sticky-кнопки) — общий
+// .form-modal, см. shared/ui/FormModal.scss. Тут только ширина на десктопе
+// и стили содержимого карточки клиента.
+.form-modal.cpm {
+  max-width: 560px;
+}
+
+.cpm {
+  &__loading {
+    display: flex;
+    justify-content: center;
+    padding: 48px 0;
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  &__summary {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  &__summary-item {
+    flex: 1;
+    min-width: 130px;
+    background: var(--color-surface-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  &__summary-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+  }
+
+  &__summary-value {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+
+    &--debt {
+      color: var(--color-danger);
+    }
+  }
+
+  &__section-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 10px;
+    font-size: 12.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+    padding-top: 16px;
+    border-top: 1px dashed var(--color-border);
+  }
+
+  &__empty {
+    margin: 0;
+    font-size: 13px;
+    color: var(--color-text-muted);
+    font-style: italic;
+  }
+
+  &__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__list-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--color-surface-secondary);
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  &__list-muted {
+    color: var(--color-text-muted);
+    font-size: 12px;
+    font-weight: 400;
+  }
+}

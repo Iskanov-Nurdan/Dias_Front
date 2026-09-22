@@ -1,0 +1,235 @@
+@use '../../../shared/styles/mixins';
+
+.sales-list {
+  &__panel {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 6px;
+    overflow-x: auto;
+    @include mixins.scrollbar;
+  }
+
+  &__empty-wrap {
+    padding: 32px 16px;
+    text-align: center;
+  }
+
+  &__muted {
+    color: var(--color-text-muted);
+    font-size: 13.5px;
+  }
+
+  &__amount {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 6px;
+    min-width: 720px;
+
+    thead th {
+      text-align: left;
+      padding: 8px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      background: var(--color-surface);
+      animation: sales-row-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation-delay: calc(var(--row-i, 0) * 30ms);
+      transition: background 0.15s ease;
+    }
+
+    tbody td {
+      padding: 12px 14px;
+      font-size: 13.5px;
+      color: var(--color-text);
+      border-top: 1px solid var(--color-border);
+      border-bottom: 1px solid var(--color-border);
+      transition: border-color 0.15s ease;
+      white-space: nowrap;
+    }
+
+    tbody td:first-child {
+      border-left: 1px solid var(--color-border);
+      border-top-left-radius: var(--radius-md);
+      border-bottom-left-radius: var(--radius-md);
+    }
+
+    tbody td:last-child {
+      border-right: 1px solid var(--color-border);
+      border-top-right-radius: var(--radius-md);
+      border-bottom-right-radius: var(--radius-md);
+      width: 1%;
+    }
+  }
+
+  @media (hover: hover) {
+    &__table tbody tr:hover { background: var(--color-surface-secondary); }
+    &__table tbody tr:hover td { border-color: var(--color-border-strong); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &__table tbody tr,
+    &__card { animation: none; }
+  }
+
+  &__name-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  &__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+  }
+
+  &__name-text {
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  &__badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 2px 7px;
+    border-radius: 999px;
+
+    &--defect {
+      background: var(--color-danger-soft);
+      color: var(--color-danger);
+    }
+  }
+
+  &__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 4px 10px 4px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+
+    &--muted { background: var(--color-surface-secondary); color: var(--color-text-muted); }
+    &--info { background: var(--color-info-soft); color: var(--color-info); }
+    &--warning { background: var(--color-warning-soft); color: var(--color-warning); }
+    &--success { background: var(--color-success-soft); color: var(--color-success); }
+    &--danger { background: var(--color-danger-soft); color: var(--color-danger); }
+  }
+
+  &__status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+
+  &__icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+    flex-shrink: 0;
+
+    &:active { transform: scale(0.92); }
+  }
+
+  @media (hover: hover) {
+    &__icon-btn:hover {
+      border-color: var(--color-border-strong);
+      color: var(--color-text);
+      background: var(--color-surface-secondary);
+    }
+  }
+
+  // ── Mobile cards ──────────────────────────────────────────
+  &__cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    animation: sales-row-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--row-i, 0) * 30ms);
+    transition: border-color 0.15s ease;
+
+    &:active {
+      border-color: var(--color-border-strong);
+    }
+  }
+
+  &__card-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__card-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text);
+    line-height: 1.3;
+  }
+
+  &__card-sub {
+    font-size: 13px;
+    color: var(--color-text-muted);
+  }
+
+  &__card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 2px;
+  }
+}
+
+@keyframes sales-row-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

@@ -1,0 +1,265 @@
+@use '../../../shared/styles/mixins';
+
+// Каркас модалки (backdrop/шапка/fullscreen на мобиле/sticky-кнопки) — общий
+// .form-modal, см. shared/ui/FormModal.scss. Тут только ширина на десктопе
+// и стили корзины/полей формы.
+.form-modal.scm {
+  max-width: 680px;
+}
+
+.scm {
+  &__section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--color-border);
+  }
+
+  &__section-title {
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+  }
+
+  &__line {
+    display: grid;
+    grid-template-columns: 2fr 90px 110px 110px 34px;
+    gap: 8px;
+    align-items: center;
+    position: relative;
+
+    // На мобиле строка корзины — мини-карточка в 2 ряда: товар+удалить сверху,
+    // количество снизу; цена и итог по строке остаются видимы (не прячем —
+    // это реальные деньги, которые продавец должен видеть перед продажей),
+    // просто сведены в один блок под количеством.
+    @include mixins.mobile {
+      grid-template-columns: 1fr 34px;
+      grid-template-areas:
+        'batch remove'
+        'qty qty'
+        'meta meta';
+      row-gap: 8px;
+
+      .scm__line-batch { grid-area: batch; }
+      .scm__line-qty { grid-area: qty; }
+      .scm__line-remove { grid-area: remove; }
+      .scm__line-meta { grid-area: meta; }
+    }
+  }
+
+  &__line-qty {
+    height: 42px;
+    padding: 0 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--input-radius);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 14px;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: var(--input-shadow-focus);
+    }
+
+    &--invalid {
+      border-color: var(--color-danger) !important;
+      box-shadow: 0 0 0 3px var(--color-danger-soft) !important;
+    }
+  }
+
+  &__line-price, &__line-total {
+    font-size: 13px;
+    color: var(--color-text-muted);
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__line-total {
+    color: var(--color-text);
+    font-weight: 700;
+  }
+
+  // Обёртка цены+итога — на десктопе прозрачная (элементы остаются прямыми
+  // grid-детьми строки), на мобиле становится видимым блоком-подытогом.
+  &__line-meta {
+    display: contents;
+
+    @include mixins.mobile {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: var(--color-surface-secondary);
+      border-radius: var(--radius-sm);
+
+      .scm__line-price, .scm__line-total { text-align: left; }
+    }
+  }
+
+  &__line-remove {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+
+    &:active:not(:disabled) { transform: scale(0.92); }
+
+    &:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+  }
+
+  @media (hover: hover) {
+    &__line-remove:hover:not(:disabled) {
+      background: var(--color-danger-soft);
+      border-color: color-mix(in srgb, var(--color-danger) 30%, transparent);
+      color: var(--color-danger);
+    }
+  }
+
+  &__line-error {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 8px 12px;
+    background: var(--color-danger-soft);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-danger);
+  }
+
+  &__add-line {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 13px;
+    border: 1px dashed var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  }
+
+  @media (hover: hover) {
+    &__add-line:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+      background: var(--color-primary-soft);
+    }
+  }
+
+  &__total-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 15px;
+    background: var(--color-surface-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  &__total-value {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--color-primary);
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+
+    @include mixins.mobile {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  &__label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+
+  &__required {
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  &__field-error {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-danger);
+  }
+
+  &__input {
+    height: 42px;
+    padding: 0 13px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--input-radius);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 14px;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &::placeholder { color: var(--color-text-muted); }
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: var(--input-shadow-focus);
+    }
+  }
+
+  @media (hover: hover) {
+    &__line-qty:hover:not(:focus),
+    &__input:hover:not(:focus) {
+      border-color: var(--color-border-strong);
+    }
+  }
+
+  &__hint {
+    margin: 0;
+    padding: 10px 13px;
+    background: var(--color-surface-secondary);
+    border-radius: var(--radius-md);
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--color-text-muted);
+  }
+}

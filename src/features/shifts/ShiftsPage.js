@@ -1,22 +1,14 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Clock, Plus, Banknote, CreditCard, TrendingUp, TrendingDown, Coins, ImagePlus, X as XIcon, Camera, FileText, Filter, Pencil, History, Calendar, CalendarDays, CalendarClock, Maximize2, Images, Trash2, PieChart, Users, CalendarX2, CircleCheck, TriangleAlert } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Clock, Plus, Banknote, CreditCard, TrendingUp, TrendingDown, Coins, ImagePlus, X as XIcon, Camera, FileText, Pencil, History, Maximize2, Images, Trash2, PieChart, Users, CalendarX2, CircleCheck, TriangleAlert, MoreVertical } from 'lucide-react';
 import { useAuth } from '../../app/providers/AuthProvider';
+import { useToast } from '../../app/providers/ToastProvider';
 import { fetchShifts, closeShift, updateShift, deleteShift, fetchShiftSummary, fetchPhotoReports, addPhotoReport, deletePhotoReport } from './api';
-import { Select, Spinner, EmptyState, ErrorState, ConfirmModal, Pagination } from '../../shared/ui';
+import { fetchShiftHistory } from './attendanceApi';
+import { Select, Spinner, EmptyState, ErrorState, ConfirmModal, Pagination, PrimaryTabs, PeriodFilter, Fab, ActionSheet, FormModal } from '../../shared/ui';
 import { STATS_YEARS, MONTHS, formatMoney } from '../../shared/constants/common';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
 import './ShiftsPage.scss';
 
-const YEAR_OPTIONS = [{ value: '', label: 'Год' }, ...STATS_YEARS.map((y) => ({ value: y, label: y }))];
-const MONTH_OPTIONS = [
-  { value: '', label: 'Месяц' },
-  ...['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
-    .map((m, i) => ({ value: String(i + 1), label: m })),
-];
-const DAY_OPTIONS = [
-  { value: '', label: 'День' },
-  ...Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })),
-];
 const NOW = new Date();
 const CURRENT_YEAR_STR = String(NOW.getFullYear());
 const DEFAULT_YEAR = STATS_YEARS.includes(CURRENT_YEAR_STR) ? CURRENT_YEAR_STR : STATS_YEARS[STATS_YEARS.length - 1];
@@ -59,73 +51,6 @@ const getAvatarColor = (name) => {
   let hash = 0;
   for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-};
-
-// ── Фильтры ───────────────────────────────────────────────────
-// employeeOptions/employeeValue/onEmployee — опциональная четвёртая колонка
-// (вкладка «Итоги»): фильтр по сотруднику сужает только заголовочные цифры,
-// поэтому живёт в том же ряду, а не как отдельный блок.
-const FiltersBar = ({
-  year, month, day, onYear, onMonth, onDay, onReset, defaultDay = '',
-  employeeOptions, employeeValue, onEmployee,
-}) => {
-  const hasEmployeeFilter = Array.isArray(employeeOptions);
-  const isDefault = year === DEFAULT_YEAR && month === DEFAULT_MONTH && day === defaultDay
-    && (!hasEmployeeFilter || !employeeValue);
-
-  return (
-    <div className="shifts-filters">
-      <Filter size={14} className="shifts-filters__icon" />
-      <span className="shifts-filters__label">Период:</span>
-
-      <Select
-        value={String(year)}
-        onChange={onYear}
-        options={YEAR_OPTIONS}
-        placeholder="Год"
-        className="shifts-filters__select-wrap"
-        icon={<Calendar size={15} />}
-      />
-
-      <Select
-        value={String(month)}
-        onChange={onMonth}
-        options={MONTH_OPTIONS}
-        placeholder="Месяц"
-        className="shifts-filters__select-wrap"
-        icon={<CalendarDays size={15} />}
-      />
-
-      <Select
-        value={String(day)}
-        onChange={onDay}
-        options={DAY_OPTIONS}
-        placeholder="День"
-        className="shifts-filters__select-wrap"
-        icon={<CalendarClock size={15} />}
-      />
-
-      {hasEmployeeFilter && (
-        <>
-          <span className="shifts-filters__divider" aria-hidden />
-          <Select
-            value={String(employeeValue ?? '')}
-            onChange={onEmployee}
-            options={employeeOptions}
-            placeholder="Сотрудник"
-            className="shifts-filters__select-wrap shifts-filters__select-wrap--employee"
-            icon={<Users size={15} />}
-          />
-        </>
-      )}
-
-      {!isDefault && (
-        <button type="button" className="shifts-filters__reset" onClick={onReset}>
-          <XIcon size={13} /> Сбросить
-        </button>
-      )}
-    </div>
-  );
 };
 
 // ── Модалка: добавить фото ────────────────────────────────────
@@ -180,16 +105,9 @@ const AddPhotoModal = ({ open, onClose, onSubmit }) => {
   if (!open) return null;
 
   return (
-    <div className="shift-modal__backdrop" onClick={() => { reset(); onClose(); }}>
-      <div className="shift-modal shift-modal--photo" onClick={(e) => e.stopPropagation()}>
-        <div className="shift-modal__header">
-          <div>
-            <h2 className="shift-modal__title"><Camera size={18} /> Добавить фото</h2>
-          </div>
-          <button type="button" className="shift-modal__close" onClick={() => { reset(); onClose(); }}>✕</button>
-        </div>
-
-        <form className="shift-modal__form" onSubmit={handleSubmit}>
+    <FormModal icon={Camera} eyebrow="Смены" title="Добавить фото" onClose={() => { reset(); onClose(); }} size="sheet">
+      <form className="form-modal__form" onSubmit={handleSubmit}>
+        <div className="form-modal__body">
           <div
             className={`shift-modal__drop-zone ${photos.length > 0 ? 'shift-modal__drop-zone--has-photos' : ''}`}
             onDrop={handleDrop}
@@ -236,18 +154,18 @@ const AddPhotoModal = ({ open, onClose, onSubmit }) => {
               rows={3}
             />
           </label>
+        </div>
 
-          <div className="shift-modal__actions">
-            <button type="button" className="shift-modal__btn shift-modal__btn--cancel" onClick={() => { reset(); onClose(); }} disabled={saving}>
-              Отмена
-            </button>
-            <button type="submit" className="shift-modal__btn shift-modal__btn--photo" disabled={saving || (photos.length === 0 && !desc.trim())}>
-              {saving ? 'Отправка…' : 'Отправить'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="form-modal__actions">
+          <button type="button" className="ui-modal-btn" onClick={() => { reset(); onClose(); }} disabled={saving}>
+            Отмена
+          </button>
+          <button type="submit" className="ui-modal-btn ui-modal-btn--primary" disabled={saving || (photos.length === 0 && !desc.trim())}>
+            {saving ? 'Отправка…' : 'Отправить'}
+          </button>
+        </div>
+      </form>
+    </FormModal>
   );
 };
 
@@ -292,21 +210,14 @@ const CloseShiftModal = ({ open, onClose, onSubmit, initial = null, title = 'З�
   if (!open) return null;
 
   return (
-    <div className="shift-modal__backdrop" onClick={onClose}>
-      <div className="shift-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="shift-modal__header">
-          <div>
-            <h2 className="shift-modal__title">{title}</h2>
-          </div>
-          <button type="button" className="shift-modal__close" onClick={onClose}>✕</button>
-        </div>
-
-        <form className="shift-modal__form" onSubmit={handleSubmit}>
+    <FormModal icon={Clock} eyebrow="Смены" title={title} onClose={onClose} error={error} size="sheet">
+      <form className="form-modal__form" onSubmit={handleSubmit}>
+        <div className="form-modal__body">
           <div className="shift-modal__row">
             <label className="shift-modal__field">
               <span className="shift-modal__label"><Banknote size={13} /> Наличка</span>
               <div className="shift-modal__input-wrap">
-                <input type="number" min="0" step="1" placeholder="0" value={cash}
+                <input type="number" inputMode="decimal" min="0" step="1" placeholder="0" value={cash}
                   onChange={(e) => setCash(e.target.value)} className="shift-modal__input" autoFocus />
                 <span className="shift-modal__currency">сом</span>
               </div>
@@ -315,7 +226,7 @@ const CloseShiftModal = ({ open, onClose, onSubmit, initial = null, title = 'З�
             <label className="shift-modal__field">
               <span className="shift-modal__label"><CreditCard size={13} /> Карта</span>
               <div className="shift-modal__input-wrap">
-                <input type="number" min="0" step="1" placeholder="0" value={card}
+                <input type="number" inputMode="decimal" min="0" step="1" placeholder="0" value={card}
                   onChange={(e) => setCard(e.target.value)} className="shift-modal__input" />
                 <span className="shift-modal__currency">сом</span>
               </div>
@@ -326,7 +237,7 @@ const CloseShiftModal = ({ open, onClose, onSubmit, initial = null, title = 'З�
             <label className="shift-modal__field">
               <span className="shift-modal__label shift-modal__label--muted"><TrendingDown size={13} /> Расход</span>
               <div className="shift-modal__input-wrap shift-modal__input-wrap--sub">
-                <input type="number" min="0" step="1" placeholder="0" value={expense}
+                <input type="number" inputMode="decimal" min="0" step="1" placeholder="0" value={expense}
                   onChange={(e) => setExpense(e.target.value)} className="shift-modal__input shift-modal__input--sub" />
                 <span className="shift-modal__currency">сом</span>
               </div>
@@ -335,7 +246,7 @@ const CloseShiftModal = ({ open, onClose, onSubmit, initial = null, title = 'З�
             <label className="shift-modal__field">
               <span className="shift-modal__label shift-modal__label--muted"><Coins size={13} /> Аванс</span>
               <div className="shift-modal__input-wrap shift-modal__input-wrap--sub">
-                <input type="number" min="0" step="1" placeholder="0" value={advance}
+                <input type="number" inputMode="decimal" min="0" step="1" placeholder="0" value={advance}
                   onChange={(e) => setAdvance(e.target.value)} className="shift-modal__input shift-modal__input--sub" />
                 <span className="shift-modal__currency">сом</span>
               </div>
@@ -375,20 +286,18 @@ const CloseShiftModal = ({ open, onClose, onSubmit, initial = null, title = 'З�
               </div>
             )}
           </div>
+        </div>
 
-          {error && <p className="shift-modal__error">{error}</p>}
-
-          <div className="shift-modal__actions">
-            <button type="button" className="shift-modal__btn shift-modal__btn--cancel" onClick={onClose} disabled={saving}>
-              Отмена
-            </button>
-            <button type="submit" className="shift-modal__btn shift-modal__btn--submit" disabled={saving}>
-              {saving ? 'Сохранение…' : submitLabel}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="form-modal__actions">
+          <button type="button" className="ui-modal-btn" onClick={onClose} disabled={saving}>
+            Отмена
+          </button>
+          <button type="submit" className="ui-modal-btn ui-modal-btn--primary" disabled={saving}>
+            {saving ? 'Сохранение…' : submitLabel}
+          </button>
+        </div>
+      </form>
+    </FormModal>
   );
 };
 
@@ -439,22 +348,28 @@ const LightboxViewer = ({ lightbox, onClose }) => {
 };
 
 // ── Главная страница ──────────────────────────────────────────
-const BASE_TABS = [
-  { id: 'photos', label: 'Отчёты', icon: Camera },
-  { id: 'shifts', label: 'Завершение смены', icon: Clock },
+// «Итоги» — рядом с остальными вкладками у всех, кому вообще открыт раздел
+// «Смены» (доступ page-level, см. ProtectedRoute pageId="shifts") — отдельного
+// права на эту вкладку больше нет (было в предыдущей версии продукта, сейчас
+// не нужно). Короткие подписи — на мобиле нет места для «Завершение смены»
+// целиком, а общий Subtabs всё равно скроллится горизонтально, если что-то
+// не влезло, поэтому длинные подписи не обрезаются никогда.
+// shortLabel — версия для мобилки: полная «Завершение смены»/«История смен»
+// при 4 вкладках в PrimaryTabs обрезалась бы («…ение смены»).
+const TABS = [
+  { id: 'photos', label: 'Отчёты', shortLabel: 'Отчёты', icon: Camera },
+  { id: 'shifts', label: 'Завершение смены', shortLabel: 'Закрыть', icon: Clock },
+  { id: 'summary', label: 'Итоги', shortLabel: 'Итоги', icon: PieChart },
+  // Приход/уход (кто когда начал/закончил смену по времени) — отдельная
+  // сущность от денежной «Завершение смены», см. attendanceApi.js.
+  { id: 'history', label: 'История смен', shortLabel: 'История', icon: History },
 ];
 
+const ATTENDANCE_STATUS_LABEL = { open: 'Идёт', paused: 'На паузе', closed: 'Завершена' };
+
 const ShiftsPage = () => {
-  const { isAdmin, hasAccess } = useAuth();
-  // Вкладка «Итоги» — не всем: доступ к ней выдаётся отдельным правом
-  // shifts-summary в карточке сотрудника, а не общим 'shifts' (см. pages.js).
-  const canSeeSummary = hasAccess('shifts-summary');
-  const TABS = useMemo(
-    () => (canSeeSummary
-      ? [...BASE_TABS, { id: 'summary', label: 'Итоги', icon: PieChart }]
-      : BASE_TABS),
-    [canSeeSummary],
-  );
+  const { isAdmin } = useAuth();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState('photos');
 
   const [shifts, setShifts] = useState([]);
@@ -475,12 +390,12 @@ const ShiftsPage = () => {
   const [editingShift, setEditingShift] = useState(null);
   const [openHistoryId, setOpenHistoryId] = useState(null);
   const [lightbox, setLightbox] = useState(null);
+  const [photoMenuRow, setPhotoMenuRow] = useState(null);
+  const [shiftMenuRow, setShiftMenuRow] = useState(null);
 
   // Что удаляем: { kind: 'shift' | 'photo', id, label }. Удаление финансовой
   // записи и фотоотчёта необратимо, поэтому всегда через подтверждение.
   const [pendingDelete, setPendingDelete] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
-  const [deleteError, setDeleteError] = useState(null);
 
   // Фильтры для отчётов
   const [pYear, setPYear] = useState(DEFAULT_YEAR);
@@ -502,6 +417,16 @@ const ShiftsPage = () => {
   const [summary, setSummary] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [summaryError, setSummaryError] = useState(null);
+
+  // Фильтры и данные для «Истории смен» (приход/уход, отдельно от денег).
+  const [hYear, setHYear] = useState(DEFAULT_YEAR);
+  const [hMonth, setHMonth] = useState(DEFAULT_MONTH);
+  const [hDay, setHDay] = useState('');
+  const [historyPage, setHistoryPage] = useState(1);
+  const [history, setHistory] = useState([]);
+  const [historyMeta, setHistoryMeta] = useState(null);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState(null);
 
   const photosControllerRef = useRef(null);
   const photosRequestSeq = useRef(0);
@@ -577,17 +502,43 @@ const ShiftsPage = () => {
     }
   }, [gYear, gMonth, gDay, gEmployeeId]);
 
+  const historyControllerRef = useRef(null);
+  const historyRequestSeq = useRef(0);
+  const loadHistory = useCallback(async () => {
+    historyControllerRef.current?.abort();
+    historyControllerRef.current = new AbortController();
+    const { signal } = historyControllerRef.current;
+    const seq = ++historyRequestSeq.current;
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const { items, meta } = await fetchShiftHistory(
+        { year: hYear, month: hMonth, day: hDay || undefined, page: historyPage }, signal,
+      );
+      if (historyRequestSeq.current !== seq) return;
+      setHistory(items);
+      setHistoryMeta(meta);
+    } catch (err) {
+      if (err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
+      if (historyRequestSeq.current !== seq) return;
+      setHistoryError(getApiErrorMessage(err));
+    } finally {
+      if (historyRequestSeq.current === seq) setHistoryLoading(false);
+    }
+  }, [hYear, hMonth, hDay, historyPage]);
+
   useEffect(() => { loadPhotos(); }, [loadPhotos]);
   useEffect(() => { loadShifts(); }, [loadShifts]);
-  // Загружаем «Итоги» только когда вкладку реально открыли: у большинства
-  // пользователей нет к ней доступа, а у тех, кто есть — незачем тратить
-  // запрос, пока они смотрят «Отчёты» или «Завершение смены».
+  // Загружаем «Итоги»/«Историю смен» только когда вкладку реально открыли —
+  // незачем тратить лишний запрос, пока пользователь смотрит другую вкладку.
   useEffect(() => { if (activeTab === 'summary') loadSummary(); }, [activeTab, loadSummary]);
+  useEffect(() => { if (activeTab === 'history') loadHistory(); }, [activeTab, loadHistory]);
 
   // Новый период — снова с первой страницы: иначе после фильтра, где страниц
   // меньше, остаёшься на несуществующей и видишь пустой список
   useEffect(() => { setPhotosPage(1); }, [pYear, pMonth, pDay]);
   useEffect(() => { setShiftsPage(1); }, [sYear, sMonth, sDay]);
+  useEffect(() => { setHistoryPage(1); }, [hYear, hMonth, hDay]);
 
   const handleCloseShift = async ({ cash, card, expense, advance, total, description }) => {
     await closeShift({ cash, card, expense, advance, total, description });
@@ -614,81 +565,67 @@ const ShiftsPage = () => {
   const handleConfirmDelete = async () => {
     if (!pendingDelete) return;
     const { kind, id } = pendingDelete;
-    setDeletingId(`${kind}-${id}`);
-    setDeleteError(null);
     try {
       if (kind === 'shift') {
         await deleteShift(id);
+        setPendingDelete(null);
         // Удалили единственную запись на странице — отступаем назад, иначе
         // останемся на опустевшей последней странице
         if (shifts.length === 1 && shiftsPage > 1) setShiftsPage((n) => n - 1);
         else await loadShifts();
       } else {
         await deletePhotoReport(id);
+        setPendingDelete(null);
         if (photoReports.length === 1 && photosPage > 1) setPhotosPage((n) => n - 1);
         else await loadPhotos();
       }
     } catch (err) {
-      setDeleteError(getApiErrorMessage(err));
-    } finally {
-      setDeletingId(null);
+      toast.error(getApiErrorMessage(err));
     }
   };
+
+  // Счётчик — всего записей за период, а не сколько влезло на текущую
+  // страницу. Пропущенные дни видны прямо на табе «Итоги» — не нужно
+  // открывать вкладку, чтобы узнать, что там есть на что посмотреть.
+  const tabsWithBadges = TABS.map((t) => {
+    if (t.id === 'photos') return { ...t, badge: photosMeta?.total ?? photoReports.length };
+    if (t.id === 'shifts') return { ...t, badge: shiftsMeta?.total ?? shifts.length, badgeAlert: true };
+    if (t.id === 'summary') return { ...t, badge: summary?.coverage?.missingDays?.length ?? 0, badgeAlert: true };
+    return t;
+  });
+
+  const photosIsDefault = pYear === DEFAULT_YEAR && pMonth === DEFAULT_MONTH && pDay === DEFAULT_DAY;
+  const shiftsIsDefault = sYear === DEFAULT_YEAR && sMonth === DEFAULT_MONTH && sDay === '';
+  const summaryIsDefault = gYear === DEFAULT_YEAR && gMonth === DEFAULT_MONTH && gDay === '' && !gEmployeeId;
+  const historyIsDefault = hYear === DEFAULT_YEAR && hMonth === DEFAULT_MONTH && hDay === '';
+
+  const tabAction = {
+    photos: (
+      <button type="button" className="shifts-page__add-btn shifts-page__add-btn--photo" onClick={() => setPhotoModalOpen(true)}>
+        <ImagePlus size={16} /> Добавить фото
+      </button>
+    ),
+    shifts: (
+      <button type="button" className="shifts-page__add-btn shifts-page__add-btn--shift" onClick={() => setShiftModalOpen(true)}>
+        <Plus size={16} /> Завершить смену
+      </button>
+    ),
+  }[activeTab];
 
   return (
     <div className="shifts-page">
 
       {/* ── Табы ─────────────────────────────────────────────── */}
-      <div className="shifts-tabs">
-        <div className="ui-tabs shifts-tabs__nav">
-          {TABS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              className={`ui-tabs__tab${activeTab === id ? ' ui-tabs__tab--active' : ''}`}
-              onClick={() => setActiveTab(id)}
-            >
-              <Icon size={16} />
-              {label}
-              {/* Счётчик — всего записей за период, а не сколько влезло
-                  на текущую страницу */}
-              {id === 'photos' && (photosMeta?.total ?? photoReports.length) > 0 && (
-                <span className="ui-tabs__badge">{photosMeta?.total ?? photoReports.length}</span>
-              )}
-              {id === 'shifts' && (shiftsMeta?.total ?? shifts.length) > 0 && (
-                <span className="ui-tabs__badge shifts-tabs__badge--alert">{shiftsMeta?.total ?? shifts.length}</span>
-              )}
-              {/* Пропущенные дни видны прямо на табе — не нужно открывать
-                  «Итоги», чтобы узнать, что там есть на что посмотреть */}
-              {id === 'summary' && (summary?.coverage?.missingDays?.length ?? 0) > 0 && (
-                <span className="ui-tabs__badge shifts-tabs__badge--alert">{summary.coverage.missingDays.length}</span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        <div className="shifts-tabs__action">
-          {activeTab === 'photos' && (
-            <button type="button" className="shifts-page__add-btn shifts-page__add-btn--photo" onClick={() => setPhotoModalOpen(true)}>
-              <ImagePlus size={16} /> Добавить фото
-            </button>
-          )}
-          {activeTab === 'shifts' && (
-            <button type="button" className="shifts-page__add-btn shifts-page__add-btn--shift" onClick={() => setShiftModalOpen(true)}>
-              <Plus size={16} /> Завершить смену
-            </button>
-          )}
-        </div>
-      </div>
+      <PrimaryTabs items={tabsWithBadges} activeId={activeTab} onChange={setActiveTab} action={tabAction} />
 
       {/* ── Таб: Отчёты ──────────────────────────────────────── */}
       {activeTab === 'photos' && (
         <div className="shifts-tab-content">
-          <FiltersBar
+          <PeriodFilter
             year={pYear} month={pMonth} day={pDay}
             onYear={setPYear} onMonth={setPMonth} onDay={setPDay}
             onReset={() => { setPYear(DEFAULT_YEAR); setPMonth(DEFAULT_MONTH); setPDay(DEFAULT_DAY); }}
-            defaultDay={DEFAULT_DAY}
+            isDefault={photosIsDefault}
           />
 
           {photosLoading ? (
@@ -696,7 +633,7 @@ const ShiftsPage = () => {
           ) : photosError ? (
             <ErrorState compact message={photosError} onRetry={loadPhotos} />
           ) : photoReports.length === 0 ? (
-            <EmptyState compact message="Фото отчётов пока нет — нажмите «Добавить фото», чтобы загрузить первый отчёт" />
+            <EmptyState compact message="Фото отчётов пока нет — добавьте первый снимок" />
           ) : (
             <div className="photo-reports">
               {photoReports.map((r, idx) => (
@@ -717,17 +654,17 @@ const ShiftsPage = () => {
                         </span>
                       )}
                       {/* Ошибочный отчёт раньше висел вечно: добавить фото
-                          можно было, убрать — нет. Удаление снимает и файлы. */}
+                          можно было, убрать — нет. Удаление снимает и файлы.
+                          Единственное действие — своё «⋯», как и у остальных
+                          списков в проекте, а не голая кнопка в углу карточки. */}
                       {isAdmin && (
                         <button
                           type="button"
-                          className="shifts-del-btn"
-                          onClick={() => { setDeleteError(null); setPendingDelete({ kind: 'photo', id: r.id, label: r.employeeName }); }}
-                          disabled={deletingId === `photo-${r.id}`}
-                          title="Удалить фото-отчёт"
-                          aria-label="Удалить фото-отчёт"
+                          className="shifts-card-menu-btn"
+                          aria-label="Действия"
+                          onClick={() => setPhotoMenuRow(r)}
                         >
-                          <Trash2 size={14} />
+                          <MoreVertical size={17} />
                         </button>
                       )}
                     </div>
@@ -773,16 +710,31 @@ const ShiftsPage = () => {
             loading={photosLoading}
             entityLabel="отчётов"
           />
+
+          <ActionSheet open={!!photoMenuRow} onClose={() => setPhotoMenuRow(null)} title={photoMenuRow?.employeeName}>
+            <button
+              type="button"
+              className="action-sheet__item action-sheet__item--danger"
+              onClick={() => {
+                const row = photoMenuRow;
+                setPhotoMenuRow(null);
+                setPendingDelete({ kind: 'photo', id: row.id, label: row.employeeName });
+              }}
+            >
+              <Trash2 size={17} /> Удалить фото-отчёт
+            </button>
+          </ActionSheet>
         </div>
       )}
 
       {/* ── Таб: Завершение смены ─────────────────────────────── */}
       {activeTab === 'shifts' && (
         <div className="shifts-tab-content">
-          <FiltersBar
+          <PeriodFilter
             year={sYear} month={sMonth} day={sDay}
             onYear={setSYear} onMonth={setSMonth} onDay={setSDay}
             onReset={() => { setSYear(DEFAULT_YEAR); setSMonth(DEFAULT_MONTH); setSDay(''); }}
+            isDefault={shiftsIsDefault}
           />
 
           {shiftsLoading ? (
@@ -790,11 +742,16 @@ const ShiftsPage = () => {
           ) : shiftsError ? (
             <ErrorState compact message={shiftsError} onRetry={loadShifts} />
           ) : shifts.length === 0 ? (
-            <EmptyState compact message="Смен пока нет — нажмите «Завершить смену», чтобы добавить первую запись" />
+            <EmptyState compact message="Смен пока нет — закройте первую смену, чтобы она появилась здесь" />
           ) : (
             <div className="shifts-page__list">
               {shifts.map((s, idx) => (
-                <div key={s.id} className="shift-card" style={{ '--row-i': idx }}>
+                <div
+                  key={s.id}
+                  className={`shift-card${!s.isEdited ? ' shift-card--clickable' : ''}`}
+                  style={{ '--row-i': idx }}
+                  onClick={() => { if (!s.isEdited) setEditingShift(s); }}
+                >
                   <div className="shift-card__left">
                     <div className="shift-card__avatar" style={{ background: getAvatarColor(s.employeeName) }}>
                       {getInitials(s.employeeName)}
@@ -840,40 +797,25 @@ const ShiftsPage = () => {
                     )}
                   </div>
 
-                  <div className="shift-card__actions">
-                    {s.isEdited ? (
-                      <button
-                        type="button"
-                        className="shift-card__history-btn"
-                        onClick={() => setOpenHistoryId((id) => (id === s.id ? null : s.id))}
-                      >
-                        <History size={13} />
-                        {openHistoryId === s.id ? 'Скрыть исходные данные' : 'Изменено'}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="shift-card__edit-btn"
-                        onClick={() => setEditingShift(s)}
-                      >
-                        <Pencil size={13} /> Изменить
-                      </button>
+                  {/* Свой угловой блок — на мобиле карточка становится
+                      колонкой, и без обёртки бейдж/«⋯» оказались бы каждый
+                      на своей строке слева, а не единым узлом справа сверху. */}
+                  <div className="shift-card__corner">
+                    {s.isEdited && (
+                      <span className="shift-card__edited-badge">
+                        <History size={12} /> Изменено
+                      </span>
                     )}
-                    {/* Только смена за сегодня и только администратору —
-                        то же правило, что и на сервере. Вчерашние отчёты
-                        задним числом не переписываются. */}
-                    {isAdmin && isCreatedToday(s.createdAt) && (
-                      <button
-                        type="button"
-                        className="shifts-del-btn"
-                        onClick={() => { setDeleteError(null); setPendingDelete({ kind: 'shift', id: s.id, label: `${s.employeeName} · ${formatMoney(s.total)}` }); }}
-                        disabled={deletingId === `shift-${s.id}`}
-                        title="Удалить смену"
-                        aria-label="Удалить смену"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    )}
+                    {/* Единственный вход в действия строки — «⋯», как и у
+                        остальных списков в проекте, вместо ряда кнопок. */}
+                    <button
+                      type="button"
+                      className="shifts-card-menu-btn"
+                      aria-label="Действия"
+                      onClick={(e) => { e.stopPropagation(); setShiftMenuRow(s); }}
+                    >
+                      <MoreVertical size={17} />
+                    </button>
                   </div>
 
                   {s.description && (
@@ -907,24 +849,73 @@ const ShiftsPage = () => {
             loading={shiftsLoading}
             entityLabel="смен"
           />
+
+          <ActionSheet open={!!shiftMenuRow} onClose={() => setShiftMenuRow(null)} title={shiftMenuRow?.employeeName}>
+            {shiftMenuRow?.isEdited ? (
+              <button
+                type="button"
+                className="action-sheet__item"
+                onClick={() => {
+                  const row = shiftMenuRow;
+                  setShiftMenuRow(null);
+                  setOpenHistoryId((id) => (id === row.id ? null : row.id));
+                }}
+              >
+                <History size={17} /> {openHistoryId === shiftMenuRow?.id ? 'Скрыть исходные данные' : 'Показать исходные данные'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="action-sheet__item"
+                onClick={() => { const row = shiftMenuRow; setShiftMenuRow(null); setEditingShift(row); }}
+              >
+                <Pencil size={17} /> Изменить
+              </button>
+            )}
+            {/* Только смена за сегодня и только администратору — то же
+                правило, что и на сервере. Вчерашние отчёты задним числом
+                не переписываются. */}
+            {isAdmin && shiftMenuRow && isCreatedToday(shiftMenuRow.createdAt) && (
+              <button
+                type="button"
+                className="action-sheet__item action-sheet__item--danger action-sheet__item--divider"
+                onClick={() => {
+                  const row = shiftMenuRow;
+                  setShiftMenuRow(null);
+                  setPendingDelete({ kind: 'shift', id: row.id, label: `${row.employeeName} · ${formatMoney(row.total)}` });
+                }}
+              >
+                <Trash2 size={17} /> Удалить смену
+              </button>
+            )}
+          </ActionSheet>
         </div>
       )}
 
       {/* ── Таб: Итоги ───────────────────────────────────────── */}
-      {activeTab === 'summary' && canSeeSummary && (
+      {activeTab === 'summary' && (
         <div className="shifts-tab-content">
-          <FiltersBar
+          <PeriodFilter
             year={gYear} month={gMonth} day={gDay}
             onYear={setGYear} onMonth={setGMonth} onDay={setGDay}
             onReset={() => { setGYear(DEFAULT_YEAR); setGMonth(DEFAULT_MONTH); setGDay(''); setGEmployeeId(''); }}
-            employeeOptions={[
-              { value: '', label: 'Все сотрудники' },
-              ...(summary?.byEmployee ?? [])
-                .filter((e) => e.employeeId != null)
-                .map((e) => ({ value: String(e.employeeId), label: e.employeeName })),
-            ]}
-            employeeValue={gEmployeeId}
-            onEmployee={setGEmployeeId}
+            isDefault={summaryIsDefault}
+            extra={(
+              <label className="period-filter__field">
+                <span>Сотрудник</span>
+                <Select
+                  value={String(gEmployeeId ?? '')}
+                  onChange={setGEmployeeId}
+                  options={[
+                    { value: '', label: 'Все сотрудники' },
+                    ...(summary?.byEmployee ?? [])
+                      .filter((e) => e.employeeId != null)
+                      .map((e) => ({ value: String(e.employeeId), label: e.employeeName })),
+                  ]}
+                  placeholder="Все сотрудники"
+                />
+              </label>
+            )}
           />
 
           {summaryLoading ? (
@@ -1047,6 +1038,69 @@ const ShiftsPage = () => {
         </div>
       )}
 
+      {/* ── Таб: История смен (приход/уход, отдельно от денег) ─── */}
+      {activeTab === 'history' && (
+        <div className="shifts-tab-content">
+          <PeriodFilter
+            year={hYear} month={hMonth} day={hDay}
+            onYear={setHYear} onMonth={setHMonth} onDay={setHDay}
+            onReset={() => { setHYear(DEFAULT_YEAR); setHMonth(DEFAULT_MONTH); setHDay(''); }}
+            isDefault={historyIsDefault}
+          />
+
+          {historyLoading ? (
+            <div className="shifts-page__loading"><Spinner /></div>
+          ) : historyError ? (
+            <ErrorState compact message={historyError} onRetry={loadHistory} />
+          ) : history.length === 0 ? (
+            <EmptyState compact message="За этот период никто не начинал смену" />
+          ) : (
+            <div className="shifts-page__list">
+              {history.map((h, idx) => (
+                <div key={h.id} className="shift-card" style={{ '--row-i': idx }}>
+                  <div className="shift-card__left">
+                    <div className="shift-card__avatar" style={{ background: getAvatarColor(h.user_name) }}>
+                      {getInitials(h.user_name)}
+                    </div>
+                    <div className="shift-card__who">
+                      <span className="shift-card__name">{h.user_name || '—'}</span>
+                      <span className="shift-card__date">Начал: {formatDate(h.opened_at)}</span>
+                    </div>
+                  </div>
+
+                  <div className="shift-card__amounts">
+                    <div className="shift-card__amount">
+                      <span className="shift-card__amount-label">
+                        {h.closed_at ? <CircleCheck size={13} /> : <Clock size={13} />}
+                        {h.closed_at ? 'Завершил' : 'Статус'}
+                      </span>
+                      <span className={`shifts-attendance-status${h.closed_at ? '' : ' shifts-attendance-status--open'}`}>
+                        {h.closed_at ? formatDate(h.closed_at) : (ATTENDANCE_STATUS_LABEL[h.status] || 'Идёт')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {h.comment && <p className="shift-card__desc">{h.comment}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <Pagination
+            meta={historyMeta}
+            currentPage={historyPage}
+            onPage={setHistoryPage}
+            loading={historyLoading}
+            entityLabel="записей"
+          />
+        </div>
+      )}
+
+      {/* Главное действие вкладки — на мобиле FAB вместо кнопки в тулбаре;
+          у «Итогов» и «Истории смен» нет действия создания — там FAB нет. */}
+      {activeTab === 'photos' && <Fab onClick={() => setPhotoModalOpen(true)} label="Добавить фото" icon={ImagePlus} />}
+      {activeTab === 'shifts' && <Fab onClick={() => setShiftModalOpen(true)} label="Завершить смену" icon={Plus} />}
+
       {/* Модалки */}
       <AddPhotoModal open={photoModalOpen} onClose={() => setPhotoModalOpen(false)} onSubmit={handleAddPhoto} />
       <CloseShiftModal open={shiftModalOpen} onClose={() => setShiftModalOpen(false)} onSubmit={handleCloseShift} />
@@ -1084,15 +1138,6 @@ const ShiftsPage = () => {
         />
       )}
 
-      {/* Не удалось удалить — говорим прямо, а не молча оставляем запись */}
-      {deleteError && (
-        <div className="shifts-page__delete-error" role="alert">
-          <span>{deleteError}</span>
-          <button type="button" onClick={() => setDeleteError(null)} aria-label="Закрыть">
-            <XIcon size={14} />
-          </button>
-        </div>
-      )}
     </div>
   );
 };

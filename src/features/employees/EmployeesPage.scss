@@ -6,10 +6,6 @@
   min-width: 0;
   overflow-x: hidden;
 
-  > .ui-tabs {
-    margin: 0 0 20px;
-  }
-
   &__filter-bar {
     margin-bottom: 20px;
     min-width: 0;
@@ -21,6 +17,13 @@
     }
   }
 
+  // Select и десктопная кнопка «Добавить» вместе в одном контейнере,
+  // который на мобиле просто перестаёт рендериться целиком — так его
+  // дочерняя кнопка не может «протечь» на мобилку через выигранный по
+  // порядку подключения CSS конфликт с .filter-bar__action (было именно
+  // так: у .employees-page__add--desktop и .filter-bar__action одинаковая
+  // специфичность, и в проде побеждал .filter-bar__action — кнопка
+  // дублировалась на мобиле).
   &__filters-desktop {
     display: flex;
     align-items: center;
@@ -33,34 +36,40 @@
     }
   }
 
-  &__toolbar-mobile {
+  // Поиск + иконка фильтров в одну строку на мобиле; на десктопе — просто
+  // «прозрачная» обёртка (display: contents), чтобы не менять поведение
+  // существующего десктопного flex-ряда FilterBar.
+  &__search-row {
+    display: contents;
+
+    @include mixins.mobile {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      width: 100%;
+      flex: 1 1 100%;
+    }
+  }
+
+  &__filter-icon-btn {
     display: none;
-    flex-direction: column;
-    gap: var(--space-3);
-    width: 100%;
+    position: relative;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    color: var(--color-text);
+    cursor: pointer;
+    transition: border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
 
     @include mixins.mobile {
       display: flex;
     }
-
-    .filter-bar__action {
-      margin-left: 0;
-      width: 100%;
-    }
-  }
-
-  &__filters-btn {
-    width: 100%;
-    min-height: 46px;
-    padding: 0 var(--space-4);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-md);
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--color-text);
-    cursor: pointer;
-    transition: border-color var(--transition-fast), background var(--transition-fast);
 
     &:hover {
       border-color: var(--color-primary);
@@ -69,11 +78,29 @@
     }
   }
 
-  &__add--desktop {
+  &__filter-dot {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    border: 2px solid var(--color-surface);
+  }
+
+  // Кнопка «Добавить роль» — только десктоп/планшет, на мобиле создание
+  // роли переезжает в FAB (см. &__fab). Отдельный от .employees-page__add
+  // модификатор (не &--desktop, который раньше проигрывал специфичностью
+  // .filter-bar__action) — составной селектор ниже гарантированно её бьёт.
+  &__filter-bar &__add--desktop-only {
     @include mixins.mobile {
       display: none;
     }
   }
+
+  // Главное действие страницы на мобиле — общий Fab (shared/ui/Fab.scss,
+  // класс .ui-fab), не дублируем позиционирование здесь.
 
   &__filters-modal-content {
     display: flex;
@@ -95,50 +122,8 @@
     }
   }
 
-  &__filters-modal-footer {
-    display: flex;
-    gap: var(--space-2);
-    width: 100%;
-
-    .employees-page__filter-reset,
-    .employees-page__filter-apply {
-      flex: 1;
-      min-height: 44px;
-    }
-  }
-
-  &__filter-reset {
-    padding: 0 var(--space-4);
-    background: var(--color-surface);
-    color: var(--color-text);
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-md);
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background var(--transition-fast), border-color var(--transition-fast);
-
-    &:hover {
-      border-color: var(--color-primary);
-      color: var(--color-primary);
-    }
-  }
-
-  &__filter-apply {
-    padding: 0 var(--space-4);
-    background: var(--color-primary);
-    color: #fff;
-    border: none;
-    border-radius: var(--radius-md);
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background var(--transition-fast);
-
-    &:hover {
-      background: var(--color-primary-hover);
-    }
-  }
+  // Кнопки Сброс/Применить — общие .filters-modal__reset-btn/__apply-btn,
+  // см. shared/ui/FiltersModal.scss.
 
   &__select-wrap--modal {
     width: 100%;
@@ -166,6 +151,9 @@
     min-width: 160px;
   }
 
+  // На мобиле эта кнопка нигде не видна — создание переехало в &__fab —
+  // стили нужны только для десктопа/планшета, где она всё ещё есть в ряду
+  // фильтров (Сотрудники → &__filters-desktop) и в шапке вкладки «Роли».
   &__add {
     height: 40px;
     min-height: 44px;
@@ -178,12 +166,6 @@
     font-weight: 500;
     flex-shrink: 0;
     transition: background var(--transition-fast), transform var(--transition-fast);
-
-    @include mixins.mobile {
-      width: 100%;
-      font-size: 15px;
-      font-weight: 600;
-    }
 
     &:hover {
       background: var(--color-primary-hover);

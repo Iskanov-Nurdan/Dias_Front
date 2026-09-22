@@ -1,87 +1,25 @@
+@use '../../shared/styles/mixins';
+
 .shifts-page {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
   padding-bottom: 40px;
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
-// ── Tabs ──────────────────────────────────────────────────────
-.shifts-tabs {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.shifts-tabs__nav.ui-tabs {
-  border-bottom: none;
-}
-
-.shifts-tabs__badge--alert {
-  background: rgba(239, 68, 68, 0.12);
-  color: #f87171;
-  [data-theme='light'] & { background: rgba(220, 38, 38, 0.08); color: #dc2626; }
-}
-
-.shifts-tabs__action {
-  padding-bottom: 8px;
-  flex-shrink: 0;
-}
+// Кнопка главного действия — теперь в одной строке с вкладками через
+// action-слот PrimaryTabs (см. JSX); на мобиле слот сам скрывается,
+// там место общего Fab. Период/фильтры — через общий PeriodFilter.
 
 // ── Tab content ───────────────────────────────────────────────
 .shifts-tab-content {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-// ── Filters ───────────────────────────────────────────────────
-.shifts-filters {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 11px 14px;
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xs);
-}
-
-.shifts-filters__icon {
-  color: var(--color-text-muted);
-  flex-shrink: 0;
-}
-
-.shifts-filters__select-wrap {
-  min-width: 100px;
-}
-
-.shifts-filters__reset {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 34px;
-  padding: 0 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
-  &:hover { color: var(--color-text); border-color: var(--color-text-muted); background: var(--color-bg); }
-}
-
-.shifts-filters__label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-muted);
-  margin-right: 2px;
 }
 
 // ── Section ───────────────────────────────────────────────────
@@ -132,7 +70,6 @@
   transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
   flex-shrink: 0;
 
-  &:hover { transform: translateY(-1px); }
   &:active { transform: translateY(0) scale(0.98); }
 
   &--photo {
@@ -140,14 +77,18 @@
     color: #60a5fa;
     border: 1px solid rgba(59, 130, 246, 0.2);
     [data-theme='light'] & { background: rgba(37, 99, 235, 0.08); color: #1d4ed8; border-color: rgba(37, 99, 235, 0.2); }
-    &:hover { background: rgba(59, 130, 246, 0.2); }
   }
 
   &--shift {
     background: var(--color-primary, #ef4444);
     color: #fff;
-    &:hover { background: var(--color-primary-hover, #dc2626); box-shadow: 0 2px 10px rgba(197, 48, 48, 0.28); }
   }
+}
+
+@media (hover: hover) {
+  .shifts-page__add-btn:hover { transform: translateY(-1px); }
+  .shifts-page__add-btn--photo:hover { background: rgba(59, 130, 246, 0.2); }
+  .shifts-page__add-btn--shift:hover { background: var(--color-primary-hover, #dc2626); box-shadow: 0 2px 10px rgba(197, 48, 48, 0.28); }
 }
 
 .shifts-page__loading {
@@ -174,8 +115,10 @@
   transition: box-shadow 0.15s ease, border-color 0.15s ease;
   animation: shift-row-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: calc(var(--row-i, 0) * 30ms);
+}
 
-  &:hover { box-shadow: var(--shadow-sm); border-color: var(--color-border-strong); }
+@media (hover: hover) {
+  .photo-card:hover { box-shadow: var(--shadow-sm); border-color: var(--color-border-strong); }
 }
 
 .photo-card__header {
@@ -264,17 +207,19 @@
     pointer-events: none;
   }
 
-  &:hover {
+  @include mixins.mobile {
+    width: 100px;
+    height: 100px;
+  }
+}
+
+@media (hover: hover) {
+  .photo-card__thumb-btn:hover {
     transform: scale(1.03);
     border-color: var(--color-border-strong);
     box-shadow: var(--shadow-sm);
     .photo-card__thumb-overlay { opacity: 1; }
     .photo-card__thumb { transform: scale(1.06); }
-  }
-
-  @media (max-width: 600px) {
-    width: 100px;
-    height: 100px;
   }
 }
 
@@ -335,7 +280,11 @@
   animation: shift-row-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: calc(var(--row-i, 0) * 30ms);
 
-  &:hover { box-shadow: var(--shadow-sm); border-color: var(--color-border-strong); }
+  &--clickable { cursor: pointer; }
+}
+
+@media (hover: hover) {
+  .shift-card:hover { box-shadow: var(--shadow-sm); border-color: var(--color-border-strong); }
 }
 
 .shift-card__left {
@@ -380,39 +329,55 @@
   width: 100%;
 }
 
-// ── Кнопка «Изменить» / бейдж «Изменено» ───────────────────────
-.shift-card__edit-btn,
-.shift-card__history-btn {
+// ── «⋯» строки (действия — только через bottom sheet) и бейдж «Изменено» ──
+.shift-card__edited-badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   margin-left: auto;
-  padding: 6px 12px;
-  font-size: 12px;
+  padding: 4px 10px;
+  font-size: 11px;
   font-weight: 600;
-  border-radius: 8px;
-  cursor: pointer;
+  border-radius: 999px;
   white-space: nowrap;
   flex-shrink: 0;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-
-.shift-card__edit-btn {
-  background: transparent;
-  border: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
-
-  &:hover { border-color: var(--color-primary); color: var(--color-primary); }
-}
-
-.shift-card__history-btn {
   background: rgba(245, 158, 11, 0.1);
   border: 1px solid rgba(245, 158, 11, 0.3);
   color: #f59e0b;
-
-  &:hover { background: rgba(245, 158, 11, 0.16); }
-
   [data-theme='light'] & { color: #b45309; }
+}
+
+.shifts-card-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  &:active { background: var(--color-bg); }
+}
+
+@media (hover: hover) {
+  .shifts-card-menu-btn:hover { background: var(--color-bg); color: var(--color-text); }
+}
+
+// Угловой блок (бейдж «Изменено» + «⋯») — на десктоп-строке просто уезжает
+// вправо за счёт flex:1 у amounts; на мобиле, где карточка становится
+// колонкой, закрепляется в правом верхнем углу абсолютным позиционированием
+// (см. .shift-card--clickable-родитель ниже), а не занимает свою строку.
+.shift-card__corner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 // ── Панель «Было до изменения» ─────────────────────────────────
@@ -512,100 +477,24 @@
   padding-top: 14px;
 }
 
-// ── Modal ─────────────────────────────────────────────────────
-.shift-modal__backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 12px;
-  animation: shift-modal-backdrop-in 0.18s ease both;
-}
-
-.shift-modal {
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  max-width: 380px;
-  width: 100%;
-  box-shadow: var(--shadow-xl);
-  overflow: hidden;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  animation: shift-modal-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
-
-  &--photo { max-width: 520px; }
-}
-
-@keyframes shift-modal-backdrop-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes shift-modal-in {
-  from { opacity: 0; transform: translateY(10px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.shift-modal__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px 18px 12px;
-  border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0;
-}
-
-.shift-modal__header-sub {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-text-muted);
-  margin-bottom: 3px;
-}
-
-.shift-modal__title {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--color-text);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.shift-modal__close {
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  border: none;
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
+// Статус строки в «Истории смен» (приход/уход): дата закрытия — обычным
+// текстом, «Идёт» (смена ещё открыта) — акцентным зелёным, как остальные
+// живые/положительные статусы в этой фиче (shift-card__amount-value--total).
+.shifts-attendance-status {
   font-size: 15px;
-  flex-shrink: 0;
-  transition: background 0.12s;
-  &:hover { background: var(--color-bg); color: var(--color-text); }
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+
+  &--open {
+    color: #4ade80;
+    [data-theme='light'] & { color: #16a34a; }
+  }
 }
 
-.shift-modal__form {
-  padding: 16px 18px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  overflow-y: auto;
-}
-
+// ── Modal ─────────────────────────────────────────────────────
+// Каркас модалки (backdrop/шапка/шторка на мобиле/sticky-кнопки) — общий
+// .form-modal, см. shared/ui/FormModal.scss. Тут только стили полей формы.
 .shift-modal__row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -641,10 +530,13 @@
   overflow: hidden;
   min-width: 0;
   transition: border-color 0.15s, box-shadow 0.15s;
-  &:hover { border-color: var(--color-border-strong); }
   &:focus-within { border-color: var(--color-primary, #ef4444); box-shadow: 0 0 0 3px var(--color-primary-soft, rgba(239, 68, 68, 0.1)); }
 
   &--sub { background: var(--color-surface-secondary); }
+}
+
+@media (hover: hover) {
+  .shift-modal__input-wrap:hover { border-color: var(--color-border-strong); }
 }
 
 .shift-modal__input {
@@ -777,19 +669,21 @@
   transition: border-color 0.15s, background 0.15s, transform 0.1s;
   text-align: center;
 
-  &:hover {
-    border-color: #60a5fa;
-    background: rgba(59, 130, 246, 0.05);
-    transform: translateY(-1px);
-    .shift-modal__drop-icon-wrap { background: rgba(59, 130, 246, 0.14); color: #3b82f6; }
-  }
-
   &:active { transform: translateY(0) scale(0.995); }
 
   &--has-photos {
     padding: 16px;
     border-style: solid;
     border-color: var(--color-border);
+  }
+}
+
+@media (hover: hover) {
+  .shift-modal__drop-zone:hover {
+    border-color: #60a5fa;
+    background: rgba(59, 130, 246, 0.05);
+    transform: translateY(-1px);
+    .shift-modal__drop-icon-wrap { background: rgba(59, 130, 246, 0.14); color: #3b82f6; }
   }
 }
 
@@ -824,7 +718,11 @@
   overflow: hidden;
   border: 1px solid var(--color-border);
   transition: box-shadow 0.15s ease;
-  &:hover { box-shadow: var(--shadow-sm); }
+}
+
+@media (hover: hover) {
+  .shift-modal__photo-thumb:hover { box-shadow: var(--shadow-sm); }
+  .shift-modal__photo-remove:hover { background: var(--color-danger, #ef4444); transform: scale(1.08); }
 }
 
 .shift-modal__photo-img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -845,69 +743,9 @@
   justify-content: center;
   padding: 0;
   transition: background 0.12s, transform 0.12s;
-  &:hover { background: var(--color-danger, #ef4444); transform: scale(1.08); }
-}
-
-.shift-modal__error {
-  margin: -6px 0 0;
-  padding: 8px 12px;
-  font-size: 12px;
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  border-radius: 8px;
-}
-
-// ── Actions ───────────────────────────────────────────────────
-.shift-modal__actions {
-  display: flex;
-  gap: 8px;
-  padding-top: 2px;
-}
-
-.shift-modal__btn {
-  flex: 1;
-  height: 40px;
-  border-radius: var(--radius-md);
-  font-size: 13.5px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, transform 0.1s, box-shadow 0.15s;
-  border: 1px solid transparent;
-
-  &:active:not(:disabled) { transform: scale(0.98); }
-
-  &--cancel {
-    background: transparent;
-    border-color: var(--color-border);
-    color: var(--color-text-muted);
-    &:hover:not(:disabled) { border-color: var(--color-text-muted); color: var(--color-text); }
-  }
-  &--submit {
-    background: var(--color-primary, #ef4444);
-    color: #fff;
-    &:hover:not(:disabled) { background: var(--color-primary-hover, #dc2626); box-shadow: 0 2px 10px rgba(197, 48, 48, 0.28); }
-  }
-  &--photo {
-    background: #3b82f6;
-    color: #fff;
-    &:hover:not(:disabled) { background: #2563eb; }
-  }
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 
 // ── Таб «Итоги» ───────────────────────────────────────────────
-.shifts-filters__divider {
-  width: 1px;
-  height: 24px;
-  background: var(--color-border);
-  flex-shrink: 0;
-}
-
-.shifts-filters__select-wrap--employee {
-  min-width: 160px;
-}
-
 // Шесть плиток заголовочных цифр. Не карточки-с-тенью, как остальной сайт
 // в светлой теме, а тонкая обводка с цветным акцентом сверху — на тёмной
 // теме, в которой сейчас живёт вся страница «Смены», лишняя тень не видна,
@@ -937,8 +775,10 @@
     top: 0; left: 0; right: 0;
     height: 3px;
   }
+}
 
-  &:hover { border-color: var(--color-border-strong, var(--color-text-muted)); transform: translateY(-1px); }
+@media (hover: hover) {
+  .shifts-kpi:hover { border-color: var(--color-border-strong, var(--color-text-muted)); transform: translateY(-1px); }
 }
 
 .shifts-kpi__icon {
@@ -1150,75 +990,12 @@
 }
 
 // ── Mobile ────────────────────────────────────────────────────
-@media (max-width: 600px) {
+@include mixins.mobile {
   .shifts-page {
     gap: 12px;
-    padding-bottom: 60px;
-  }
-
-  // Tabs: nav full-width top row, action button below right
-  .shifts-tabs {
-    flex-wrap: wrap;
-    gap: 0;
-  }
-
-  .shifts-tabs__nav {
-    width: 100%;
-    order: 1;
-  }
-
-  .shifts-tabs__btn {
-    flex: 1;
-    justify-content: center;
-    padding: 0 10px;
-    font-size: 12.5px;
-    gap: 5px;
-  }
-
-  .shifts-tabs__action {
-    order: 2;
-    width: 100%;
-    padding: 8px 0 6px;
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  .shifts-page__add-btn {
-    width: 100%;
-    justify-content: center;
-    height: 42px;
-    font-size: 14px;
-  }
-
-  // Filters: hide label, selects stretch
-  .shifts-filters {
-    padding: 8px 10px;
-    gap: 6px;
-  }
-
-  .shifts-filters__label {
-    display: none;
-  }
-
-  .shifts-filters__icon {
-    display: none;
-  }
-
-  .shifts-filters__select-wrap {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .shifts-filters__divider {
-    display: none;
-  }
-
-  .shifts-filters__select-wrap--employee {
-    min-width: 0;
-    // Свой перенос строкой ниже, во всю ширину: у года/месяца/дня уже
-    // не остаётся места на телефоне, а «Сотрудник» вместе с ними в одну
-    // строку не помещается ни при каком сжатии
-    flex-basis: 100%;
+    // Запас снизу под FAB + нижнюю таб-навигацию, чтобы последняя карточка
+    // списка не пряталась под ними
+    padding-bottom: calc(var(--bottom-nav-h, 60px) + 76px);
   }
 
   // Итоги: шесть плиток в две колонки — в одну не помещается ни одна цифра
@@ -1246,16 +1023,26 @@
     padding-left: 0;
   }
 
-  // Shift card: vertical stack
+  // Shift card: vertical stack, «⋯»/бейдж прибиты к правому верхнему углу —
+  // иначе в колонке они оказались бы каждый на своей строке слева
   .shift-card {
+    position: relative;
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
-    padding: 12px 14px;
+    padding: 12px 56px 12px 14px;
   }
 
   .shift-card__left {
     min-width: 0;
+    padding-right: 8px;
+  }
+
+  .shift-card__corner {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    margin-left: 0;
   }
 
   .shift-card__amounts {
@@ -1284,20 +1071,6 @@
   .shift-card__amount-value {
     font-size: 14px;
   }
-
-  // Modal: bottom sheet on mobile
-  .shift-modal__backdrop {
-    align-items: flex-end;
-    padding: 0;
-  }
-
-  .shift-modal {
-    border-radius: 20px 20px 0 0;
-    border-bottom: none;
-    max-height: 92vh;
-    max-width: 100%;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
 }
 
 // ── Lightbox ──────────────────────────────────────────────────
@@ -1315,10 +1088,12 @@
 
 .shifts-lightbox__close {
   position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 36px;
-  height: 36px;
+  // 44×44 — минимальная тач-зона; визуально кружок остаётся тем же (36px
+  // фон через box-shadow-less padding, тут просто сама кнопка чуть больше)
+  top: 12px;
+  right: 12px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.1);
   border: none;
@@ -1329,7 +1104,10 @@
   justify-content: center;
   transition: background 0.12s;
   z-index: 10;
-  &:hover { background: rgba(255, 255, 255, 0.22); }
+}
+
+@media (hover: hover) {
+  .shifts-lightbox__close:hover { background: rgba(255, 255, 255, 0.22); }
 }
 
 .shifts-lightbox__img {
@@ -1372,18 +1150,7 @@
   to { transform: rotate(360deg); }
 }
 
-// ═══ Удаление смены и фотоотчёта ═══════════════════════════════════════════
-// Красная кнопка видна сразу, без наведения: на тач-экране наведения нет,
-// а скрытая кнопка удаления — это кнопка, которой не существует.
-
-.shift-card__actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
+// ═══ Действия строки — «⋯» → bottom sheet ═══════════════════════════════
 .photo-card__head-actions {
   display: flex;
   align-items: center;
@@ -1393,106 +1160,4 @@
 
   // Счётчик уже прижат к правому краю самой обёрткой
   .photo-card__count { margin-left: 0; }
-}
-
-.shifts-del-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  // 34px — палец попадает, но кнопка не спорит по весу с «Изменить»
-  width: 34px;
-  height: 34px;
-  flex-shrink: 0;
-  border-radius: 9px;
-  border: 1px solid var(--color-danger-soft);
-  background: var(--color-danger-soft);
-  color: var(--color-danger);
-  cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast),
-    color var(--transition-fast), transform var(--transition-fast);
-
-  &:hover:not(:disabled) {
-    background: var(--color-danger);
-    border-color: var(--color-danger);
-    color: #fff;
-  }
-
-  &:active:not(:disabled) { transform: scale(0.94); }
-
-  &:focus-visible {
-    outline: 2px solid var(--color-danger);
-    outline-offset: 2px;
-  }
-
-  // Запрос ушёл — повторное нажатие не создаёт второй запрос
-  &:disabled {
-    opacity: 0.5;
-    cursor: progress;
-  }
-}
-
-// ── Ошибка удаления ──
-// Плавающая плашка снизу: удаление запускают из любого места длинного списка,
-// и сообщение наверху страницы никто бы не увидел.
-.shifts-page__delete-error {
-  position: fixed;
-  left: 50%;
-  bottom: 24px;
-  transform: translateX(-50%);
-  z-index: 1200;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  max-width: min(520px, calc(100vw - 32px));
-  padding: 12px 14px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-danger);
-  background: var(--color-bg-card);
-  box-shadow: var(--shadow-lg);
-  color: var(--color-danger);
-  font-size: 13px;
-  font-weight: 600;
-  animation: shifts-toast-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
-
-  button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 26px;
-    height: 26px;
-    flex-shrink: 0;
-    border: none;
-    border-radius: 7px;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-
-    &:hover { background: var(--color-danger-soft); }
-  }
-}
-
-@keyframes shifts-toast-in {
-  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
-}
-
-// ── Телефон ──
-@media (max-width: 600px) {
-  // Ряд кнопок занимает всю ширину карточки: «Изменить» растягивается,
-  // удаление остаётся квадратом справа — так они не слипаются
-  .shift-card__actions {
-    width: 100%;
-    margin-left: 0;
-  }
-
-  .shift-card__actions .shift-card__edit-btn,
-  .shift-card__actions .shift-card__history-btn {
-    flex: 1;
-    justify-content: center;
-    min-height: 38px;
-  }
-
-  .shifts-page__delete-error {
-    bottom: max(16px, env(safe-area-inset-bottom));
-  }
 }

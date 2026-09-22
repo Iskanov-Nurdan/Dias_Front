@@ -1,0 +1,195 @@
+@use '../../../shared/styles/mixins';
+
+// Составной селектор — иначе на равной специфичности с .form-modal (оба по
+// одному классу) итог зависел бы от порядка подключения CSS в бандле.
+.form-modal.fdm {
+  max-width: 760px;
+}
+
+.fdm {
+  &__add-barrel {
+    min-height: 36px;
+    padding: 0 14px;
+    border-radius: 999px !important;
+    font-weight: 600;
+    transition: transform 0.12s ease, background 0.15s ease, box-shadow 0.15s ease;
+
+    &:active:not(:disabled) {
+      transform: translateY(0) scale(0.96);
+    }
+  }
+
+  @media (hover: hover) {
+    &__add-barrel:hover:not(:disabled) {
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
+    }
+  }
+
+  // Под-вкладки модалки — общий Subtabs (см. JSX), своей CSS для них тут
+  // больше нет. Только отступ по бокам, т.к. Subtabs сам без горизонтального
+  // паддинга (в других местах он уже внутри отступов страницы).
+  .subtabs {
+    margin-left: 22px;
+    margin-right: 22px;
+
+    @include mixins.mobile {
+      margin-left: 16px;
+      margin-right: 16px;
+    }
+  }
+
+  // Настоящий скролл-контейнер — раньше контент лежал прямо в .wbm с
+  // overflow:hidden и без внутреннего скролла, поэтому всё, что не влезало
+  // по высоте, физически обрезалось (был виден только зумом браузера).
+  &__scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    @include mixins.scrollbar;
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    animation: fdm-tab-in 0.18s ease;
+  }
+
+  &__section-label {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+  }
+
+  &__stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    min-width: 0;
+
+    @include mixins.mobile {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  &__stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    min-width: 0;
+    transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+
+    &--accent {
+      border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+      background: var(--color-primary-soft);
+
+      .fdm__stat-value { color: var(--color-primary); }
+    }
+  }
+
+  &__stat-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+  }
+
+  &__stat-value {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: break-word;
+
+    &--danger {
+      color: var(--color-danger);
+    }
+
+    &--success {
+      color: var(--color-success);
+    }
+  }
+
+  &__composition {
+    padding-top: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__section-title {
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+  }
+
+  // Список состава — простые строки вместо таблицы (нечего скроллить
+  // горизонтально даже на 320px: два коротких поля в строке).
+  &__rows {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--color-surface-secondary);
+    border-radius: var(--radius-md);
+  }
+
+  &__row-name {
+    font-size: 13.5px;
+    color: var(--color-text);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__row-value {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+
+  &__total {
+    margin: 0;
+    padding: 10px 14px;
+    background: var(--color-surface-secondary);
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    color: var(--color-text-secondary);
+
+    strong {
+      color: var(--color-text);
+      font-weight: 700;
+    }
+  }
+}
+
+@keyframes fdm-tab-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fdm__body { animation: none; }
+}

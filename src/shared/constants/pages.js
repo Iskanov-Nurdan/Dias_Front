@@ -1,90 +1,125 @@
 import {
-  BarChart3, Users, Trophy, UsersRound, ClipboardList, Receipt, Wallet, Inbox, Link2, Clock, Table2, History,
-  UserCheck, PieChart,
+  Users, UsersRound, Clock, History, Package, FlaskConical, Warehouse, Factory,
+  ClipboardCheck, Archive, ShoppingCart,
 } from 'lucide-react';
 
 export const PAGE_IDS = [
-  'analytics',
-  'reports',
   'activity-log',
-  'clients',
-  'sports-trainers',
-  'leads',
   'employees',
-  'expenses',
-  'salary',
+  // Группа «Сырьё и химия» в реальном сайдбаре DIAS_ERP: Сырьё → Заготовка → Цех.
+  'materials',
+  'workshop',
+  'workshop-floor',
+  // Группа «Производство» в реальном сайдбаре: Производство → ОТК.
+  'production',
+  'otk',
   'shifts',
-  // Не отдельная страница в сайдбаре, а право на вкладку «Итоги» внутри
-  // «Смен» (см. ShiftsPage): выручка сразу по всем сотрудникам — более
-  // чувствительные данные, чем свой список закрытых смен, поэтому доступ
-  // к ним выдаётся отдельно от общего 'shifts'. Специально не добавлен
-  // в PAGE_ROUTES/PAGE_GROUPS — иначе получил бы свой пункт в сайдбаре,
-  // чего быть не должно.
-  'shifts-summary',
-  'taplink',
-  'spreadsheet',
-  // Кабинет тренера — отдельная страница, а не часть 'clients': у тренера
-  // нет доступа к чужим клиентам и остальным разделам CRM.
-  'trainer-report',
+  // Группа «Склад» в реальном сайдбаре.
+  'warehouse',
+  // Группа «Продажи» в реальном сайдбаре DIAS_ERP: Клиенты → Касса.
+  // 'clients' здесь — apps/sales.Client (CRM-карточка с кредитным лимитом),
+  // а не старая клубная подписка Rahman Ata.
+  'clients',
+  'sales',
 ];
 
 export const PAGE_ICONS = {
-  analytics: BarChart3,
   employees: Users,
-  'sports-trainers': Trophy,
+  materials: Package,
+  workshop: FlaskConical,
+  'workshop-floor': Warehouse,
+  production: Factory,
+  otk: ClipboardCheck,
+  warehouse: Archive,
+  sales: ShoppingCart,
   clients: UsersRound,
-  reports: ClipboardList,
   'activity-log': History,
-  leads: Inbox,
-  expenses: Receipt,
-  salary: Wallet,
   shifts: Clock,
-  'shifts-summary': PieChart,
-  taplink: Link2,
-  spreadsheet: Table2,
-  'trainer-report': UserCheck,
 };
 
 export const PAGE_LABELS = {
-  analytics: 'Аналитика',
   employees: 'Сотрудники',
-  'sports-trainers': 'Спорт и тренеры',
+  materials: 'Сырьё',
+  workshop: 'Заготовка',
+  'workshop-floor': 'Цех',
+  production: 'Производство',
+  otk: 'ОТК',
+  warehouse: 'Склад',
+  sales: 'Касса',
   clients: 'Клиенты',
-  reports: 'Отчёты',
   'activity-log': 'Журнал действий',
-  leads: 'Лиды',
-  expenses: 'Расходы',
-  salary: 'Зарплата',
   shifts: 'Смены',
-  'shifts-summary': 'Итоги смен',
-  taplink: 'Taplink страница',
-  spreadsheet: 'Таблицы',
-  'trainer-report': 'Мой отчёт',
 };
 
 export const PAGE_ROUTES = {
-  analytics: '/analytics',
   employees: '/employees',
-  'sports-trainers': '/sports-trainers',
+  materials: '/materials',
+  workshop: '/workshop',
+  'workshop-floor': '/workshop-floor',
+  production: '/production',
+  otk: '/otk',
+  warehouse: '/warehouse',
+  sales: '/sales',
   clients: '/clients',
-  reports: '/reports',
   'activity-log': '/activity-log',
-  leads: '/leads',
-  expenses: '/expenses',
-  salary: '/salary',
   shifts: '/shifts',
-  taplink: '/taplink-editor',
-  spreadsheet: '/spreadsheet',
-  'trainer-report': '/my-report',
 };
 
-/** Группы пунктов меню: ключ группы → массив pageId */
+/**
+ * pageId → access-key DIAS_ERP (см. shared/constants/accessKeys.js).
+ * Заполняется по одной странице за раз по мере миграции — то, чего здесь нет,
+ * останется недоступным (hasAccess вернёт false), пока страницу не перевели
+ * на реальный бэкенд.
+ */
+export const PAGE_ID_ACCESS_KEY_MAP = {
+  employees: 'users',
+  materials: 'materials',
+  // apps/workshop (заготовка/цех/партии) в DIAS_ERP гейтится ключом 'materials',
+  // отдельного 'workshop' в ACCESS_KEYS нет — так решили на бэкенде.
+  workshop: 'materials',
+  'workshop-floor': 'materials',
+  // /workshop/blank-production-runs/ на бэкенде сегодня вообще без
+  // required_access_key (доступен любому авторизованному) — но для видимости
+  // пункта меню используем содержательный ключ домена, а не оставляем дыру.
+  production: 'production',
+  // Реальные эндпоинты ОТК (apps/workshop otk_*) все гейтятся ключом
+  // 'materials' на бэкенде, а не 'otk' — 'otk' используется только у
+  // мёртвой ветки apps/otk, которую фронт (старый и новый) не использует.
+  otk: 'materials',
+  warehouse: 'warehouse',
+  // apps/sales — ключи 'clients'/'sales' совпадают с pageId 1:1, отображаем
+  // их явно (а не полагаемся молча на fallback accessKey ?? pageId в hasAccess).
+  clients: 'clients',
+  sales: 'sales',
+  // /api/activity/ (журнал действий для админа) на бэкенде гейтится ключом
+  // 'shifts' (см. ActivityAdminView.required_access_key), не отдельным
+  // 'activity-log' — такого ключа в ACCESS_KEYS вообще нет. Без этой строки
+  // hasAccess('activity-log') всегда возвращал false (fallback на
+  // несуществующий accessKey 'activity-log'), и пункт меню не показывался
+  // никому, включая тех, у кого реально есть доступ к сменам.
+  'activity-log': 'shifts',
+};
+
+/**
+ * Группы пунктов меню: ключ группы → массив pageId. Названия и порядок —
+ * ровно как в реальном сайдбаре DIAS_ERP (сверено по скриншоту).
+ */
+/**
+ * Приоритет разделов для нижней таб-бар навигации на мобиле (≤768px):
+ * первые доступные пользователю 4 попадают отдельными вкладками, остальные —
+ * в шторку «Ещё». Порядок отражает то, с чем работают чаще всего в цеху —
+ * производственный цикл (Производство → Склад) и продажи (Клиенты → Касса).
+ * Если у пользователя доступно ≤4 разделов вообще — приоритет не нужен,
+ * MainLayout покажет все как отдельные вкладки без «Ещё».
+ */
+export const MOBILE_NAV_PRIMARY_IDS = ['production', 'warehouse', 'clients', 'sales'];
+
 export const PAGE_GROUPS = {
-  'Аналитика': ['analytics', 'reports', 'activity-log'],
-  'Люди': ['clients', 'sports-trainers', 'leads', 'employees'],
-  'Финансы': ['expenses', 'salary'],
+  'Люди': ['employees'],
+  'Сырьё и химия': ['materials', 'workshop', 'workshop-floor'],
+  'Производство': ['production', 'otk'],
+  'Склад': ['warehouse'],
+  'Продажи': ['clients', 'sales'],
   'Смены': ['shifts'],
-  'Сайт': ['taplink'],
-  'Таблицы': ['spreadsheet'],
-  'Кабинет': ['trainer-report'],
+  'Журнал действий': ['activity-log'],
 };

@@ -1,0 +1,126 @@
+@use '../../../shared/styles/mixins';
+
+.foam-sales {
+  &__toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 16px;
+  }
+
+  &__add {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 38px;
+    padding: 0 14px;
+    background: var(--color-primary);
+    color: #fff;
+    border: none;
+    border-radius: var(--input-radius);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+  }
+
+  @media (hover: hover) {
+    &__add:hover { background: var(--color-primary-hover); }
+  }
+
+  &__add.foam-sales__add--desktop-only {
+    @include mixins.mobile {
+      display: none;
+    }
+  }
+
+  &__table-wrap {
+    @include mixins.scrollbar;
+  }
+
+  &__amount {
+    font-weight: 600;
+  }
+
+  &__status {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 8px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+
+    &--paid { color: var(--color-success, #2fb344); border-color: color-mix(in srgb, var(--color-success, #2fb344) 40%, transparent); }
+    &--partial { color: var(--color-warning); border-color: color-mix(in srgb, var(--color-warning) 40%, transparent); }
+    &--debt { color: var(--color-danger); border-color: color-mix(in srgb, var(--color-danger) 40%, transparent); }
+  }
+
+  // ── Mobile cards ──────────────────────────────────────────
+  &__cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    animation: foam-sales-row-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--row-i, 0) * 30ms);
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  }
+
+  &__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+  }
+
+  &__card-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__card-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text);
+    line-height: 1.3;
+  }
+
+  &__card-sub {
+    font-size: 13px;
+    color: var(--color-text-muted);
+  }
+
+  &__card-meta {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+  }
+}
+
+@keyframes foam-sales-row-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

@@ -1,0 +1,251 @@
+@use '../../../shared/styles/mixins';
+
+.profiles-list {
+  &__panel {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 6px;
+    overflow-x: auto;
+    @include mixins.scrollbar;
+  }
+
+  &__empty-wrap {
+    padding: 32px 16px;
+    text-align: center;
+  }
+
+  &__muted {
+    color: var(--color-text-muted);
+    font-size: 13.5px;
+  }
+
+  &__code {
+    color: var(--color-text-secondary);
+    font-size: 12.5px;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  }
+
+  &__price {
+    font-weight: 700;
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__inactive-pill {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--color-surface-secondary);
+    color: var(--color-text-muted);
+    margin-left: 8px;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 6px;
+    min-width: 760px;
+
+    thead th {
+      text-align: left;
+      padding: 8px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      background: var(--color-surface);
+      animation: profiles-row-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation-delay: calc(var(--row-i, 0) * 30ms);
+      transition: background 0.15s ease;
+    }
+
+    tbody tr:hover { background: var(--color-surface-secondary); }
+    tbody tr:hover td { border-color: var(--color-border-strong); }
+
+    tbody td {
+      padding: 12px 14px;
+      font-size: 13.5px;
+      color: var(--color-text);
+      border-top: 1px solid var(--color-border);
+      border-bottom: 1px solid var(--color-border);
+      transition: border-color 0.15s ease;
+      white-space: nowrap;
+    }
+
+    tbody td:first-child {
+      border-left: 1px solid var(--color-border);
+      border-top-left-radius: var(--radius-md);
+      border-bottom-left-radius: var(--radius-md);
+    }
+
+    tbody td:last-child {
+      border-right: 1px solid var(--color-border);
+      border-top-right-radius: var(--radius-md);
+      border-bottom-right-radius: var(--radius-md);
+      width: 1%;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &__table tbody tr { animation: none; }
+  }
+
+  &__name-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  &__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    border-radius: 9px;
+    background: var(--color-info-soft);
+    color: var(--color-info);
+    font-size: 12.5px;
+    font-weight: 700;
+  }
+
+  &__name-text {
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  &__row-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  &__icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+    flex-shrink: 0;
+
+    &:active { transform: scale(0.92); }
+  }
+
+  @media (hover: hover) {
+    &__icon-btn:hover {
+      border-color: var(--color-border-strong);
+      color: var(--color-text);
+      background: var(--color-surface-secondary);
+    }
+
+    &__icon-btn--danger:hover {
+      border-color: color-mix(in srgb, var(--color-danger) 40%, transparent);
+      background: var(--color-danger-soft);
+      color: var(--color-danger);
+    }
+  }
+
+  // ── Mobile cards ──────────────────────────────────────────
+  &__cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 8px 12px 14px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    animation: profiles-row-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--row-i, 0) * 30ms);
+    transition: border-color 0.15s ease;
+
+    &:active {
+      border-color: var(--color-border-strong);
+    }
+  }
+
+  &__card-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__card-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text);
+    line-height: 1.3;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__card-sub {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--color-text-muted);
+  }
+
+  &__card-code {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  }
+
+  &__card-price {
+    font-weight: 700;
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__card-menu-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    color: var(--color-text-muted);
+    transition: background 0.15s ease, color 0.15s ease;
+
+    &:active {
+      background: var(--color-surface-secondary);
+      color: var(--color-text);
+    }
+  }
+}
+
+@keyframes profiles-row-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

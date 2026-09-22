@@ -1,0 +1,70 @@
+// Каркас модалки (backdrop/шапка/шторка на мобиле/sticky-кнопки) — общий
+// .form-modal, см. shared/ui/FormModal.scss. Тут только стили самих полей.
+.mfm {
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  &__label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+
+  &__label-icon {
+    flex-shrink: 0;
+    color: var(--color-text-muted);
+  }
+
+  &__required {
+    color: var(--color-primary);
+    font-weight: 700;
+    margin-left: 1px;
+  }
+
+  &__field-error {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-danger);
+  }
+
+  &__input {
+    width: 100%;
+    height: 42px;
+    padding: 0 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--input-radius);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 14px;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &::placeholder {
+      color: var(--color-text-muted);
+    }
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: var(--input-shadow-focus);
+    }
+
+    &--invalid {
+      border-color: var(--color-danger) !important;
+      box-shadow: 0 0 0 3px var(--color-danger-soft) !important;
+    }
+  }
+
+  @media (hover: hover) {
+    &__input:hover:not(:focus):not(:disabled) {
+      border-color: var(--color-border-strong);
+    }
+  }
+}

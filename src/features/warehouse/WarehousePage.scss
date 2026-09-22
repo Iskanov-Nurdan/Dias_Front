@@ -1,0 +1,24 @@
+@use '../../shared/styles/mixins';
+
+.warehouse-page {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+
+  &__toolbar {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  &__search {
+    min-width: 240px;
+    flex: 1 1 240px;
+
+    @include mixins.mobile {
+      min-width: 0;
+      flex: 1 1 100%;
+    }
+  }
+}

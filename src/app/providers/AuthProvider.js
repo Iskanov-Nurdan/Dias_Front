@@ -1,9 +1,14 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { PAGE_IDS, PAGE_ROUTES } from '../../shared/constants/pages';
+import { PAGE_IDS, PAGE_ROUTES, PAGE_ID_ACCESS_KEY_MAP } from '../../shared/constants/pages';
+import { ACCESS_KEYS } from '../../shared/constants/accessKeys';
 import { logout as logoutApi, fetchMe } from '../../features/auth/api';
 import { setAuthTokens, clearAuth } from '../../shared/api/client';
 
+// Совпадает с system_constants.SYSTEM_ADMIN_ROLE_NAME в DIAS_ERP — так называется
+// роль системного админа, которую сеет бэкенд. Другие суперюзерские роли с иным
+// названием этой проверкой не поймать, но её обход требует, чтобы бэкенд отдавал
+// отдельный булев флаг — сегодня он этого не делает.
 const ADMIN_ROLE_NAME = 'Администратор';
 
 const AuthContext = createContext(null);
@@ -14,14 +19,16 @@ export const useAuth = () => {
   return ctx;
 };
 
-/** Нормализует user.access в объект { pageId: boolean }. Поддержка data.access, массива id, объекта. */
+/**
+ * Нормализует user.accesses (массив access-key строк от DIAS_ERP, см. accessKeys.js)
+ * в объект { accessKey: boolean } под ключом access — так с ним удобно работать
+ * в hasAccess/AccessModal, не таская каждый раз .includes() по массиву.
+ */
 const normalizeUserAccess = (u) => {
   if (!u || typeof u !== 'object') return u;
-  const raw = u.access ?? u.data?.access;
-  if (!raw || typeof raw !== 'object') return { ...u, access: {} };
-  const access = Array.isArray(raw)
-    ? PAGE_IDS.reduce((o, id) => ({ ...o, [id]: raw.includes(id) }), {})
-    : PAGE_IDS.reduce((o, id) => ({ ...o, [id]: raw[id] === true }), {});
+  const raw = u.accesses ?? u.access ?? u.data?.accesses ?? u.data?.access;
+  if (!Array.isArray(raw)) return { ...u, access: {} };
+  const access = ACCESS_KEYS.reduce((o, key) => ({ ...o, [key]: raw.includes(key) }), {});
   return { ...u, access };
 };
 
@@ -39,10 +46,10 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(getStoredUser);
   const [accessDeniedOpen, setAccessDeniedOpen] = useState(false);
 
-  const roleName = user?.roleName ?? user?.role?.name ?? '';
-  const isAdmin =
-    (user?.canManageRoles === true || user?.can_manage_roles === true || roleName === ADMIN_ROLE_NAME) &&
-    (roleName === '' || roleName === ADMIN_ROLE_NAME);
+  // role_name приходит только с /api/me (в ответе логина есть только id роли) —
+  // сразу после входа, до первого fetchMe, isAdmin будет false и подтянется
+  // после того как useEffect ниже смёржит свежий /api/me в user.
+  const isAdmin = (user?.role_name ?? '') === ADMIN_ROLE_NAME;
 
   const login = useCallback((userData, token, refresh) => {
     const normalized = normalizeUserAccess(userData);
@@ -63,8 +70,9 @@ export const AuthProvider = ({ children }) => {
     fetchMe(null)
       .then((res) => {
         if (cancelled) return;
-        const payload = res?.data ?? res;
-        const fresh = normalizeUserAccess(payload);
+        // GET /api/me отдаёт { user: {...}, accesses: [...] } — accesses дублирует
+        // user.accesses, нормализуем именно вложенный user.
+        const fresh = normalizeUserAccess(res?.user ?? res);
         setUser((prev) => {
           const merged = { ...prev, ...fresh };
           try { localStorage.setItem('user', JSON.stringify(merged)); } catch {}
@@ -86,27 +94,28 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   }, []);
 
-  /** Доступ по access[pageId] === true. Вкладки в сайдбаре показываем только при наличии доступа. */
+  /**
+   * Доступ по access[accessKey] === true, где accessKey — это либо сам pageId
+   * (для реальных access-key DIAS_ERP), либо его перевод через
+   * PAGE_ID_ACCESS_KEY_MAP (для старых pageId вроде 'employees'). pageId без
+   * записи в этой карте пока не мигрирован — доступа к нему нет ни у кого,
+   * пока страницу не подключили к DIAS_ERP.
+   */
   const hasAccess = useCallback(
     (pageId) => {
       if (!user) return false;
       const access = user.access;
       if (!access || typeof access !== 'object') return false;
-      if (access[pageId] === true) return true;
-      if (pageId === 'reports') {
-        if (access.reports === false) return false;
-        return access.clients === true;
-      }
-      return false;
+      const accessKey = PAGE_ID_ACCESS_KEY_MAP[pageId] ?? pageId;
+      return access[accessKey] === true;
     },
     [user]
   );
 
   const getFirstAvailableRoute = useCallback(() => {
     // PAGE_ROUTES[id] может не существовать — не у каждого pageId есть свой
-    // маршрут (например 'shifts-summary' — это право на вкладку внутри
-    // «Смен», а не отдельная страница). Без проверки первый же такой id
-    // отправил бы пользователя на /undefined.
+    // маршрут. Без проверки первый же такой id отправил бы пользователя
+    // на /undefined.
     for (const id of PAGE_IDS) {
       if (hasAccess(id) && PAGE_ROUTES[id]) return PAGE_ROUTES[id];
     }

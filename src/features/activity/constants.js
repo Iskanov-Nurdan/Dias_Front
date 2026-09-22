@@ -1,18 +1,41 @@
+// Реальные значения action (apps.activity.models.UserActivity.ACTION_CHOICES) —
+// 'restore' зарезервирован на бэкенде, но сегодня ни одна точка кода его не
+// пишет; оставлен в списке фильтра на будущее, без вреда — просто никогда
+// не будет строк с этим значением, пока бэкенд не начнёт их писать.
 export const ACTION_TYPES = {
-  create:  { label: 'Создание',      cls: 'ui-pill--success' },
-  update:  { label: 'Изменение',     cls: 'ui-pill--info' },
-  delete:  { label: 'Удаление',      cls: 'ui-pill--danger' },
-  warning: { label: 'Предупреждение', cls: 'ui-pill--warning' },
-  payment: { label: 'Оплата',        cls: 'ui-pill--success' },
+  create: { label: 'Создал', cls: 'ui-pill--success' },
+  update: { label: 'Изменил', cls: 'ui-pill--info' },
+  delete: { label: 'Удалил', cls: 'ui-pill--danger' },
+  restore: { label: 'Восстановил', cls: 'ui-pill--success' },
 };
 
-export const SECTIONS = {
-  clients: 'Клиенты',
-  employees: 'Сотрудники',
-  'sports-trainers': 'Спорт и тренеры',
-  leads: 'Лиды',
-  expenses: 'Расходы',
-  salary: 'Зарплата',
-  shifts: 'Смены',
-  taplink: 'Taplink-страница',
-};
+/**
+ * Разделы — намеренно урезанный список, в отличие от ACTION_TYPES это не
+ * весь набор строк, что бэкенд пишет в UserActivity.section, а только те,
+ * что относятся к страницам, реально мигрированным в сайдбар этого фронта
+ * (сверено с required_access_key каждого view в DIas_ERP и с ACCESS_KEYS в
+ * src/shared/constants/accessKeys.js). У бэкенда есть ещё разделы для
+ * немигрированных страниц (Химия, Рецепты, Линии, Заявки, Оплаты, Возвраты,
+ * Брак, Переделки — ключи 'chemistry'/'recipes'/'lines'/'client_orders'/
+ * 'payments'/'returns'/'defects' там ещё не подключены к этому UI) — их
+ * записи в журнале не потеряются, они просто не будут в выпадающем списке
+ * фильтра, пока соответствующая страница сюда не мигрирует.
+ *
+ * 'Пенопласт' — не отдельный пункт сайдбара, а вторая линия производства
+ * (переключатель на страницах Сырьё/Производство/Склад/Касса), поэтому
+ * реально достижим и оставлен.
+ */
+export const SECTIONS = [
+  'Пользователи',
+  'Материалы',
+  'Цех заготовки',
+  'Производство',
+  'ОТК',
+  'Склад',
+  'Пенопласт',
+  'Клиенты',
+  'Продажи',
+  'Прайсы',
+  'Цены клиентов',
+  'Смены',
+];

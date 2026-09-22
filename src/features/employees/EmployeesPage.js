@@ -5,7 +5,6 @@ import {
   createEmployee,
   updateEmployee,
   deleteEmployee,
-  fetchEmployeeAccess,
   updateEmployeeAccess,
   createRole,
   updateRole,
@@ -14,13 +13,20 @@ import {
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useToast } from '../../app/providers/ToastProvider';
 import { useDebounce } from '../../shared/hooks/useDebounce';
-import { Users, ShieldCheck, Search, Plus } from 'lucide-react';
-import { Select, Pagination, FilterBar, FiltersModal } from '../../shared/ui';
+import {
+  Users, ShieldCheck, Search, Plus, SlidersHorizontal,
+} from 'lucide-react';
+import { Select, Pagination, FilterBar, FiltersModal, Fab, PrimaryTabs } from '../../shared/ui';
 import { EmployeesList, RolesList, EmployeeFormModal, RoleFormModal, AccessModal } from './components';
 import './EmployeesPage.scss';
 
 const TAB_EMPLOYEES = 'employees';
 const TAB_ROLES = 'roles';
+
+const TABS = [
+  { id: TAB_EMPLOYEES, label: 'Сотрудники', icon: Users },
+  { id: TAB_ROLES, label: 'Роли', icon: ShieldCheck },
+];
 
 const EmployeesPage = () => {
   const { isAdmin, showAccessDenied } = useAuth();
@@ -42,7 +48,6 @@ const EmployeesPage = () => {
   const [rolesFormSaving, setRolesFormSaving] = useState(false);
   const [accessEmployee, setAccessEmployee] = useState(null);
   const [accessData, setAccessData] = useState(null);
-  const accessRequestSeq = useRef(0);
   const [accessFormError, setAccessFormError] = useState(null);
   const [accessFormSaving, setAccessFormSaving] = useState(false);
   const [employeeFiltersOpen, setEmployeeFiltersOpen] = useState(false);
@@ -197,32 +202,26 @@ const EmployeesPage = () => {
       });
   };
 
+  // Доступы сотрудника (accesses) уже приходят в самом объекте из списка
+  // /api/users/ — отдельного эндпоинта на чтение доступов у DIAS_ERP нет,
+  // поэтому здесь просто читаем то, что уже загружено, без сетевого запроса.
   const handleOpenAccess = (emp) => {
     setAccessEmployee(emp);
-    setAccessData(null);
-    const seq = ++accessRequestSeq.current;
-    fetchEmployeeAccess(emp.id, null)
-      .then((data) => {
-        if (accessRequestSeq.current !== seq) return;
-        setAccessData(data?.access ?? data ?? {});
-      })
-      .catch((e) => {
-        if (accessRequestSeq.current !== seq) return;
-        console.error(e);
-      });
+    setAccessData(emp.accesses ?? []);
   };
 
-  const handleSaveAccess = async (access) => {
+  const handleSaveAccess = async (accessKeys) => {
     if (!accessEmployee) return;
     setAccessFormError(null);
     setAccessFormSaving(true);
     try {
-      await updateEmployeeAccess(accessEmployee.id, access, null);
+      await updateEmployeeAccess(accessEmployee.id, accessKeys, null);
       setAccessEmployee(null);
       setAccessData(null);
+      fetchEmployeesSafe();
     } catch (e) {
       const d = e.response?.data;
-      setAccessFormError(d?.error?.message ?? d?.message ?? d?.detail ?? 'Ошибка сохранения');
+      setAccessFormError(d?.detail ?? d?.error ?? d?.message ?? 'Ошибка сохранения');
     } finally {
       setAccessFormSaving(false);
     }
@@ -230,36 +229,31 @@ const EmployeesPage = () => {
 
   return (
     <div className="employees-page">
-      
-      <div className="ui-tabs">
-        <button
-          type="button"
-          className={`ui-tabs__tab ${activeTab === TAB_EMPLOYEES ? 'ui-tabs__tab--active' : ''}`}
-          onClick={() => setActiveTab(TAB_EMPLOYEES)}
-        >
-          <Users size={15} /> Сотрудники
-        </button>
-        <button
-          type="button"
-          className={`ui-tabs__tab ${activeTab === TAB_ROLES ? 'ui-tabs__tab--active' : ''}`}
-          onClick={() => setActiveTab(TAB_ROLES)}
-        >
-          <ShieldCheck size={15} /> Роли
-        </button>
-      </div>
+      <PrimaryTabs items={TABS} activeId={activeTab} onChange={setActiveTab} />
 
       {activeTab === TAB_EMPLOYEES && (
         <>
           <FilterBar className="employees-page__filter-bar">
-            <div className="ui-search employees-page__search employees-page__search--full">
-              <Search size={15} className="ui-search__icon" />
-              <input
-                type="text"
-                placeholder="Поиск"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                className="ui-search__input"
-              />
+            <div className="employees-page__search-row">
+              <div className="ui-search employees-page__search employees-page__search--full">
+                <Search size={15} className="ui-search__icon" />
+                <input
+                  type="text"
+                  placeholder="Поиск"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="ui-search__input"
+                />
+              </div>
+              <button
+                type="button"
+                className="employees-page__filter-icon-btn"
+                onClick={() => setEmployeeFiltersOpen(true)}
+                aria-label="Фильтры"
+              >
+                <SlidersHorizontal size={18} />
+                {!!queryState.roleId && <span className="employees-page__filter-dot" aria-hidden />}
+              </button>
             </div>
             <div className="employees-page__filters-desktop">
               <Select
@@ -270,13 +264,9 @@ const EmployeesPage = () => {
                 className="employees-page__select-wrap"
                 icon={<ShieldCheck size={15} />}
               />
-            </div>
-            <button type="button" className="employees-page__add employees-page__add--desktop filter-bar__action" onClick={() => setFormEmployee({})}>
-              <Plus size={16} /> Добавить
-            </button>
-            <div className="employees-page__toolbar-mobile">
-              <button type="button" className="employees-page__filters-btn" onClick={() => setEmployeeFiltersOpen(true)}>Фильтры</button>
-              <button type="button" className="employees-page__add filter-bar__action" onClick={() => setFormEmployee({})}><Plus size={16} /> Добавить</button>
+              <button type="button" className="employees-page__add filter-bar__action" onClick={() => setFormEmployee({})}>
+                <Plus size={16} /> Добавить
+              </button>
             </div>
           </FilterBar>
           <FiltersModal
@@ -284,10 +274,10 @@ const EmployeesPage = () => {
             onClose={() => setEmployeeFiltersOpen(false)}
             title="Фильтры"
             footer={(
-              <div className="employees-page__filters-modal-footer">
-                <button type="button" className="employees-page__filter-reset" onClick={resetEmployeeRoleFilter}>Сброс</button>
-                <button type="button" className="employees-page__filter-apply" onClick={() => setEmployeeFiltersOpen(false)}>Применить</button>
-              </div>
+              <>
+                <button type="button" className="filters-modal__reset-btn" onClick={resetEmployeeRoleFilter}>Сброс</button>
+                <button type="button" className="filters-modal__apply-btn" onClick={() => setEmployeeFiltersOpen(false)}>Применить</button>
+              </>
             )}
           >
             <div className="employees-page__filters-modal-content">
@@ -311,6 +301,7 @@ const EmployeesPage = () => {
         <>
           <EmployeesList
             items={employeesItems}
+            roles={rolesList}
             loading={employeesLoading}
             error={employeesError}
             onRetry={fetchEmployeesSafe}
@@ -346,7 +337,7 @@ const EmployeesPage = () => {
                 className="ui-search__input"
               />
             </div>
-            <button type="button" className="employees-page__add filter-bar__action" onClick={() => setFormRole({})}>
+            <button type="button" className="employees-page__add employees-page__add--desktop-only filter-bar__action" onClick={() => setFormRole({})}>
               <Plus size={16} /> Добавить роль
             </button>
           </FilterBar>
@@ -388,6 +379,7 @@ const EmployeesPage = () => {
       {accessEmployee && (
         <AccessModal
           employee={accessEmployee}
+          roleName={rolesList.find((r) => r.id === accessEmployee.role)?.name}
           currentAccess={accessData}
           onSave={handleSaveAccess}
           onClose={() => { setAccessEmployee(null); setAccessData(null); setAccessFormError(null); }}
@@ -395,6 +387,10 @@ const EmployeesPage = () => {
           saving={accessFormSaving}
         />
       )}
+      <Fab
+        onClick={() => (activeTab === TAB_EMPLOYEES ? setFormEmployee({}) : setFormRole({}))}
+        label={activeTab === TAB_EMPLOYEES ? 'Добавить сотрудника' : 'Добавить роль'}
+      />
     </div>
   );
 };

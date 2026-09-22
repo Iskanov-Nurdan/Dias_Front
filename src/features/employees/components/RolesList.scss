@@ -2,48 +2,15 @@
 
 .roles-list {
   // Обёртка/таблица/аватар/название/кнопки — общие .ui-list__*/.ui-avatar/.ui-pill/.ui-list-btn,
-  // см. shared/styles/index.scss. Тут только уникальное для ролей.
-  &__table {
-    tbody tr {
-      animation: roles-row-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
-      animation-delay: calc(var(--row-i, 0) * 30ms);
-    }
-
-    @include mixins.mobile {
-      display: block;
-      background: transparent;
-
-      thead { display: none; }
-
-      tbody {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-
-      tr {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 14px 16px;
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: 12px;
-      }
-
-      td {
-        padding: 0;
-        border: none;
-
-        &.ui-list__actions {
-          flex-shrink: 0;
-        }
-      }
-    }
+  // см. shared/styles/index.scss. Таблица — только десктоп/планшет (рендерится
+  // в JS лишь при !isMobile — см. RolesList.js), на мобиле вместо неё карточки
+  // ниже, поэтому таблице не нужна CSS-подмена вёрстки под мобильную ширину.
+  &__table tbody tr {
+    animation: roles-row-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--row-i, 0) * 30ms);
   }
 
-  // ── System row ────────────────────────────────────────────
+  // ── System row (десктоп) ────────────────────────────────────
   &__row--system {
     opacity: 0.7;
 
@@ -55,6 +22,85 @@
     color: var(--color-text-muted);
     opacity: 0.6;
     font-style: italic;
+  }
+
+  &__empty-wrap {
+    padding: 32px 16px;
+    text-align: center;
+  }
+
+  // ── Mobile cards ──────────────────────────────────────────
+  // Тот же визуальный язык, что и у карточек сотрудников (EmployeesList):
+  // аватар/иконка — имя+бейдж — «⋯». Системная роль без «⋯» (нет действий)
+  // и без тапа по карточке — помечена только бейджем и иконкой замка.
+  &__cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 8px 12px 14px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    animation: roles-row-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--row-i, 0) * 30ms);
+    transition: border-color 0.15s ease;
+
+    &:active {
+      border-color: var(--color-border-strong);
+    }
+
+    &--system {
+      cursor: default;
+      opacity: 0.75;
+    }
+  }
+
+  &__card-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &__card-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text);
+    line-height: 1.25;
+    overflow-wrap: break-word;
+  }
+
+  &__card-info .ui-pill {
+    align-self: flex-start;
+  }
+
+  &__card-menu-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    color: var(--color-text-muted);
+    transition: background 0.15s ease, color 0.15s ease;
+
+    &:active {
+      background: var(--color-surface-secondary);
+      color: var(--color-text);
+    }
   }
 }
 

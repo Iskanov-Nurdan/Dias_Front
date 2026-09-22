@@ -1,0 +1,223 @@
+@use '../../../shared/styles/mixins';
+
+.wbm__backdrop {
+  @include mixins.modal-backdrop;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: wbm-fade-in 0.18s ease;
+}
+
+.wbm {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  width: 100%;
+  max-width: 480px;
+  max-height: 92vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-xl);
+  animation: wbm-scale-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 20px 22px 16px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  &__header-sub {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-text-muted);
+    margin: 0 0 4px;
+  }
+
+  &__title {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--color-text);
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+
+    // Иконка перед заголовком — цветной бейдж вокруг той же иконки, что уже
+    // передаёт компонент (см. тот же приём в fm__/mfm__/rpm__).
+    > svg:first-child {
+      width: 34px !important;
+      height: 34px !important;
+      padding: 8px;
+      box-sizing: border-box;
+      background: var(--color-primary-soft);
+      color: var(--color-primary);
+      border-radius: var(--radius-md);
+      flex-shrink: 0;
+    }
+  }
+
+  &__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+
+    &:hover {
+      background: var(--color-surface-secondary);
+      color: var(--color-text);
+    }
+
+    &:active { transform: scale(0.92); }
+  }
+
+  &__error {
+    margin: 14px 22px 0;
+    padding: 11px 14px;
+    background: var(--color-danger-soft);
+    border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
+    border-radius: var(--radius-md);
+    color: var(--color-danger);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.5;
+    flex-shrink: 0;
+    animation: wbm-shake 0.32s ease;
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    @include mixins.scrollbar;
+  }
+
+  &__body {
+    padding: 18px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex: 1;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    min-width: 0;
+  }
+
+  &__label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+
+  &__label-icon {
+    flex-shrink: 0;
+    color: var(--color-text-muted);
+  }
+
+  &__required {
+    color: var(--color-primary);
+    font-weight: 700;
+    margin-left: 1px;
+  }
+
+  &__field-error {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-danger);
+  }
+
+  &__input {
+    height: 42px;
+    padding: 0 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--input-radius);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 14px;
+    min-width: 0;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &::placeholder {
+      color: var(--color-text-muted);
+    }
+
+    &:hover:not(:focus):not(:disabled) {
+      border-color: var(--color-border-strong);
+    }
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: var(--input-shadow-focus);
+    }
+
+    &--invalid {
+      border-color: var(--color-danger) !important;
+      box-shadow: 0 0 0 3px var(--color-danger-soft) !important;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: flex-end;
+    padding: 16px 22px;
+    flex-shrink: 0;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
+
+    .ui-modal-btn {
+      transition: transform 0.12s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+
+      &:hover:not(:disabled) { transform: translateY(-1px); }
+      &:active:not(:disabled) { transform: translateY(0) scale(0.97); }
+      &--primary:hover:not(:disabled) { box-shadow: var(--shadow-sm); }
+    }
+  }
+}
+
+@keyframes wbm-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes wbm-scale-in {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+
+@keyframes wbm-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wbm, .wbm__backdrop, .wbm__error { animation: none !important; }
+}

@@ -1,0 +1,108 @@
+@use '../../../shared/styles/mixins';
+
+// Составной селектор — иначе на равной специфичности с .form-modal (оба по
+// одному классу) итог зависел бы от порядка подключения CSS в бандле.
+.form-modal.pfm {
+  max-width: 680px;
+}
+
+.pfm {
+  // min-width: 0 на строках и полях grid-а — без него элемент grid по
+  // умолчанию не сжимается меньше ширины своего контента (min-content),
+  // и на узких экранах вторая колонка вылезала за пределы модалки,
+  // создавая свой горизонтальный скролл внутри form-modal__body.
+  &__row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    min-width: 0;
+
+    @include mixins.mobile {
+      grid-template-columns: 1fr;
+    }
+
+    > * { min-width: 0; }
+  }
+
+  &__half {
+    max-width: 260px;
+    min-width: 0;
+
+    @include mixins.mobile {
+      max-width: none;
+    }
+  }
+
+  &__extras {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    min-width: 0;
+
+    @include mixins.mobile {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    > * { min-width: 0; }
+  }
+
+  &__hint {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+  }
+
+  &__section {
+    padding-top: 16px;
+    border-top: 1px dashed var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  &__section-title {
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+  }
+
+  &__readonly {
+    height: 42px;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--input-radius);
+    background: var(--color-surface-secondary);
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+
+    &--total {
+      color: var(--color-primary);
+      font-weight: 700;
+      background: var(--color-primary-soft);
+      border-color: color-mix(in srgb, var(--color-primary) 25%, transparent);
+    }
+
+    &--empty {
+      color: var(--color-text-muted);
+      font-weight: 400;
+      font-style: italic;
+    }
+  }
+
+  &__hint-text {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin: -4px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--color-text-muted);
+  }
+}

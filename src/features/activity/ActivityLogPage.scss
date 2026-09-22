@@ -56,14 +56,6 @@
     }
   }
 
-  &__select--date {
-    min-width: 110px;
-
-    @include mixins.mobile {
-      flex: 1 1 30%;
-    }
-  }
-
   &__action {
     display: flex;
     flex-direction: column;

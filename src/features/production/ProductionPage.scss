@@ -1,0 +1,39 @@
+@use '../../shared/styles/mixins';
+
+.production-page {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+
+  // Кнопка в одной строке с вкладками через action-слот ProductLineTabs
+  // (см. JSX) — на мобиле слот скрывается, там место общего Fab.
+  &__add {
+    height: 40px;
+    padding: 0 16px;
+    border-radius: var(--radius-md);
+    font-size: 13.5px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--color-primary);
+    color: #fff;
+    border: none;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+
+    &:active {
+      transform: translateY(0) scale(0.98);
+    }
+  }
+
+  @media (hover: hover) {
+    &__add:hover {
+      background: var(--color-primary-hover);
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
+    }
+  }
+}

@@ -1,0 +1,46 @@
+@use '../../shared/styles/mixins';
+
+.otk-page {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+
+  // Кнопка в одной строке с вкладками через action-слот PrimaryTabs (см.
+  // JSX) — на мобиле сам слот скрывается (PrimaryTabs.scss), там место
+  // общего Fab, здесь ничего дублировать не нужно.
+  &__add {
+    height: 40px;
+    padding: 0 16px;
+    border-radius: var(--radius-md);
+    font-size: 13.5px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--color-primary);
+    color: #fff;
+    border: none;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+
+    &:active:not(:disabled) {
+      transform: translateY(0) scale(0.98);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+  }
+
+  @media (hover: hover) {
+    &__add:hover:not(:disabled) {
+      background: var(--color-primary-hover);
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
+    }
+  }
+}

@@ -23,6 +23,11 @@
   background: var(--color-bg);
 
   @include mixins.mobile {
+    // Нижняя таб-навигация заменяет сайдбар — своя высота, вынесенная в
+    // переменную, чтобы страницы могли резервировать под неё padding-bottom
+    // и позиционировать FAB над ней, не зная точного значения.
+    --bottom-nav-h: 60px;
+
     grid-template-columns: 1fr;
     grid-template-rows: var(--header-height) 1fr;
     grid-template-areas:
@@ -50,7 +55,9 @@
       padding: 0 var(--space-4);
       gap: var(--space-2);
       display: grid;
-      grid-template-columns: 44px 1fr 44px;
+      // auto, не фиксированные 44px — справа может быть не только кнопка
+      // темы, но и кнопка «Начать/завершить смену» (см. ShiftClockWidget).
+      grid-template-columns: 1fr auto;
       align-items: center;
     }
 
@@ -72,21 +79,8 @@
     }
   }
 
-  &__header-center {
-    display: none;
-    min-width: 0;
-    justify-content: center;
-    text-align: center;
-
-    @include mixins.mobile {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-  }
-
   &__header-page-title {
-    font-weight: 700;
+    font-weight: 600;
     font-size: 18px;
     letter-spacing: -0.02em;
     color: var(--color-text);
@@ -100,51 +94,6 @@
 
     @include mixins.xs {
       font-size: 15px;
-    }
-  }
-
-  &__sidebar-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    padding: 0;
-    background: transparent;
-    border: none;
-    border-radius: var(--radius-lg);
-    color: var(--color-text-muted);
-    transition: color var(--transition-fast), background var(--transition-fast), transform 0.1s;
-    flex-shrink: 0;
-
-    &:hover {
-      color: var(--color-primary);
-      background: var(--color-primary-soft);
-    }
-
-    &:active {
-      transform: scale(0.92);
-    }
-
-    &:focus-visible {
-      outline: 2px solid var(--color-primary);
-      outline-offset: 2px;
-    }
-
-    @include mixins.xs {
-      width: 36px;
-      height: 36px;
-    }
-
-    // Кнопка открытия сайдбара на десктопе убрана: сайдбар раскрывается
-    // только наведением/фокусом. Остался только мобильный гамбургер —
-    // выезжающее меню на телефоне без наведения не открыть ничем другим.
-    &--mobile {
-      display: none;
-
-      @include mixins.mobile {
-        display: flex;
-      }
     }
   }
 
@@ -190,7 +139,7 @@
   }
 
   &__brand {
-    font-weight: 600;
+    font-weight: 500;
     font-size: 18px;
     letter-spacing: -0.02em;
     color: var(--color-text);
@@ -200,15 +149,6 @@
     @include mixins.mobile {
       display: none;
     }
-  }
-
-  &__mobile-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.48);
-    /* Ниже шапки и сайдбара — иначе перехватывает все касания */
-    z-index: 160;
-    animation: main-layout-fade-in 0.2s ease;
   }
 
   // ═══ Сайдбар ═══════════════════════════════════════════════════════════
@@ -237,21 +177,10 @@
       transition: width var(--transition-smooth), box-shadow var(--transition-smooth);
     }
 
+    // Сайдбар полностью заменяется нижней таб-навигацией на мобиле —
+    // см. .main-layout__bottom-nav.
     @include mixins.mobile {
-      position: fixed;
-      top: var(--header-height);
-      left: 0;
-      width: min(300px, 88vw);
-      max-width: 300px;
-      height: calc(100dvh - var(--header-height));
-      max-height: calc(100vh - var(--header-height));
-      z-index: 220;
-      transform: translateX(-100%);
-      border-right: 1px solid var(--color-sidebar-border);
-      overflow-y: auto;
-      overflow-x: hidden;
-      box-shadow: var(--shadow-xl);
-      transition: transform var(--transition-smooth);
+      display: none;
     }
   }
 
@@ -260,12 +189,6 @@
       width: var(--sidebar-width);
       box-shadow: var(--shadow-xl);
       overflow-y: auto;
-    }
-  }
-
-  &--mobile-menu-open &__sidebar {
-    @include mixins.mobile {
-      transform: translateX(0);
     }
   }
 
@@ -665,6 +588,9 @@
 
     @include mixins.mobile {
       padding: var(--space-4);
+      // Резерв под фиксированную нижнюю навигацию + safe-area её собственного
+      // отступа, иначе последняя карточка/кнопка страницы прячется под ней.
+      padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom) + var(--space-4));
     }
   }
 
@@ -673,6 +599,101 @@
     margin: 0 auto;
     width: 100%;
     min-width: 0;
+  }
+
+  // ═══ Нижняя таб-навигация (заменяет сайдбар на мобиле) ══════════════════
+  &__bottom-nav {
+    display: none;
+
+    @include mixins.mobile {
+      display: flex;
+      align-items: stretch;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom));
+      padding-bottom: env(safe-area-inset-bottom, 0);
+      background: var(--color-surface);
+      border-top: 1px solid var(--color-border);
+      z-index: 210;
+      box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.06);
+    }
+  }
+
+  &__bottom-nav-item {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    height: var(--bottom-nav-h);
+    padding: 4px 2px 0;
+    background: transparent;
+    border: none;
+    color: var(--color-text-muted);
+    transition: color var(--transition-fast);
+
+    &:active {
+      transform: scale(0.94);
+    }
+
+    &--active {
+      color: var(--color-primary);
+    }
+  }
+
+  &__bottom-nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__bottom-nav-label {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    @include mixins.xs {
+      font-size: 9.5px;
+    }
+  }
+
+  &__bottom-nav-item {
+    @include mixins.xs {
+      padding: 4px 1px 0;
+    }
+  }
+
+  // ═══ Карточка пользователя внутри шторки «Ещё» ═══════════════════════════
+  &__more-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: var(--space-2) var(--space-1) 0;
+    padding: 10px 12px;
+    background: var(--color-surface-secondary);
+    border-radius: var(--radius-md);
+
+    .main-layout__sidebar-user-avatar {
+      background: var(--color-primary-soft);
+      color: var(--color-primary);
+      border-color: transparent;
+    }
+
+    .main-layout__sidebar-user-name {
+      color: var(--color-text);
+    }
+
+    .main-layout__sidebar-user-role {
+      color: var(--color-text-muted);
+    }
   }
 }
 

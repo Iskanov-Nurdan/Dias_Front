@@ -1,0 +1,144 @@
+@use '../../../shared/styles/mixins';
+
+.comp-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  &__row {
+    display: grid;
+    grid-template-columns: 1fr 110px 34px;
+    gap: 8px;
+    align-items: center;
+    animation: comp-row-in 0.18s ease both;
+
+    // На узких экранах выбор сырья на всю ширину сверху, кол-во и удаление
+    // в строке снизу — иначе поле выбора зажимается до нечитаемой ширины.
+    @include mixins.mobile {
+      grid-template-columns: 1fr 44px;
+      grid-template-areas:
+        'material material'
+        'qty remove';
+      gap: 8px 8px;
+
+      .comp-rows__material { grid-area: material; }
+      .comp-rows__qty { grid-area: qty; }
+      .comp-rows__remove { grid-area: remove; width: 44px; height: 44px; }
+    }
+  }
+
+  &__material {
+    min-width: 0;
+
+    &--invalid .select__trigger {
+      border-color: var(--color-danger);
+      box-shadow: 0 0 0 3px var(--color-danger-soft);
+    }
+  }
+
+  &__qty {
+    height: 42px;
+    padding: 0 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--input-radius);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 14px;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: var(--input-shadow-focus);
+    }
+  }
+
+  &__remove {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+
+    &:active:not(:disabled) { transform: scale(0.92); }
+
+    &:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+  }
+
+  &__add {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 13px;
+    border: 1px dashed var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  }
+
+  @media (hover: hover) {
+    &__remove:hover:not(:disabled) {
+      background: var(--color-danger-soft);
+      border-color: color-mix(in srgb, var(--color-danger) 30%, transparent);
+      color: var(--color-danger);
+    }
+
+    &__material .select__trigger:hover,
+    &__qty:hover:not(:focus) {
+      border-color: var(--color-border-strong);
+    }
+
+    &__add:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+      background: var(--color-primary-soft);
+    }
+  }
+
+  &__total {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 2px;
+    padding: 10px 14px;
+    background: var(--color-surface-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+
+    strong {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--color-primary);
+    }
+  }
+}
+
+@keyframes comp-row-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comp-rows__row { animation: none; }
+}

@@ -1,0 +1,30 @@
+// Каркас модалки (backdrop/шапка/шторка на мобиле/sticky-кнопки) — общий
+// .form-modal, см. shared/ui/FormModal.scss. Тут только стили списка строк.
+.wsdm__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wsdm__line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--color-surface-secondary);
+  border-radius: var(--radius-md);
+  font-size: 13.5px;
+}
+
+.wsdm__line-name {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.wsdm__line-pieces {
+  font-weight: 700;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}

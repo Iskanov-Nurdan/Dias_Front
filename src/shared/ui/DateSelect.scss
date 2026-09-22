@@ -1,0 +1,23 @@
+.date-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+
+  &__control {
+    &.date-select__control--year {
+      min-width: 104px;
+      width: 104px;
+    }
+
+    &.date-select__control--month {
+      min-width: 130px;
+      width: 130px;
+    }
+
+    &.date-select__control--day {
+      min-width: 96px;
+      width: 96px;
+    }
+  }
+}

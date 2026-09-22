@@ -1,12 +1,3 @@
 export { default as ClientsList } from './ClientsList';
-export { default as ClientCardModal } from './ClientCardModal';
 export { default as ClientFormModal } from './ClientFormModal';
-export { default as ClientDraftsModal } from './ClientDraftsModal';
-export { default as ExtendModal } from './ExtendModal';
-export { default as WarnClientModal } from './WarnClientModal';
-export { default as TrainerDetailsModal } from './TrainerDetailsModal';
-export { default as DuplicateGroup } from './DuplicateGroup';
-export { default as ClientsScheduleStatsBlock } from './ClientsScheduleStatsBlock';
-export { default as ClientsPaymentDayReportBlock } from './ClientsPaymentDayReportBlock';
-export { default as TrainerMonthReportBlock } from './TrainerMonthReportBlock';
-export { default as TodayBoard } from './TodayBoard';
+export { default as ClientProfileModal } from './ClientProfileModal';

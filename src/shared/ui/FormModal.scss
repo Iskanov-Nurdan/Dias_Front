@@ -1,0 +1,274 @@
+@use '../styles/mixins';
+
+.form-modal__backdrop {
+  @include mixins.modal-backdrop;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: form-modal-fade-in 0.18s ease;
+
+  @include mixins.mobile {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  &--fullscreen {
+    @include mixins.mobile {
+      align-items: stretch;
+    }
+  }
+}
+
+.form-modal {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  width: 100%;
+  max-width: 460px;
+  max-height: min(90vh, calc(100dvh - 24px));
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-xl);
+  animation: form-modal-scale-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+
+  @include mixins.mobile {
+    max-width: 100%;
+    width: 100%;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    max-height: min(92vh, calc(100dvh - env(safe-area-inset-top, 0px)));
+    animation: form-modal-sheet-in 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  // Большая форма (5+ полей) — на мобиле fullscreen вместо шторки: своя
+  // прокрутка на весь экран удобнее, чем длинный список полей в bottom sheet.
+  // Составной селектор (&.form-modal--fullscreen, а не просто &--fullscreen) —
+  // иначе одноклассовый модификатор конкретной формы (например .pfm с его
+  // собственным max-width) при равной специфичности мог выиграть по порядку
+  // подключения CSS и не дать модалке стать по-настоящему fullscreen на мобиле.
+  &.form-modal--fullscreen {
+    @include mixins.mobile {
+      max-width: 100%;
+      width: 100%;
+      height: 100dvh;
+      max-height: 100dvh;
+      border-radius: 0;
+      animation: form-modal-fullscreen-in 0.2s ease;
+    }
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 22px 16px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--color-border);
+
+    @include mixins.mobile {
+      padding-top: max(20px, env(safe-area-inset-top, 0px));
+    }
+  }
+
+  // «Назад» существует в разметке только у fullscreen-варианта, но видна
+  // только на мобиле — на десктопе fullscreen ведёт себя как обычная
+  // центрированная модалка, там нужен крестик, не «назад».
+  &__back {
+    display: none;
+  }
+
+  &--fullscreen &__back {
+    @include mixins.mobile {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      margin-left: -8px;
+      border: none;
+      background: transparent;
+      border-radius: 50%;
+      color: var(--color-text);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s ease;
+
+      &:active { background: var(--color-surface-secondary); }
+    }
+  }
+
+  &--fullscreen &__close {
+    @include mixins.mobile {
+      display: none;
+    }
+  }
+
+  &__header-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-md);
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    flex-shrink: 0;
+  }
+
+  &__header-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+  }
+
+  &__header-extra {
+    flex-shrink: 0;
+  }
+
+  &__eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-text-muted);
+    margin: 0 0 3px;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--color-text);
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+    @include mixins.text-ellipsis;
+  }
+
+  &__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+
+    &:active { transform: scale(0.92); }
+  }
+
+  @media (hover: hover) {
+    &__close:hover { background: var(--color-surface-secondary); color: var(--color-text); }
+    &__back:hover { background: var(--color-surface-secondary); }
+  }
+
+  &__error {
+    margin: 14px 22px 0;
+    padding: 11px 14px;
+    background: var(--color-danger-soft);
+    border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
+    border-radius: var(--radius-md);
+    color: var(--color-danger);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.5;
+    flex-shrink: 0;
+    animation: form-modal-shake 0.32s ease;
+  }
+
+  // ── Форма: тело скроллится, кнопки снизу закреплены вне скролла ─────────
+  &__form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+
+  &__body {
+    padding: 18px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex: 1;
+    // Защитный барьер: если содержимое формы (например, grid-строка с
+    // несколькими полями) не сжимается меньше своего контента, оно не
+    // должно раскрывать СВОЙ горизонтальный скролл внутри тела модалки —
+    // page-level проверка это не ловит, потому что скролл остаётся внутри
+    // .form-modal__body, не всплывая до document.
+    overflow-x: hidden;
+    min-width: 0;
+    overflow-y: auto;
+    @include mixins.scrollbar;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: flex-end;
+    padding: 16px 22px;
+    flex-shrink: 0;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
+
+    @include mixins.mobile {
+      padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+    }
+
+    .ui-modal-btn {
+      transition: transform 0.12s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    @media (hover: hover) {
+      .ui-modal-btn:hover:not(:disabled) { transform: translateY(-1px); }
+      .ui-modal-btn--primary:hover:not(:disabled) { box-shadow: var(--shadow-sm); }
+    }
+
+    .ui-modal-btn:active:not(:disabled) { transform: translateY(0) scale(0.97); }
+  }
+
+  // На fullscreen-варианте (мобиле) кнопка сохранения на всю ширину —
+  // «Отмена» не нужна, для выхода уже есть «Назад» в шапке.
+  &--fullscreen &__actions {
+    @include mixins.mobile {
+      .ui-modal-btn { flex: 1; }
+      .ui-modal-btn:not(.ui-modal-btn--primary) { display: none; }
+    }
+  }
+}
+
+@keyframes form-modal-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes form-modal-scale-in {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+
+@keyframes form-modal-sheet-in {
+  from { opacity: 0; transform: translateY(100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes form-modal-fullscreen-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes form-modal-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .form-modal, .form-modal__backdrop, .form-modal__error {
+    animation: none !important;
+  }
+}

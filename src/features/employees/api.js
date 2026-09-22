@@ -10,59 +10,60 @@ export const fetchRoles = async (queryState, signal) => {
   return data;
 };
 
-/** GET /api/employees/ — query: search (fio, phone, login), role_id, page, perPage */
+/** GET /api/users/ — query: search (name, email), role (id), page, page_size */
 export const fetchEmployees = async (queryState, signal) => {
   const params = {};
   if (queryState?.search) params.search = queryState.search;
-  if (queryState?.roleId != null && queryState.roleId !== '') params.role_id = queryState.roleId;
+  if (queryState?.roleId != null && queryState.roleId !== '') params.role = queryState.roleId;
   if (queryState?.page) params.page = queryState.page;
-  if (queryState?.perPage) params.perPage = queryState.perPage;
-  const { data } = await apiClient.get('/employees/', { params, ...withSignal({}, signal) });
+  if (queryState?.perPage) params.page_size = queryState.perPage;
+  const { data } = await apiClient.get('/users/', { params, ...withSignal({}, signal) });
   return data;
 };
 
-/** Тело POST/PATCH: login, fio, password (обязательны при создании), phone, roleId (опц.). roleId — число или null. */
-const toEmployeeBody = (payload, isCreate) => {
+/**
+ * Тело POST/PATCH: name (это же логин — единое поле у DIAS_ERP, отдельного login
+ * там нет), password (обязателен при создании), role (id роли или null).
+ */
+const toEmployeeBody = (payload) => {
   const b = {};
-  if (payload.fio != null && payload.fio !== '') b.fio = payload.fio;
-  if (payload.login != null && payload.login !== '') b.login = payload.login;
-  if (payload.phone != null && payload.phone !== '') b.phone = payload.phone;
+  if (payload.name != null && payload.name !== '') b.name = payload.name;
   if (payload.password != null && payload.password !== '') b.password = payload.password;
   if (payload.roleId != null && payload.roleId !== '') {
-    b.roleId = Number(payload.roleId) || payload.roleId;
-  } else if (isCreate) {
-    b.roleId = null;
+    b.role = Number(payload.roleId) || payload.roleId;
+  } else {
+    b.role = null;
   }
   return b;
 };
 
 export const createEmployee = async (body, signal) => {
-  const b = toEmployeeBody(body, true);
-  if (!b.login || !b.fio || !body.password) {
-    return Promise.reject(new Error('Обязательные поля: логин, ФИО, пароль'));
+  const b = toEmployeeBody(body);
+  if (!b.name || !body.password) {
+    return Promise.reject(new Error('Обязательные поля: имя, пароль'));
   }
-  const { data } = await apiClient.post('/employees/', b, withSignal({}, signal));
+  const { data } = await apiClient.post('/users/', b, withSignal({}, signal));
   return data;
 };
 
 export const updateEmployee = async (id, body, signal) => {
-  const { data } = await apiClient.patch(`/employees/${id}/`, toEmployeeBody(body, false), withSignal({}, signal));
+  const { data } = await apiClient.patch(`/users/${id}/`, toEmployeeBody(body), withSignal({}, signal));
   return data;
 };
 
 export const deleteEmployee = async (id, signal) => {
-  await apiClient.delete(`/employees/${id}/`, withSignal({}, signal));
+  await apiClient.delete(`/users/${id}/`, withSignal({}, signal));
 };
 
-export const fetchEmployeeAccess = async (id, signal) => {
-  const res = await apiClient.get(`/employees/${id}/access/`, withSignal({}, signal));
-  const data = res?.data ?? res;
-  return data?.data ?? data;
-};
-
-/** PUT тело: { access: { pageId: true/false, ... } } */
-export const updateEmployeeAccess = async (id, access, signal) => {
-  const { data } = await apiClient.put(`/employees/${id}/access/`, { access }, withSignal({}, signal));
+/**
+ * PATCH тело: { access_keys: ['users','chemistry',...] } — полная замена набора
+ * ключей доступа этого сотрудника (см. shared/constants/accessKeys.js). Нет отдельного
+ * GET-эндпоинта для чтения доступов одного сотрудника — они уже приходят как
+ * accesses в самом объекте пользователя (список/create/update), поэтому отдельного
+ * fetchEmployeeAccess здесь больше нет.
+ */
+export const updateEmployeeAccess = async (id, accessKeys, signal) => {
+  const { data } = await apiClient.patch(`/users/${id}/access/`, { access_keys: accessKeys }, withSignal({}, signal));
   return data;
 };
 

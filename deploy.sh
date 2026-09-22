@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Сборка фронта и заливка на сервер одной командой (запускать локально, в Git Bash):
-#   ./deploy.sh
+#   ./deploy.sh                      (Git Bash)
+#   bash deploy.sh                   (PowerShell, если Git Bash в PATH)
 #   SERVER=root@1.2.3.4 ./deploy.sh   — другой сервер
 set -euo pipefail
 
 cd "$(dirname "$0")"
 
-SERVER="${SERVER:-root@diass.tw1.ru}"
+SERVER="${SERVER:-root@5.42.98.29}"
 REMOTE_DIR="${REMOTE_DIR:-/root/DIas_ERP/frontend-dist}"
 
 log() { echo -e "\033[1;34m[deploy]\033[0m $*"; }

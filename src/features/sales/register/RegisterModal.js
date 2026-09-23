@@ -12,6 +12,7 @@ import { useParkedCarts } from './useParkedCarts';
 import {
   lineTotal, cartSubtotal, cartLinesDiscount, cartTotal, changeDue,
 } from './cartMath';
+import { creditInfo } from '../../clients/creditLimit';
 import PaymentScreen from './PaymentScreen';
 import './RegisterModal.scss';
 
@@ -176,6 +177,8 @@ const RegisterModal = ({ onClose, onSaved, resumeCart }) => {
     () => clients.find((c) => String(c.id) === String(clientId)) || null,
     [clients, clientId],
   );
+
+  const creditView = creditInfo(selectedClient, clientProfile?.total_debt);
 
   const catalogOptions = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -405,13 +408,18 @@ const RegisterModal = ({ onClose, onSaved, resumeCart }) => {
                 />
               </div>
 
-              {clientProfile && Number(clientProfile.total_debt) > 0 && (
-                <p className="reg__client-debt">
-                  Долг клиента: <strong>{money(clientProfile.total_debt)}</strong>
-                  {selectedClient?.credit_limit != null && (
-                    <> · лимит {money(selectedClient.credit_limit)}</>
+              {clientProfile && (creditView.hasLimit || Number(clientProfile.total_debt) > 0) && (
+                <div className={`reg__client-debt reg__client-debt--${creditView.level}`}>
+                  <span>
+                    Долг клиента: <strong>{money(clientProfile.total_debt)}</strong>
+                    {creditView.hasLimit && (
+                      <> · {creditView.over ? 'лимит превышен' : <>можно ещё <strong>{money(creditView.available)}</strong></>}</>
+                    )}
+                  </span>
+                  {creditView.hasLimit && (
+                    <span className="reg__client-debt-bar"><i style={{ width: `${creditView.usedPct}%` }} /></span>
                   )}
-                </p>
+                </div>
               )}
 
               <div className="reg__lines">

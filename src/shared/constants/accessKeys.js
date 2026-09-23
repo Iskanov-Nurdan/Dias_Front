@@ -1,5 +1,5 @@
 import {
-  Users, Boxes, Factory, CheckCircle2, Warehouse, UsersRound, ShoppingCart, BarChart3, Clock, PlayCircle, Undo2,
+  Users, Boxes, Factory, CheckCircle2, Warehouse, UsersRound, ShoppingCart, BarChart3, Clock, PlayCircle, Undo2, Wallet,
 } from 'lucide-react';
 
 /**
@@ -24,6 +24,7 @@ export const ACCESS_KEYS = [
   'clients',
   'sales',
   'returns',
+  'payments',
   'analytics',
   'shifts',
   'my_shift',
@@ -38,6 +39,7 @@ export const ACCESS_KEY_LABELS = {
   clients: 'Клиенты',
   sales: 'Касса',
   returns: 'Возвраты в кассе',
+  payments: 'Погашение долгов',
   analytics: 'Аналитика',
   shifts: 'Смены',
   my_shift: 'Начать/завершить смену',
@@ -52,6 +54,7 @@ export const ACCESS_KEY_ICONS = {
   clients: UsersRound,
   sales: ShoppingCart,
   returns: Undo2,
+  payments: Wallet,
   analytics: BarChart3,
   shifts: Clock,
   my_shift: PlayCircle,
@@ -62,7 +65,7 @@ export const ACCESS_KEY_GROUPS = [
   { label: 'Люди', ids: ['users'] },
   { label: 'Сырьё и производство', ids: ['materials', 'production', 'otk'] },
   { label: 'Склад', ids: ['warehouse'] },
-  { label: 'Продажи', ids: ['clients', 'sales', 'returns'] },
+  { label: 'Продажи', ids: ['clients', 'sales', 'returns', 'payments'] },
   // Ключ 'shifts' на бэкенде также открывает /api/activity/ — общий журнал
   // действий (см. ActivityAdminView.required_access_key), отдельного ключа
   // под «Журнал действий» на бэкенде нет. 'my_shift' — отдельное, более узкое

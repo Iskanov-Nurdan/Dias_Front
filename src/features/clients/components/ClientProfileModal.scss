@@ -1,108 +1,262 @@
+@use '../../../shared/styles/mixins';
+
 // Каркас модалки (backdrop/шапка/fullscreen на мобиле/sticky-кнопки) — общий
 // .form-modal, см. shared/ui/FormModal.scss. Тут только ширина на десктопе
 // и стили содержимого карточки клиента.
 .form-modal.cpm {
-  max-width: 560px;
+  max-width: 580px;
+}
+
+@keyframes cpm-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cpm, .cpm * { animation: none !important; transition: none !important; }
 }
 
 .cpm {
-  &__loading {
-    display: flex;
-    justify-content: center;
-    padding: 48px 0;
-  }
+  &__loading { display: flex; justify-content: center; padding: 48px 0; }
 
-  &__body {
+  &__body { display: flex; flex-direction: column; gap: 22px; }
+
+  // ── Блок «долг + лимит» одним целым ───────────────────────────────────
+  &__hero {
+    --hero-color: var(--color-success);
     display: flex;
     flex-direction: column;
-    gap: 20px;
-  }
-
-  &__summary {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  &__summary-item {
-    flex: 1;
-    min-width: 130px;
-    background: var(--color-surface-secondary);
+    gap: 14px;
+    padding: 18px;
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    padding: 12px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-secondary);
+    animation: cpm-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+
+    &--warn { --hero-color: var(--color-warning); }
+    &--over { --hero-color: var(--color-danger); background: var(--color-danger-soft); }
   }
 
-  &__summary-label {
+  &__hero-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  &__hero-col { display: flex; flex-direction: column; gap: 4px; min-width: 0; &--right { align-items: flex-end; text-align: right; } }
+
+  &__hero-label {
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 10.5px;
+    font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
     color: var(--color-text-muted);
   }
 
-  &__summary-value {
-    font-size: 17px;
-    font-weight: 700;
-    color: var(--color-text);
+  &__hero-value {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
     font-variant-numeric: tabular-nums;
+    color: var(--color-text);
 
-    &--debt {
-      color: var(--color-danger);
+    &--sm { font-size: 20px; color: var(--hero-color); }
+  }
+
+  &__hero-status { font-size: 12.5px; color: var(--color-text-muted); }
+
+  &__meter-track {
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+
+    span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--hero-color);
+      transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
     }
   }
+
+  &__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  &__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+
+    &--sm { padding: 2px 8px; font-size: 11px; font-weight: 600; }
+  }
+
+  // ── Секции ────────────────────────────────────────────────────────────
+  &__section { display: flex; flex-direction: column; gap: 10px; }
+
+  &__section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 
   &__section-title {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin: 0 0 10px;
-    font-size: 12.5px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--color-text-muted);
-    padding-top: 16px;
-    border-top: 1px dashed var(--color-border);
-  }
-
-  &__empty {
+    gap: 8px;
     margin: 0;
     font-size: 13px;
-    color: var(--color-text-muted);
-    font-style: italic;
+    font-weight: 700;
+    color: var(--color-text);
+
+    em {
+      font-style: normal;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 999px;
+      background: var(--color-surface-secondary);
+      color: var(--color-text-muted);
+    }
   }
 
-  &__list {
+  &__section-ico {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    &--danger { background: var(--color-danger-soft); color: var(--color-danger); }
+  }
+
+  &__empty { margin: 0; font-size: 13px; color: var(--color-text-muted); font-style: italic; }
+
+  // ── Долги по покупкам ─────────────────────────────────────────────────
+  &__debts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+
+  &__debt {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+    border: 1px solid var(--color-border);
+    border-left: 3px solid var(--color-danger);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+    animation: cpm-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--row-i, 0) * 40ms);
+  }
+
+  @media (hover: hover) {
+    &__debt:hover { box-shadow: var(--shadow-sm); border-color: var(--color-border-strong); border-left-color: var(--color-danger); }
+  }
+
+  &__debt-head { display: flex; align-items: center; gap: 10px; }
+  &__debt-num { font-size: 14.5px; font-weight: 700; letter-spacing: -0.01em; }
+  &__debt-sum { margin-left: auto; font-size: 18px; font-weight: 800; color: var(--color-danger); font-variant-numeric: tabular-nums; }
+
+  &__debt-items {
     list-style: none;
     margin: 0;
-    padding: 0;
+    padding: 10px 12px;
     display: flex;
     flex-direction: column;
     gap: 6px;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-secondary);
+
+    li { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; }
   }
+
+  &__debt-item-name { display: flex; align-items: center; gap: 6px; font-weight: 600; min-width: 0; svg { color: var(--color-text-muted); flex-shrink: 0; } }
+
+  &__debt-paid { display: flex; flex-direction: column; gap: 5px; font-size: 12px; }
+
+  &__debt-paid-bar {
+    display: block;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--color-surface-secondary);
+    overflow: hidden;
+
+    i { display: block; height: 100%; border-radius: inherit; background: var(--color-success); transition: width 0.4s ease; }
+  }
+
+  &__pay-all, &__pay {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 38px;
+    padding: 0 16px;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+
+    &:active { transform: scale(0.97); }
+  }
+
+  &__pay-all, &__pay { @include mixins.mobile { min-height: 44px; } }
+
+  &__pay-all { flex-shrink: 0; background: var(--color-primary); color: #fff; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06); }
+  &__pay { width: 100%; background: var(--color-primary-soft); color: var(--color-primary); }
+
+  @media (hover: hover) {
+    &__pay-all:hover { background: var(--color-primary-hover); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+    &__pay:hover { background: var(--color-primary); color: #fff; }
+  }
+
+  // ── Списки (платежи, продажи, заявки, возвраты) ───────────────────────
+  &__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 
   &__list-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 10px;
+    gap: 12px;
     padding: 10px 12px;
+    border: 1px solid transparent;
     background: var(--color-surface-secondary);
     border-radius: var(--radius-md);
     font-size: 13px;
     font-weight: 500;
+    transition: border-color 0.15s ease, background 0.15s ease;
+    animation: cpm-in 0.22s ease both;
+    animation-delay: calc(var(--row-i, 0) * 25ms);
+
+    > span:not(.cpm__row-ico):not(.cpm__row-main):last-child { margin-left: auto; }
+    > span:nth-child(2):not(:last-child) { flex: 1; }
   }
 
-  &__list-muted {
-    color: var(--color-text-muted);
-    font-size: 12px;
-    font-weight: 400;
+  @media (hover: hover) {
+    &__list-row:hover { border-color: var(--color-border-strong); }
   }
+
+  &__list-muted { color: var(--color-text-muted); font-size: 12px; font-weight: 400; }
+
+  &__row-ico {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  &__row-ref { font-style: normal; margin-left: 8px; font-size: 11px; font-weight: 700; color: var(--color-text-muted); }
+
+  &__pos { color: var(--color-success); font-weight: 700; font-variant-numeric: tabular-nums; }
+  &__neg { color: var(--color-danger); font-weight: 700; font-variant-numeric: tabular-nums; }
 }

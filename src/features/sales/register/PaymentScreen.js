@@ -3,6 +3,7 @@ import {
   Banknote, CreditCard, Wallet, TriangleAlert, Delete, Receipt, CircleCheck, Clock, Undo2, Check,
 } from 'lucide-react';
 import { SubmitButton } from '../../../shared/ui';
+import { creditInfo } from '../../clients/creditLimit';
 import { splitsSum, changeDue, remainingToPay, round2 } from './cartMath';
 
 const money = (n) => `${Number(n || 0).toLocaleString('ru-RU')} сом`;
@@ -49,11 +50,12 @@ const PaymentScreen = ({ total, clientId, client, clientProfile, saving, error, 
   const paymentKind = paid >= total && total > 0 ? 'full' : paid > 0 ? 'partial' : null;
   const partialNeedsClient = paymentKind === 'partial' && !clientId;
 
-  const overLimit = (isDebt || paymentKind === 'partial')
-    && !!clientId
-    && client?.credit_limit != null
-    && client?.credit_limit_mode === 'hard'
-    && (Number(clientProfile?.total_debt || 0) + (isDebt ? total : Math.max(0, total - paid))) > Number(client.credit_limit);
+  // Лимит — лимит ДОЛГА: в проекцию идёт только неоплаченная часть чека.
+  const unpaid = isDebt ? total : Math.max(0, round2(total - paid));
+  const credit = creditInfo(client, clientProfile?.total_debt, unpaid);
+  const debtAffected = !!clientId && unpaid > 0 && (isDebt || paymentKind === 'partial');
+  const overLimit = debtAffected && credit.blocked;
+  const softOver = debtAffected && credit.over && !credit.blocked;
 
   const setActiveAmount = (updater) => {
     if (activeMethod === 'cash') setCashAmount((v) => updater(v));
@@ -138,7 +140,10 @@ const PaymentScreen = ({ total, clientId, client, clientProfile, saving, error, 
             </p>
           )}
           {overLimit && (
-            <p className="reg__pay-debt-blocked"><TriangleAlert size={14} /> Превышен кредитный лимит клиента — продажа в долг заблокирована.</p>
+            <p className="reg__pay-debt-blocked"><TriangleAlert size={14} /> Лимит долга превышен — продажа в долг заблокирована. Доступно {money(Math.max(0, credit.limit - credit.debt))}.</p>
+          )}
+          {softOver && (
+            <p className="reg__pay-partial-hint"><TriangleAlert size={13} /> Долг выйдет за лимит {money(credit.limit)} — разрешено (мягкий режим)</p>
           )}
         </div>
       ) : (
@@ -158,7 +163,10 @@ const PaymentScreen = ({ total, clientId, client, clientProfile, saving, error, 
             </p>
           )}
           {overLimit && (
-            <p className="reg__pay-partial-hint reg__pay-partial-hint--error"><TriangleAlert size={13} /> Превышен кредитный лимит клиента</p>
+            <p className="reg__pay-partial-hint reg__pay-partial-hint--error"><TriangleAlert size={13} /> Лимит долга {money(credit.limit)} превышен — доступно {money(Math.max(0, credit.limit - credit.debt))}</p>
+          )}
+          {softOver && (
+            <p className="reg__pay-partial-hint"><TriangleAlert size={13} /> Долг клиента выйдет за лимит {money(credit.limit)} — продажа разрешена (мягкий режим)</p>
           )}
 
           <div className="reg__pay-methods">

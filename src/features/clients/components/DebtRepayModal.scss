@@ -1,0 +1,95 @@
+.drm {
+  &__due {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background: var(--color-danger-soft);
+    border-radius: var(--radius-md);
+    color: var(--color-danger);
+    font-size: 13px;
+    font-weight: 600;
+
+    strong { font-size: 22px; font-variant-numeric: tabular-nums; }
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+
+    label { font-size: 12.5px; font-weight: 600; color: var(--color-text-secondary); }
+  }
+
+  &__amount { display: flex; gap: 8px; }
+
+  &__input {
+    flex: 1;
+    min-width: 0;
+    height: 48px;
+    padding: 0 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--input-radius);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 20px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--input-shadow-focus); }
+  }
+
+  &__full {
+    flex-shrink: 0;
+    padding: 0 14px;
+    border: 1px solid var(--color-primary);
+    border-radius: var(--input-radius);
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.12s ease;
+
+    &:active { transform: scale(0.96); }
+  }
+
+  &__err { font-size: 12px; font-weight: 600; color: var(--color-danger); }
+
+  &__methods {
+    display: flex;
+    gap: 8px;
+
+    button {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      height: 46px;
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-surface);
+      color: var(--color-text-secondary);
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+
+      &:active { transform: scale(0.98); }
+      &.active { border-color: var(--color-primary); background: var(--color-primary-soft); color: var(--color-primary); }
+    }
+  }
+
+  &__after, &__hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--color-text-muted);
+  }
+
+  &__after strong { color: var(--color-text); }
+}

@@ -46,7 +46,7 @@ const ClientsList = ({ items, loading, error, onRetry, onEdit, onToggleActive, o
             key={c.id}
             className={`clients-list__card${inactive ? ' clients-list__card--inactive' : ''}`}
             style={{ '--row-i': idx }}
-            onClick={() => onEdit(c)}
+            onClick={() => onProfile(c)}
           >
             <span className="clients-list__avatar">{initials(c.name)}</span>
             <div className="clients-list__card-info">
@@ -63,6 +63,7 @@ const ClientsList = ({ items, loading, error, onRetry, onEdit, onToggleActive, o
                   {CLIENT_TYPE_LABEL[c.client_type] || c.client_type}
                 </span>
                 {c.phone && <span className="clients-list__card-phone">{c.phone}</span>}
+                {c.credit_limit != null && <span className="clients-list__card-phone">Лимит {Number(c.credit_limit).toLocaleString('ru-RU')} сом</span>}
               </div>
             </div>
             <button
@@ -98,7 +99,7 @@ const ClientsList = ({ items, loading, error, onRetry, onEdit, onToggleActive, o
                 <th>Клиент</th>
                 <th>Телефон</th>
                 <th>Тип</th>
-                <th>Лимит</th>
+                <th>Лимит долга</th>
                 <th></th>
               </tr>
             </thead>

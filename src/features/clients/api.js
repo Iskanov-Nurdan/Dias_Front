@@ -69,3 +69,29 @@ export const setClientActive = async (id, isActive, signal) => {
   const { data } = await apiClient.patch(`/clients/${id}/`, { is_active: isActive }, withSignal({}, signal));
   return data;
 };
+
+/** GET /api/payments/?client_id= — история платежей клиента (нужен access-key 'payments'). */
+export const fetchClientPayments = async (clientId, signal) => {
+  const { data } = await apiClient.get('/payments/', {
+    params: { client_id: clientId, page_size: 100 },
+    ...withSignal({}, signal),
+  });
+  return data?.items ?? data?.results ?? (Array.isArray(data) ? data : []);
+};
+
+/**
+ * POST /api/payments/ — погашение долга по продаже: payment_type='payment',
+ * linked_sale. Сервер НЕ ограничивает сумму остатком долга по продаже —
+ * потолок обязан держать вызывающий код (см. DebtRepayModal).
+ */
+export const createDebtPayment = async ({ clientId, saleId, amount, method }, signal) => {
+  const { data } = await apiClient.post('/payments/', {
+    client: clientId,
+    linked_sale: saleId,
+    payment_type: 'payment',
+    payment_method: method,
+    amount,
+    date: new Date().toISOString().slice(0, 10),
+  }, withSignal({}, signal));
+  return data;
+};

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Receipt } from 'lucide-react';
 import { Spinner, ErrorState, FormModal } from '../../../shared/ui';
-import { fetchSale } from '../api';
+import { fetchSale, fetchSaleSources } from '../api';
 import { getApiErrorMessage } from '../../../shared/lib/apiError';
 import { getSaleStatusBadge, getPaymentStatusLabel } from '../saleStatus';
 import './SaleDetailModal.scss';
@@ -26,6 +26,31 @@ const SaleDetailModal = ({ saleId, onClose }) => {
   }, [saleId]);
 
   const lines = Array.isArray(sale?.sale_lines) ? sale.sale_lines : [];
+
+  // У части строк (продажи, созданные до того, как касса стала слать имя
+  // явно) поле product пустое — бэкенд имя не хранит, поэтому достаём его
+  // с фронта по партии из каталога кассы (id партии → имя профиля).
+  const [batchNames, setBatchNames] = useState({});
+  const needsFallback = lines.some((l) => !(l.product || '').trim());
+  useEffect(() => {
+    if (!needsFallback) return undefined;
+    let cancelled = false;
+    fetchSaleSources(null, null)
+      .then((src) => {
+        if (cancelled) return;
+        const map = {};
+        (src?.available_warehouse_batches || []).forEach((b) => { map[String(b.id)] = b.product_name; });
+        setBatchNames(map);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [needsFallback]);
+
+  const lineName = (l) => (l.product || '').trim()
+    || batchNames[String(l.warehouse_batch_id ?? l.warehouse_batch)]
+    || (sale?.profile_name || '').trim()
+    || (sale?.product || '').trim()
+    || 'Товар';
 
   return (
     <FormModal icon={Receipt} eyebrow="Продажа" title={sale?.sale_number || `#${saleId}`} onClose={onClose} size="fullscreen" className="sdm">
@@ -60,7 +85,7 @@ const SaleDetailModal = ({ saleId, onClose }) => {
                 <ul className="sdm__list">
                   {lines.map((l) => (
                     <li key={l.id} className="sdm__list-row">
-                      <span className="sdm__list-product">{l.product}</span>
+                      <span className="sdm__list-product">{lineName(l)}</span>
                       <span className="sdm__list-muted">{l.quantity} шт × {money(l.unit_price)}</span>
                       <span className="sdm__list-total">{money(l.line_total)}</span>
                     </li>

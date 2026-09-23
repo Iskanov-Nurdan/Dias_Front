@@ -120,7 +120,7 @@ const ClientsPage = () => {
       )}
 
       {profileClient && (
-        <ClientProfileModal client={profileClient} onClose={() => setProfileClient(null)} />
+        <ClientProfileModal client={profileClient} onClose={() => setProfileClient(null)} onChanged={load} />
       )}
 
       {confirmToggle && (

@@ -1100,3 +1100,36 @@
     &__parked-item-remove:hover { background: var(--color-danger-soft); color: var(--color-danger); }
   }
 }
+
+.reg__client-debt {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+  --debt-color: var(--color-success);
+
+  &--warn { background: var(--color-warning-soft); color: var(--color-warning); --debt-color: var(--color-warning); }
+  &--over { background: var(--color-danger-soft); color: var(--color-danger); --debt-color: var(--color-danger); }
+  &--none { background: var(--color-warning-soft); color: var(--color-warning); }
+}
+
+.reg__client-debt-bar {
+  display: block;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+
+  i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--debt-color);
+    transition: width 0.3s ease;
+  }
+}

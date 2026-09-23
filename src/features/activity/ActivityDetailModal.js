@@ -21,7 +21,7 @@ const ActivityDetailModal = ({ entry, onClose }) => {
   if (!entry) return null;
 
   const changes = (Array.isArray(entry.payload?.changes) ? entry.payload.changes : [])
-    .filter((c) => !isHiddenAuditField(c.field));
+    .filter((c) => !isHiddenAuditField(c.field, entry.entity_type));
   const hasChanges = entry.has_detail && changes.length > 0;
   const actionInfo = ACTION_TYPES[entry.action];
   const Icon = ACTION_ICON[entry.action] ?? Pencil;

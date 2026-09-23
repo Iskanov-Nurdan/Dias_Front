@@ -38,12 +38,115 @@ export const FRONTEND_FIELD_LABELS = {
   'production.shift': {
     user: 'Сотрудник',
   },
+  // EmployeeFormModal.js: «Имя (логин)», «Роль»; is_active — как везде
+  // («Активен», см. ProfileDetailModal.js и другие записи этого словаря).
+  'accounts.user': {
+    name: 'Имя',
+    role: 'Роль',
+    is_active: 'Активен',
+  },
+  // RolesList.js — карточки ролей по name; description/is_system в UI нет.
+  'accounts.role': {
+    name: 'Название',
+    description: 'Описание',
+  },
+  // Все FoamRawLot/FoamProductionRun/FoamGpStock/FoamSale — Foam-раздел
+  // «Сырьё»/«Производство»/«Склад»/«Касса» (переключатель линии Foam).
+  // Подписи взяты из verbose_name самих Django-полей (DIas_ERP/apps/foam/
+  // models.py) — они уже написаны по-русски авторами бэкенда, отдельных
+  // подписей в формах фронта для части из них ещё нет (страницы в процессе
+  // миграции), поэтому используем их как есть.
+  'foam.foamrawlot': {
+    lot_number: 'Номер лота',
+    material_name: 'Материал',
+    supplier: 'Поставщик',
+    bag_weight_kg: 'Вес мешка, кг',
+    received_kg: 'Приход, кг',
+    remaining_kg: 'Остаток, кг',
+    unit_price: 'Цена за единицу, сом',
+    received_at: 'Дата прихода',
+  },
+  'foam.foamproductionrun': {
+    lot: 'Лот сырья',
+    grade: 'Марка плотности',
+    input_kg: 'Расход сырья, кг',
+    output_format: 'Формат выхода',
+    output_qty: 'Выход',
+    produced_at: 'Дата выпуска',
+    operator: 'Оператор',
+  },
+  'foam.foamgpstock': {
+    output_format: 'Формат',
+    grade: 'Марка плотности',
+    thickness_cm: 'Толщина, см',
+    qty: 'Остаток',
+  },
+  'foam.foamsale': {
+    client: 'Клиент',
+    sale_date: 'Дата продажи',
+    total_amount: 'Сумма',
+    paid_amount: 'Оплачено',
+    payment_status: 'Статус оплаты',
+  },
+  // ShiftsPage.js — вкладка «Фотоотчёты»; user = «Сотрудник» (как у Shift).
+  'production.shiftphotoreport': {
+    user: 'Сотрудник',
+    description: 'Комментарий',
+  },
+  // production.RecipeRun — «замес» перед партией ОТК. Раздел ещё не
+  // мигрирован на этот фронт целиком (нет своей формы), подписи — из
+  // verbose_name модели и уже принятых в словаре слов («Линия»).
+  'production.reciperun': {
+    recipe: 'Рецепт',
+    line: 'Линия',
+    production_batch: 'Партия ОТК',
+  },
+  // Прайс-листы и цены клиентов — на этот фронт ещё не перенесены (нет своей
+  // страницы), но бэкенд их уже пишет в общий журнал. Подписи — verbose_name.
+  'sales.pricelist': {
+    name: 'Название прайса',
+    is_active: 'Активен',
+    valid_from: 'Действует с',
+    valid_to: 'Действует по',
+    comment: 'Комментарий',
+  },
+  'sales.clientprice': {
+    client: 'Клиент',
+    profile: 'Профиль',
+    product: 'Товар',
+    price: 'Цена',
+    unit: 'Единица',
+    valid_from: 'Действует с',
+    valid_to: 'Действует по',
+    comment: 'Комментарий',
+  },
 };
 
 // Поля-«техника»: внутренняя бухгалтерия аудита без пользовательского
-// смысла (id записи, служебный снимок бывшей линии смены) — для них на
+// смысла (id записи, служебный снимок бывшей линии/рецепта) — для них на
 // сайте нет и не может быть «человеческого» названия, поэтому не подписываем
-// их вслепую, а просто не показываем в списке. Действует для любой модели.
-const HIDDEN_FIELDS = new Set(['id', 'former_line_id', 'line_name_snapshot']);
+// их вслепую, а просто не показываем в списке. Действует для любой модели —
+// эти имена по всему DIas_ERP всегда одно и то же (см. Shift, RecipeRun,
+// Line.delete() в apps/production/models.py — паттерн снимка при обнулении FK).
+const HIDDEN_FIELDS = new Set([
+  'id',
+  'former_line_id', 'line_name_snapshot',
+  'former_recipe_id', 'recipe_name_snapshot',
+]);
 
-export const isHiddenAuditField = (fieldKey) => HIDDEN_FIELDS.has(fieldKey);
+// То же самое, но только для конкретной модели — поле называется иначе в
+// разных местах, вслепую прятать по имени для всех моделей нельзя (например
+// «email» у sales.client — нормальное поле, прятать не нужно).
+const HIDDEN_FIELDS_BY_ENTITY = {
+  // email/date_joined/is_staff/is_superuser/is_system у User нигде в UI не
+  // показываются и не редактируются (email генерится бэкендом из имени, см.
+  // EmployeeFormModal.js).
+  'accounts.user': new Set(['email', 'date_joined', 'is_staff', 'is_superuser', 'is_system']),
+  'accounts.role': new Set(['is_system']),
+  // «Устарело: раньше помечало списание по замесу (не используется)» — по
+  // verbose_name самого поля в apps/production/models.py.
+  'production.reciperun': new Set(['recipe_run_consumption_applied']),
+};
+
+export const isHiddenAuditField = (fieldKey, entityType) =>
+  HIDDEN_FIELDS.has(fieldKey) || HIDDEN_FIELDS_BY_ENTITY[entityType]?.has(fieldKey) === true;

@@ -25,7 +25,18 @@ const PrimaryTabs = ({ items, activeId, onChange, action }) => {
         <span
           className="primary-tabs__indicator"
           aria-hidden="true"
-          style={{ width: `calc(100% / ${items.length})`, transform: `translateX(${activeIndex * 100}%)` }}
+          // Контейнер для position:absolute — padding box .primary-tabs
+          // (у него padding: 4px со всех сторон, см. scss), а сама сетка
+          // вкладок занимает content box, то есть на 8px (4+4) уже. Раньше
+          // ширина индикатора считалась как 100%/N от ПОЛНОГО containing
+          // block — на 8px/N шире, чем реальная колонка грида, поэтому на
+          // последней вкладке (translateX сдвигает на 100% от своей же
+          // раздутой ширины) индикатор вылезал за скруглённый угол внешнего
+          // контейнера ("слетал"). Вычитаем те же 8px, что и в inset ниже.
+          style={{
+            width: `calc((100% - 8px) / ${items.length})`,
+            transform: `translateX(${activeIndex * 100}%)`,
+          }}
         />
         {items.map(({ id, label, shortLabel, icon: Icon }) => (
           <button

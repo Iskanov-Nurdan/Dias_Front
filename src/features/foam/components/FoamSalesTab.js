@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Receipt } from 'lucide-react';
-import { fetchFoamSales, createFoamSale, fetchFoamGpStock } from '../api';
-import { useToast } from '../../../app/providers/ToastProvider';
+import { fetchFoamSales } from '../api';
 import { getApiErrorMessage } from '../../../shared/lib/apiError';
-import { ErrorState, EmptyState, SkeletonTable, Pagination, Fab } from '../../../shared/ui';
-import FoamSaleModal from './FoamSaleModal';
+import {
+  ErrorState, EmptyState, SkeletonTable, Pagination, Fab, ProductLineTabs, PeriodFilter,
+} from '../../../shared/ui';
+import { STATS_YEARS } from '../../../shared/constants/common';
+import FoamRegisterModal from './FoamRegisterModal';
 import './FoamSalesTab.scss';
 
 const MOBILE_MQ = '(max-width: 768px)';
@@ -13,16 +15,31 @@ const dateFmt = (d) => (d ? new Date(d).toLocaleDateString('ru-RU') : '—');
 const money = (n) => `${Number(n || 0).toLocaleString('ru-RU')} сом`;
 const PAYMENT_LABEL = { paid: 'Оплачено', partial: 'Частично', debt: 'В долг' };
 
-const FoamSalesTab = () => {
-  const toast = useToast();
+const NOW = new Date();
+const CURRENT_YEAR_STR = String(NOW.getFullYear());
+// Тот же дефолт и тот же PeriodFilter, что на вкладке «Пластиковый профиль»
+// (см. SalesPage.js) — один вид фильтра периода на всю «Кассу», не два.
+const DEFAULT_YEAR = STATS_YEARS.includes(CURRENT_YEAR_STR) ? CURRENT_YEAR_STR : STATS_YEARS[STATS_YEARS.length - 1];
+const DEFAULT_MONTH = String(NOW.getMonth() + 1);
+const pad2 = (n) => String(n).padStart(2, '0');
+const daysInMonth = (year, month) => new Date(year, month, 0).getDate();
+
+/**
+ * line/onLineChange — переключатель «Профиль/Пенопласт» рендерится ЗДЕСЬ,
+ * а не в SalesPage поверх этого таба: раньше SalesPage сам рисовал
+ * ProductLineTabs без action (кнопка «Продать» уезжала отдельной строкой
+ * ниже, своя вёрстка), теперь ровно как на вкладке профиля — вкладки и
+ * «Продать» в одной строке через action-слот одного и того же компонента.
+ */
+const FoamSalesTab = ({ line, onLineChange }) => {
+  const [year, setYear] = useState(DEFAULT_YEAR);
+  const [month, setMonth] = useState(DEFAULT_MONTH);
+  const [day, setDay] = useState('');
   const [page, setPage] = useState(1);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [stock, setStock] = useState([]);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState(null);
+  const [registerOpen, setRegisterOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.matchMedia(MOBILE_MQ).matches,
   );
@@ -35,38 +52,26 @@ const FoamSalesTab = () => {
     return () => mq.removeEventListener('change', sync);
   }, []);
 
+  const isDefaultPeriod = year === DEFAULT_YEAR && month === DEFAULT_MONTH && day === '';
+  const y = Number(year);
+  const m = Number(month);
+  const dateFrom = day ? `${year}-${pad2(m)}-${pad2(Number(day))}` : `${year}-${pad2(m)}-01`;
+  const dateTo = day ? dateFrom : `${year}-${pad2(m)}-${pad2(daysInMonth(y, m))}`;
+
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    fetchFoamSales({ page, pageSize: 20 }, null)
+    fetchFoamSales({ page, pageSize: 20, dateFrom, dateTo }, null)
       .then(setData)
       .catch((err) => setError(getApiErrorMessage(err)))
       .finally(() => setLoading(false));
-  }, [page]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, dateFrom, dateTo]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { setPage(1); }, [dateFrom, dateTo]);
 
-  const openModal = () => {
-    fetchFoamGpStock(null).then(setStock).catch(() => setStock([]));
-    setModalOpen(true);
-  };
-
-  const handleSave = async (payload) => {
-    setFormError(null);
-    setSaving(true);
-    try {
-      await createFoamSale(payload, null);
-      setModalOpen(false);
-      load();
-      toast.success('Продажа оформлена');
-    } catch (err) {
-      const msg = getApiErrorMessage(err);
-      setFormError(msg);
-      toast.error(msg);
-    } finally {
-      setSaving(false);
-    }
-  };
+  const resetPeriod = () => { setYear(DEFAULT_YEAR); setMonth(DEFAULT_MONTH); setDay(''); };
 
   const renderMobileCards = () => (
     <div className="foam-sales__cards">
@@ -90,10 +95,23 @@ const FoamSalesTab = () => {
 
   return (
     <div className="foam-sales">
+      <ProductLineTabs
+        value={line}
+        onChange={onLineChange}
+        action={(
+          <button type="button" className="foam-sales__add" onClick={() => setRegisterOpen(true)}>
+            <Plus size={16} /> Продать
+          </button>
+        )}
+      />
+
       <div className="foam-sales__toolbar">
-        <button type="button" className="foam-sales__add foam-sales__add--desktop-only" onClick={openModal}>
-          <Plus size={16} /> Продать
-        </button>
+        <PeriodFilter
+          year={year} month={month} day={day}
+          onYear={setYear} onMonth={setMonth} onDay={setDay}
+          onReset={resetPeriod}
+          isDefault={isDefaultPeriod}
+        />
       </div>
 
       {error ? <ErrorState message={error} onRetry={load} /> : (
@@ -101,7 +119,7 @@ const FoamSalesTab = () => {
           {loading ? (
             <SkeletonTable rows={6} cols={5} />
           ) : !(data?.items?.length) ? (
-            <EmptyState message="Продаж пока нет" actionLabel="Продать" onAction={openModal} />
+            <EmptyState message="Продаж пока нет" actionLabel="Продать" onAction={() => setRegisterOpen(true)} />
           ) : isMobile ? (
             renderMobileCards()
           ) : (
@@ -128,17 +146,14 @@ const FoamSalesTab = () => {
       )}
       <Pagination meta={data?.meta} currentPage={page} onPage={setPage} loading={loading} entityLabel="продаж" />
 
-      {modalOpen && (
-        <FoamSaleModal
-          stock={stock}
-          onSave={handleSave}
-          onClose={() => { setModalOpen(false); setFormError(null); }}
-          error={formError}
-          saving={saving}
+      {registerOpen && (
+        <FoamRegisterModal
+          onClose={() => setRegisterOpen(false)}
+          onSaved={load}
         />
       )}
 
-      <Fab onClick={openModal} label="Продать" />
+      <Fab onClick={() => setRegisterOpen(true)} label="Продать" />
     </div>
   );
 };

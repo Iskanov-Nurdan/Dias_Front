@@ -11,6 +11,8 @@ import {
 import CutFoamModal from './CutFoamModal';
 import './FoamWarehouseTab.scss';
 
+const gradeLabel = (row) => (row.grade_density_range ? `${row.grade_code} (${row.grade_density_range})` : row.grade_code);
+
 const MOBILE_MQ = '(max-width: 768px)';
 
 const TAB_STOCK = 'stock';
@@ -113,7 +115,7 @@ const FoamWarehouseTab = () => {
             <div className="foam-warehouse__card-info">
               <div className="foam-warehouse__card-name">
                 {OUTPUT_LABEL[row.output_format] || row.output_format}
-                {row.grade_code ? ` · ${row.grade_code}` : ''}
+                {row.grade_code ? ` · ${gradeLabel(row)}` : ''}
               </div>
               <div className="foam-warehouse__card-sub">
                 {row.thickness_cm ? `${row.thickness_cm} см · ` : ''}{row.qty} шт.
@@ -172,7 +174,7 @@ const FoamWarehouseTab = () => {
                   {stock.map((row, idx) => (
                     <tr key={row.id ?? `${row.output_format}-${row.grade_code}-${row.thickness_cm}`} style={{ '--row-i': idx }}>
                       <td>{OUTPUT_LABEL[row.output_format] || row.output_format}</td>
-                      <td>{row.grade_code || '—'}</td>
+                      <td>{row.grade_code ? gradeLabel(row) : '—'}</td>
                       <td>{row.thickness_cm ? `${row.thickness_cm} см` : '—'}</td>
                       <td className="foam-warehouse__qty">{row.qty}</td>
                       <td className="ui-list__actions">

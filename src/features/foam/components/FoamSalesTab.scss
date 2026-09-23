@@ -1,35 +1,46 @@
 @use '../../../shared/styles/mixins';
 
 .foam-sales {
+  // Фильтр периода — своя строка под вкладками, видна на всех экранах
+  // (как .sales-page__toolbar у вкладки профиля — тот же паттерн, тот же
+  // компонент PeriodFilter, не второй похожий-но-другой фильтр).
   &__toolbar {
     display: flex;
-    justify-content: flex-end;
+    align-items: center;
     margin-bottom: 16px;
+
+    @include mixins.mobile {
+      margin-bottom: 12px;
+    }
   }
 
+  // «Продать» — главное действие вкладки, живёт в action-слоте ProductLineTabs
+  // (тот же класс-паттерн, что .sales-page__add у вкладки профиля).
   &__add {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    height: 38px;
-    padding: 0 14px;
+    gap: 7px;
+    height: 40px;
+    padding: 0 16px;
     background: var(--color-primary);
     color: #fff;
     border: none;
-    border-radius: var(--input-radius);
-    font-size: 13px;
-    font-weight: 500;
+    border-radius: var(--radius-md);
+    font-size: 13.5px;
+    font-weight: 600;
+    flex-shrink: 0;
     cursor: pointer;
-    transition: background var(--transition-fast);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+
+    &:active { transform: translateY(0) scale(0.98); }
   }
 
   @media (hover: hover) {
-    &__add:hover { background: var(--color-primary-hover); }
-  }
-
-  &__add.foam-sales__add--desktop-only {
-    @include mixins.mobile {
-      display: none;
+    &__add:hover {
+      background: var(--color-primary-hover);
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
     }
   }
 

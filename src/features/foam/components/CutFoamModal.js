@@ -40,7 +40,10 @@ const CutFoamModal = ({ cubeRow, onSave, onClose, error, saving }) => {
     <FormModal icon={Scissors} eyebrow="Пенополистирол — склад ГП" title="Нарезать на листы" onClose={onClose} error={error} size="sheet">
       <form onSubmit={handleSubmit} className="form-modal__form">
         <div className="form-modal__body">
-          <p className="fm__hint">Доступно кубов: {cubeRow.qty}{cubeRow.grade_code ? ` · марка ${cubeRow.grade_code}` : ''}</p>
+          <p className="fm__hint">
+            Доступно кубов: {cubeRow.qty}
+            {cubeRow.grade_code && ` · марка ${cubeRow.grade_code}${cubeRow.grade_density_range ? ` (${cubeRow.grade_density_range})` : ''}`}
+          </p>
           <div className="fm__row">
             <div className="fm__field">
               <label className="fm__label">Кубов на нарезку</label>

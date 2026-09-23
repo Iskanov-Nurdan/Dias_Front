@@ -3,21 +3,11 @@ import { Receipt } from 'lucide-react';
 import { Spinner, ErrorState, FormModal } from '../../../shared/ui';
 import { fetchSale } from '../api';
 import { getApiErrorMessage } from '../../../shared/lib/apiError';
+import { getSaleStatusBadge, getPaymentStatusLabel } from '../saleStatus';
 import './SaleDetailModal.scss';
 
 const money = (n) => `${Number(n || 0).toLocaleString('ru-RU')} сом`;
 const dateFmt = (d) => (d ? new Date(d).toLocaleDateString('ru-RU') : '—');
-
-const STATUS_LABEL = {
-  draft: 'Черновик',
-  confirmed: 'Подтверждена',
-  partially_shipped: 'Частично отгружена',
-  shipped: 'Отгружена',
-  closed: 'Закрыта',
-  canceled: 'Отменена',
-};
-
-const PAYMENT_STATUS_LABEL = { paid: 'Оплачено', partial: 'Частично оплачено', debt: 'В долг' };
 
 const SaleDetailModal = ({ saleId, onClose }) => {
   const [sale, setSale] = useState(null);
@@ -57,11 +47,11 @@ const SaleDetailModal = ({ saleId, onClose }) => {
                 </div>
                 <div className="sdm__summary-item">
                   <span className="sdm__summary-label">Статус</span>
-                  <span className="sdm__summary-value">{STATUS_LABEL[sale.sale_status] || sale.sale_status}</span>
+                  <span className="sdm__summary-value">{getSaleStatusBadge(sale, { withPayment: false }).label}</span>
                 </div>
                 <div className="sdm__summary-item">
                   <span className="sdm__summary-label">Оплата</span>
-                  <span className="sdm__summary-value">{PAYMENT_STATUS_LABEL[sale.payment_status] || sale.payment_status || '—'}</span>
+                  <span className="sdm__summary-value">{getPaymentStatusLabel(sale.payment_status)}</span>
                 </div>
               </div>
 

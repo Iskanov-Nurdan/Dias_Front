@@ -1,0 +1,1102 @@
+@use '../../../shared/styles/mixins';
+
+// Касса всегда полноэкранная (form-modal--fullscreen), даже на десктопе —
+// это рабочий экран кассира, а не форма из пяти полей, и на десктопе тоже
+// не должна выглядеть centered-карточкой с полями вокруг. Своя разметка не
+// трогает общий .form-modal__backdrop/.form-modal — только переопределяет
+// их для конкретно этой модалки через :has(), не задевая остальные формы,
+// у которых size="fullscreen" означает «fullscreen только на мобиле».
+.form-modal__backdrop--fullscreen:has(.form-modal.reg) {
+  padding: 0;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.form-modal.reg {
+  max-width: none;
+  width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  border-radius: 0;
+}
+
+@keyframes reg-row-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes reg-pop-in {
+  0%   { opacity: 0; transform: scale(0.6); }
+  60%  { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reg, .reg * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.reg {
+  &__parked-btn {
+    position: relative;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+
+    &:active { transform: scale(0.92); }
+  }
+
+  @media (hover: hover) {
+    &__parked-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+  }
+
+  &__parked-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: var(--color-primary);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__shop {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    padding: 12px 20px 20px;
+    // Подстраховка на маленьких экранах/большом масштабе страницы: колонки
+    // каталога/чека сами скроллятся внутри себя, но если и всей раскладке
+    // не хватает высоты — страница должна прокручиваться, а не обрезаться
+    // (.form-modal держит overflow:hidden, скролл нужен именно здесь).
+    overflow-y: auto;
+    @include mixins.scrollbar;
+
+    @include mixins.mobile {
+      padding: 10px 14px 14px;
+    }
+  }
+
+  &__conflicts {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    background: var(--color-warning-soft);
+    color: var(--color-warning);
+    border-radius: var(--radius-md);
+    font-size: 12.5px;
+
+    p { margin: 0 0 4px; font-weight: 600; }
+    ul { margin: 0; padding-left: 16px; }
+    button { margin-left: auto; background: none; border: none; color: inherit; cursor: pointer; }
+  }
+
+  &__layout {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 16px;
+
+    @include mixins.mobile {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  // ── Каталог ────────────────────────────────────────────────────────────
+  &__catalog {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    overflow: hidden;
+
+    @include mixins.mobile {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      border-radius: 0;
+
+      &--open-mobile { display: flex; }
+    }
+  }
+
+  &__catalog-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  &__catalog-close {
+    display: none;
+    @include mixins.mobile { display: flex; }
+    width: 34px;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+  }
+
+  &__search {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--input-radius);
+    background: var(--color-surface-secondary);
+    color: var(--color-text-muted);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+
+    &:focus-within {
+      border-color: var(--color-primary);
+      box-shadow: var(--input-shadow-focus);
+      background: var(--color-surface);
+    }
+
+    input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: var(--color-text);
+      font-size: 14px;
+      outline: none;
+    }
+  }
+
+  &__catalog-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px;
+    @include mixins.scrollbar;
+  }
+
+  &__catalog-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    margin-bottom: 2px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text);
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+    animation: reg-row-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--row-i, 0) * 20ms);
+
+    &:active { background: var(--color-primary-soft); transform: scale(0.99); }
+  }
+
+  @media (hover: hover) {
+    &__catalog-item:hover {
+      background: var(--color-surface-secondary);
+      border-color: var(--color-border);
+      box-shadow: var(--shadow-xs);
+      transform: translateY(-1px);
+
+      .reg__catalog-item-add { opacity: 1; transform: scale(1); }
+    }
+  }
+
+  &__catalog-item-icon {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-sm);
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__catalog-item-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 13.5px;
+    font-weight: 500;
+    @include mixins.text-ellipsis;
+  }
+
+  &__catalog-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+  }
+
+  &__catalog-item-price {
+    font-weight: 700;
+    color: var(--color-text);
+  }
+
+  &__catalog-item-add {
+    flex-shrink: 0;
+    box-sizing: border-box;
+    width: 22px;
+    height: 22px;
+    padding: 4px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: #fff;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+
+    @include mixins.mobile { opacity: 1; transform: scale(1); }
+  }
+
+  &__catalog-open-mobile {
+    display: none;
+    @include mixins.mobile {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    height: 40px;
+    border: 1px dashed var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  // ── Чек ────────────────────────────────────────────────────────────────
+  &__cart {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    gap: 10px;
+  }
+
+  &__cart-toolbar {
+    display: flex;
+    gap: 8px;
+
+    @include mixins.mobile {
+      flex-direction: column;
+    }
+  }
+
+  &__client-select { flex: 1; min-width: 0; }
+
+  &__client-debt {
+    margin: 0;
+    padding: 8px 12px;
+    background: var(--color-warning-soft);
+    color: var(--color-warning);
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
+  }
+
+  &__lines {
+    flex: 1;
+    min-height: 80px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    @include mixins.scrollbar;
+  }
+
+  &__hint {
+    margin: 0;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    color: var(--color-text-muted);
+
+    &--empty {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-align: center;
+      color: var(--color-text-muted);
+      opacity: 0.7;
+
+      p { margin: 0; }
+    }
+  }
+
+  &__line {
+    padding: 10px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    animation: reg-row-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--row-i, 0) * 30ms);
+
+    &--error { border-color: var(--color-danger); background: var(--color-danger-soft); }
+  }
+
+  @media (hover: hover) {
+    &__line:not(&__line--error):hover { border-color: var(--color-border-strong); box-shadow: var(--shadow-xs); }
+  }
+
+  &__line-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__line-icon {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: var(--color-surface-secondary);
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__line-name {
+    flex: 1;
+    min-width: 0;
+    @include mixins.text-ellipsis;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  &__line-remove {
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+
+    &:active { transform: scale(0.9); }
+  }
+
+  @media (hover: hover) {
+    &__line-remove:hover { background: var(--color-danger-soft); color: var(--color-danger); }
+  }
+
+  &__line-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__qty-stepper {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    transition: border-color 0.15s ease;
+
+    &:focus-within { border-color: var(--color-primary); }
+
+    button {
+      width: 30px;
+      height: 32px;
+      border: none;
+      background: var(--color-surface-secondary);
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+
+      &:active { transform: scale(0.9); }
+    }
+
+    input {
+      width: 44px;
+      height: 32px;
+      border: none;
+      border-left: 1px solid var(--color-border);
+      border-right: 1px solid var(--color-border);
+      text-align: center;
+      background: var(--color-surface);
+      color: var(--color-text);
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+
+      &:focus { outline: none; background: var(--color-primary-soft); }
+    }
+  }
+
+  @media (hover: hover) {
+    &__qty-stepper button:hover { background: var(--color-primary-soft); color: var(--color-primary); }
+  }
+
+  &__line-price-block {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  &__line-price {
+    font-size: 12.5px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+  }
+
+  &__line-price-input {
+    width: 74px;
+    height: 28px;
+    padding: 0 6px;
+    border: 1px solid var(--color-primary);
+    border-radius: 6px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 12.5px;
+    transition: box-shadow 0.15s ease;
+
+    &:focus { outline: none; box-shadow: var(--input-shadow-focus); }
+  }
+
+  &__line-override-btn {
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+
+    &:active { transform: scale(0.9); }
+    &--active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+  }
+
+  @media (hover: hover) {
+    &__line-override-btn:not(&__line-override-btn--active):hover { border-color: var(--color-primary); color: var(--color-primary); }
+  }
+
+  &__line-override-reason {
+    height: 30px;
+    padding: 0 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 12px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--input-shadow-focus); }
+  }
+
+  &__line-discount {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--color-text-muted);
+
+    input {
+      flex: 1;
+      height: 28px;
+      padding: 0 8px;
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      background: var(--color-surface);
+      color: var(--color-text);
+      font-size: 12px;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+      &:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--input-shadow-focus); }
+    }
+  }
+
+  &__line-total {
+    margin-left: auto;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--color-text);
+    white-space: nowrap;
+  }
+
+  &__line-warn {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--color-danger);
+  }
+
+  &__totals {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    background: var(--color-surface-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    animation: reg-row-in 0.2s ease both;
+  }
+
+  &__totals-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12.5px;
+    color: var(--color-text-muted);
+
+    input {
+      width: 90px;
+      height: 26px;
+      padding: 0 8px;
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      background: var(--color-surface);
+      color: var(--color-text);
+      font-size: 12.5px;
+      text-align: right;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+      &:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--input-shadow-focus); }
+    }
+
+    &--discount span { display: flex; align-items: center; gap: 4px; }
+
+    &--total {
+      padding-top: 6px;
+      margin-top: 2px;
+      border-top: 1px dashed var(--color-border);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--color-text);
+
+      span:last-child { color: var(--color-primary); font-size: 18px; }
+    }
+  }
+
+  &__cart-actions {
+    display: flex;
+    gap: 10px;
+
+    // Телефон: sticky-кнопка «Оплатить» с суммой всегда внизу экрана, как
+    // договорились в проектном разборе — чек может быть длинным.
+    @include mixins.mobile {
+      position: sticky;
+      bottom: 0;
+      padding: 10px 0 4px;
+      background: linear-gradient(to top, var(--color-bg) 60%, transparent);
+    }
+  }
+
+  &__park-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 48px;
+    padding: 0 16px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+
+    &:disabled { opacity: 0.4; cursor: not-allowed; }
+    &:active:not(:disabled) { transform: scale(0.97); }
+  }
+
+  @media (hover: hover) {
+    &__park-btn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); box-shadow: var(--shadow-xs); }
+  }
+
+  &__pay-btn {
+    flex: 1;
+    height: 48px;
+    border-radius: var(--radius-md);
+    font-size: 14.5px;
+    font-weight: 700;
+    transition: transform 0.12s ease, box-shadow 0.15s ease;
+
+    &:active:not(:disabled) { transform: scale(0.98); }
+  }
+
+  @media (hover: hover) {
+    &__pay-btn:hover:not(:disabled) { box-shadow: var(--shadow-sm); }
+  }
+
+  // ── Оплата ─────────────────────────────────────────────────────────────
+  &__pay {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    @include mixins.scrollbar;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 20px 16px;
+    max-width: 460px;
+    margin: 0 auto;
+    width: 100%;
+
+    @include mixins.mobile { padding: 10px 14px 12px; }
+  }
+
+  &__pay-error {
+    margin: 0;
+    padding: 10px 12px;
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
+  }
+
+  &__pay-modes {
+    display: flex;
+    padding: 3px;
+    gap: 3px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-secondary);
+
+    button {
+      flex: 1;
+      height: 38px;
+      border: none;
+      border-radius: calc(var(--radius-md) - 3px);
+      background: transparent;
+      color: var(--color-text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.18s cubic-bezier(0.16, 1, 0.3, 1), color 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease;
+
+      &.active { background: var(--color-primary); color: #fff; box-shadow: var(--shadow-sm); }
+      &:disabled { opacity: 0.4; cursor: not-allowed; }
+      &:active:not(:disabled) { transform: scale(0.97); }
+    }
+  }
+
+  @media (hover: hover) {
+    &__pay-modes button:not(.active):not(:disabled):hover { background: var(--color-surface); color: var(--color-text); }
+  }
+
+  &__pay-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+
+    div {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 8px 12px;
+      background: var(--color-surface-secondary);
+      border-radius: var(--radius-md);
+      border: 1px solid transparent;
+      transition: border-color 0.2s ease, background 0.2s ease;
+
+      span {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        color: var(--color-text-muted);
+      }
+      strong { font-size: 16px; font-variant-numeric: tabular-nums; transition: color 0.2s ease; }
+    }
+
+    &-warn { border-color: color-mix(in srgb, var(--color-danger) 25%, transparent) !important; }
+    &-warn strong { color: var(--color-danger); }
+    &-change { border-color: color-mix(in srgb, var(--color-success) 25%, transparent) !important; background: var(--color-success-soft) !important; }
+    &-change strong { color: var(--color-success); }
+  }
+
+  &__pay-partial-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 8px 12px;
+    background: var(--color-warning-soft);
+    color: var(--color-warning);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 600;
+
+    &--error {
+      background: var(--color-danger-soft);
+      color: var(--color-danger);
+    }
+  }
+
+  &__pay-methods {
+    display: flex;
+    gap: 8px;
+
+    button {
+      position: relative;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      height: 50px;
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-surface);
+      color: var(--color-text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+
+      &:active { transform: scale(0.98); }
+      &.active { border-color: var(--color-primary); background: var(--color-primary-soft); color: var(--color-primary); }
+    }
+  }
+
+  @media (hover: hover) {
+    &__pay-methods button:not(.active):hover { border-color: var(--color-border-strong); }
+  }
+
+  &__pay-method-check {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 15px;
+    height: 15px;
+    padding: 2px;
+    box-sizing: border-box;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: #fff;
+    animation: reg-pop-in 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  &__pay-method-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+  }
+
+  &__pay-method-amount {
+    font-size: 16px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text);
+  }
+
+  &__pay-methods button.active &__pay-method-amount { color: var(--color-primary); }
+
+  &__pay-quick {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr) auto;
+    gap: 6px;
+
+    @include mixins.mobile { grid-template-columns: repeat(2, 1fr) auto auto; }
+
+    button {
+      height: 34px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      background: var(--color-surface);
+      color: var(--color-text-secondary);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+
+      &:active { transform: scale(0.94); background: var(--color-primary-soft); }
+    }
+  }
+
+  @media (hover: hover) {
+    &__pay-quick button:hover { border-color: var(--color-primary); color: var(--color-primary); }
+  }
+
+  &__pay-quick-exact {
+    grid-column: span 2;
+    color: var(--color-primary) !important;
+    border-color: var(--color-primary) !important;
+
+    @include mixins.mobile { grid-column: span 1; }
+  }
+
+  &__pay-keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+
+    button {
+      height: 44px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-surface);
+      color: var(--color-text);
+      font-size: 19px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.12s ease, border-color 0.12s ease, transform 0.1s ease;
+
+      &:active { transform: scale(0.94); background: var(--color-surface-secondary); }
+    }
+  }
+
+  @media (hover: hover) {
+    &__pay-keypad button:hover { border-color: var(--color-border-strong); background: var(--color-surface-secondary); }
+  }
+
+  &__pay-key-back { color: var(--color-danger) !important; display: flex; align-items: center; justify-content: center; }
+
+  &__pay-debt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+    padding: 24px 16px;
+    color: var(--color-text-secondary);
+
+    svg {
+      box-sizing: border-box;
+      color: var(--color-warning);
+      width: 52px;
+      height: 52px;
+      padding: 12px;
+      background: var(--color-warning-soft);
+      border-radius: 50%;
+      animation: reg-pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+    p { margin: 0; font-size: 14px; max-width: 320px; }
+  }
+
+  &__pay-debt-current { font-size: 13px; color: var(--color-text-muted) !important; }
+
+  &__pay-debt-blocked {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--color-danger) !important;
+    font-weight: 600;
+  }
+
+  &__pay-actions {
+    margin-top: auto;
+    display: flex;
+    gap: 10px;
+
+    .ui-modal-btn { flex: 1; height: 48px; }
+  }
+
+  // ── Успех ──────────────────────────────────────────────────────────────
+  &__success {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 12px;
+    padding: 20px;
+  }
+
+  &__success-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--color-success-soft);
+    color: var(--color-success);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: reg-pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  &__success-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--color-text);
+    letter-spacing: -0.01em;
+    animation: reg-row-in 0.3s ease 0.05s both;
+  }
+
+  &__success-change {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 14px 28px;
+    background: var(--color-success-soft);
+    border-radius: var(--radius-lg);
+    animation: reg-row-in 0.3s ease 0.1s both;
+
+    span { font-size: 12px; color: var(--color-text-muted); }
+    strong { font-size: 32px; font-weight: 800; color: var(--color-success); font-variant-numeric: tabular-nums; }
+  }
+
+  &__success-total {
+    margin: 0;
+    font-size: 13px;
+    color: var(--color-text-muted);
+    animation: reg-row-in 0.3s ease 0.12s both;
+  }
+
+  &__success-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    animation: reg-row-in 0.3s ease 0.16s both;
+
+    .ui-modal-btn { height: 44px; padding: 0 20px; }
+  }
+
+  // ── Отложенные чеки ────────────────────────────────────────────────────
+  // Общий ActionSheet (bottom sheet) вместо самодельной панели — свайп
+  // вниз/тап по фону/Escape уже умеет закрывать, как и везде в проекте
+  // (контекстные меню карточек, «Ещё» в мобильной навигации), не изобретаем
+  // второй способ показать шторку снизу.
+  &__parked-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--color-text-muted);
+    opacity: 0.7;
+    text-align: center;
+
+    p { margin: 0; font-size: 13px; }
+  }
+
+  &__parked-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    animation: reg-row-in 0.22s ease both;
+    animation-delay: calc(var(--row-i, 0) * 40ms);
+  }
+
+  @media (hover: hover) {
+    &__parked-item:hover { border-color: var(--color-primary); box-shadow: var(--shadow-xs); }
+  }
+
+  &__parked-item-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  &__parked-item-icon {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-sm);
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__parked-item-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  &__parked-item-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text);
+    @include mixins.text-ellipsis;
+  }
+
+  &__parked-item-time { font-size: 11px; color: var(--color-text-muted); }
+
+  &__parked-item-remove {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+
+    &:active { transform: scale(0.9); }
+  }
+
+  @media (hover: hover) {
+    &__parked-item-remove:hover { background: var(--color-danger-soft); color: var(--color-danger); }
+  }
+}

@@ -101,6 +101,20 @@ export const FRONTEND_FIELD_LABELS = {
     line: 'Линия',
     production_batch: 'Партия ОТК',
   },
+  // sales.Client уже частично переводит бэкенд (name/phone/phone_alt/
+  // client_type/is_active/credit_limit/address/inn, см. AUDIT_FIELD_LABELS
+  // в DIas_ERP) — здесь только то, чего там нет. contact/settlement_account/
+  // notes — точные подписи из ClientFormModal.js («Контактное лицо»,
+  // «Расчётный счёт», «Заметки»); email/messenger/credit_limit_mode нигде
+  // в форме не редактируются — verbose_name модели.
+  'sales.client': {
+    contact: 'Контактное лицо',
+    settlement_account: 'Расчётный счёт',
+    notes: 'Заметки',
+    email: 'Email',
+    messenger: 'Мессенджер / WhatsApp / Telegram',
+    credit_limit_mode: 'Режим кредитного лимита',
+  },
   // Прайс-листы и цены клиентов — на этот фронт ещё не перенесены (нет своей
   // страницы), но бэкенд их уже пишет в общий журнал. Подписи — verbose_name.
   'sales.pricelist': {

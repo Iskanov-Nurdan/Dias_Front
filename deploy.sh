@@ -8,7 +8,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 SERVER="${SERVER:-root@5.42.98.29}"
-REMOTE_DIR="${REMOTE_DIR:-/root/DIas_ERP/frontend-dist}"
+REMOTE_DIR="${REMOTE_DIR:-/opt/dias/frontend}"  # отсюда фронт раздаёт системный nginx (sites-enabled/diyas)
 
 log() { echo -e "\033[1;34m[deploy]\033[0m $*"; }
 

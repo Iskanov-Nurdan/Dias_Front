@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Factory } from 'lucide-react';
 import { Select, SubmitButton, MoneyInput, FormModal } from '../../../shared/ui';
+import { formatNumber } from '../../../shared/constants/common';
 import './FoamModals.scss';
 
 const OUTPUT_OPTIONS = [
@@ -35,7 +36,7 @@ const ProduceFoamRunModal = ({ lots, grades, onSave, onClose, error, saving }) =
       value: String(l.id),
       label: `${l.material_name} — приход ${new Date(l.received_at).toLocaleDateString('ru-RU')} (${fmtKg(l.remaining_kg)})`,
     }));
-  const gradeOptions = (grades || []).map((g) => ({ value: g.code, label: `${g.code} (${g.min_kg_m3}–${g.max_kg_m3} кг/м³)` }));
+  const gradeOptions = (grades || []).map((g) => ({ value: g.code, label: `${g.code} (${formatNumber(g.min_kg_m3)}–${formatNumber(g.max_kg_m3)} кг/м³)` }));
   const lotById = useMemo(() => Object.fromEntries((lots || []).map((l) => [String(l.id), l])), [lots]);
   const gradeByCode = useMemo(() => Object.fromEntries((grades || []).map((g) => [g.code, g])), [grades]);
 

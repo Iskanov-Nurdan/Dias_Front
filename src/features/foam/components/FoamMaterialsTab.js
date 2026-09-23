@@ -13,6 +13,7 @@ import {
 import { useToast } from '../../../app/providers/ToastProvider';
 import { useDebounce } from '../../../shared/hooks/useDebounce';
 import { getApiErrorMessage } from '../../../shared/lib/apiError';
+import { formatNumber } from '../../../shared/constants/common';
 import {
   ErrorState, EmptyState, SkeletonTable, ConfirmModal, ActionSheet, Fab, Subtabs,
 } from '../../../shared/ui';
@@ -322,7 +323,7 @@ const FoamMaterialsTab = () => {
           <span className="foam-materials__avatar foam-materials__avatar--grade"><Layers size={15} /></span>
           <div className="foam-materials__card-info">
             <div className="foam-materials__card-name">{g.code}</div>
-            <div className="foam-materials__card-sub">{Number(g.min_kg_m3).toFixed(2)} кг/м³</div>
+            <div className="foam-materials__card-sub">{formatNumber(g.min_kg_m3)} кг/м³</div>
           </div>
           <button
             type="button"
@@ -475,7 +476,7 @@ const FoamMaterialsTab = () => {
                           <span className="foam-materials__name-text">{g.code}</span>
                         </div>
                       </td>
-                      <td className="foam-materials__remaining">{g.min_kg_m3} кг/м³</td>
+                      <td className="foam-materials__remaining">{formatNumber(g.min_kg_m3)} кг/м³</td>
                       <td>
                         <div className="foam-materials__row-actions">
                           <button type="button" className="foam-materials__icon-btn" title="Изменить" onClick={() => setGradeModal(g)}><Pencil size={13} /></button>

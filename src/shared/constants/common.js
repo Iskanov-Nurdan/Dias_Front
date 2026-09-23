@@ -10,6 +10,9 @@ export const MONTHS_SHORT = ['', 'Янв', 'Фев', 'Мар', 'Апр', 'Май
 /** Форматирование суммы в сомах (целые числа) */
 export const formatMoney = (v) => (v != null && !Number.isNaN(Number(v)) ? `${Math.round(Number(v)).toLocaleString('ru-RU')} сом` : '—');
 
+/** Число без хвостовых нулей: "10000.00" → "10000", "12.50" → "12.5" */
+export const formatNumber = (v) => (v != null && v !== '' && !Number.isNaN(Number(v)) ? String(Number(v)) : '—');
+
 /** Цвета сегментов для донат-диаграмм */
 export const DONUT_COLORS = ['#c53030', '#059669', '#d97706', '#7c3aed', '#0891b2', '#1e3a5f', '#4f46e5', '#0d9488'];
 

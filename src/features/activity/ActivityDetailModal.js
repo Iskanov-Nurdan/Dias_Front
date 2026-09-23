@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Pencil, Trash2, Plus } from 'lucide-react';
 import { useModalEffect } from '../../shared/hooks/useModalEffect';
 import { formatChangeLabel, formatChangeValue } from '../../shared/lib/auditFormat';
+import { isHiddenAuditField } from '../../shared/lib/auditFieldLabels';
 import { ACTION_TYPES } from './constants';
 import './ActivityDetailModal.scss';
 
@@ -19,7 +20,8 @@ const ActivityDetailModal = ({ entry, onClose }) => {
   useModalEffect(true, onClose);
   if (!entry) return null;
 
-  const changes = Array.isArray(entry.payload?.changes) ? entry.payload.changes : [];
+  const changes = (Array.isArray(entry.payload?.changes) ? entry.payload.changes : [])
+    .filter((c) => !isHiddenAuditField(c.field));
   const hasChanges = entry.has_detail && changes.length > 0;
   const actionInfo = ACTION_TYPES[entry.action];
   const Icon = ACTION_ICON[entry.action] ?? Pencil;
@@ -51,7 +53,7 @@ const ActivityDetailModal = ({ entry, onClose }) => {
               </p>
               <div className={entry.action === 'update' ? 'activity-detail-modal__diff' : 'activity-detail-modal__snapshot'}>
                 {changes.map((c, i) => {
-                  const label = formatChangeLabel(entry.field_labels, c);
+                  const label = formatChangeLabel(entry.field_labels, c, entry.entity_type);
                   if (entry.action === 'update') {
                     return (
                       <div key={i} className="activity-detail-modal__diff-row">

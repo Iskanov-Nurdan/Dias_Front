@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Layers, Pencil } from 'lucide-react';
 import { SubmitButton, MoneyInput, FormModal } from '../../../shared/ui';
+import { formatNumber } from '../../../shared/constants/common';
 import './FoamModals.scss';
 
 const FoamDensityGradeModal = ({ grade, onSave, onClose, error, saving }) => {
   const isEdit = !!grade;
   const [code, setCode] = useState(grade?.code || '');
-  const [density, setDensity] = useState(grade?.min_kg_m3 != null ? String(grade.min_kg_m3) : '');
+  const [density, setDensity] = useState(grade?.min_kg_m3 != null ? formatNumber(grade.min_kg_m3) : '');
 
   const canSubmit = code.trim().length > 0 && Number(density) > 0;
 

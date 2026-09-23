@@ -6,10 +6,18 @@
 // что бэкенд посчитать не может: как показать значение, если готового
 // _display нет (обычный текст/число/bool/дата без транформа).
 
-/** Подпись поля: сначала личный словарь записи (field_labels), иначе как есть. */
-export const formatChangeLabel = (fieldLabels, change) => {
+import { FRONTEND_FIELD_LABELS } from './auditFieldLabels';
+
+/**
+ * Подпись поля: сначала личный словарь записи (field_labels от бэкенда),
+ * затем фронтенд-словарь по entity_type (auditFieldLabels.js — модели,
+ * которые бэкенд ещё не перевёл), и только потом — как есть.
+ */
+export const formatChangeLabel = (fieldLabels, change, entityType) => {
   const key = change.field;
-  return fieldLabels?.[key] ?? (change.path && change.path !== key ? change.path : key);
+  return fieldLabels?.[key]
+    ?? FRONTEND_FIELD_LABELS[entityType]?.[key]
+    ?? (change.path && change.path !== key ? change.path : key);
 };
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}/;

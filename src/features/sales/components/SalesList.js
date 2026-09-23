@@ -1,27 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Info, Receipt } from 'lucide-react';
 import { ErrorState, EmptyState, SkeletonTable } from '../../../shared/ui';
+import { getSaleStatusBadge } from '../saleStatus';
 import './SalesList.scss';
 
 const MOBILE_MQ = '(max-width: 768px)';
-
-const STATUS_LABEL = {
-  draft: 'Черновик',
-  confirmed: 'Подтверждена',
-  partially_shipped: 'Частично отгружена',
-  shipped: 'Отгружена',
-  closed: 'Закрыта',
-  canceled: 'Отменена',
-};
-
-const STATUS_MODIFIER = {
-  draft: 'muted',
-  confirmed: 'info',
-  partially_shipped: 'warning',
-  shipped: 'success',
-  closed: 'success',
-  canceled: 'danger',
-};
 
 const money = (n) => `${Number(n || 0).toLocaleString('ru-RU')} сом`;
 const dateFmt = (d) => (d ? new Date(d).toLocaleDateString('ru-RU') : '—');
@@ -46,7 +29,7 @@ const SalesList = ({ items, loading, error, onRetry, onDetails, emptyMessage }) 
   const renderMobileCards = () => (
     <div className="sales-list__cards">
       {list.map((s, idx) => {
-        const modifier = STATUS_MODIFIER[s.sale_status] || 'muted';
+        const badge = getSaleStatusBadge(s);
         return (
           <article key={s.id} className="sales-list__card" style={{ '--row-i': idx }} onClick={() => onDetails(s)}>
             <span className="sales-list__avatar"><Receipt size={14} /></span>
@@ -60,9 +43,9 @@ const SalesList = ({ items, loading, error, onRetry, onDetails, emptyMessage }) 
               </div>
               <div className="sales-list__card-meta">
                 <span className="sales-list__amount">{money(s.revenue)}</span>
-                <span className={`sales-list__status sales-list__status--${modifier}`}>
+                <span className={`sales-list__status sales-list__status--${badge.modifier}`}>
                   <span className="sales-list__status-dot" />
-                  {STATUS_LABEL[s.sale_status] || s.sale_status}
+                  {badge.label}
                 </span>
               </div>
             </div>
@@ -97,7 +80,7 @@ const SalesList = ({ items, loading, error, onRetry, onDetails, emptyMessage }) 
             </thead>
             <tbody>
               {list.map((s, idx) => {
-                const modifier = STATUS_MODIFIER[s.sale_status] || 'muted';
+                const badge = getSaleStatusBadge(s);
                 return (
                   <tr key={s.id} style={{ '--row-i': idx }}>
                     <td>
@@ -111,9 +94,9 @@ const SalesList = ({ items, loading, error, onRetry, onDetails, emptyMessage }) 
                     <td className="sales-list__muted">{dateFmt(s.date)}</td>
                     <td className="sales-list__amount">{money(s.revenue)}</td>
                     <td>
-                      <span className={`sales-list__status sales-list__status--${modifier}`}>
+                      <span className={`sales-list__status sales-list__status--${badge.modifier}`}>
                         <span className="sales-list__status-dot" />
-                        {STATUS_LABEL[s.sale_status] || s.sale_status}
+                        {badge.label}
                       </span>
                     </td>
                     <td>

@@ -120,6 +120,8 @@ export const fetchFoamGpOperations = async (queryState, signal) => {
 
 export const fetchFoamSales = async (queryState, signal) => {
   const params = { page: queryState?.page || 1, page_size: queryState?.pageSize || 20, ordering: '-date' };
+  if (queryState?.dateFrom) params.date_from = queryState.dateFrom;
+  if (queryState?.dateTo) params.date_to = queryState.dateTo;
   const { data } = await apiClient.get('/foam/sales/', { params, ...withSignal({}, signal) });
   return { items: listItems(data), meta: data?.meta };
 };

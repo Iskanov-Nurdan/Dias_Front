@@ -1,25 +1,4 @@
-# https://www.robotstxt.org/robotstxt.html
-#
-# На этом домене одна и та же сборка отдаёт и публичную страницу клуба (/, /taplink),
-# и внутреннюю CRM (/clients, /reports, /taplink-editor и т.д.). CRM закрыта логином,
-# поисковику там нечего индексировать — открываем только то, что реально публично.
-
+# DIAS LINE — внутренняя система управления производством, всё закрыто
+# логином. Поисковикам здесь индексировать нечего.
 User-agent: *
-Allow: /
-Allow: /taplink
-Disallow: /api/
-Disallow: /login
-Disallow: /employees
-Disallow: /sports-trainers
-Disallow: /clients
-Disallow: /reports
-Disallow: /activity-log
-Disallow: /leads
-Disallow: /expenses
-Disallow: /salary
-Disallow: /shifts
-Disallow: /taplink-editor
-Disallow: /spreadsheet
-Disallow: /analytics
-
-Sitemap: https://rahmanata.kg/sitemap.xml
+Disallow: /

@@ -4,7 +4,7 @@ import { X, Pencil, Trash2, Plus } from 'lucide-react';
 import { useModalEffect } from '../../shared/hooks/useModalEffect';
 import { formatChangeLabel, formatChangeValue } from '../../shared/lib/auditFormat';
 import { isHiddenAuditField } from '../../shared/lib/auditFieldLabels';
-import { ACTION_TYPES } from './constants';
+import { ACTION_TYPES, sectionLabel } from './constants';
 import './ActivityDetailModal.scss';
 
 const ACTION_ICON = { create: Plus, update: Pencil, delete: Trash2 };
@@ -31,7 +31,7 @@ const ActivityDetailModal = ({ entry, onClose }) => {
       <div className="activity-detail-modal" onClick={(e) => e.stopPropagation()}>
         <div className="activity-detail-modal__header">
           <h2 id="activity-detail-title" className="activity-detail-modal__title">
-            <Icon size={18} /> {entry.section}
+            <Icon size={18} /> {sectionLabel(entry.section)}
           </h2>
           <button type="button" className="activity-detail-modal__close" onClick={onClose} aria-label="Закрыть">
             <X size={18} />

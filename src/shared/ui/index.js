@@ -28,3 +28,5 @@ export { default as Fab } from './Fab';
 export { default as Subtabs } from './Subtabs';
 export { default as PrimaryTabs } from './PrimaryTabs';
 export { default as PeriodFilter } from './PeriodFilter';
+export { default as LineChart } from './LineChart';
+export { default as BarChart } from './BarChart';

@@ -6,7 +6,7 @@ import { useDebounce } from '../../shared/hooks/useDebounce';
 import { useAbortSafeFetch } from '../../shared/hooks/useAbortSafeFetch';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
 import { SEARCH_DEBOUNCE_MS, STATS_YEARS } from '../../shared/constants/common';
-import { ACTION_TYPES, SECTIONS } from './constants';
+import { ACTION_TYPES, SECTION_FILTER_OPTIONS, sectionLabel } from './constants';
 import { fetchActivityLog } from './api';
 import { fetchEmployees } from '../employees/api';
 import { ymdToRange } from '../../shared/lib/dateRange';
@@ -124,7 +124,7 @@ const ActivityLogPage = () => {
         <Select
           value={queryState.section}
           onChange={(v) => updateFilter({ section: v })}
-          options={[{ value: '', label: 'Все разделы' }, ...SECTIONS.map((s) => ({ value: s, label: s }))]}
+          options={[{ value: '', label: 'Все разделы' }, ...SECTION_FILTER_OPTIONS]}
           placeholder="Все разделы"
           className="activity-log-page__select"
           icon={<Layers size={15} />}
@@ -194,7 +194,7 @@ const ActivityLogPage = () => {
                         <span className="activity-log-page__action-text">{e.description || e.summary}</span>
                       </div>
                     </td>
-                    <td data-label="Раздел" className="ui-list__muted">{e.section}</td>
+                    <td data-label="Раздел" className="ui-list__muted">{sectionLabel(e.section)}</td>
                     <td data-label="Когда" className="ui-list__muted">{formatWhen(e.created_at)}</td>
                     <td className="ui-list__actions" data-label="">
                       {e.has_detail && (

@@ -1,11 +1,12 @@
 import {
-  Users, Boxes, Factory, CheckCircle2, Warehouse, UsersRound, ShoppingCart, BarChart3, Clock, PlayCircle, Undo2,
+  Users, Boxes, Factory, CheckCircle2, Warehouse, UsersRound, ShoppingCart, BarChart3, Clock, PlayCircle, Undo2, Wallet,
 } from 'lucide-react';
 
 /**
  * Ключи доступа — подмножество settings.ACCESS_KEYS в DIAS_ERP (apps/accounts),
- * ограниченное тем, что реально видно в сайдбаре этого фронта, плюс 'analytics'
- * (пока без своей страницы, но ключ реальный и понадобится с её миграцией),
+ * ограниченное тем, что реально видно в сайдбаре этого фронта, плюс
+ * 'analytics_finance' (не страница — право видеть себестоимость/маржу/прибыль/
+ * расходы внутри «Аналитики», без него бэкенд отдаёт эти поля null),
  * 'my_shift' (личный приход/уход — не страница, а право на кнопку «Начать/
  * завершить смену» в шапке, см. ShiftClockWidget) и 'returns' (не страница —
  * право на кнопку «Возврат» в кассе, см. RegisterModal/ReturnModal;
@@ -24,7 +25,9 @@ export const ACCESS_KEYS = [
   'clients',
   'sales',
   'returns',
+  'payments',
   'analytics',
+  'analytics_finance',
   'shifts',
   'my_shift',
 ];
@@ -38,7 +41,9 @@ export const ACCESS_KEY_LABELS = {
   clients: 'Клиенты',
   sales: 'Касса',
   returns: 'Возвраты в кассе',
+  payments: 'Погашение долгов',
   analytics: 'Аналитика',
+  analytics_finance: 'Финансы в аналитике (маржа, прибыль, расходы)',
   shifts: 'Смены',
   my_shift: 'Начать/завершить смену',
 };
@@ -52,7 +57,9 @@ export const ACCESS_KEY_ICONS = {
   clients: UsersRound,
   sales: ShoppingCart,
   returns: Undo2,
+  payments: Wallet,
   analytics: BarChart3,
+  analytics_finance: Wallet,
   shifts: Clock,
   my_shift: PlayCircle,
 };
@@ -62,12 +69,12 @@ export const ACCESS_KEY_GROUPS = [
   { label: 'Люди', ids: ['users'] },
   { label: 'Сырьё и производство', ids: ['materials', 'production', 'otk'] },
   { label: 'Склад', ids: ['warehouse'] },
-  { label: 'Продажи', ids: ['clients', 'sales', 'returns'] },
+  { label: 'Продажи', ids: ['clients', 'sales', 'returns', 'payments'] },
   // Ключ 'shifts' на бэкенде также открывает /api/activity/ — общий журнал
   // действий (см. ActivityAdminView.required_access_key), отдельного ключа
   // под «Журнал действий» на бэкенде нет. 'my_shift' — отдельное, более узкое
   // право: просто кнопка «Начать/завершить смену» в шапке для рядового
   // сотрудника, без доступа к разделу «Смены» целиком.
   { label: 'Смены и журнал действий', ids: ['shifts', 'my_shift'] },
-  { label: 'Аналитика', ids: ['analytics'] },
+  { label: 'Аналитика', ids: ['analytics', 'analytics_finance'] },
 ];

@@ -102,6 +102,34 @@
 
   &__input {
     height: 42px;
+
+    // 16px на мобиле — иначе iOS зумит страницу при фокусе на поле
+    @include mixins.mobile { font-size: 16px; }
+  }
+
+  // Режим лимита: два равных сегмента, как pay-modes в кассе
+  &__seg {
+    display: flex;
+    gap: 3px;
+    padding: 3px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-secondary);
+
+    button {
+      flex: 1;
+      min-height: 40px;
+      border: none;
+      border-radius: calc(var(--radius-md) - 3px);
+      background: transparent;
+      color: var(--color-text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+
+      &.active { background: var(--color-surface); color: var(--color-text); box-shadow: var(--shadow-sm); }
+    }
   }
 
   &__textarea {

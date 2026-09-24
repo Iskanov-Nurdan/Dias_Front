@@ -20,6 +20,7 @@ const ClientFormModal = ({ client, onSave, onClose, error, saving }) => {
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
   const [creditLimit, setCreditLimit] = useState('');
+  const [creditLimitMode, setCreditLimitMode] = useState('soft');
   const [touched, setTouched] = useState(false);
 
   useEffect(() => {
@@ -34,6 +35,7 @@ const ClientFormModal = ({ client, onSave, onClose, error, saving }) => {
       setAddress(client.address || '');
       setNotes(client.notes || '');
       setCreditLimit(client.credit_limit != null ? String(client.credit_limit) : '');
+      setCreditLimitMode(client.credit_limit_mode === 'hard' ? 'hard' : 'soft');
     }
   }, [client]);
 
@@ -55,6 +57,7 @@ const ClientFormModal = ({ client, onSave, onClose, error, saving }) => {
       address,
       notes,
       creditLimit,
+      creditLimitMode,
     });
   };
 
@@ -100,11 +103,11 @@ const ClientFormModal = ({ client, onSave, onClose, error, saving }) => {
               <div className="cfm__row">
                 <div className="cfm__field">
                   <label className="cfm__label" htmlFor="cfm-phone">Телефон</label>
-                  <input id="cfm-phone" type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="cfm__input" placeholder="+996 700 123 456" />
+                  <input id="cfm-phone" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="cfm__input" placeholder="+996 700 123 456" />
                 </div>
                 <div className="cfm__field">
                   <label className="cfm__label" htmlFor="cfm-phone-alt">Доп. телефон</label>
-                  <input id="cfm-phone-alt" type="text" value={phoneAlt} onChange={(e) => setPhoneAlt(e.target.value)} className="cfm__input" placeholder="Необязательно" />
+                  <input id="cfm-phone-alt" type="tel" inputMode="tel" value={phoneAlt} onChange={(e) => setPhoneAlt(e.target.value)} className="cfm__input" placeholder="Необязательно" />
                 </div>
               </div>
               <div className="cfm__field">
@@ -126,22 +129,31 @@ const ClientFormModal = ({ client, onSave, onClose, error, saving }) => {
                 <div className="cfm__row">
                   <div className="cfm__field">
                     <label className="cfm__label" htmlFor="cfm-inn">ИНН</label>
-                    <input id="cfm-inn" type="text" value={inn} onChange={(e) => setInn(e.target.value)} className="cfm__input" />
+                    <input id="cfm-inn" type="text" inputMode="numeric" value={inn} onChange={(e) => setInn(e.target.value)} className="cfm__input" />
                   </div>
                   <div className="cfm__field">
                     <label className="cfm__label" htmlFor="cfm-account">Расчётный счёт</label>
-                    <input id="cfm-account" type="text" value={settlementAccount} onChange={(e) => setSettlementAccount(e.target.value)} className="cfm__input" />
+                    <input id="cfm-account" type="text" inputMode="numeric" value={settlementAccount} onChange={(e) => setSettlementAccount(e.target.value)} className="cfm__input" />
                   </div>
                 </div>
               </div>
             )}
 
             <div className="cfm__section">
-              <h3 className="cfm__section-title"><Wallet size={13} /> Кредитный лимит</h3>
+              <h3 className="cfm__section-title"><Wallet size={13} /> Лимит долга</h3>
               <div className="cfm__field">
                 <label className="cfm__label" htmlFor="cfm-credit">Лимит долга, сом</label>
-                <MoneyInput id="cfm-credit" value={creditLimit} onChange={setCreditLimit} placeholder="Без лимита" className="cfm__input" />
+                <MoneyInput id="cfm-credit" value={creditLimit} onChange={setCreditLimit} placeholder="Без лимита" className="cfm__input" inputMode="decimal" />
               </div>
+              {creditLimit !== '' && (
+                <div className="cfm__field">
+                  <span className="cfm__label">Если долг выйдет за лимит</span>
+                  <div className="cfm__seg" role="radiogroup">
+                    <button type="button" className={creditLimitMode === 'soft' ? 'active' : ''} onClick={() => setCreditLimitMode('soft')}>Предупредить</button>
+                    <button type="button" className={creditLimitMode === 'hard' ? 'active' : ''} onClick={() => setCreditLimitMode('hard')}>Заблокировать</button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="cfm__field">

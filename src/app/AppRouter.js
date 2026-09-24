@@ -16,6 +16,7 @@ const WarehousePage = React.lazy(() => import('../features/warehouse/WarehousePa
 const ClientsPage = React.lazy(() => import('../features/clients/ClientsPage'));
 const SalesPage = React.lazy(() => import('../features/sales/SalesPage'));
 const ActivityLogPage = React.lazy(() => import('../features/activity/ActivityLogPage'));
+const AnalyticsPage = React.lazy(() => import('../features/analytics/AnalyticsPage'));
 const ShiftsPage = React.lazy(() => import('../features/shifts/ShiftsPage'));
 const NotFoundPage = React.lazy(() => import('../features/not-found/NotFoundPage'));
 
@@ -133,6 +134,14 @@ const AppRouter = () => (
           element={
             <ProtectedRoute pageId="shifts">
               <ShiftsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="analytics"
+          element={
+            <ProtectedRoute pageId="analytics">
+              <AnalyticsPage />
             </ProtectedRoute>
           }
         />

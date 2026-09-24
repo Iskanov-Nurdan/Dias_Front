@@ -1,26 +1,29 @@
 import {
   Users, UsersRound, Clock, History, Package, FlaskConical, Warehouse, Factory,
-  ClipboardCheck, Archive, ShoppingCart,
+  ClipboardCheck, Archive, ShoppingCart, BarChart3,
 } from 'lucide-react';
 
+// Порядок = порядок в сайдбаре и в «Ещё» на мобиле, и первый доступный
+// раздел открывается после входа. Логика: сводка → производственный цикл
+// (сырьё → заготовка → цех → производство → ОТК → склад) → продажи
+// (клиенты → касса) → люди и контроль (сотрудники → смены → журнал).
 export const PAGE_IDS = [
-  'activity-log',
-  'employees',
-  // Группа «Сырьё и химия» в реальном сайдбаре DIAS_ERP: Сырьё → Заготовка → Цех.
+  // Аналитика (apps/analytics, /api/analytics/dashboard/) — ключ 'analytics';
+  // финансовые цифры внутри дополнительно гейтятся ключом 'analytics_finance'.
+  'analytics',
   'materials',
   'workshop',
   'workshop-floor',
-  // Группа «Производство» в реальном сайдбаре: Производство → ОТК.
   'production',
   'otk',
-  'shifts',
-  // Группа «Склад» в реальном сайдбаре.
   'warehouse',
-  // Группа «Продажи» в реальном сайдбаре DIAS_ERP: Клиенты → Касса.
   // 'clients' здесь — apps/sales.Client (CRM-карточка с кредитным лимитом),
   // а не старая клубная подписка Rahman Ata.
   'clients',
   'sales',
+  'employees',
+  'shifts',
+  'activity-log',
 ];
 
 export const PAGE_ICONS = {
@@ -35,6 +38,7 @@ export const PAGE_ICONS = {
   clients: UsersRound,
   'activity-log': History,
   shifts: Clock,
+  analytics: BarChart3,
 };
 
 export const PAGE_LABELS = {
@@ -49,6 +53,7 @@ export const PAGE_LABELS = {
   clients: 'Клиенты',
   'activity-log': 'Журнал действий',
   shifts: 'Смены',
+  analytics: 'Аналитика',
 };
 
 export const PAGE_ROUTES = {
@@ -63,6 +68,7 @@ export const PAGE_ROUTES = {
   clients: '/clients',
   'activity-log': '/activity-log',
   shifts: '/shifts',
+  analytics: '/analytics',
 };
 
 /**
@@ -98,11 +104,12 @@ export const PAGE_ID_ACCESS_KEY_MAP = {
   // несуществующий accessKey 'activity-log'), и пункт меню не показывался
   // никому, включая тех, у кого реально есть доступ к сменам.
   'activity-log': 'shifts',
+  analytics: 'analytics',
 };
 
 /**
- * Группы пунктов меню: ключ группы → массив pageId. Названия и порядок —
- * ровно как в реальном сайдбаре DIAS_ERP (сверено по скриншоту).
+ * Группы пунктов меню (между группами — разделитель): ключ группы → массив
+ * pageId. Порядок групп — тот же, что PAGE_IDS.
  */
 /**
  * Приоритет разделов для нижней таб-бар навигации на мобиле (≤768px):
@@ -115,11 +122,10 @@ export const PAGE_ID_ACCESS_KEY_MAP = {
 export const MOBILE_NAV_PRIMARY_IDS = ['production', 'warehouse', 'clients', 'sales'];
 
 export const PAGE_GROUPS = {
-  'Люди': ['employees'],
+  'Аналитика': ['analytics'],
   'Сырьё и химия': ['materials', 'workshop', 'workshop-floor'],
   'Производство': ['production', 'otk'],
   'Склад': ['warehouse'],
   'Продажи': ['clients', 'sales'],
-  'Смены': ['shifts'],
-  'Журнал действий': ['activity-log'],
+  'Люди и контроль': ['employees', 'shifts', 'activity-log'],
 };

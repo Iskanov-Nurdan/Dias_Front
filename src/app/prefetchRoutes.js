@@ -13,6 +13,7 @@ const loaders = {
   sales: () => import('../features/sales/SalesPage'),
   'activity-log': () => import('../features/activity/ActivityLogPage'),
   shifts: () => import('../features/shifts/ShiftsPage'),
+  analytics: () => import('../features/analytics/AnalyticsPage'),
 };
 
 export function prefetchRoutePage(pageId) {

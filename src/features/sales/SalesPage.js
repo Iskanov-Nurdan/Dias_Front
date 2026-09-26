@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Undo2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { fetchSales } from './api';
-import { useAuth } from '../../app/providers/AuthProvider';
 import { useProductLine, PRODUCT_LINE } from '../../shared/hooks/useProductLine';
 import { getApiErrorMessage } from '../../shared/lib/apiError';
 import { Pagination, ProductLineTabs, Fab, PeriodFilter } from '../../shared/ui';
 import { STATS_YEARS } from '../../shared/constants/common';
-import { SalesList, SaleDetailModal, ReturnModal } from './components';
+import { SalesList, SaleDetailModal } from './components';
 import RegisterModal from './register/RegisterModal';
 import { FoamSalesTab } from '../foam/components';
 import './SalesPage.scss';
@@ -24,7 +23,6 @@ const pad2 = (n) => String(n).padStart(2, '0');
 const daysInMonth = (year, month) => new Date(year, month, 0).getDate();
 
 const SalesPage = () => {
-  const { hasAccess } = useAuth();
   const [line, setLine] = useProductLine();
   const [year, setYear] = useState(DEFAULT_YEAR);
   const [month, setMonth] = useState(DEFAULT_MONTH);
@@ -34,7 +32,6 @@ const SalesPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [registerOpen, setRegisterOpen] = useState(false);
-  const [returnOpen, setReturnOpen] = useState(false);
   const [detailsSaleId, setDetailsSaleId] = useState(null);
 
   const isDefaultPeriod = year === DEFAULT_YEAR && month === DEFAULT_MONTH && day === '';
@@ -84,7 +81,7 @@ const SalesPage = () => {
 
       {/* Отдельная строка под вкладками — видна на всех экранах (в отличие
           от action-слота PrimaryTabs, который на мобиле скрывается в пользу
-          Fab), иначе на телефоне пропадал бы и фильтр периода, и «Возврат». */}
+          Fab), иначе на телефоне пропадал бы фильтр периода. */}
       <div className="sales-page__toolbar">
         <PeriodFilter
           year={year} month={month} day={day}
@@ -92,11 +89,6 @@ const SalesPage = () => {
           onReset={resetPeriod}
           isDefault={isDefaultPeriod}
         />
-        {hasAccess('returns') && (
-          <button type="button" className="sales-page__return" onClick={() => setReturnOpen(true)}>
-            <Undo2 size={16} /> Возврат
-          </button>
-        )}
       </div>
 
       <SalesList
@@ -106,6 +98,7 @@ const SalesPage = () => {
         onRetry={load}
         onDetails={(s) => setDetailsSaleId(s.id)}
         emptyMessage="Продаж пока нет"
+        onAdd={() => setRegisterOpen(true)}
       />
       <Pagination
         meta={data?.meta}
@@ -120,10 +113,6 @@ const SalesPage = () => {
           onClose={() => setRegisterOpen(false)}
           onSaved={load}
         />
-      )}
-
-      {returnOpen && (
-        <ReturnModal onClose={() => setReturnOpen(false)} onDone={load} />
       )}
 
       {detailsSaleId && (

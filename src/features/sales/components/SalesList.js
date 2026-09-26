@@ -9,7 +9,9 @@ const MOBILE_MQ = '(max-width: 768px)';
 const money = (n) => `${Number(n || 0).toLocaleString('ru-RU')} сом`;
 const dateFmt = (d) => (d ? new Date(d).toLocaleDateString('ru-RU') : '—');
 
-const SalesList = ({ items, loading, error, onRetry, onDetails, emptyMessage }) => {
+const SalesList = ({
+  items, loading, error, onRetry, onDetails, emptyMessage, onAdd,
+}) => {
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.matchMedia(MOBILE_MQ).matches,
   );
@@ -62,7 +64,7 @@ const SalesList = ({ items, loading, error, onRetry, onDetails, emptyMessage }) 
           <SkeletonTable rows={8} cols={5} />
         ) : !list.length ? (
           <div className="sales-list__empty-wrap">
-            <EmptyState message={emptyMessage} />
+            <EmptyState message={emptyMessage} actionLabel={onAdd ? 'Продать' : undefined} onAction={onAdd} />
           </div>
         ) : isMobile ? (
           renderMobileCards()

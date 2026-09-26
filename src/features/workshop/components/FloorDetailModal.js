@@ -38,7 +38,8 @@ const STATS = [
   { key: 'recipe_kg_per_barrel', label: '1 бочка' },
   { key: 'barrels', label: 'Бочек', raw: true },
   { key: 'extra_kg', label: 'Доп. кг' },
-  { key: 'from_machine_remainder_kg', label: 'Остаток машины' },
+  // «Остаток машины» убран: возврат остатка машины в цех нигде не реализован
+  // (нет ни одной операции, которая его пишет) — плитка врала нулём.
   { key: 'from_defect_kg', label: 'Брак', danger: true },
   { key: 'pure_kg', label: 'Чисто', success: true },
   { key: 'total_kg', label: 'Сумма частей' },

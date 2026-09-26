@@ -11,12 +11,14 @@ import {
   ErrorState, EmptyState, SkeletonTable, Pagination, Fab,
 } from '../../../shared/ui';
 import ProduceFoamRunModal from './ProduceFoamRunModal';
+import { OUTPUT_LABEL, foamUnit } from '../stockLabel';
 import './FoamProductionTab.scss';
 
 const MOBILE_MQ = '(max-width: 768px)';
 
 const dateFmt = (d) => (d ? new Date(d).toLocaleDateString('ru-RU') : '—');
-const OUTPUT_LABEL = { cube: 'Куб', sheet: 'Лист', granule: 'Гранулят' };
+/** «41.2 шт · Куб (F15)» / «48.3 кг · Гранулят» — гранулят взвешивают, куб считают штуками (см. shared/stockLabel foamUnit). */
+const outputText = (r) => `${r.output_qty} ${foamUnit(r.output_format)} · ${OUTPUT_LABEL[r.output_format] || r.output_format}${r.grade_code ? ` (${r.grade_code})` : ''}`;
 
 const FoamProductionTab = () => {
   const toast = useToast();
@@ -121,7 +123,7 @@ const FoamProductionTab = () => {
               <div className="foam-production__card-body">
                 <div className="foam-production__card-title">{r.material_name || `материал №${r.lot_id}`}</div>
                 <div className="foam-production__card-sub">
-                  Расход {Number(r.input_kg).toLocaleString('ru-RU', { maximumFractionDigits: 2 })} кг · Выход {r.output_qty} {OUTPUT_LABEL[r.output_format] || r.output_format}{r.grade_code ? ` (${r.grade_code})` : ''}
+                  Расход {Number(r.input_kg).toLocaleString('ru-RU', { maximumFractionDigits: 2 })} кг · Выход {outputText(r)}
                 </div>
                 <div className="foam-production__card-meta">{r.operator || '—'} · {dateFmt(r.produced_at)}</div>
               </div>
@@ -140,7 +142,7 @@ const FoamProductionTab = () => {
                   <td>{dateFmt(r.produced_at)}</td>
                   <td>{r.material_name || `материал №${r.lot_id}`}</td>
                   <td>{Number(r.input_kg).toLocaleString('ru-RU', { maximumFractionDigits: 2 })}</td>
-                  <td>{r.output_qty} {OUTPUT_LABEL[r.output_format] || r.output_format}{r.grade_code ? ` (${r.grade_code})` : ''}</td>
+                  <td>{outputText(r)}</td>
                   <td>{r.operator || '—'}</td>
                 </tr>
               ))}

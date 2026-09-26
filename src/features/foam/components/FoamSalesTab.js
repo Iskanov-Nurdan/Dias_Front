@@ -85,6 +85,7 @@ const FoamSalesTab = ({ line, onLineChange }) => {
           <div className="foam-sales__card-meta">
             <span className="foam-sales__amount">{money(s.total_amount)}</span>
             <span className={`foam-sales__status foam-sales__status--${s.payment_status}`}>
+              <span className="foam-sales__status-dot" />
               {PAYMENT_LABEL[s.payment_status] || s.payment_status}
             </span>
           </div>
@@ -134,6 +135,7 @@ const FoamSalesTab = ({ line, onLineChange }) => {
                     <td>{money(s.paid_amount)}</td>
                     <td>
                       <span className={`foam-sales__status foam-sales__status--${s.payment_status}`}>
+                        <span className="foam-sales__status-dot" />
                         {PAYMENT_LABEL[s.payment_status] || s.payment_status}
                       </span>
                     </td>

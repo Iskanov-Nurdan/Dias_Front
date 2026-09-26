@@ -1,3 +1,5 @@
+@use '../../../shared/styles/mixins';
+
 // Каркас модалки (backdrop/шапка/fullscreen на мобиле/sticky-кнопки) — общий
 // .form-modal, см. shared/ui/FormModal.scss. Тут только ширина на десктопе
 // и стили содержимого чека.
@@ -85,6 +87,7 @@
     flex: 1;
     min-width: 0;
     font-weight: 500;
+    @include mixins.text-ellipsis;
   }
 
   &__list-muted {

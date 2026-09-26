@@ -9,6 +9,7 @@ import {
   ErrorState, EmptyState, SkeletonTable, Pagination, Subtabs, ActionSheet,
 } from '../../../shared/ui';
 import CutFoamModal from './CutFoamModal';
+import { OUTPUT_LABEL, foamUnit } from '../stockLabel';
 import './FoamWarehouseTab.scss';
 
 const gradeLabel = (row) => (row.grade_density_range ? `${row.grade_code} (${row.grade_density_range})` : row.grade_code);
@@ -22,8 +23,6 @@ const TABS = [
   { id: TAB_STOCK, label: 'Остатки', icon: Boxes },
   { id: TAB_OPS, label: 'История', icon: History },
 ];
-
-const OUTPUT_LABEL = { cube: 'Куб', sheet: 'Лист', granule: 'Гранулят' };
 const KIND_LABEL = {
   production_intake: 'Приход с производства',
   sale: 'Продажа',
@@ -118,7 +117,7 @@ const FoamWarehouseTab = () => {
                 {row.grade_code ? ` · ${gradeLabel(row)}` : ''}
               </div>
               <div className="foam-warehouse__card-sub">
-                {row.thickness_cm ? `${row.thickness_cm} см · ` : ''}{row.qty} шт.
+                {row.thickness_cm ? `${row.thickness_cm} см · ` : ''}{row.qty} {foamUnit(row.output_format)}
               </div>
             </div>
             {canCut && (
@@ -147,7 +146,7 @@ const FoamWarehouseTab = () => {
             <div className="foam-warehouse__card-sub">{dateFmt(op.created_at || op.date)}</div>
           </div>
           <span className={`foam-warehouse__op-qty${Number(op.qty) < 0 ? ' foam-warehouse__op-qty--out' : ' foam-warehouse__op-qty--in'}`}>
-            {Number(op.qty) > 0 ? '+' : ''}{op.qty}
+            {Number(op.qty) > 0 ? '+' : ''}{op.qty} {foamUnit(op.output_format)}
           </span>
         </article>
       ))}
@@ -176,7 +175,7 @@ const FoamWarehouseTab = () => {
                       <td>{OUTPUT_LABEL[row.output_format] || row.output_format}</td>
                       <td>{row.grade_code ? gradeLabel(row) : '—'}</td>
                       <td>{row.thickness_cm ? `${row.thickness_cm} см` : '—'}</td>
-                      <td className="foam-warehouse__qty">{row.qty}</td>
+                      <td className="foam-warehouse__qty">{row.qty} {foamUnit(row.output_format)}</td>
                       <td className="ui-list__actions">
                         {row.output_format === 'cube' && Number(row.qty) > 0 && (
                           <button type="button" className="ui-list-btn" onClick={() => setCutRow(row)}>
@@ -212,7 +211,7 @@ const FoamWarehouseTab = () => {
                         <td>{dateFmt(op.created_at || op.date)}</td>
                         <td>{KIND_LABEL[op.kind] || op.kind}</td>
                         <td className={`foam-warehouse__op-qty${Number(op.qty) < 0 ? ' foam-warehouse__op-qty--out' : ' foam-warehouse__op-qty--in'}`}>
-                          {Number(op.qty) > 0 ? '+' : ''}{op.qty}
+                          {Number(op.qty) > 0 ? '+' : ''}{op.qty} {foamUnit(op.output_format)}
                         </td>
                       </tr>
                     ))}

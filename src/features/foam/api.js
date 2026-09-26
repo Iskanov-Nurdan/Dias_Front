@@ -128,11 +128,19 @@ export const fetchFoamSales = async (queryState, signal) => {
 
 export const createFoamSale = async (body, signal) => {
   const payload = {
-    client: body.client,
+    client_id: body.clientId,
     sale_date: body.saleDate,
     lines: body.lines.map((l) => ({ stock_id: l.stockId, qty: l.qty, unit_price: l.unitPrice })),
   };
   if (body.paidAmount != null && body.paidAmount !== '') payload.paid_amount = body.paidAmount;
+  if (body.discountAmount) payload.discount_amount = body.discountAmount;
+  if (body.forceCreditOverride) payload.force_credit_override = true;
   const { data } = await apiClient.post('/foam/sales/', payload, withSignal({}, signal));
+  return data;
+};
+
+/** Долг/лимит клиента — общий на обе товарные линии (см. apps.sales.credit_check). */
+export const fetchFoamClientDebt = async (clientId, signal) => {
+  const { data } = await apiClient.get('/foam/sales/client-debt/', { params: { client_id: clientId }, ...withSignal({}, signal) });
   return data;
 };

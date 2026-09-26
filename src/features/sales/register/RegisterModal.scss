@@ -131,6 +131,7 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     background: var(--color-surface);
+    box-shadow: var(--shadow-xs);
     overflow: hidden;
 
     @include mixins.mobile {
@@ -169,28 +170,35 @@
     flex: 1;
     display: flex;
     align-items: center;
-    gap: 8px;
-    height: 40px;
-    padding: 0 12px;
-    border: 1px solid var(--color-border);
+    gap: 9px;
+    height: 44px;
+    padding: 0 14px;
+    border: 1px solid transparent;
     border-radius: var(--input-radius);
     background: var(--color-surface-secondary);
     color: var(--color-text-muted);
-    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+
+    svg { flex-shrink: 0; transition: color 0.15s ease; }
 
     &:focus-within {
       border-color: var(--color-primary);
       box-shadow: var(--input-shadow-focus);
       background: var(--color-surface);
+      color: var(--color-primary);
     }
 
     input {
       flex: 1;
+      min-width: 0;
       border: none;
       background: transparent;
       color: var(--color-text);
       font-size: 14px;
+      font-weight: 500;
       outline: none;
+
+      &::placeholder { color: var(--color-text-muted); font-weight: 400; }
     }
   }
 
@@ -204,13 +212,13 @@
   &__catalog-item {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     width: 100%;
     padding: 10px 12px;
-    margin-bottom: 2px;
-    border: 1px solid transparent;
+    margin-bottom: 4px;
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
-    background: transparent;
+    background: var(--color-surface);
     color: var(--color-text);
     text-align: left;
     cursor: pointer;
@@ -218,68 +226,73 @@
     animation: reg-row-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
     animation-delay: calc(var(--row-i, 0) * 20ms);
 
-    &:active { background: var(--color-primary-soft); transform: scale(0.99); }
+    &:active { background: var(--color-primary-soft); transform: scale(0.98); }
   }
 
   @media (hover: hover) {
     &__catalog-item:hover {
       background: var(--color-surface-secondary);
-      border-color: var(--color-border);
-      box-shadow: var(--shadow-xs);
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-sm);
       transform: translateY(-1px);
 
-      .reg__catalog-item-add { opacity: 1; transform: scale(1); }
+      .reg__catalog-item-icon { background: var(--color-primary); color: #fff; }
+      .reg__catalog-item-add { background: var(--color-primary-hover); transform: scale(1.08); }
     }
   }
 
   &__catalog-item-icon {
     flex-shrink: 0;
-    width: 30px;
-    height: 30px;
-    border-radius: var(--radius-sm);
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
     background: var(--color-primary-soft);
     color: var(--color-primary);
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease;
   }
 
   &__catalog-item-name {
     flex: 1;
     min-width: 0;
-    font-size: 13.5px;
-    font-weight: 500;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
     @include mixins.text-ellipsis;
   }
 
   &__catalog-item-meta {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 12px;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    font-size: 11.5px;
+    font-weight: 600;
     color: var(--color-text-muted);
     white-space: nowrap;
   }
 
   &__catalog-item-price {
-    font-weight: 700;
+    font-size: 14.5px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
     color: var(--color-text);
+    font-variant-numeric: tabular-nums;
   }
 
   &__catalog-item-add {
     flex-shrink: 0;
     box-sizing: border-box;
-    width: 22px;
-    height: 22px;
-    padding: 4px;
+    width: 26px;
+    height: 26px;
+    padding: 5px;
     border-radius: 50%;
     background: var(--color-primary);
     color: #fff;
-    opacity: 0;
-    transform: scale(0.6);
-    transition: opacity 0.15s ease, transform 0.15s ease;
-
-    @include mixins.mobile { opacity: 1; transform: scale(1); }
+    box-shadow: var(--shadow-xs);
+    transition: background 0.15s ease, transform 0.15s ease;
   }
 
   &__catalog-open-mobile {
@@ -290,14 +303,17 @@
       justify-content: center;
       gap: 6px;
     }
-    height: 40px;
-    border: 1px dashed var(--color-border-strong);
+    height: 44px;
+    border: 1.5px dashed var(--color-border-strong);
     border-radius: var(--radius-md);
-    background: transparent;
-    color: var(--color-text-secondary);
-    font-size: 13px;
-    font-weight: 600;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-size: 13.5px;
+    font-weight: 700;
     cursor: pointer;
+    transition: border-color 0.15s ease, transform 0.12s ease;
+
+    &:active { transform: scale(0.98); }
   }
 
   // ── Чек ────────────────────────────────────────────────────────────────
@@ -319,14 +335,9 @@
 
   &__client-select { flex: 1; min-width: 0; }
 
-  &__client-debt {
-    margin: 0;
-    padding: 8px 12px;
-    background: var(--color-warning-soft);
-    color: var(--color-warning);
-    border-radius: var(--radius-sm);
-    font-size: 12.5px;
-  }
+  // .reg__client-debt и .reg__client-debt-bar — стили в самом низу файла
+  // (были задублированы здесь и там; актуальная, более насыщенная версия —
+  // внизу, эта пустая заглушка убрана, чтобы не расходились по коду).
 
   &__lines {
     flex: 1;
@@ -340,8 +351,10 @@
 
   &__hint {
     margin: 0;
-    padding: 10px 12px;
-    font-size: 12.5px;
+    padding: 24px 12px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
     color: var(--color-text-muted);
 
     &--empty {
@@ -350,47 +363,58 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 10px;
+      padding: 28px 16px;
+      border: 1.5px dashed var(--color-border);
+      border-radius: var(--radius-lg);
       text-align: center;
       color: var(--color-text-muted);
-      opacity: 0.7;
 
-      p { margin: 0; }
+      svg { color: var(--color-border-strong); }
+
+      p { margin: 0; font-size: 13.5px; font-weight: 600; }
     }
   }
 
   &__line {
-    padding: 10px;
+    position: relative;
+    padding: 12px 12px 12px 15px;
     border: 1px solid var(--color-border);
+    border-left: 3px solid var(--color-border-strong);
     border-radius: var(--radius-md);
     background: var(--color-surface);
+    box-shadow: var(--shadow-xs);
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
     animation: reg-row-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
     animation-delay: calc(var(--row-i, 0) * 30ms);
 
-    &--error { border-color: var(--color-danger); background: var(--color-danger-soft); }
+    &--error {
+      border-color: var(--color-danger);
+      border-left-color: var(--color-danger);
+      background: var(--color-danger-soft);
+    }
   }
 
   @media (hover: hover) {
-    &__line:not(&__line--error):hover { border-color: var(--color-border-strong); box-shadow: var(--shadow-xs); }
+    &__line:not(&__line--error):hover { border-left-color: var(--color-primary); box-shadow: var(--shadow-sm); }
   }
 
   &__line-main {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 9px;
   }
 
   &__line-icon {
     flex-shrink: 0;
-    width: 22px;
-    height: 22px;
-    border-radius: 6px;
-    background: var(--color-surface-secondary);
-    color: var(--color-text-muted);
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius-sm);
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -400,14 +424,15 @@
     flex: 1;
     min-width: 0;
     @include mixins.text-ellipsis;
-    font-size: 13.5px;
-    font-weight: 600;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
     color: var(--color-text);
   }
 
   &__line-remove {
-    width: 26px;
-    height: 26px;
+    width: 28px;
+    height: 28px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -429,41 +454,42 @@
   &__line-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
   }
 
   &__qty-stepper {
     display: flex;
     align-items: center;
+    flex-shrink: 0;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
+    background: var(--color-surface-secondary);
     overflow: hidden;
-    transition: border-color 0.15s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 
-    &:focus-within { border-color: var(--color-primary); }
+    &:focus-within { border-color: var(--color-primary); box-shadow: var(--input-shadow-focus); }
 
     button {
-      width: 30px;
-      height: 32px;
+      width: 32px;
+      height: 34px;
       border: none;
-      background: var(--color-surface-secondary);
+      background: transparent;
       color: var(--color-text-secondary);
       cursor: pointer;
       transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
 
-      &:active { transform: scale(0.9); }
+      &:active { transform: scale(0.85); }
     }
 
     input {
-      width: 44px;
-      height: 32px;
+      width: 42px;
+      height: 34px;
       border: none;
-      border-left: 1px solid var(--color-border);
-      border-right: 1px solid var(--color-border);
-      text-align: center;
       background: var(--color-surface);
       color: var(--color-text);
-      font-size: 13px;
+      font-size: 13.5px;
+      font-weight: 700;
+      text-align: center;
       font-variant-numeric: tabular-nums;
 
       &:focus { outline: none; background: var(--color-primary-soft); }
@@ -478,26 +504,33 @@
     display: flex;
     align-items: center;
     gap: 4px;
+    min-width: 0;
   }
 
   &__line-price {
-    font-size: 12.5px;
-    color: var(--color-text-muted);
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: var(--color-surface-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
     white-space: nowrap;
   }
 
   &__line-price-input {
-    width: 74px;
-    height: 28px;
-    padding: 0 6px;
-    border: 1px solid var(--color-primary);
-    border-radius: 6px;
-    background: var(--color-surface);
+    width: 76px;
+    height: 34px;
+    padding: 0 8px;
+    border: 1.5px solid var(--color-primary);
+    border-radius: var(--radius-sm);
+    background: var(--color-primary-soft);
     color: var(--color-text);
-    font-size: 12.5px;
+    font-size: 13px;
+    font-weight: 700;
     transition: box-shadow 0.15s ease;
 
     &:focus { outline: none; box-shadow: var(--input-shadow-focus); }
+    &::placeholder { color: var(--color-text-muted); font-weight: 500; }
   }
 
   &__line-override-btn {
@@ -522,10 +555,11 @@
   }
 
   &__line-override-reason {
-    height: 30px;
-    padding: 0 8px;
+    height: 32px;
+    padding: 0 10px;
+    margin-top: 2px;
     border: 1px solid var(--color-border);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     background: var(--color-surface);
     color: var(--color-text);
     font-size: 12px;
@@ -538,14 +572,16 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--color-border);
     color: var(--color-text-muted);
 
     input {
       flex: 1;
-      height: 28px;
+      height: 30px;
       padding: 0 8px;
       border: 1px solid var(--color-border);
-      border-radius: 6px;
+      border-radius: var(--radius-sm);
       background: var(--color-surface);
       color: var(--color-text);
       font-size: 12px;
@@ -557,9 +593,11 @@
 
   &__line-total {
     margin-left: auto;
-    font-size: 13.5px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
     color: var(--color-text);
+    font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
 
@@ -568,19 +606,22 @@
     display: flex;
     align-items: center;
     gap: 5px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--color-danger);
     font-size: 11.5px;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-danger);
   }
 
   &__totals {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 10px 12px;
-    background: var(--color-surface-secondary);
+    gap: 6px;
+    padding: 14px 16px;
+    background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
     animation: reg-row-in 0.2s ease both;
   }
 
@@ -588,35 +629,39 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 12.5px;
-    color: var(--color-text-muted);
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
 
     input {
-      width: 90px;
-      height: 26px;
+      width: 92px;
+      height: 30px;
       padding: 0 8px;
       border: 1px solid var(--color-border);
-      border-radius: 6px;
-      background: var(--color-surface);
+      border-radius: var(--radius-sm);
+      background: var(--color-surface-secondary);
       color: var(--color-text);
-      font-size: 12.5px;
+      font-size: 13px;
+      font-weight: 600;
       text-align: right;
       transition: border-color 0.15s ease, box-shadow 0.15s ease;
 
-      &:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--input-shadow-focus); }
+      &:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--input-shadow-focus); background: var(--color-surface); }
     }
 
     &--discount span { display: flex; align-items: center; gap: 4px; }
 
     &--total {
-      padding-top: 6px;
+      align-items: baseline;
+      padding-top: 10px;
       margin-top: 2px;
       border-top: 1px dashed var(--color-border);
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 700;
       color: var(--color-text);
 
-      span:last-child { color: var(--color-primary); font-size: 18px; }
+      span:last-child { color: var(--color-primary); font-size: 26px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
     }
   }
 
@@ -637,19 +682,20 @@
   &__park-btn {
     display: flex;
     align-items: center;
-    gap: 6px;
-    height: 48px;
-    padding: 0 16px;
+    gap: 7px;
+    height: 54px;
+    padding: 0 18px;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     background: var(--color-surface);
     color: var(--color-text-secondary);
     font-size: 13.5px;
-    font-weight: 600;
+    font-weight: 700;
+    box-shadow: var(--shadow-xs);
     cursor: pointer;
     transition: border-color 0.15s ease, color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
 
-    &:disabled { opacity: 0.4; cursor: not-allowed; }
+    &:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
     &:active:not(:disabled) { transform: scale(0.97); }
   }
 
@@ -657,19 +703,33 @@
     &__park-btn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); box-shadow: var(--shadow-xs); }
   }
 
+  // .submit-button сам по себе без цвета (общий каркас на спиннер/disabled) —
+  // фон/текст/тень главной кнопки экрана задаём здесь, иначе она рендерится
+  // браузерной кнопкой по умолчанию (баг предыдущего захода: тень/радиус
+  // задал, а background — забыл).
   &__pay-btn {
     flex: 1;
-    height: 48px;
+    height: 54px;
+    border: none;
     border-radius: var(--radius-md);
-    font-size: 14.5px;
-    font-weight: 700;
-    transition: transform 0.12s ease, box-shadow 0.15s ease;
+    background: var(--color-primary);
+    color: #fff;
+    font-size: 15.5px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    box-shadow: 0 4px 14px rgba(197, 48, 48, 0.32);
+    transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
 
+    &:disabled { background: var(--color-border-strong); color: var(--color-surface); box-shadow: none; cursor: not-allowed; }
     &:active:not(:disabled) { transform: scale(0.98); }
   }
 
   @media (hover: hover) {
-    &__pay-btn:hover:not(:disabled) { box-shadow: var(--shadow-sm); }
+    &__pay-btn:hover:not(:disabled) {
+      background: var(--color-primary-hover);
+      box-shadow: 0 6px 20px rgba(197, 48, 48, 0.4);
+      transform: translateY(-1px);
+    }
   }
 
   // ── Оплата ─────────────────────────────────────────────────────────────
@@ -717,6 +777,8 @@
       font-weight: 600;
       cursor: pointer;
       transition: background 0.18s cubic-bezier(0.16, 1, 0.3, 1), color 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease;
+
+      @include mixins.mobile { height: 44px; }
 
       &.active { background: var(--color-primary); color: #fff; box-shadow: var(--shadow-sm); }
       &:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -846,7 +908,7 @@
     @include mixins.mobile { grid-template-columns: repeat(2, 1fr) auto auto; }
 
     button {
-      height: 34px;
+      height: 36px;
       border: 1px solid var(--color-border);
       border-radius: var(--radius-sm);
       background: var(--color-surface);
@@ -855,6 +917,10 @@
       font-weight: 600;
       cursor: pointer;
       transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+
+      // Тач-зона от 44px — на телефоне это реальные кнопки суммы, жмут часто
+      // и быстро, 34px было мало (см. общий стандарт ЭТАП 5).
+      @include mixins.mobile { height: 44px; }
 
       &:active { transform: scale(0.94); background: var(--color-primary-soft); }
     }
@@ -1101,28 +1167,72 @@
   }
 }
 
+// Долг клиента прямо в кассе — то же смысловое поле, что «hero» в карточке
+// клиента (ClientProfileModal), но дублируем язык, а не делимся классами
+// (см. правило проекта): цветная левая полоса + иконка + крупная сумма.
 .reg__client-debt {
+  --debt-color: var(--color-success);
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   margin: 0;
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-secondary);
-  color: var(--color-text-secondary);
-  font-size: 12.5px;
-  --debt-color: var(--color-success);
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--debt-color);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
+  animation: reg-row-in 0.2s ease both;
 
-  &--warn { background: var(--color-warning-soft); color: var(--color-warning); --debt-color: var(--color-warning); }
-  &--over { background: var(--color-danger-soft); color: var(--color-danger); --debt-color: var(--color-danger); }
-  &--none { background: var(--color-warning-soft); color: var(--color-warning); }
+  &--warn { --debt-color: var(--color-warning); }
+  &--over { --debt-color: var(--color-danger); background: var(--color-danger-soft); }
+  &--none { --debt-color: var(--color-warning); }
+}
+
+.reg__client-debt-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.reg__client-debt-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--debt-color) 16%, transparent);
+  color: var(--debt-color);
+}
+
+.reg__client-debt-value {
+  margin-left: auto;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.reg__client-debt-note {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+
+  strong { color: var(--color-text-secondary); font-weight: 700; }
 }
 
 .reg__client-debt-bar {
   display: block;
-  height: 5px;
+  height: 6px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--color-surface-secondary);
   overflow: hidden;
 
   i {

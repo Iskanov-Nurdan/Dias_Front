@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ShoppingCart, Search, Plus, Minus, Trash2, TriangleAlert, X, Check, Package, PackageOpen,
+  ShoppingCart, Search, Plus, Minus, Trash2, TriangleAlert, X, Check, Package, PackageOpen, Clock, Wallet, Percent,
 } from 'lucide-react';
-import { FormModal, SubmitButton, Select } from '../../../shared/ui';
+import { FormModal, SubmitButton, Select, ActionSheet } from '../../../shared/ui';
 import { useToast } from '../../../app/providers/ToastProvider';
+import { useAuth } from '../../../app/providers/AuthProvider';
 import { getApiErrorMessage } from '../../../shared/lib/apiError';
-import { fetchFoamGpStock, createFoamSale } from '../api';
+import { fetchFoamGpStock, createFoamSale, fetchFoamClientDebt } from '../api';
 import { fetchClientsLite } from '../../clients/api';
+import { creditInfo } from '../../clients/creditLimit';
 // Переиспользуем ровно те же классы .reg__* и стили кассы профиля, а экран
 // оплаты — вообще тот же компонент (PaymentScreen), не копия: касса Foam
 // должна быть НЕ ПОХОЖЕЙ, а той же самой, просто с другим каталогом (прямое
@@ -15,16 +17,25 @@ import { fetchClientsLite } from '../../clients/api';
 // на наличные/карту; PaymentScreen всё равно даёт вести сплит наличные+
 // карта (кассиру удобнее), а на сабмите Foam просто суммирует их в одно
 // число — бэк эту разбивку не увидит и не должен, это нормально: там нет
-// такого поля вообще. Клиент здесь свободный текст (нет FK на Клиентов),
-// поэтому PaymentScreen получает синтетический clientId/client — только
-// то, что ему нужно для проверки «клиент выбран», без CRM-объекта.
+// такого поля вообще.
+//
+// Клиент теперь обязательно из общего справочника (client_id, а не текст):
+// apps.foam.FoamSale.client_account — FK на apps.sales.Client — только так
+// можно посчитать общий на клиента долг/лимит (см. credit_check.py,
+// compute_client_debt суммирует обе товарные линии). Долг/лимит клиента —
+// GET /foam/sales/client-debt/, тот же creditInfo(), что и в кассе профиля
+// (см. shared/clients/creditLimit) — визуально и по смыслу идентично.
+// Скидка на чек — FoamSale.discount_amount, считается сервером, видна и
+// редактируется только админом, как и в кассе профиля.
 import '../../sales/register/RegisterModal.scss';
 import './FoamRegisterModal.scss';
-import { stockLabel } from '../stockLabel';
+import { stockLabel, foamUnit } from '../stockLabel';
 import PaymentScreen from '../../sales/register/PaymentScreen';
+import { useParkedCarts } from '../../sales/register/useParkedCarts';
 
 const money = (n) => `${Number(n || 0).toLocaleString('ru-RU')} сом`;
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+const PARKED_STORAGE_KEY = 'dias_pos_parked_carts_foam_v1';
 
 let lineSeq = 0;
 const newLine = (s) => ({ key: `l-${++lineSeq}`, stockId: String(s.id), quantity: 1, unitPrice: '' });
@@ -33,18 +44,21 @@ const todayISO = () => new Date().toISOString().slice(0, 10);
 
 const FoamRegisterModal = ({ onClose, onSaved }) => {
   const toast = useToast();
+  const { isAdmin } = useAuth();
+  const { carts: parkedCarts, park, remove: removeParked } = useParkedCarts(PARKED_STORAGE_KEY);
   const [step, setStep] = useState('shop');
   const [stock, setStock] = useState([]);
   const [loading, setLoading] = useState(true);
   const [crmClients, setCrmClients] = useState([]);
-  // apps.foam.client — свободная строка на бэке (нет FK на общий справочник
-  // Клиентов), но кассиру нужен выбор из того же CRM-справочника, что и
-  // касса профиля (fetchClientsLite), а не свободный текст.
   const [clientId, setClientId] = useState('');
   const [client, setClient] = useState('');
+  const [clientDebt, setClientDebt] = useState(null);
   const [lines, setLines] = useState([]);
+  const [headerDiscount, setHeaderDiscount] = useState(0);
   const [search, setSearch] = useState('');
   const [catalogOpenMobile, setCatalogOpenMobile] = useState(false);
+  const [parkedOpen, setParkedOpen] = useState(false);
+  const [conflicts, setConflicts] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [lastSale, setLastSale] = useState(null);
@@ -55,11 +69,27 @@ const FoamRegisterModal = ({ onClose, onSaved }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!clientId) { setClientDebt(null); return; }
+    fetchFoamClientDebt(clientId, null).then(setClientDebt).catch(() => setClientDebt(null));
+  }, [clientId]);
+
   const pickClient = (id) => {
     setClientId(id);
     const found = crmClients.find((c) => String(c.id) === id);
     setClient(found?.name || '');
   };
+
+  // creditInfo() — тот же расчёт доли/уровня, что в кассе профиля (см.
+  // shared/clients/creditLimit); только числа берём из ответа сервера
+  // (client-debt/), а не из client-объекта фронта.
+  const creditView = useMemo(
+    () => creditInfo(
+      clientDebt ? { credit_limit: clientDebt.credit_limit, credit_limit_mode: clientDebt.block_mode } : null,
+      clientDebt?.current_debt,
+    ),
+    [clientDebt],
+  );
 
   const stockById = useMemo(() => Object.fromEntries(stock.map((s) => [String(s.id), s])), [stock]);
 
@@ -81,7 +111,8 @@ const FoamRegisterModal = ({ onClose, onSaved }) => {
 
   const hasLines = lines.length > 0;
   const hasBlockers = enrichedLines.some((l) => l.overQty || l.missing || !(l.qty > 0) || !(l.price >= 0));
-  const total = round2(enrichedLines.reduce((sum, l) => sum + l.lineTotal, 0));
+  const subtotal = round2(enrichedLines.reduce((sum, l) => sum + l.lineTotal, 0));
+  const total = Math.max(0, round2(subtotal - Number(headerDiscount || 0)));
 
   const addStock = (s) => {
     setLines((prev) => [...prev, newLine(s)]);
@@ -93,8 +124,50 @@ const FoamRegisterModal = ({ onClose, onSaved }) => {
     l.key === key ? { ...l, quantity: Math.max(0, (Number(l.quantity) || 0) + delta) } : l
   )));
 
+  const handleParkCurrent = () => {
+    if (!hasLines) return;
+    park({
+      clientId,
+      client,
+      headerDiscount,
+      lines: lines.map((l) => ({
+        key: l.key,
+        stockId: l.stockId,
+        label: stockById[l.stockId] ? stockLabel(stockById[l.stockId]) : undefined,
+        quantity: l.quantity,
+        unitPrice: l.unitPrice,
+      })),
+      total,
+    });
+    toast.success('Чек отложен');
+    onClose();
+  };
+
+  // Отложенный чек ничего не резервирует на складе (см. useParkedCarts) —
+  // при восстановлении сверяем со свежим stock, уже загруженным в этой кассе.
+  const applyParked = (cart) => {
+    setClientId(cart.clientId || '');
+    setClient(cart.client || '');
+    setHeaderDiscount(cart.headerDiscount || 0);
+    const foundConflicts = [];
+    const restored = (cart.lines || []).map((l) => {
+      const fresh = stockById[String(l.stockId)];
+      if (!fresh) {
+        foundConflicts.push(`«${l.label || l.stockId}» больше недоступен на складе`);
+        return null;
+      }
+      if (Number(l.quantity) > Number(fresh.qty)) {
+        foundConflicts.push(`«${stockLabel(fresh)}»: было ${l.quantity}, сейчас доступно ${fresh.qty} ${foamUnit(fresh.output_format)}`);
+      }
+      return { ...l, key: l.key || `l-${++lineSeq}` };
+    }).filter(Boolean);
+    setLines(restored);
+    setConflicts(foundConflicts);
+    setParkedOpen(false);
+  };
+
   const goToPayment = () => {
-    if (hasBlockers || !hasLines || !client.trim()) return;
+    if (hasBlockers || !hasLines || !clientId) return;
     setStep('pay');
   };
 
@@ -102,14 +175,17 @@ const FoamRegisterModal = ({ onClose, onSaved }) => {
   // контракт с кассой профиля. apps.foam не различает наличные/карту и не
   // хранит payment_type отдельно, поэтому для debt шлём 0, иначе — сумму
   // (paidAmount уже посчитан PaymentScreen как paid, splits тут не нужны).
+  // Лимит долга (общий на клиента, см. compute_client_debt) проверяет и
+  // блокирует сервер — здесь просто показываем то, что он вернёт.
   const submitPayment = async ({ paymentType, paidAmount }) => {
     setError(null);
     setSaving(true);
     try {
       const sale = await createFoamSale({
-        client: client.trim(),
+        clientId: Number(clientId),
         saleDate: todayISO(),
         lines: enrichedLines.map((l) => ({ stockId: Number(l.row.id), qty: l.qty, unitPrice: l.price })),
+        discountAmount: headerDiscount || undefined,
         paidAmount: paymentType === 'debt' ? 0 : Math.min(Number(paidAmount) || 0, total),
       }, null);
       setLastSale(sale);
@@ -128,6 +204,7 @@ const FoamRegisterModal = ({ onClose, onSaved }) => {
     setLines([]);
     setClientId('');
     setClient('');
+    setHeaderDiscount(0);
     setLastSale(null);
     setStep('shop');
   };
@@ -135,9 +212,34 @@ const FoamRegisterModal = ({ onClose, onSaved }) => {
   const title = step === 'success' ? 'Продажа оформлена' : step === 'pay' ? 'Оплата' : 'Касса';
 
   return (
-    <FormModal icon={ShoppingCart} eyebrow="Пенополистирол — касса" title={title} onClose={onClose} error={step === 'shop' ? error : null} size="fullscreen" className={`reg reg--step-${step}`}>
+    <FormModal
+      icon={ShoppingCart}
+      eyebrow="Пенополистирол — касса"
+      title={title}
+      onClose={onClose}
+      error={step === 'shop' ? error : null}
+      size="fullscreen"
+      className={`reg reg--step-${step}`}
+      headerExtra={step === 'shop' && (
+        <button type="button" className="reg__parked-btn" onClick={() => setParkedOpen(true)}>
+          <Clock size={15} />
+          {parkedCarts.length > 0 && <span className="reg__parked-badge">{parkedCarts.length}</span>}
+        </button>
+      )}
+    >
       {step === 'shop' && (
         <div className="reg__shop">
+          {conflicts.length > 0 && (
+            <div className="reg__conflicts">
+              <TriangleAlert size={14} />
+              <div>
+                <p>Остатки изменились с момента отложения чека:</p>
+                <ul>{conflicts.map((c) => <li key={c}>{c}</li>)}</ul>
+              </div>
+              <button type="button" onClick={() => setConflicts([])} aria-label="Закрыть"><X size={14} /></button>
+            </div>
+          )}
+
           <div className="reg__layout">
             <section className={`reg__catalog ${catalogOpenMobile ? 'reg__catalog--open-mobile' : ''}`}>
               <div className="reg__catalog-head">
@@ -162,7 +264,7 @@ const FoamRegisterModal = ({ onClose, onSaved }) => {
                   >
                     <span className="reg__catalog-item-icon"><Package size={15} /></span>
                     <span className="reg__catalog-item-name">{stockLabel(s)}</span>
-                    <span className="reg__catalog-item-meta"><span>{s.qty} шт</span></span>
+                    <span className="reg__catalog-item-meta"><span>{s.qty} {foamUnit(s.output_format)}</span></span>
                     <Plus size={14} className="reg__catalog-item-add" />
                   </button>
                 ))}
@@ -183,6 +285,24 @@ const FoamRegisterModal = ({ onClose, onSaved }) => {
                 />
               </div>
 
+              {clientDebt && (creditView.hasLimit || Number(clientDebt.current_debt) > 0) && (
+                <div className={`reg__client-debt reg__client-debt--${creditView.level}`}>
+                  <div className="reg__client-debt-top">
+                    <span className="reg__client-debt-icon"><Wallet size={13} /></span>
+                    <span>Долг клиента</span>
+                    <strong className="reg__client-debt-value">{money(clientDebt.current_debt)}</strong>
+                  </div>
+                  {creditView.hasLimit && (
+                    <>
+                      <span className="reg__client-debt-bar"><i style={{ width: `${creditView.usedPct}%` }} /></span>
+                      <span className="reg__client-debt-note">
+                        {creditView.over ? 'Лимит долга превышен' : <>можно в долг ещё <strong>{money(creditView.available)}</strong></>}
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
+
               <div className="reg__lines">
                 {!hasLines && (
                   <div className="reg__hint reg__hint--empty">
@@ -202,6 +322,7 @@ const FoamRegisterModal = ({ onClose, onSaved }) => {
                         <button type="button" onClick={() => stepQty(l.key, -1)} aria-label="Меньше"><Minus size={13} /></button>
                         <input type="text" inputMode="decimal" value={l.quantity} onChange={(e) => patchLine(l.key, { quantity: e.target.value.replace(/[^\d.]/g, '') })} />
                         <button type="button" onClick={() => stepQty(l.key, 1)} aria-label="Больше"><Plus size={13} /></button>
+                        {l.row && <span className="reg__qty-unit">{foamUnit(l.row.output_format)}</span>}
                       </div>
                       <div className="reg__line-price-block">
                         <input
@@ -210,12 +331,12 @@ const FoamRegisterModal = ({ onClose, onSaved }) => {
                           className="reg__line-price-input"
                           value={l.unitPrice}
                           onChange={(e) => patchLine(l.key, { unitPrice: e.target.value.replace(/[^\d.]/g, '') })}
-                          placeholder="Цена"
+                          placeholder={l.row ? `Цена за 1 ${foamUnit(l.row.output_format)}` : 'Цена'}
                         />
                       </div>
                       <span className="reg__line-total">{money(l.lineTotal)}</span>
                     </div>
-                    {l.overQty && <p className="reg__line-warn"><TriangleAlert size={12} /> Доступно только {l.row.qty} шт</p>}
+                    {l.overQty && <p className="reg__line-warn"><TriangleAlert size={12} /> Доступно только {l.row.qty} {foamUnit(l.row.output_format)}</p>}
                     {!l.missing && !(l.price >= 0 && l.price > 0) && <p className="reg__line-warn"><TriangleAlert size={12} /> Укажите цену</p>}
                   </div>
                 ))}
@@ -223,12 +344,30 @@ const FoamRegisterModal = ({ onClose, onSaved }) => {
 
               {hasLines && (
                 <div className="reg__totals">
+                  {headerDiscount > 0 && (
+                    <div className="reg__totals-row"><span>Сумма</span><span>{money(subtotal)}</span></div>
+                  )}
+                  {isAdmin && (
+                    <div className="reg__totals-row reg__totals-row--discount">
+                      <span><Percent size={13} /> Скидка на чек</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={headerDiscount || ''}
+                        onChange={(e) => setHeaderDiscount(Number(e.target.value.replace(/[^\d.]/g, '')) || 0)}
+                        placeholder="0"
+                      />
+                    </div>
+                  )}
                   <div className="reg__totals-row reg__totals-row--total"><span>Итого</span><span>{money(total)}</span></div>
                 </div>
               )}
 
               <div className="reg__cart-actions">
-                <SubmitButton className="reg__pay-btn" disabled={!hasLines || hasBlockers || !client.trim()} onClick={goToPayment}>
+                <button type="button" className="reg__park-btn" onClick={handleParkCurrent} disabled={!hasLines}>
+                  <Clock size={15} /> Отложить
+                </button>
+                <SubmitButton className="reg__pay-btn" disabled={!hasLines || hasBlockers || !clientId} onClick={goToPayment}>
                   Оплата · {money(total)}
                 </SubmitButton>
               </div>
@@ -240,9 +379,9 @@ const FoamRegisterModal = ({ onClose, onSaved }) => {
       {step === 'pay' && (
         <PaymentScreen
           total={total}
-          clientId={client || ''}
-          client={null}
-          clientProfile={null}
+          clientId={clientId}
+          client={clientDebt ? { credit_limit: clientDebt.credit_limit, credit_limit_mode: clientDebt.block_mode } : null}
+          clientProfile={clientDebt ? { total_debt: clientDebt.current_debt } : null}
           saving={saving}
           error={error}
           onBack={() => setStep('shop')}
@@ -261,6 +400,29 @@ const FoamRegisterModal = ({ onClose, onSaved }) => {
           </div>
         </div>
       )}
+
+      <ActionSheet open={parkedOpen} onClose={() => setParkedOpen(false)} title="Отложенные чеки">
+        {parkedCarts.length === 0 && (
+          <div className="reg__parked-empty">
+            <Clock size={26} />
+            <p>Пока нет отложенных чеков</p>
+          </div>
+        )}
+        {parkedCarts.map((c, idx) => (
+          <div key={c.id} className="reg__parked-item" style={{ '--row-i': idx }}>
+            <button type="button" className="reg__parked-item-main" onClick={() => applyParked(c)}>
+              <span className="reg__parked-item-icon"><Package size={14} /></span>
+              <span className="reg__parked-item-text">
+                <span className="reg__parked-item-title">{c.lines?.length || 0} товар(а) · {money(c.total)}</span>
+                <span className="reg__parked-item-time">{new Date(c.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
+              </span>
+            </button>
+            <button type="button" className="reg__parked-item-remove" onClick={() => removeParked(c.id)} aria-label="Удалить">
+              <Trash2 size={14} />
+            </button>
+          </div>
+        ))}
+      </ActionSheet>
     </FormModal>
   );
 };

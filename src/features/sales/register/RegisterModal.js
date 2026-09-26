@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
-  ShoppingCart, Search, Plus, Minus, Trash2, TriangleAlert, Clock, X, Percent, Pencil, Check, Package, PackageOpen,
+  ShoppingCart, Search, Plus, Minus, Trash2, TriangleAlert, Clock, X, Percent, Pencil, Check, Package, PackageOpen, Wallet,
 } from 'lucide-react';
 import { FormModal, Select, SubmitButton, ActionSheet } from '../../../shared/ui';
 import { useToast } from '../../../app/providers/ToastProvider';
@@ -410,14 +410,18 @@ const RegisterModal = ({ onClose, onSaved, resumeCart }) => {
 
               {clientProfile && (creditView.hasLimit || Number(clientProfile.total_debt) > 0) && (
                 <div className={`reg__client-debt reg__client-debt--${creditView.level}`}>
-                  <span>
-                    Долг клиента: <strong>{money(clientProfile.total_debt)}</strong>
-                    {creditView.hasLimit && (
-                      <> · {creditView.over ? 'лимит превышен' : <>можно ещё <strong>{money(creditView.available)}</strong></>}</>
-                    )}
-                  </span>
+                  <div className="reg__client-debt-top">
+                    <span className="reg__client-debt-icon"><Wallet size={13} /></span>
+                    <span>Долг клиента</span>
+                    <strong className="reg__client-debt-value">{money(clientProfile.total_debt)}</strong>
+                  </div>
                   {creditView.hasLimit && (
-                    <span className="reg__client-debt-bar"><i style={{ width: `${creditView.usedPct}%` }} /></span>
+                    <>
+                      <span className="reg__client-debt-bar"><i style={{ width: `${creditView.usedPct}%` }} /></span>
+                      <span className="reg__client-debt-note">
+                        {creditView.over ? 'Лимит долга превышен' : <>можно в долг ещё <strong>{money(creditView.available)}</strong></>}
+                      </span>
+                    </>
                   )}
                 </div>
               )}

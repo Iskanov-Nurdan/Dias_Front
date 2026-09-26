@@ -1,3 +1,18 @@
 // Foam-касса переиспользует .reg__* целиком (см. импорт RegisterModal.scss
-// в FoamRegisterModal.js) — своих стилей здесь больше нет: клиент теперь
-// обычный Select из CRM-справочника, как и в кассе профиля.
+// в FoamRegisterModal.js) — клиент теперь обычный Select из CRM-справочника,
+// как и в кассе профиля. Единственное, чего нет у профиля (там всё в штуках/
+// метрах с уже понятной подписью) — единица измерения в самом степпере
+// количества: у гранулята это кг, у куба/листа — шт (см. shared/stockLabel
+// foamUnit). Не трогаем .reg__qty-stepper (общий с кассой профиля) —
+// подпись добавлена НОВЫМ элементом внутри него, только в разметке Foam.
+.reg__qty-unit {
+  padding: 0 9px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}

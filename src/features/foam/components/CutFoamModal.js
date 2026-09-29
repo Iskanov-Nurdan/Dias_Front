@@ -1,13 +1,7 @@
 import React, { useState } from 'react';
 import { Scissors } from 'lucide-react';
-import { Select, SubmitButton, MoneyInput, FormModal } from '../../../shared/ui';
+import { SubmitButton, MoneyInput, FormModal } from '../../../shared/ui';
 import './FoamModals.scss';
-
-const THICKNESS_OPTIONS = [
-  { value: '2', label: '2 см' },
-  { value: '3', label: '3 см' },
-  { value: '4', label: '4 см' },
-];
 
 /**
  * Высота куба для расчёта числа листов — та же константа, что и на бэкенде
@@ -20,15 +14,20 @@ const CUBE_HEIGHT_CM = 60;
 
 /** Нарезка куба на листы — операция склада ГП, а не производства (см. отчёт по apps.foam). */
 const CutFoamModal = ({ cubeRow, onSave, onClose, error, saving }) => {
-  const [thicknessCm, setThicknessCm] = useState('2');
+  // Раньше толщина была select'ом с жёстко зашитыми 2/3/4 см — на бэкенде
+  // (FoamGpStockCutSerializer.thickness_cm) ограничения на набор значений
+  // нет вообще, только «целое число > 0», поэтому оператор должен вводить
+  // реальную толщину сам, а не выбирать из чужого списка.
+  const [thicknessCm, setThicknessCm] = useState('');
   const [cubesQty, setCubesQty] = useState('');
 
   const qty = Number(cubesQty);
+  const thickness = Number(thicknessCm);
   const overStock = qty > Number(cubeRow.qty);
-  const canSubmit = qty > 0 && !overStock;
+  const canSubmit = qty > 0 && thickness > 0 && !overStock;
 
-  const sheetsPerCube = Math.floor(CUBE_HEIGHT_CM / (Number(thicknessCm) || 1));
-  const previewSheets = qty > 0 ? Math.floor(sheetsPerCube * qty) : null;
+  const sheetsPerCube = thickness > 0 ? Math.floor(CUBE_HEIGHT_CM / thickness) : 0;
+  const previewSheets = qty > 0 && thickness > 0 ? Math.floor(sheetsPerCube * qty) : null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -51,8 +50,8 @@ const CutFoamModal = ({ cubeRow, onSave, onClose, error, saving }) => {
               {overStock && <span className="fm__field-error">Доступно только {cubeRow.qty}</span>}
             </div>
             <div className="fm__field">
-              <label className="fm__label">Толщина листа</label>
-              <Select value={thicknessCm} onChange={setThicknessCm} options={THICKNESS_OPTIONS} />
+              <label className="fm__label">Толщина листа, см</label>
+              <MoneyInput value={thicknessCm} onChange={setThicknessCm} placeholder="0" className="fm__input" />
             </div>
           </div>
 

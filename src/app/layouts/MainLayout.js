@@ -2,12 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   MoreHorizontal,
-  User, LogOut, Moon, Sun,
+  User, LogOut, Moon, Sun, RotateCw,
 } from 'lucide-react';
 import { useAuth } from '../providers/AuthProvider';
+import { useToast } from '../providers/ToastProvider';
 import { ActionSheet } from '../../shared/ui';
 import ShiftClockWidget from '../../features/shifts/components/ShiftClockWidget';
 import { prefetchRoutePage } from '../prefetchRoutes';
+import { forceAppUpdate } from '../../shared/lib/forceAppUpdate';
 import {
   PAGE_IDS, PAGE_LABELS, PAGE_ROUTES, PAGE_GROUPS, PAGE_ICONS, MOBILE_NAV_PRIMARY_IDS,
 } from '../../shared/constants/pages';
@@ -46,6 +48,7 @@ const MOBILE_BREAKPOINT = 768;
 
 const MainLayout = () => {
   const { user, logout, hasAccess } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobile, setIsMobile] = useState(false);
@@ -146,6 +149,16 @@ const MainLayout = () => {
 
   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
 
+  const [updating, setUpdating] = useState(false);
+  const handleForceUpdate = () => {
+    if (updating) return;
+    setUpdating(true);
+    // Тост не успеет пропасть сам — через мгновение страница перезагрузится
+    // целиком, он просто даст знать, что кнопка сработала, пока идёт чистка.
+    toast.success('Обновляем приложение…');
+    forceAppUpdate();
+  };
+
   const handleLogout = async () => {
     await logout();
     navigate('/login');
@@ -194,6 +207,16 @@ const MainLayout = () => {
         </div>
         <div className="main-layout__header-right">
           <ShiftClockWidget />
+          <button
+            type="button"
+            className={`main-layout__refresh-btn${updating ? ' main-layout__refresh-btn--spinning' : ''}`}
+            onClick={handleForceUpdate}
+            disabled={updating}
+            title="Обновить приложение (сбросить кэш)"
+            aria-label="Обновить приложение и сбросить кэш"
+          >
+            <RotateCw size={ICON_SIZE_SM} strokeWidth={1.75} />
+          </button>
           <button
             type="button"
             className="main-layout__theme-toggle"
